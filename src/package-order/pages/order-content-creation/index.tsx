@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { View, Text, Image as TaroImage, ScrollView } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { Network } from '@/network'
-import { ArrowLeft, FileText, Image as ImageIcon, Video as VideoIcon, Sparkles, CircleCheck, Clock, Zap, Film, Loader } from 'lucide-react-taro'
+import { ArrowLeft, FileText, Image as ImageIcon, Video as VideoIcon, Sparkles, CircleCheck, Clock, Zap, Film, Loader, RefreshCw } from 'lucide-react-taro'
+import { Button } from '@/components/ui/button'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
 import { getPlatformLabel, getPlatformMeta } from '@/constants/publish-platform'
@@ -90,9 +91,9 @@ function getStepIndex(rawStatus: string): number {
     case 'settled':
     case 'done':
     case 'preview':
+    case 'partial_failed':
       return 3
     default:
-      // 未知状态如果有内容也算完成
       return 0
   }
 }
@@ -230,8 +231,33 @@ export default function OrderContentCreation() {
   const stepStates = getStepStates(currentStep, steps.length)
   // 生成中的状态集合 —— 只有这些状态算"还在生成"
   const GENERATING_STATUSES = ['pending', 'processing', 'generating_text', 'generating_images', 'generating_video']
-  const isCompleted = !GENERATING_STATUSES.includes(rawStatus) && rawStatus !== 'failed'
+  const isPartialFailed = rawStatus === 'partial_failed'
+  const isCompleted = !GENERATING_STATUSES.includes(rawStatus) && rawStatus !== 'failed' && !isPartialFailed
   const isGenerating = GENERATING_STATUSES.includes(rawStatus)
+
+  // 重试生成失败内容
+  const handleRetry = useCallback(async () => {
+    const retryRequestId = processingData?.requestId
+    if (!retryRequestId) return
+    try {
+      Taro.showLoading({ title: '正在重新生成...' })
+      const res = await Network.request({
+        url: `/api/content-generation/retry/${retryRequestId}`,
+        method: 'POST',
+      })
+      console.log('[ContentCreation] retry response:', res.data)
+      Taro.hideLoading()
+      if (res.data?.code === 200) {
+        Taro.showToast({ title: '已开始重新生成', icon: 'success' })
+        setProcessingData(prev => prev ? { ...prev, rawStatus: 'processing', status: 'generating' } : prev)
+      } else {
+        Taro.showToast({ title: res.data?.msg || '重试失败', icon: 'none' })
+      }
+    } catch (err) {
+      Taro.hideLoading()
+      Taro.showToast({ title: '重试请求失败', icon: 'none' })
+    }
+  }, [processingData?.requestId])
 
   // 内容数据
   const genContent = processingData?.generatedContent
@@ -248,6 +274,7 @@ export default function OrderContentCreation() {
       case 'feedback_submitted': return '等待发单方确认'
       case 'settled':
       case 'done': return '订单已结算'
+      case 'partial_failed': return '部分内容生成失败'
       default: return '内容生成完成'
     }
   }, [])
@@ -256,11 +283,6 @@ export default function OrderContentCreation() {
     Taro.navigateTo({
       url: `/package-order/pages/order-publish-guide/index?contentId=${processingData.requestId}&orderId=${orderId}`
     })
-  }
-
-  // 重试
-  const handleRetry = () => {
-    Taro.navigateBack()
   }
 
   const statusBarHeight = getStatusBarHeight()
@@ -293,7 +315,7 @@ export default function OrderContentCreation() {
           <View className="cc-header-center">
             <Text className="cc-header-title">内容生成</Text>
             <Text className="cc-header-desc">
-              {isCompleted ? '内容已生成完成' : 'AI正在为你创作内容'}
+              {isCompleted ? '内容已生成完成' : isPartialFailed ? '部分内容生成失败' : 'AI正在为你创作内容'}
             </Text>
           </View>
           <View className="cc-header-placeholder" />
@@ -305,8 +327,8 @@ export default function OrderContentCreation() {
         {orderInfo && (
           <View className="cc-order-card">
             <View className="cc-order-row">
-              <View className="cc-order-badge" style={{ background: isCompleted ? '#22C55E' : '#6366F1' }}>
-                <Text className="cc-order-badge-text">{isCompleted ? '已完成' : '生成中'}</Text>
+              <View className="cc-order-badge" style={{ background: isCompleted ? '#22C55E' : isPartialFailed ? '#EF4444' : '#6366F1' }}>
+                <Text className="cc-order-badge-text">{isCompleted ? '已完成' : isPartialFailed ? '部分失败' : '生成中'}</Text>
               </View>
               <View className="cc-order-type">
                 <Text className="cc-order-type-text">{isVideo ? '视频' : '图文'}</Text>
@@ -440,14 +462,30 @@ export default function OrderContentCreation() {
           )}
         </View>
 
-        {/* 完成状态 - 内容展示 */}
-        {isCompleted && (
+        {/* 完成/部分失败状态 - 内容展示 */}
+        {(isCompleted || isPartialFailed) && (
           <View className="cc-content-section">
-            {/* 完成横幅 */}
-            <View className="cc-done-banner">
-              <CircleCheck size={20} color="#16A34A" />
-              <Text className="cc-done-text">{getCompletedLabel(rawStatus)} · 耗时{formatElapsed(elapsed)}</Text>
-            </View>
+            {/* 完成/部分失败横幅 */}
+            {isPartialFailed ? (
+              <View className="cc-done-banner" style={{ background: '#FEF2F2' }}>
+                <RefreshCw size={20} color="#EF4444" />
+                <Text className="block cc-done-text" style={{ color: '#EF4444' }}>部分内容生成失败，可点击重试</Text>
+              </View>
+            ) : (
+              <View className="cc-done-banner">
+                <CircleCheck size={20} color="#16A34A" />
+                <Text className="block cc-done-text">{getCompletedLabel(rawStatus)} · 耗时{formatElapsed(elapsed)}</Text>
+              </View>
+            )}
+
+            {/* 重试按钮 */}
+            {isPartialFailed && (
+              <View style={{ marginTop: '12rpx', marginBottom: '12rpx' }}>
+                <Button size="sm" variant="outline" onClick={handleRetry}>
+                  <Text>重新生成失败内容</Text>
+                </Button>
+              </View>
+            )}
 
             {/* 平台标签 */}
             {genContent?.platforms && genContent.platforms.length > 0 && (

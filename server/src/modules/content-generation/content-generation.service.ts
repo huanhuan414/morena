@@ -262,6 +262,9 @@ export class ContentGenerationService implements OnModuleInit {
     let textContent = ''
     let images: string[] = []
     let videos: string[] = []
+    let textFailed = false
+    let imageFailed = false
+    let videoFailed = false
 
     // 判断是否为"图文文章"型平台
     const isArticlePlatform = this.isArticlePlatform(platform)
@@ -282,6 +285,8 @@ export class ContentGenerationService implements OnModuleInit {
         await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
       } catch (err: any) {
         this.logger.warn(`图文文章生成失败: ${err.message}`)
+        textFailed = !textContent
+        imageFailed = images.length === 0
       }
     } else {
       // ===== 传统模式：文案 + 配图分离 =====
@@ -293,6 +298,7 @@ export class ContentGenerationService implements OnModuleInit {
           await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
         } catch (err: any) {
           this.logger.warn(`文案生成失败: ${err.message}`)
+          textFailed = true
         }
       }
 
@@ -306,6 +312,7 @@ export class ContentGenerationService implements OnModuleInit {
           await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_video')
         } catch (err: any) {
           this.logger.warn(`视频脚本生成失败: ${err.message}`)
+          textFailed = true
         }
       }
 
@@ -317,6 +324,7 @@ export class ContentGenerationService implements OnModuleInit {
           await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
         } catch (err: any) {
           this.logger.warn(`图片生成失败: ${err.message}`)
+          imageFailed = true
         }
       }
     }
@@ -329,6 +337,7 @@ export class ContentGenerationService implements OnModuleInit {
         this.logger.log(`视频生成完成: ${videos.length}个`)
       } catch (err: any) {
         this.logger.warn(`视频生成失败: ${err.message}`)
+        videoFailed = true
       }
     }
 
@@ -350,13 +359,37 @@ export class ContentGenerationService implements OnModuleInit {
       }
     }
 
-    // 5. 更新为预览状态
-    await this.updateStatus(requestId, input.orderId, 'preview', {
+    // 5. 根据各环节成败决定最终状态
+    const hasAnyContent = textContent || images.length > 0 || videos.length > 0
+    const allRequiredFailed = (needText && textFailed && !textContent) &&
+                              (needImage && imageFailed && images.length === 0) &&
+                              (needVideo && videoFailed && videos.length === 0)
+
+    let finalStatus: string
+    let failedParts: string[] = []
+
+    if (!hasAnyContent || allRequiredFailed) {
+      // 全部失败
+      finalStatus = 'failed'
+    } else if (textFailed || imageFailed || videoFailed) {
+      // 部分失败
+      if (needText && textFailed && !textContent) failedParts.push('文案')
+      if (needImage && imageFailed && images.length === 0) failedParts.push('配图')
+      if (needVideo && videoFailed && videos.length === 0) failedParts.push('视频')
+      finalStatus = 'partial_failed'
+    } else {
+      finalStatus = 'preview'
+    }
+
+    await this.updateStatus(requestId, input.orderId, finalStatus, {
       content: textContent,
       images,
       videos,
-      platforms: [platform]
+      platforms: [platform],
+      failedParts,
     })
+
+    this.logger.log(`内容生成结束: requestId=${requestId}, status=${finalStatus}, failedParts=[${failedParts.join(',')}]`)
 
     // 6. 同步订单状态
     try {

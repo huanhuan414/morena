@@ -73,6 +73,50 @@ export class ContentGenerationController {
     }
   }
 
+  /** 重试生成失败的内容 */
+  @Post('retry/:requestId')
+  @HttpCode(HttpStatus.OK)
+  async retryGeneration(@Param('requestId') requestId: string) {
+    try {
+      const db = await getMySQLClient()
+      const [records]: any = await db.query(
+        'SELECT * FROM content_generation_requests WHERE id = ?',
+        [requestId]
+      )
+      if (!records || records.length === 0) {
+        return { code: 404, message: '记录不存在' }
+      }
+      const record = records[0]
+
+      // 将状态重置为 processing，触发重新生成
+      await db.query(
+        'UPDATE content_generation_requests SET status = ?, updated_at = NOW() WHERE id = ?',
+        ['processing', requestId]
+      )
+
+      // 异步触发重新生成（不阻塞响应）
+      const payload = {
+        orderId: record.order_id,
+        requestId: record.id,
+        avatarId: record.avatar_id,
+        orderTitle: record.order_title || '',
+        orderDescription: record.order_description || '',
+        platforms: record.platforms ? JSON.parse(record.platforms) : [],
+        contentType: record.content_type || 'image',
+        targetAudience: record.target_audience || '通用用户',
+        contentQuantity: record.content_quantity || 1,
+      }
+
+      this.contentGenerationService.generateContent(payload).catch((err: any) => {
+        console.error('[ContentGeneration] retry generation error:', err.message)
+      })
+
+      return { code: 200, message: '已开始重新生成', data: { requestId, status: 'processing' } }
+    } catch (error: any) {
+      return { code: 500, message: '重试失败', error: error.message }
+    }
+  }
+
   @Get('request/:requestId/avatar/:avatarId')
   async getGeneratedContent(
     @Param('requestId') requestId: string,

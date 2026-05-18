@@ -353,8 +353,8 @@ export class OrderProcessingService {
       user_id: record.userId || record.user_id,
       userId: record.userId || record.user_id,
       platform: this.canonicalizePlatform(record.platform),
-      rawStatus: record.status || 'completed',
-      status: normalizeFulfillmentStatus(record.status || 'completed'),
+      rawStatus: record.status || 'pending',
+      status: normalizeFulfillmentStatus(record.status || 'pending'),
       contentType: config.contentType || config.content_type || record.contentType || record.content_type || 'image',
       generatedContent: {
         title: config.title || '',
