@@ -20,6 +20,7 @@ interface Avatar {
   completionRate?: number
   avgRating?: number
   completedTasks?: number
+  matchScore?: number
   matchReason?: string
   platforms?: string[]
   contentTypes?: string[]
@@ -175,10 +176,14 @@ export default function OrderMatchingPage() {
             avgRating: (4 + Math.random()).toFixed(1),
             completedTasks: stats.accepted || 0,
             matchReason,
+            matchScore: item.matchScore || 0,
             platforms: typeof item.platforms === 'string' ? JSON.parse(item.platforms || '[]') : (item.platforms || []),
             contentTypes: []
           }
         })
+        
+        // 按匹配度从高到低排序
+        avatars.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0))
         
         console.log('[推荐接口] 转换后数据:', avatars)
         setRecommendations(avatars)
@@ -207,21 +212,40 @@ export default function OrderMatchingPage() {
   }
 
   const selectAll = () => {
-    if (selectedIds.size === recommendations.length) {
+    const requiredCount = order?.avatarCount || order?.requiredAvatars || recommendations.length
+    if (selectedIds.size >= requiredCount && selectedIds.size <= recommendations.length) {
+      // 已经选够了，取消全选
       setSelectedIds(new Set())
     } else {
-      setSelectedIds(new Set(recommendations.map(a => a.id)))
+      // 全选但只选订单需要的数量
+      const idsToSelect = recommendations.slice(0, requiredCount).map(a => a.id)
+      setSelectedIds(new Set(idsToSelect))
     }
   }
 
+  // 是否处于全选状态（选中数=订单要求数量 或 选中数=推荐总数，取较小值）
+  const isAllSelected = (() => {
+    const requiredCount = order?.avatarCount || order?.requiredAvatars || recommendations.length
+    const target = Math.min(requiredCount, recommendations.length)
+    return selectedIds.size >= target && target > 0
+  })()
+
   // 一键分配 + 发送短信
   const dispatchToAll = async () => {
-    // 使用订单需要的分身数量，如果没有则用推荐数量
-    const requiredCount = order?.requiredAvatars || recommendations.length
-    const avatarsToDispatch = recommendations.slice(0, requiredCount)
+    // 优先使用用户手动选中的分身，否则使用推荐的前N个（N=订单要求数量）
+    const requiredCount = order?.avatarCount || order?.requiredAvatars || recommendations.length
+    let avatarsToDispatch: Avatar[]
+    
+    if (selectedIds.size > 0) {
+      // 用户手动选择了分身，只分配选中的
+      avatarsToDispatch = recommendations.filter(a => selectedIds.has(a.id))
+    } else {
+      // 没有手动选择，按匹配度取前N个
+      avatarsToDispatch = recommendations.slice(0, requiredCount)
+    }
     
     if (avatarsToDispatch.length === 0) {
-      showToast({ title: '暂无可分配分身', icon: 'none' })
+      showToast({ title: '请先选择分身', icon: 'none' })
       return
     }
     
@@ -229,22 +253,48 @@ export default function OrderMatchingPage() {
     showLoading({ title: '分配并通知中...' })
     
     try {
-      const res = await Network.request({
-        url: `/api/order-dispatch/${orderId}/dispatch-all`,
-        method: 'POST'
-      })
+      let successCount = 0
+      let smsSent = false
+      
+      if (selectedIds.size > 0) {
+        // 用户手动选择了分身，逐个分配选中的
+        for (const avatarId of selectedIds) {
+          try {
+            const res = await Network.request({
+              url: `/api/order-dispatch/${orderId}/dispatch-avatar`,
+              method: 'POST',
+              data: { avatarId }
+            })
+            if (res.data?.code === 200) {
+              successCount++
+            }
+          } catch (e) {
+            console.warn('[OrderMatching] 分配分身失败:', avatarId, e)
+          }
+        }
+      } else {
+        // 没有手动选择，使用 dispatch-all
+        const res = await Network.request({
+          url: `/api/order-dispatch/${orderId}/dispatch-all`,
+          method: 'POST'
+        })
+        if (res.data?.code === 200) {
+          const result = res.data.data || {}
+          successCount = result.count || avatarsToDispatch.length
+          smsSent = result.smsSentCount > 0
+        }
+      }
       
       hideLoading()
       
-      if (res.data?.code === 200) {
-        const result = res.data.data || {}
+      if (successCount > 0) {
         showToast({ 
-          title: `已分配${result.count || recommendations.length}个分身${result.smsSentCount > 0 ? `，已发送短信` : ''}`, 
+          title: `已分配${successCount}个分身${smsSent ? '，已发送短信' : ''}`, 
           icon: 'success' 
         })
         setStep(3)
       } else {
-        showToast({ title: res.data?.msg || '分配失败', icon: 'none' })
+        showToast({ title: '分配失败', icon: 'none' })
       }
     } catch (error) {
       hideLoading()
@@ -373,12 +423,12 @@ export default function OrderMatchingPage() {
         {recommendations.length > 0 && step < 3 && (
           <View className="select-bar">
             <View className="select-all-btn" onClick={selectAll}>
-              <View className={`checkbox ${selectedIds.size === recommendations.length ? 'checked' : ''}`}>
-                {selectedIds.size === recommendations.length && <Check size={14} color="#fff" />}
+              <View className={`checkbox ${isAllSelected ? 'checked' : ''}`}>
+                {isAllSelected && <Check size={14} color="#fff" />}
               </View>
               <Text className="select-all-text">全选</Text>
             </View>
-            <Text className="select-count">已选 {selectedIds.size}/{recommendations.length}</Text>
+            <Text className="select-count">已选 {selectedIds.size}/{Math.min(order?.avatarCount || order?.requiredAvatars || recommendations.length, recommendations.length)}</Text>
           </View>
         )}
 
@@ -499,7 +549,11 @@ export default function OrderMatchingPage() {
       {step < 3 && recommendations.length > 0 && (
         <View className="action-bar">
           <View className="select-hint">
-            <Text className="hint-text">已为您匹配 {recommendations.length} 个分身</Text>
+            <Text className="hint-text">
+              {selectedIds.size > 0
+                ? `已选择 ${selectedIds.size} 个分身`
+                : `已为您匹配 ${Math.min(order?.avatarCount || order?.requiredAvatars || recommendations.length, recommendations.length)} 个分身`}
+            </Text>
           </View>
           <Button 
             className="dispatch-all-btn"
@@ -521,7 +575,7 @@ export default function OrderMatchingPage() {
         <View className="action-bar completed">
           <View className="completed-info">
             <Check size={24} color="#22c55e" />
-            <Text className="completed-text">订单已分配给 {recommendations.length} 个分身</Text>
+            <Text className="completed-text">订单已分配给 {selectedIds.size || Math.min(order?.avatarCount || order?.requiredAvatars || recommendations.length, recommendations.length)} 个分身</Text>
           </View>
           <Button 
             className="done-btn"
