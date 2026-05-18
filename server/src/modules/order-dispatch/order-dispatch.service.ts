@@ -310,16 +310,9 @@ export class OrderDispatchService {
       }
     }
 
-    const readyAvatars = avatars
-      .map((avatar: any) => {
+    const readyAvatars = avatars.map((avatar: any) => {
         avatar._skillsFromTable = skillsMap.get(avatar.id) || []
         return avatar
-      })
-      .filter((avatar: any) => {
-        const skillsFromTable: string[] = Array.isArray(avatar._skillsFromTable) ? avatar._skillsFromTable : []
-        if (skillsFromTable.length > 0) return true
-        const skillsFromField: string[] = this.safeParseJson(avatar.skills, [])
-        return skillsFromField.length > 0
       })
 
     const dispatchStatsMap = new Map<string, { total: number; accepted: number; expired: number }>()
