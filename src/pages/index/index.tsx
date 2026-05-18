@@ -66,6 +66,10 @@ const Index: React.FC = () => {
   const [ordersLoading, setOrdersLoading] = useState(false)
   const [acceptingOrderIds, setAcceptingOrderIds] = useState<Record<string, boolean>>({})
   const [acceptedOrderIds, setAcceptedOrderIds] = useState<Record<string, boolean>>({})
+  const [orderPage, setOrderPage] = useState(1)
+  const [, setOrderTotal] = useState(0)
+  const [hasMoreOrders, setHasMoreOrders] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   const platformTabs = [
     { key: 'all', label: '全部' },
@@ -73,18 +77,24 @@ const Index: React.FC = () => {
   ]
 
   // 获取公开订单列表（订单广场数据）
-  const fetchOrders = useCallback(async () => {
+  const fetchOrders = useCallback(async (page = 1, append = false) => {
     try {
-      setOrdersLoading(true)
+      if (page === 1) setOrdersLoading(true)
+      const pageSize = 10
       const res = await Network.request({
         url: '/api/order/open',
-        data: activePlatform !== 'all' ? { platform: activePlatform } : {}
+        data: { 
+          page, 
+          pageSize,
+          ...(activePlatform !== 'all' ? { platform: activePlatform } : {})
+        }
       })
-      console.log('[首页] 获取公开订单 URL:/api/order/open, Method:GET, Params:', activePlatform !== 'all' ? { platform: activePlatform } : {}, 'Response:', res.data)
+      console.log('[首页] 获取公开订单 page:', page, 'Response:', res.data)
 
       if (res.data?.code === 200 && res.data?.data) {
         const apiData = res.data.data
         const rawOrders = Array.isArray(apiData) ? apiData : (apiData.items || apiData.orders || apiData.list || [])
+        const total = apiData.total || rawOrders.length
         const mapped: OrderItem[] = rawOrders.map((o: any) => ({
           id: o.id,
           title: o.title || '未命名订单',
@@ -109,16 +119,21 @@ const Index: React.FC = () => {
           quantityPerAvatar: o.quantityPerAvatar || o.quantity_per_avatar || 1,
           urgency: o.urgency || (o.priority >= 4 ? 'urgent' : o.priority >= 3 ? 'high' : o.priority >= 2 ? 'normal' : 'low'),
         }))
-        console.log('[首页] 订单数据映射完成，共', mapped.length, '条')
-        setOrders(mapped)
+        console.log('[首页] 订单数据映射完成，共', mapped.length, '条, total:', total)
+        setOrders(prev => append ? [...prev, ...mapped] : mapped)
+        setOrderTotal(total)
+        setOrderPage(page)
+        const newLength = append ? orders.length + mapped.length : mapped.length
+        setHasMoreOrders(newLength < total)
       } else {
-        setOrders([])
+        if (!append) setOrders([])
       }
     } catch (err) {
       console.error('获取公开订单失败:', err)
-      setOrders([])
+      if (!append) setOrders([])
     } finally {
       setOrdersLoading(false)
+      setIsRefreshing(false)
     }
   }, [activePlatform])
 
@@ -309,6 +324,20 @@ const Index: React.FC = () => {
     fetchOrders()
   }, [activePlatform])
 
+  // 下拉刷新
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true)
+    await fetchOrders(1, false)
+    setIsRefreshing(false)
+  }, [activePlatform])
+
+  // 上拉加载更多
+  const handleLoadMore = useCallback(() => {
+    if (!ordersLoading && hasMoreOrders) {
+      fetchOrders(orderPage + 1, true)
+    }
+  }, [ordersLoading, hasMoreOrders, orderPage, activePlatform])
+
   const getGreeting = () => {
     const hour = new Date().getHours()
     if (hour < 6) return '夜深了'
@@ -441,7 +470,17 @@ const Index: React.FC = () => {
       </View>
 
       {/* 主内容区 */}
-      <ScrollView scrollY className="content" enhanced showScrollbar={false}>
+      <ScrollView 
+        scrollY 
+        className="content" 
+        enhanced 
+        showScrollbar={false}
+        refresherEnabled
+        refresherTriggered={isRefreshing}
+        onRefresherRefresh={handleRefresh}
+        onScrollToLower={handleLoadMore}
+        lowerThreshold={200}
+      >
 
         {/* 新用户引导（仅无分身时显示） */}
         {mindClones === 0 && (
@@ -802,6 +841,36 @@ const Index: React.FC = () => {
                       </View>
                     )}
 
+                    {/* 接单后流程（始终可见，一行展示） */}
+                    <View className="po-steps">
+                      <View className="po-step">
+                        <View className="po-step-dot po-step-dot-1"><Text className="po-step-num">1</Text></View>
+                        <Text className="po-step-text">AI自动创作</Text>
+                      </View>
+                      <View className="po-step-line" />
+                      <View className="po-step">
+                        <View className="po-step-dot po-step-dot-2"><Text className="po-step-num">2</Text></View>
+                        <Text className="po-step-text">确认发布</Text>
+                      </View>
+                      <View className="po-step-line" />
+                      <View className="po-step">
+                        <View className="po-step-dot po-step-dot-3"><Text className="po-step-num">3</Text></View>
+                        <Text className="po-step-text">获得收益</Text>
+                      </View>
+                    </View>
+
+                    {/* 付出与回报（始终可见） */}
+                    <View className="po-cost-benefit">
+                      <View className="po-cb-card po-cb-cost">
+                        <Text className="block po-cb-card-label">创作数量</Text>
+                        <Text className="block po-cb-card-value">{order.quantityPerAvatar || 1}条/分身</Text>
+                      </View>
+                      <View className="po-cb-card po-cb-benefit">
+                        <Text className="block po-cb-card-label">预计收益</Text>
+                        <Text className="block po-cb-card-value po-cb-card-value-hl">¥{(order.estimatedEarning || 0).toFixed(2)}</Text>
+                      </View>
+                    </View>
+
                     {/* 展开详情区 */}
                     {isExpanded && (
                       <View className="po-expanded-area">
@@ -815,36 +884,6 @@ const Index: React.FC = () => {
                             })}
                           </View>
                         )}
-
-                        {/* 接单后流程 */}
-                        <View className="po-steps">
-                          <View className="po-step-row">
-                            <View className="po-step-dot po-step-dot-active"><Text className="po-step-num">1</Text></View>
-                            <Text className="po-step-label">接单确认</Text>
-                          </View>
-                          <View className="po-step-connector" />
-                          <View className="po-step-row">
-                            <View className="po-step-dot" style={{ background: '#F59E0B' }}><Text className="po-step-num">2</Text></View>
-                            <Text className="po-step-label">内容创作</Text>
-                          </View>
-                          <View className="po-step-connector" />
-                          <View className="po-step-row">
-                            <View className="po-step-dot po-step-dot-done"><Text className="po-step-num">3</Text></View>
-                            <Text className="po-step-label">审核结算</Text>
-                          </View>
-                        </View>
-
-                        {/* 付出与回报 */}
-                        <View className="po-cost-benefit">
-                          <View className="po-cb-card po-cb-cost">
-                            <Text className="block po-cb-card-label">创作数量</Text>
-                            <Text className="block po-cb-card-value">{order.quantityPerAvatar || 1}条/分身</Text>
-                          </View>
-                          <View className="po-cb-card po-cb-benefit">
-                            <Text className="block po-cb-card-label">预计收益</Text>
-                            <Text className="block po-cb-card-value po-cb-card-value-hl">¥{(order.estimatedEarning || 0).toFixed(2)}</Text>
-                          </View>
-                        </View>
                       </View>
                     )}
 
@@ -892,6 +931,19 @@ const Index: React.FC = () => {
             )}
           </View>
         </View>
+
+        {/* 加载更多提示 */}
+        {orders.length > 0 && (
+          <View className="load-more-wrap">
+            {ordersLoading && orderPage > 1 ? (
+              <Text className="load-more-text">加载中...</Text>
+            ) : hasMoreOrders ? (
+              <Text className="load-more-text">上拉加载更多</Text>
+            ) : (
+              <Text className="load-more-text">没有更多订单了</Text>
+            )}
+          </View>
+        )}
 
         {/* 底部留白 */}
         <View className="bottom-spacer" />

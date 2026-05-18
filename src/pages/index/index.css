@@ -764,46 +764,37 @@
 /* 接单后流程步骤 */
 .po-steps {
   display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-  margin-bottom: 20rpx;
-}
-.po-step-row {
-  display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 12rpx;
+  justify-content: center;
+  margin-bottom: 20rpx;
+}
+.po-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
 }
 .po-step-dot {
-  width: 28rpx;
-  height: 28rpx;
-  border-radius: 14rpx;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
 }
-.po-step-dot-active {
-  background: #6366F1;
-}
-.po-step-dot-done {
-  background: #22C55E;
-}
-.po-step-num {
-  font-size: 18rpx;
-  font-weight: 700;
-  color: #FFFFFF;
-}
-.po-step-label {
-  font-size: 24rpx;
-  color: #334155;
-  font-weight: 500;
-}
-.po-step-connector {
-  width: 2rpx;
-  height: 16rpx;
-  background: #E2E8F0;
-  margin-left: 13rpx;
+.po-step-dot-1 { background: linear-gradient(135deg, #6366F1, #818CF8); }
+.po-step-dot-2 { background: linear-gradient(135deg, #8B5CF6, #A78BFA); }
+.po-step-dot-3 { background: linear-gradient(135deg, #10B981, #34D399); }
+.po-step-num { font-size: 22rpx; font-weight: 700; color: #FFFFFF; }
+.po-step-text { font-size: 22rpx; color: #475569; font-weight: 500; }
+.po-step-line {
+  width: 60rpx;
+  height: 4rpx;
+  background: linear-gradient(90deg, #C7D2FE, #DDD6FE);
+  border-radius: 2rpx;
+  margin: 0 12rpx;
+  margin-bottom: 24rpx;
 }
 
 /* 付出与回报 */
@@ -1075,17 +1066,17 @@
   overflow: hidden;
 }
 .notification-modal-header {
+  background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  padding: 28rpx 32rpx;
-  border-bottom: 2rpx solid #F1F5F9;
+  padding: 32rpx;
 }
 .notification-modal-title {
   font-size: 32rpx;
   font-weight: 700;
-  color: #1E293B;
+  color: #FFFFFF;
 }
 .notification-modal-close {
   width: 48rpx; height: 48rpx;
@@ -1095,7 +1086,7 @@
 }
 .notification-modal-close-text {
   font-size: 40rpx;
-  color: #94A3B8;
+  color: rgba(255,255,255,0.8);
 }
 .notification-modal-content {
   padding: 32rpx;
@@ -1127,4 +1118,15 @@
   font-size: 28rpx;
   font-weight: 600;
   color: #FFFFFF;
+}
+.load-more-wrapper {
+  padding: 30rpx 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+}
+.load-more-text {
+  font-size: 24rpx;
+  color: #999;
 }
