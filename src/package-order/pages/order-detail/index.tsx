@@ -324,6 +324,9 @@ export default function OrderDetailPage() {
   const pendingCount = order?.summary_stats?.pendingAvatars ?? avatarStats.filter((a: any) => a.status === 'pending').length
   const rejectedCount = order?.summary_stats?.rejectedAvatars ?? avatarStats.filter((a: any) => a.status === 'rejected').length
 
+  // 去匹配：已支付但还没有分配分身
+  const isNeedMatching = order.status === 'pending' && totalAvatars === 0
+
   return (
     <View className="od-page">
       {/* ===== 顶部渐变头部 ===== */}
@@ -351,7 +354,9 @@ export default function OrderDetailPage() {
               <Text className="block od-alert-pill-text">异常</Text>
             </View>
           )}
-          <Text className="block od-status-desc">{statusCfg.desc}</Text>
+          <Text className="block od-status-desc">
+            {isNeedMatching ? '订单已支付，请匹配分身开始创作' : statusCfg.desc}
+          </Text>
         </View>
       </View>
 
@@ -859,7 +864,7 @@ export default function OrderDetailPage() {
         )}
 
         {/* 操作按钮 */}
-        {(isPayable || isCancellable || isDeletable || isVerifiable) && (
+        {(isPayable || isCancellable || isDeletable || isVerifiable || isNeedMatching) && (
           <View className="od-actions">
             {isPayable && (
               <View className="od-action-btn od-action-primary" onClick={handlePay}>
@@ -869,13 +874,21 @@ export default function OrderDetailPage() {
                 </Text>
               </View>
             )}
+            {isNeedMatching && (
+              <View className="od-action-btn od-action-primary" onClick={() => {
+                Taro.navigateTo({ url: `/package-order/pages/order-matching/index?orderId=${orderId}` })
+              }}>
+                <Users size={16} color="#fff" />
+                <Text className="block od-action-text" style={{ color: '#fff' }}>匹配分身</Text>
+              </View>
+            )}
             {isVerifiable && (
               <View className="od-action-btn od-action-primary" onClick={handleVerify}>
                 <CircleCheckBig size={16} color="#fff" />
                 <Text className="block od-action-text" style={{ color: '#fff' }}>去验收</Text>
               </View>
             )}
-            {isCancellable && !isPayable && (
+            {isCancellable && !isPayable && !isNeedMatching && (
               <View className="od-action-btn od-action-secondary" onClick={handleCancel}>
                 <Text className="block od-action-text" style={{ color: '#6366F1' }}>取消订单</Text>
               </View>
