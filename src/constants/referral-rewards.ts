@@ -30,28 +30,26 @@ export const REFERRAL_MILESTONES = [
 ] as const
 
 /** 首页快捷功能标签文案 */
-export const QUICK_ACTION_TAG = `每邀${INVITER_BASE_REWARD}元`
+export const QUICK_ACTION_TAG = `邀请好友`
 
 /** Banner 主标题 */
-export const BANNER_TITLE = `邀请好友 双方各赚${INVITER_BASE_REWARD}元`
+export const BANNER_TITLE = `邀请好友 一起体验`
 
 /** Banner 副标题模板（传入已邀请人数） */
 export const BANNER_DESC = (invitedCount: number) =>
-  `每邀请1位好友${REWARD_CONDITION}，双方各得${INVITER_BASE_REWARD}元奖励！已邀请 ${invitedCount} 人`
+  `邀请好友一起体验Morena AI！已邀请 ${invitedCount} 人`
 
 /** 邀请中心头部副标题 */
-export const REFERRAL_HEADER_DESC = `每成功邀请1位好友${REWARD_CONDITION}，双方各获${INVITER_BASE_REWARD}元现金奖励`
+export const REFERRAL_HEADER_DESC = `邀请好友一起体验Morena AI`
 
 /** 步骤3标题 */
-export const STEP3_TITLE = `双方各获${INVITER_BASE_REWARD}元现金`
+export const STEP3_TITLE = `邀请成功`
 
 /** 步骤3描述 */
-export const STEP3_DESC = '邀请越多，赚得越多'
+export const STEP3_DESC = '邀请越多，好友越多'
 
 /** 阶梯奖励描述 */
-export const MILESTONE_DESC = REFERRAL_MILESTONES.map(
-  m => `${m.label}额外奖励${m.bonus}元`
-).join('，')
+export const MILESTONE_DESC = ''
 
 /** 数据库 reward_amount 单位转换（元 → 分，用于存储整数） */
 export const REWARD_YUAN_TO_CENTS = (yuan: number) => Math.round(yuan * 100)

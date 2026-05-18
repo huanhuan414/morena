@@ -116,6 +116,19 @@ export class EarningsService {
 
   async updateEarningStatus(earningId: string, status: string) {
     const pool = getPool()
+
+    // 当状态变为已结算时，需要将金额加到用户余额
+    if (status === 'settled' || status === 'completed') {
+      // 获取收益记录的用户ID和金额
+      const [rows] = await pool.query('SELECT user_id, amount FROM earnings WHERE id = ?', [earningId])
+      const earning = rows[0]
+
+      if (earning) {
+        // 将金额加到用户余额
+        await pool.query('UPDATE users SET balance = balance + ? WHERE id = ?', [earning.amount, earning.user_id])
+      }
+    }
+
     await pool.query('UPDATE earnings SET status = ? WHERE id = ?', [status, earningId])
     return { success: true }
   }
