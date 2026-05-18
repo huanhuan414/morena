@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Network } from '@/network'
 import {
-  ArrowLeft, Sparkles, History, PenLine, Trash2,
+  ArrowLeft, Sparkles, History, Trash2,
   Link, ImagePlus, Send, FileText, Loader, X
 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
@@ -29,7 +29,8 @@ const PRIMARY_BORDER = '#B3D9FF'
 
 export default function WechatMpArticle() {
   const statusBarHeight = getStatusBarHeight()
-  const avatarId = useUserStore(state => state.avatarId)
+  const storeAvatarId = useUserStore(state => state.avatarId)
+  const [resolvedAvatarId, setResolvedAvatarId] = useState<string>('')
   const [activeTab, setActiveTab] = useState<'generate' | 'history'>('generate')
   const [inputText, setInputText] = useState('')
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
@@ -61,13 +62,27 @@ export default function WechatMpArticle() {
   }
 
   const fetchWechatAccounts = async () => {
-    if (!avatarId) {
+    // 如果没有 avatarId，先从 API 获取用户的第一个分身
+    let aid = storeAvatarId || resolvedAvatarId
+    if (!aid) {
+      try {
+        const res = await Network.request({ url: '/api/avatar/list', data: { pageSize: 1 } })
+        const list = res.data?.data?.list || res.data?.data || []
+        if (Array.isArray(list) && list.length > 0 && list[0].id) {
+          aid = list[0].id
+          setResolvedAvatarId(aid)
+        }
+      } catch (err) {
+        console.error('[公众号爆款] 获取分身列表失败:', err)
+      }
+    }
+    if (!aid) {
       setWechatAccounts([])
       return
     }
     try {
       const res = await Network.request({
-        url: `/api/avatar/${avatarId}/accounts`,
+        url: `/api/avatar/${aid}/accounts`,
       })
       if (res.data?.code === 200 && res.data?.data) {
         const accounts = Array.isArray(res.data.data) ? res.data.data : []
@@ -201,9 +216,10 @@ export default function WechatMpArticle() {
         content: '发布到公众号需要先绑定公众号账号，是否前往绑定？',
         confirmText: '去绑定',
         success: (res) => {
-          if (res.confirm && avatarId) {
+          if (res.confirm) {
+            const aid = storeAvatarId || resolvedAvatarId
             Taro.navigateTo({
-              url: `/package-avatar/pages/avatar-account-config/index?avatarId=${avatarId}&platform=wechat_mp`,
+              url: `/package-avatar/pages/avatar-account-config/index?avatarId=${aid}&platform=wechat_mp`,
             })
           }
         },
@@ -298,24 +314,17 @@ export default function WechatMpArticle() {
         <View style={{ position: 'absolute', bottom: '-20px', left: '-10px', width: '80px', height: '80px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.06)' }} />
 
         {/* 导航栏 */}
-        <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: '12px' }}>
+        <View style={{ position: 'relative', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', height: '32px' }}>
           <View
-            style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            style={{ position: 'absolute', left: 0, width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             onClick={() => Taro.navigateBack()}
           >
             <ArrowLeft size={18} color="#ffffff" />
           </View>
+          <Text className="text-lg font-bold text-white">公众号爆款生成</Text>
         </View>
 
-        {/* 标题区域 */}
-        <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: '8px' }}>
-          <View style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '10px' }}>
-            <PenLine size={20} color="#ffffff" />
-          </View>
-          <View>
-            <Text className="block text-xl font-bold text-white">公众号爆款生成</Text>
-          </View>
-        </View>
+        {/* 描述 */}
         <Text className="block text-sm text-white leading-relaxed" style={{ opacity: 0.8 }}>
           输入主题描述，AI 一键生成爆款公众号文章并发布
         </Text>
@@ -457,10 +466,13 @@ export default function WechatMpArticle() {
                     <View
                       style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', backgroundColor: PRIMARY_FAINT, borderRadius: '20px', paddingLeft: '10px', paddingRight: '10px', paddingTop: '4px', paddingBottom: '4px' }}
                       onClick={() => {
-                        if (avatarId) {
-                          Taro.navigateTo({ url: `/package-avatar/pages/avatar-account-config/index?avatarId=${avatarId}&platform=wechat_mp` })
+                        const aid = storeAvatarId || resolvedAvatarId
+                        if (aid) {
+                          Taro.navigateTo({ url: `/package-avatar/pages/avatar-account-config/index?avatarId=${aid}&platform=wechat_mp` })
                         } else {
-                          Taro.showToast({ title: '请先创建AI分身', icon: 'none' })
+                          // 尝试获取分身后再跳转
+                          fetchWechatAccounts()
+                          Taro.showToast({ title: '正在获取分身信息，请重试', icon: 'none' })
                         }
                       }}
                     >

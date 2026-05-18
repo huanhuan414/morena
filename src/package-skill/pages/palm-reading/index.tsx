@@ -229,24 +229,17 @@ export default function PalmReadingPage() {
         <View style={{ position: 'absolute', bottom: '-20px', left: '-10px', width: '80px', height: '80px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.06)' }} />
 
         {/* 导航栏 */}
-        <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: '12px' }}>
+        <View style={{ position: 'relative', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', height: '32px' }}>
           <View
-            style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            style={{ position: 'absolute', left: 0, width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             onClick={() => Taro.navigateBack()}
           >
             <ArrowLeft size={18} color="#ffffff" />
           </View>
+          <Text className="text-lg font-bold text-white">看手相</Text>
         </View>
 
-        {/* 标题区域 */}
-        <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: '8px' }}>
-          <View style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '10px' }}>
-            <Hand size={20} color="#ffffff" />
-          </View>
-          <View>
-            <Text className="block text-xl font-bold text-white">掌相阅读</Text>
-          </View>
-        </View>
+        {/* 描述 */}
         <Text className="block text-sm text-white leading-relaxed" style={{ opacity: 0.8 }}>
           上传手掌照片，AI 为您生成专属掌相分析图
         </Text>
@@ -507,7 +500,7 @@ export default function PalmReadingPage() {
                 {history.map((item) => (
                   <Card key={item.id}>
                     <CardContent style={{ padding: '12px' }}>
-                      <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }} onClick={() => item.resultImageUrl && handlePreviewImage(item.resultImageUrl)}>
+                      <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
                         {/* 输入图缩略图 */}
                         {item.inputImageUrl ? (
                           <Image
@@ -544,7 +537,17 @@ export default function PalmReadingPage() {
                           <Trash2 size={14} color="#EF4444" />
                         </View>
                       </View>
-                        {/* 失败记录展示错误信息 */}
+                      {/* 结果图展示 */}
+                      {item.status === 'completed' && item.resultImageUrl && (
+                        <View style={{ marginTop: '10px', borderRadius: '8px', overflow: 'hidden' }} onClick={() => handlePreviewImage(item.resultImageUrl)}>
+                          <Image
+                            src={item.resultImageUrl}
+                            style={{ width: '100%', height: '160px' }}
+                            mode="aspectFill"
+                          />
+                        </View>
+                      )}
+                      {/* 失败记录展示错误信息 */}
                       {item.status === 'failed' && item.errorMessage && (
                         <View style={{ marginTop: '8px', paddingLeft: '64px' }}>
                           <Text className="block text-xs" style={{ color: '#EF4444' }}>{item.errorMessage.slice(0, 60)}</Text>
