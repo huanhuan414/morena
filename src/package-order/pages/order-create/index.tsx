@@ -21,9 +21,9 @@ import './index.css'
 
 const CONTENT_TYPES = [
   // 测试模式价格
-  { id: 'text', label: '纯文案', icon: '📝', price: 0.1, desc: '文字内容创作', output: '篇原创文案' },
-  { id: 'image', label: '图文笔记', icon: '🖼️', price: 0.1, desc: '图文搭配呈现', output: '篇图文笔记' },
-  { id: 'video', label: '短视频', icon: '🎬', price: 0.1, desc: 'AI生成真实视频', output: '条短视频' },
+  { id: 'text', label: '纯文案', icon: '📝', price: 1, desc: '文字内容创作', output: '篇原创文案' },
+  { id: 'image', label: '图文笔记', icon: '🖼️', price: 1, desc: '图文搭配呈现', output: '篇图文笔记' },
+  { id: 'video', label: '短视频', icon: '🎬', price: 1, desc: 'AI生成真实视频', output: '条短视频' },
   // 正式模式价格
   // { id: 'text', label: '纯文案', icon: '📝', price: 5, desc: '文字内容创作', output: '篇原创文案' },
   // { id: 'image', label: '图文笔记', icon: '🖼️', price: 15, desc: '图文搭配呈现', output: '篇图文笔记' },
@@ -65,7 +65,7 @@ export default function OrderCreate() {
   const contentPricePerUnit = selectedType?.price || 10
   const totalPrice = {
     // 测试模式价格
-    base: 0.1 * form.avatarCount,
+    base: 1 * form.avatarCount,
     // 正式模式价格
     // base: 10 * form.avatarCount,
     content: contentPricePerUnit * form.quantityPerAvatar * form.avatarCount,
@@ -758,22 +758,10 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
             </View>
             <View className="counter-item">
               <Text className="counter-label">每分身产出</Text>
-              <View className="counter-control">
-                <View
-                  className="counter-btn minus"
-                  onClick={() => setForm(prev => ({ ...prev, quantityPerAvatar: Math.max(1, prev.quantityPerAvatar - 1) }))}
-                >
-                  <Text>-</Text>
-                </View>
-                <Text className="counter-value">{form.quantityPerAvatar}</Text>
-                <View
-                  className="counter-btn plus"
-                  onClick={() => setForm(prev => ({ ...prev, quantityPerAvatar: prev.quantityPerAvatar + 1 }))}
-                >
-                  <Text>+</Text>
-                </View>
+              <View className="counter-control-static">
+                <Text className="counter-value">1</Text>
               </View>
-              <Text className="counter-hint">共{totalOutput}{selectedType?.output || '篇'}</Text>
+              <Text className="counter-hint">共{form.avatarCount}{selectedType?.output || '篇'}</Text>
             </View>
           </View>
         </View>

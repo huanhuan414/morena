@@ -711,6 +711,12 @@
   gap: 20rpx;
 }
 
+.counter-control-static {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .counter-btn {
   width: 52rpx;
   height: 52rpx;

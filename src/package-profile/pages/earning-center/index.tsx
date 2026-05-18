@@ -4,7 +4,7 @@ import { View, Text, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
 import { formatNum, toNumber } from '@/utils/format'
-import { ArrowDownToLine, ChevronRight, Gift, Sparkles, ArrowLeft } from 'lucide-react-taro'
+import { ArrowDownToLine, Sparkles, ArrowLeft } from 'lucide-react-taro'
 import './index.css'
 
 interface EarningOverview {
@@ -109,7 +109,6 @@ export default function EarningCenterPage() {
     const typeMap: Record<string, { label: string; icon: string; color: string }> = {
       order_reward: { label: '订单收益', icon: '💰', color: '#00ff88' },
       order_income: { label: '订单收益', icon: '💰', color: '#00ff88' },
-      referral_bonus: { label: '邀请奖励', icon: '🎁', color: '#bf00ff' },
       withdrawal: { label: '提现', icon: '💸', color: '#ff6b6b' }
     }
     return typeMap[type] || { label: type, icon: '💵', color: '#fff' }
@@ -199,20 +198,6 @@ export default function EarningCenterPage() {
         </View>
       </View>
 
-      {/* 快捷入口 */}
-      <View className="quick-section">
-        <View className="quick-item" onClick={() => navigateTo({ url: '/package-profile/pages/referral-center/index' })}>
-          <View className="quick-icon-wrap" style={{ background: 'rgba(191, 0, 255, 0.15)' }}>
-            <Gift size={22} color="#bf00ff" />
-          </View>
-          <View className="quick-info">
-            <Text className="quick-title">邀请返利</Text>
-            <Text className="quick-desc">邀请好友注册获得奖励</Text>
-          </View>
-          <ChevronRight size={18} color="rgba(255,255,255,0.2)" />
-        </View>
-      </View>
-
       {/* 收益明细 */}
       <View className="records-section">
         <View className="section-header">
@@ -231,7 +216,7 @@ export default function EarningCenterPage() {
             </View>
           ) : (
             <View className="records-list">
-              {records.map(record => {
+              {records.filter(record => record.type !== 'referral_bonus').map(record => {
                 const typeInfo = getTypeInfo(record.type)
                 const statusInfo = getStatusInfo(record.status)
                 return (

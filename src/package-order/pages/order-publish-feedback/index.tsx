@@ -16,7 +16,7 @@ function isArticlePlatform(platform: string): boolean {
 }
 
 // 需要发布验证的平台
-const VERIFY_REQUIRED_PLATFORMS = ['douyin', 'kuaishou', 'xiaohongshu', 'wechat_mp', 'wechat_channel']
+const VERIFY_REQUIRED_PLATFORMS = ['douyin', 'kuaishou', 'xiaohongshu', 'wechat_mp']
 
 // 内容类型配置
 const CONTENT_TYPE_CONFIG: Record<string, { name: string; color: string }> = {
@@ -703,9 +703,6 @@ export default function OrderPublishFeedback() {
 
       {/* 底部提交按钮 */}
       <View className="feedback-bottom-bar">
-        {!allVerified() && publishPlatforms.some(p => isVerifyRequired(p.platform)) && (
-          <Text className="feedback-verify-hint">验证失败可选择人工核验提交</Text>
-        )}
         <View
           className={`feedback-submit-btn ${submitting ? 'disabled' : ''}`}
           onClick={submitting ? undefined : handleSubmit}

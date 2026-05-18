@@ -3,29 +3,19 @@ import { View, Text, Button } from '@tarojs/components'
 import Taro, { useDidShow, useShareAppMessage } from '@tarojs/taro'
 import { useState } from 'react'
 import { Network } from '@/network'
-import { Copy, Share2, Gift, Users, Wallet, TrendingUp, Crown, Star, Sparkles, User, ArrowLeft } from 'lucide-react-taro'
-import {
-  INVITER_BASE_REWARD,
-  REWARD_CONDITION,
-  REFERRAL_MILESTONES,
-  REFERRAL_HEADER_DESC,
-  STEP3_TITLE,
-  STEP3_DESC,
-} from '@/constants/referral-rewards'
+import { Copy, Share2, Gift, Users, ArrowLeft, Sparkles, User } from 'lucide-react-taro'
 import './index.css'
 
 export default function ReferralCenter() {
   const [stats, setStats] = useState({
     referralCode: '',
     totalInvited: 0,
-    totalReward: 0,
-    pendingReward: 0,
   })
   const [referralList, setReferralList] = useState([])
 
   useShareAppMessage(() => {
     return {
-      title: `邀请你加入Morena AI，双方各得${INVITER_BASE_REWARD}元奖励！`,
+      title: '邀请你加入Morena AI',
       path: `/pages/login/index?inviteCode=${stats.referralCode}`,
       imageUrl: '/assets/images/share-invite.png'
     }
@@ -44,8 +34,6 @@ export default function ReferralCenter() {
       setStats({
         referralCode: statsData.referralCode || '',
         totalInvited: statsData.totalInvited || 0,
-        totalReward: Number(statsData.totalReward || 0),
-        pendingReward: Number(statsData.pendingReward || 0),
       })
 
       const listRes = await Network.request({ url: '/api/referral/list' })
@@ -67,26 +55,6 @@ export default function ReferralCenter() {
       data: stats.referralCode,
       success: () => Taro.showToast({ title: '邀请码已复制', icon: 'success' }),
     })
-  }
-
-  const getStatusLabel = (status) => {
-    const map = {
-      pending: '待完成',
-      completed: '已到账',
-      expired: '已过期',
-      rewarded: '已到账',
-    }
-    return map[status] || status
-  }
-
-  const getStatusColor = (status) => {
-    const map = {
-      pending: '#F59E0B',
-      completed: '#10B981',
-      expired: '#9CA3AF',
-      rewarded: '#10B981',
-    }
-    return map[status] || '#9CA3AF'
   }
 
   const formatTime = (time) => {
@@ -119,12 +87,9 @@ export default function ReferralCenter() {
           <View className="ref-header-icon">
             <Gift size={20} color="#FFD700" />
           </View>
-          <Text className="ref-header-title">邀请好友 赚现金</Text>
-          <Text className="ref-header-desc">{REFERRAL_HEADER_DESC}</Text>
+          <Text className="ref-header-title">邀请好友</Text>
+          <Text className="ref-header-desc">邀请好友一起体验Morena AI</Text>
         </View>
-        {/* <View className="ref-header-badge">
-          <Text className="ref-header-badge-text">奖励</Text>
-        </View> */}
       </View>
 
       {/* 邀请码卡片 */}
@@ -135,7 +100,7 @@ export default function ReferralCenter() {
             <Text className="ref-code-text">{stats.referralCode || '加载中...'}</Text>
           </View>
           <Text className="ref-code-hint">
-            好友注册时填写此邀请码，{REWARD_CONDITION}后双方各获{INVITER_BASE_REWARD}元
+            好友注册时填写此邀请码，一起体验Morena AI
           </Text>
         </View>
         <View className="ref-code-actions">
@@ -160,7 +125,7 @@ export default function ReferralCenter() {
         </View>
       </View>
 
-      {/* 统计概览 */}
+      {/* 统计概览 - 只保留已邀请人数 */}
       <View className="ref-stats">
         <View className="ref-stat-item">
           <View className="ref-stat-icon purple">
@@ -169,50 +134,7 @@ export default function ReferralCenter() {
           <Text className="ref-stat-value">{stats.totalInvited}</Text>
           <Text className="ref-stat-label">已邀请</Text>
         </View>
-        <View className="ref-stat-item">
-          <View className="ref-stat-icon green">
-            <Wallet size={16} color="#10B981" />
-          </View>
-          <Text className="ref-stat-value-green">¥{stats.totalReward.toFixed(2)}</Text>
-          <Text className="ref-stat-label">已到账</Text>
-        </View>
-        <View className="ref-stat-item">
-          <View className="ref-stat-icon yellow">
-            <TrendingUp size={16} color="#F59E0B" />
-          </View>
-          <Text className="ref-stat-value-yellow">¥{stats.pendingReward.toFixed(2)}</Text>
-          <Text className="ref-stat-label">待到账</Text>
-        </View>
       </View>
-
-      {/* 阶梯奖励 */}
-      {REFERRAL_MILESTONES.length > 0 && (
-        <View className="ref-milestone-card">
-          <View className="ref-section-row">
-            <Crown size={14} color="#FFD700" />
-            <Text className="ref-section-title">阶梯奖励</Text>
-          </View>
-          <View className="ref-milestone-list">
-            {REFERRAL_MILESTONES.map((m, i) => {
-              const achieved = stats.totalInvited >= m.count
-              return (
-                <View key={i} className={`ref-milestone-item ${achieved ? 'achieved' : ''}`}>
-                  <View className="ref-milestone-badge">
-                    {achieved ? (
-                      <Star size={12} color="#FFD700" />
-                    ) : (
-                      <Text className="ref-milestone-num">{m.count}</Text>
-                    )}
-                  </View>
-                  <Text className="ref-milestone-label">{m.label}</Text>
-                  <Text className="ref-milestone-bonus">+{m.bonus}元</Text>
-                </View>
-              )
-            })}
-          </View>
-          <Text className="ref-milestone-hint">累计邀请达标后，额外奖励自动发放至收益</Text>
-        </View>
-      )}
 
       {/* 邀请步骤 */}
       <View className="ref-steps-card">
@@ -237,8 +159,8 @@ export default function ReferralCenter() {
             </View>
             <View className="ref-step-line" />
             <View className="ref-step-content">
-              <Text className="ref-step-title">好友{REWARD_CONDITION}</Text>
-              <Text className="ref-step-desc">新用户用邀请码注册并{REWARD_CONDITION}</Text>
+              <Text className="ref-step-title">好友注册</Text>
+              <Text className="ref-step-desc">新用户使用邀请码完成注册</Text>
             </View>
           </View>
           <View className="ref-step">
@@ -246,8 +168,8 @@ export default function ReferralCenter() {
               <Text className="ref-step-num-text">3</Text>
             </View>
             <View className="ref-step-content">
-              <Text className="ref-step-title">{STEP3_TITLE}</Text>
-              <Text className="ref-step-desc">{STEP3_DESC}</Text>
+              <Text className="ref-step-title">邀请成功</Text>
+              <Text className="ref-step-desc">好友注册成功，邀请完成</Text>
             </View>
           </View>
         </View>
@@ -265,7 +187,7 @@ export default function ReferralCenter() {
               <Gift size={28} color="#A78BFA" />
             </View>
             <Text className="ref-empty-text">还没有邀请好友</Text>
-            <Text className="ref-empty-hint">分享邀请码给好友，双方都能获得{INVITER_BASE_REWARD}元现金奖励</Text>
+            <Text className="ref-empty-hint">分享邀请码给好友，一起体验Morena AI</Text>
           </View>
         ) : (
           <View className="ref-list">
@@ -281,20 +203,14 @@ export default function ReferralCenter() {
                   </View>
                 </View>
                 <View className="ref-list-right">
-                  <Text className="ref-list-amount">+¥{Number(item.rewardAmount || item.reward_amount || 0).toFixed(2)}</Text>
-                  <Text className="ref-list-status" style={{ color: getStatusColor(item.status) }}>
-                    {getStatusLabel(item.status)}
+                  <Text className="ref-list-status" style={{ color: '#10B981' }}>
+                    已邀请
                   </Text>
                 </View>
               </View>
             ))}
           </View>
         )}
-      </View>
-
-      {/* 底部提示 */}
-      <View className="ref-bottom-tip">
-        <Text className="ref-bottom-text">奖励将在好友{REWARD_CONDITION}后自动发放至您的收益余额</Text>
       </View>
     </View>
   )
