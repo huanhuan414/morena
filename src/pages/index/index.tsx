@@ -817,18 +817,16 @@ const Index: React.FC = () => {
                         </View>
                         <Text className="po-reward-meta-sub">交付周期</Text>
                       </View>
-                      {order.acceptCount > 0 && (
-                        <>
-                          <View className="po-reward-divider" />
-                          <View className="po-reward-right">
-                            <View className="po-reward-meta">
-                              <Users size={16} color="#6366F1" />
-                              <Text className="po-reward-meta-text">{order.acceptCount}</Text>
-                            </View>
-                            <Text className="po-reward-meta-sub">已接单</Text>
+                      <>
+                        <View className="po-reward-divider" />
+                        <View className="po-reward-right">
+                          <View className="po-reward-meta">
+                            <Users size={16} color="#6366F1" />
+                            <Text className="po-reward-meta-text">{order.acceptCount || 0}/{order.avatarCount || 1}</Text>
                           </View>
-                        </>
-                      )}
+                          <Text className="po-reward-meta-sub">已接单</Text>
+                        </View>
+                      </>
                     </View>
 
                     {/* 需求标签 */}
