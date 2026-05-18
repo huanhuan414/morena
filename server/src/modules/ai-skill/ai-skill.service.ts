@@ -86,13 +86,17 @@ export class AiSkillService {
 
       if (needGenerate > 0) {
         console.log(`[AiSkillService] 需要生成${needGenerate}张配图`);
+        // 提取每个占位符的上下文，用于生成相关配图
+        const imageContexts = this.extractImageContexts(articleContent, inputCount + needGenerate);
         // 逐张生成配图，每生成一张就保存到 metadata
         for (let i = 0; i < needGenerate; i++) {
           try {
-            const imagePrompt = `微信公众号文章配图，主题：${inputText || articleTitle}，风格：高端简约商务，宽幅横版`;
+            const imgIndex = inputCount + i + 1; // 当前图片在文章中的序号
+            const context = imageContexts[imgIndex - 1] || inputText || articleTitle;
+            const imagePrompt = `微信公众号文章配图，与以下内容紧密相关：${context}，风格：高端简约商务，宽幅横版，高质量插图`;
             const url = await this.callGenerationsApi(imagePrompt, '1536x1024');
             imageUrls.push(url);
-            console.log(`[AiSkillService] 生成配图${i + 1}成功`);
+            console.log(`[AiSkillService] 生成配图${i + 1}成功, prompt: ${imagePrompt.substring(0, 80)}`);
 
             // 每生成一张图就更新 metadata，前端可以逐步看到图片
             const currentImageUrls = imageUrls.filter(Boolean);
@@ -232,6 +236,33 @@ ${imageHint}
   }
 
   /**
+   * 提取文章中每个 [IMG_N] 占位符的上下文，用于生成相关配图
+   */
+  private extractImageContexts(content: string, totalImages: number): string[] {
+    const contexts: string[] = [];
+    for (let i = 1; i <= totalImages; i++) {
+      const placeholder = `[IMG_${i}]`;
+      const idx = content.indexOf(placeholder);
+      if (idx === -1) {
+        contexts.push('');
+        continue;
+      }
+      // 取占位符前200字和后200字作为上下文
+      const before = content.substring(Math.max(0, idx - 200), idx).trim();
+      const after = content.substring(idx + placeholder.length, Math.min(content.length, idx + placeholder.length + 200)).trim();
+      // 提取最近的段落文字（按换行分割，取最后1-2段）
+      const beforeParagraphs = before.split(/\n+/).filter(Boolean);
+      const afterParagraphs = after.split(/\n+/).filter(Boolean);
+      const contextParts = [
+        beforeParagraphs.slice(-1).join(' ').slice(-100),
+        afterParagraphs.slice(0, 1).join(' ').slice(0, 100),
+      ].filter(Boolean);
+      contexts.push(contextParts.join('，') || '');
+    }
+    return contexts;
+  }
+
+  /**
    * 发起 AI 技能图片生成（异步，立即返回 recordId）
    */
   async startGenerate(
@@ -279,6 +310,49 @@ ${imageHint}
     }
 
     return { id: recordId, skillType, status: 'generating' };
+  }
+
+  /**
+   * 检查技能每日使用次数限制
+   * 未订阅用户：1次/天/技能
+   * 订阅用户：3次/天/技能
+   */
+  async checkDailyLimit(userId: string, skillType: string): Promise<{ used: number; limit: number; remaining: number; isSubscribed: boolean }> {
+    const isSubscribed = await this.isUserSubscribed(userId)
+    const limit = isSubscribed ? 3 : 1
+
+    const today = new Date()
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+
+    const pool = getPool();
+    const [rows] = await pool.query(
+      `SELECT COUNT(*) as cnt FROM ai_skill_records WHERE user_id = ? AND skill_type = ? AND created_at >= ? AND created_at < ?`,
+      [userId, skillType, startOfDay, endOfDay]
+    )
+
+    const used = Number(rows[0]?.cnt || 0)
+    const remaining = Math.max(0, limit - used)
+
+    return { used, limit, remaining, isSubscribed }
+  }
+
+  /**
+   * 检查用户是否订阅
+   */
+  private async isUserSubscribed(userId: string): Promise<boolean> {
+    try {
+      const pool = getPool();
+      const [rows] = await pool.query(
+        `SELECT subscription_status FROM user_subscriptions WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`,
+        [userId]
+      )
+      const resultRows = (rows as any[])
+      return resultRows.length > 0 && resultRows[0].subscription_status === 'active'
+    } catch {
+      // 表不存在或查询失败，默认未订阅
+      return false
+    }
   }
 
   /**

@@ -65,6 +65,7 @@ export default function SkillsSquare() {
   const [avatarSkills, setAvatarSkills] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [addingSkill, setAddingSkill] = useState<string | null>(null)
+  const [usageLimits, setUsageLimits] = useState<Record<string, { used: number; limit: number; remaining: number }>>({})
 
   useDidShow(() => {
     loadSkills()
@@ -83,6 +84,15 @@ export default function SkillsSquare() {
         const avatarRes = await Network.request({ url: `/api/skills/avatar/${avatarId}` })
         const aSkills = avatarRes?.data?.data || []
         setAvatarSkills(aSkills.map((s: AvatarSkill) => s.skillId))
+      }
+
+      // 获取每个技能的每日使用限额
+      try {
+        const limitRes = await Network.request({ url: '/api/ai-skill/usage-limit' })
+        const limitsData = limitRes?.data?.data || {}
+        setUsageLimits(limitsData)
+      } catch (e) {
+        console.log('[SkillsSquare] 获取使用限额失败:', e)
       }
     } catch (err) {
       console.log('[SkillsSquare] 加载技能失败:', err)
@@ -128,6 +138,11 @@ export default function SkillsSquare() {
   }
 
   const handleTrySkill = (skill: Skill) => {
+    const usage = usageLimits[skill.id]
+    if (usage && usage.remaining <= 0) {
+      Taro.showToast({ title: '今日使用次数已达上限', icon: 'none' })
+      return
+    }
     const hexId = skill.id
     // 掌相阅读和衣品改造有专门的体验页面
     if (hexId === 'palm_reading') {
@@ -159,6 +174,8 @@ export default function SkillsSquare() {
     return String(n)
   }
 
+  // 隐藏图片生成和视频生成技能
+  const visibleSkills = skills.filter(s => !['image_gen', 'video_gen'].includes(s.id))
   const isAdded = (skillId: string) => avatarSkills.includes(skillId)
 
   const getIconConfig = (category: string) => SKILL_ICON_MAP[category] || SKILL_ICON_MAP.content
@@ -251,7 +268,7 @@ export default function SkillsSquare() {
               <View className="skills-title-dot" />
               <Text className="block skills-section-title">全部技能</Text>
               <View className="skills-count-badge">
-                <Text className="block skills-count-text">{skills.length}</Text>
+                <Text className="block skills-count-text">{visibleSkills.length}</Text>
               </View>
             </View>
           </View>
@@ -263,7 +280,7 @@ export default function SkillsSquare() {
             </View>
           ) : (
             <View className="skills-grid">
-              {skills.map(skill => {
+              {visibleSkills.map(skill => {
                 const added = isAdded(skill.id)
                 const iconConfig = getIconConfig(skill.category)
                 const IconComp = iconConfig.Icon
@@ -307,6 +324,12 @@ export default function SkillsSquare() {
                         <View className="skill-stat">
                           <Users size={12} color="#94A3B8" />
                           <Text className="block skill-stat-val">{formatCount(Number(skill.usageCount))}人使用</Text>
+                        </View>
+                        <View className="skill-stat-divider" />
+                        <View className="skill-stat">
+                          <Text className="block skill-stat-val" style={{ fontSize: '11px', color: usageLimits[skill.id]?.remaining === 0 ? '#EF4444' : '#8B5CF6' }}>
+                            今日剩余 {usageLimits[skill.id]?.remaining ?? '-'}/{usageLimits[skill.id]?.limit ?? '-'}
+                          </Text>
                         </View>
                       </View>
 

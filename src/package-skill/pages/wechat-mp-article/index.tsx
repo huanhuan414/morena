@@ -44,13 +44,29 @@ export default function WechatMpArticle() {
   const [history, setHistory] = useState<HistoryRecord[]>([])
   const [wechatAccounts, setWechatAccounts] = useState<any[]>([])
   const [pollTimer, setPollTimer] = useState<ReturnType<typeof setInterval> | null>(null)
+  const [usageInfo, setUsageInfo] = useState<{ used: number; limit: number; remaining: number }>({ used: 0, limit: 1, remaining: 1 })
 
   useDidShow(() => {
     fetchHistory()
     fetchWechatAccounts()
+    fetchUsageLimit()
     // 恢复进行中的生成状态
     recoverGeneratingStatus()
   })
+
+  const fetchUsageLimit = async () => {
+    try {
+      const res = await Network.request({
+        url: '/api/ai-skill/usage-limit',
+        data: { skillType: 'wechat_mp_article' },
+      })
+      if (res.data?.code === 200 && res.data?.data) {
+        setUsageInfo(res.data.data)
+      }
+    } catch (e) {
+      console.error('获取使用限制失败', e)
+    }
+  }
 
   // 页面隐藏时不断开轮询（后台继续轮询）
   // useDidHide 中不清理 pollTimer，让轮询继续
@@ -95,6 +111,100 @@ export default function WechatMpArticle() {
     } catch (err) {
       console.error('[公众号爆款] 获取历史失败:', err)
     }
+  }
+
+  // 渲染公众号文章内容 - 图文混排
+  const renderArticleContent = (content: string, images: string[]) => {
+    if (!content) return null
+
+    // 将 [IMG_N] 占位符替换为特殊标记，然后按段落拆分渲染
+    const paragraphs = content.split(/\n+/).filter(p => p.trim())
+    
+    return (
+      <View>
+        {paragraphs.map((paragraph, pIdx) => {
+          // 检查段落是否包含图片占位符
+          const imgMatches = paragraph.match(/\[IMG_(\d+)\]/g)
+          
+          if (!imgMatches) {
+            // 纯文本段落 - 清理HTML标签
+            const cleanText = paragraph
+              .replace(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/g, '## $1')
+              .replace(/<strong>(.*?)<\/strong>/g, '$1')
+              .replace(/<em>(.*?)<\/em>/g, '$1')
+              .replace(/<[^>]*>/g, '')
+              .replace(/#{1,3}\s/g, '')
+              .trim()
+            
+            if (!cleanText) return null
+            
+            // 判断是否为标题（通常较短的加粗文本）
+            const isHeading = paragraph.match(/<h[1-6]/) || (paragraph.match(/<strong>/) && cleanText.length < 30)
+            
+            return (
+              <Text
+                key={pIdx}
+                className="block"
+                style={{
+                  fontSize: isHeading ? '16px' : '15px',
+                  fontWeight: isHeading ? '700' : '400',
+                  color: '#1A1A2E',
+                  lineHeight: '1.8',
+                  marginBottom: '8px',
+                  marginTop: isHeading ? '12px' : '0',
+                }}
+              >
+                {cleanText}
+              </Text>
+            )
+          }
+          
+          // 包含图片的段落 - 拆分为文本和图片交替渲染
+          const parts = paragraph.split(/(\[IMG_\d+\])/g).filter(Boolean)
+          return (
+            <View key={pIdx} style={{ marginBottom: '8px' }}>
+              {parts.map((part, partIdx) => {
+                const imgMatch = part.match(/\[IMG_(\d+)\]/)
+                if (imgMatch) {
+                  const imgIdx = parseInt(imgMatch[1]) - 1
+                  const imgUrl = images[imgIdx]
+                  if (imgUrl) {
+                    return (
+                      <View key={partIdx} style={{ margin: '10px 0' }}>
+                        <Image
+                          src={imgUrl}
+                          style={{ width: '100%', height: '200px', borderRadius: '8px' }}
+                          mode="aspectFill"
+                          onClick={() => Taro.previewImage({ urls: images, current: imgUrl })}
+                        />
+                      </View>
+                    )
+                  }
+                  return null
+                }
+                
+                // 文本部分
+                const cleanText = part
+                  .replace(/<[^>]*>/g, '')
+                  .replace(/#{1,3}\s/g, '')
+                  .trim()
+                
+                if (!cleanText) return null
+                return (
+                  <Text
+                    key={partIdx}
+                    className="block"
+                    style={{ fontSize: '15px', color: '#1A1A2E', lineHeight: '1.8' }}
+                  >
+                    {cleanText}
+                  </Text>
+                )
+              })}
+            </View>
+          )
+        })}
+      </View>
+    )
   }
 
   const fetchWechatAccounts = async () => {
@@ -180,6 +290,18 @@ export default function WechatMpArticle() {
     if (!inputText.trim()) {
       Taro.showToast({ title: '请输入文章描述', icon: 'none' })
       return
+    }
+
+    // 检查今日使用次数
+    try {
+      const limitRes = await Network.request({ url: '/api/ai-skill/usage-limit?skillType=wechat_mp_article' })
+      const limitData = limitRes.data?.data || limitRes.data
+      if (limitData && limitData.remaining <= 0) {
+        Taro.showToast({ title: '今日使用次数已达上限', icon: 'none' })
+        return
+      }
+    } catch {
+      // 查询失败不阻止生成
     }
 
     setGenerating(true)
@@ -577,41 +699,19 @@ export default function WechatMpArticle() {
               </CardContent>
             </Card>
 
-            {/* 生成结果展示 */}
+            {/* 生成结果展示 - 公众号文章排版 */}
             {result && (
               <Card style={{ marginBottom: '12px' }}>
-                <CardContent style={{ padding: '16px' }}>
-                  <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: '12px' }}>
-                    <View style={{ width: '4px', height: '16px', borderRadius: '2px', backgroundColor: PRIMARY, marginRight: '8px' }} />
-                    <Text className="block text-sm font-semibold" style={{ color: '#1A1A2E' }}>生成结果</Text>
+                <CardContent style={{ padding: '0' }}>
+                  {/* 文章标题 */}
+                  <View style={{ padding: '20px 16px 12px', borderBottom: '1px solid #f0f0f0' }}>
+                    <Text className="block text-lg font-bold" style={{ color: '#1A1A2E', lineHeight: '1.5' }}>{result.title}</Text>
                   </View>
 
-                  <Text className="block text-base font-bold mb-2" style={{ color: '#1A1A2E' }}>{result.title}</Text>
-
-                  {/* 文章内容 */}
-                  <View style={{ backgroundColor: '#F5F7FA', borderRadius: '8px', padding: '12px', marginBottom: '12px', maxHeight: '300px', overflow: 'hidden' }}>
-                    <Text className="block text-sm leading-relaxed" style={{ color: '#333333' }}>
-                      {result.content.replace(/<[^>]*>/g, '').substring(0, 500)}{result.content.length > 500 ? '...' : ''}
-                    </Text>
+                  {/* 文章正文 - 图文混排 */}
+                  <View style={{ padding: '16px' }}>
+                    {renderArticleContent(result.content, result.images)}
                   </View>
-
-                  {/* 配图预览 */}
-                  {result.images.length > 0 && (
-                    <View style={{ marginBottom: '12px' }}>
-                      <Text className="block text-xs mb-2" style={{ color: '#999999' }}>配图预览 ({result.images.length}张)</Text>
-                      <View style={{ display: 'flex', flexDirection: 'row', gap: '6px', flexWrap: 'wrap' }}>
-                        {result.images.map((img, idx) => (
-                          <Image
-                            key={idx}
-                            src={img}
-                            style={{ width: '100px', height: '68px', borderRadius: '6px' }}
-                            mode="aspectFill"
-                            onClick={() => Taro.previewImage({ urls: result.images, current: img })}
-                          />
-                        ))}
-                      </View>
-                    </View>
-                  )}
                 </CardContent>
               </Card>
             )}
@@ -654,6 +754,16 @@ export default function WechatMpArticle() {
                     </Text>
                   </View>
                 </Button>
+              )}
+              {!generating && !result && usageInfo?.remaining === 0 && (
+                <View className="mt-2 flex justify-center">
+                  <Text className="block text-xs text-orange-500">今日使用次数已用完，订阅用户每日可使用3次</Text>
+                </View>
+              )}
+              {!generating && !result && usageInfo?.remaining > 0 && (
+                <View className="mt-2 flex justify-center">
+                  <Text className="block text-xs text-gray-400">今日剩余 {usageInfo?.remaining} 次使用机会</Text>
+                </View>
               )}
             </View>
 

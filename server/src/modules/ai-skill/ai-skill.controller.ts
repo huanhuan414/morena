@@ -39,6 +39,12 @@ export class AiSkillController {
     console.log(`[AiSkillController] generate: userId=${userId}, skillType=${body.skillType}, hasImage=${!!imageUrl}, imageCount=${body.inputImageUrls?.length || 0}, hasText=${!!body.inputText}`);
 
     try {
+      // 检查每日使用次数限制
+      const limitCheck = await this.aiSkillService.checkDailyLimit(userId, body.skillType as SkillType);
+      if (limitCheck.remaining <= 0) {
+        return { code: 429, msg: `今日使用次数已达上限（${limitCheck.limit}次/天）`, data: { remaining: 0, limit: limitCheck.limit, used: limitCheck.used } };
+      }
+
       const result = await this.aiSkillService.startGenerate(
         userId,
         body.skillType as SkillType,
@@ -75,6 +81,20 @@ export class AiSkillController {
       page ? parseInt(page) : 1,
       pageSize ? parseInt(pageSize) : 20,
     );
+    return { code: 200, msg: 'ok', data: result };
+  }
+
+  /**
+   * GET /api/ai-skill/usage-limit?skillType=xxx
+   * 获取技能每日使用次数限制
+   */
+  @Get('usage-limit')
+  async getUsageLimit(@Query('skillType') skillType: string, @Req() req: any) {
+    const userId = req.headers['x-user-id'];
+    if (!userId) {
+      return { code: 401, msg: '请先登录', data: null };
+    }
+    const result = await this.aiSkillService.checkDailyLimit(userId, skillType as SkillType);
     return { code: 200, msg: 'ok', data: result };
   }
 
