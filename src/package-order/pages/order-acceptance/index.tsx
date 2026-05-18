@@ -70,6 +70,7 @@ export default function OrderAcceptance() {
   const [showReject, setShowReject] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [generatedContent, setGeneratedContent] = useState<{ content?: string; images?: string[]; videos?: string[] } | null>(null)
+  const [hasPermission, setHasPermission] = useState(true)
   const statusBarHeight = getStatusBarHeight()
 
   useLoad(() => {
@@ -80,7 +81,17 @@ export default function OrderAcceptance() {
     try {
       const res = await Network.request({ url: `/api/order/${orderId}` })
       if (res.data?.code === 200 && res.data.data?.summary_stats?.avatarStats) {
-        const allAvatars = res.data.data.summary_stats.avatarStats.map((a: AvatarStat) => ({ ...a, orderId }))
+        const orderData = res.data.data
+        const userInfo = Taro.getStorageSync('userInfo')
+        const currentUserId = userInfo?.id
+        const orderUserId = orderData.userId || orderData.user_id
+        if (orderUserId && currentUserId && orderUserId !== currentUserId) {
+          setHasPermission(false)
+          showToast({ title: '无权限验收此订单', icon: 'none' })
+          setTimeout(() => navigateBack(), 1500)
+          return
+        }
+        const allAvatars = orderData.summary_stats.avatarStats.map((a: AvatarStat) => ({ ...a, orderId }))
         setAvatars(allAvatars)
       }
     } catch (error) {
@@ -203,6 +214,14 @@ export default function OrderAcceptance() {
     return (
       <View className="od-page od-loading">
         <Text className="block od-loading-text">加载中...</Text>
+      </View>
+    )
+  }
+
+  if (!hasPermission) {
+    return (
+      <View className="od-page od-loading">
+        <Text className="block od-loading-text">无权限验收此订单</Text>
       </View>
     )
   }

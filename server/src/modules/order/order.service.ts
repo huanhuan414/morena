@@ -627,17 +627,22 @@ export class OrderService {
     return this.getOrderById(orderId)
   }
 
-  async getOpenOrders(page: number = 1, pageSize: number = 20) {
+  async getOpenOrders(page: number = 1, pageSize: number = 20, platform?: string) {
     const db = getMySQLClient()
     const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1
     const safePageSize = Number.isFinite(pageSize) && pageSize > 0 ? Math.min(Math.floor(pageSize), 100) : 20
     const offset = (safePage - 1) * safePageSize
 
+    let platformClause = ''
+    if (platform && platform !== 'all') {
+      platformClause = ` AND (JSON_CONTAINS(o.platforms, '"${platform}"') OR o.platform = '${platform}')`
+    }
+
     const whereClause = `
       WHERE (
         o.status IN ('pending', 'pending_acceptance', 'awaiting_acceptance', 'in_progress', 'accepted', 'content_generated', 'submitted', 'published', 'publish_failed', 'publish_timeout')
         OR (o.status = 'pending_payment' AND IFNULL(o.is_paid, 0) = 1)
-      )
+      )${platformClause}
     `
 
     const rows = await db.query(
@@ -655,7 +660,7 @@ export class OrderService {
                 (SELECT a.avatar_url FROM avatars a WHERE a.user_id = o.user_id AND a.status = 'active' ORDER BY a.created_at DESC LIMIT 1),
                 u.avatar
               ) as publisher_avatar,
-              (SELECT COUNT(*) FROM order_dispatch_requests r WHERE r.order_id = o.id AND r.status = 'accepted') as accept_count
+              (SELECT COUNT(DISTINCT avatar_id) FROM order_dispatch_requests WHERE order_id = o.id AND status IN ('accepted', 'in_progress', 'completed')) as accept_count
        FROM orders o
        LEFT JOIN users u ON u.id = o.user_id
        ${whereClause}
@@ -693,7 +698,8 @@ export class OrderService {
       createdAt: row.createdAt || row.created_at || new Date().toISOString(),
       updatedAt: row.updatedAt || row.updated_at || null,
       publisherNickname: row.publisherNickname || row.publisher_nickname || '发布方',
-      publisherAvatar: row.publisherAvatar || row.publisher_avatar || ''
+      publisherAvatar: row.publisherAvatar || row.publisher_avatar || '',
+      acceptCount: Number(row.acceptCount || row.accept_count || 0)
     }))
 
     return {

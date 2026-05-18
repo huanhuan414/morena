@@ -196,7 +196,8 @@ export default function OrderSquarePage() {
             deliveryDays: item.deliveryDays || item.delivery_days || 3,
             requirements: Array.isArray(item.requirements?.requiredSkills) ? item.requirements.requiredSkills : (Array.isArray(item.requiredSkills) ? item.requiredSkills : []),
             publisher: { nickname: item.publisherNickname || item.publisher_nickname || '发布方', avatar: item.publisherAvatar || item.publisher_avatar || '', rating: item.publisherRating || 5 },
-            createdAt: formatCreatedAt(item.createdAt || item.created_at)
+            createdAt: formatCreatedAt(item.createdAt || item.created_at),
+            acceptCount: Number(item.acceptCount || item.accept_count || 0)
           })) as OrderItem[]
 
           const filtered = currentPlatform === 'all'

@@ -615,6 +615,23 @@
   height: 60rpx;
 }
 
+.status-hint-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  padding: 24rpx 32rpx;
+  background: linear-gradient(135deg, #EDE9FE, #F3E8FF);
+  border-radius: 24rpx;
+  margin: 0 32rpx;
+}
+
+.status-hint-text {
+  font-size: 28rpx;
+  color: #7C3AED;
+  font-weight: 500;
+}
+
 /* 加载状态 */
 .loading-container {
   display: flex;
