@@ -1,14 +1,30 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, ScrollView } from '@tarojs/components'
-import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Grid2x2, Rocket, ChevronRight, Send, Gift, Zap, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye } from 'lucide-react-taro'
+import { Bell, Settings, Users, FileText, Coins, Plus, Zap, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye, ShoppingBag, ChevronRight, Gift, Rocket } from 'lucide-react-taro'
 import { Network } from '@/network'
-import { QUICK_ACTION_TAG, BANNER_TITLE, BANNER_DESC } from '@/constants/referral-rewards'
+import { BANNER_TITLE, BANNER_DESC } from '@/constants/referral-rewards'
+import { PLATFORM_UI_ORDER, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
 import { useUserStore } from '@/stores/user'
 import { useNotifications } from '@/hooks/useNotifications'
 import { Avatar as UiAvatar } from '@/components/ui/avatar'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import './index.css'
+
+interface OrderItem {
+  id: string
+  title: string
+  description: string
+  platform: string
+  estimatedEarning: number
+  deliveryDays: number
+  acceptCount: number
+  requirements: string[]
+  publisher: { nickname: string; rating: number }
+  matchScore?: number
+  createdAt: string
+  isAssigned?: boolean
+}
 
 const Index: React.FC = () => {
   const [userName, setUserName] = useState('用户')
@@ -32,34 +48,92 @@ const Index: React.FC = () => {
     pollInterval: 10000
   })
 
-  // 获取待接订单通知
-  const fetchOrderNotifications = async () => {
+  // ===== 订单广场相关状态 =====
+  const [activePlatform, setActivePlatform] = useState('all')
+  const [orders, setOrders] = useState<OrderItem[]>([])
+  const [assignedOrders, setAssignedOrders] = useState<any[]>([])
+  const [ordersLoading, setOrdersLoading] = useState(false)
+  const [acceptingOrderIds, setAcceptingOrderIds] = useState<Record<string, boolean>>({})
+  const [acceptedOrderIds, setAcceptedOrderIds] = useState<Record<string, boolean>>({})
+
+  const platformTabs = [
+    { key: 'all', label: '全部' },
+    ...PLATFORM_UI_ORDER.map((key) => ({ key, label: getPlatformLabel(key) }))
+  ]
+
+  // 获取公开订单列表
+  const fetchOrders = useCallback(async () => {
+    try {
+      setOrdersLoading(true)
+      const res = await Network.request({
+        url: '/api/order/open',
+        data: activePlatform !== 'all' ? { platform: activePlatform } : {}
+      })
+      console.log('[首页] 获取公开订单:', res.data)
+
+      if (res.data?.code === 200 && res.data?.data) {
+        const rawOrders = Array.isArray(res.data.data) ? res.data.data : (res.data.data.orders || res.data.data.list || [])
+        const mapped: OrderItem[] = rawOrders.map((o: any) => ({
+          id: o.id,
+          title: o.title || '未命名订单',
+          description: o.description || o.requirements || '',
+          platform: canonicalizePlatform(o.platform || o.platforms?.[0]),
+          estimatedEarning: Number(o.budget || o.estimatedEarning || 0),
+          deliveryDays: o.deliveryDays || o.delivery_days || 3,
+          acceptCount: o.acceptCount || o.accept_count || 0,
+          requirements: Array.isArray(o.requirements) ? o.requirements : (o.tags ? o.tags.split(',').filter(Boolean) : []),
+          publisher: { nickname: o.publisher?.nickname || o.owner_nickname || '匿名', rating: o.publisher?.rating || 5.0 },
+          matchScore: o.matchScore || o.match_score,
+          createdAt: o.createdAt || o.created_at || '',
+          isAssigned: false
+        }))
+
+        // 把分配给当前用户的订单标记出来
+        const assignedIds = new Set(assignedOrders.map((a: any) => a.orderId))
+        mapped.forEach(o => {
+          if (assignedIds.has(o.id)) o.isAssigned = true
+        })
+
+        setOrders(mapped)
+      }
+    } catch (err) {
+      console.error('获取公开订单失败:', err)
+    } finally {
+      setOrdersLoading(false)
+    }
+  }, [activePlatform, assignedOrders])
+
+  // 获取分配给当前用户的待接订单
+  const fetchAssignedOrders = useCallback(async () => {
     try {
       const res = await Network.request({
         url: '/api/order-dispatch/pending-requests'
       })
       console.log('[首页] 获取待接订单:', res.data)
-      
+
       if (res.data?.code === 200 && res.data?.data) {
         const seen = new Set<string>()
-        const orders = (res.data.data || []).filter((item: any) => {
+        const items = (res.data.data || []).filter((item: any) => {
           const oid = item.orderId
-          // 防御：过滤掉分身不存在或数据不完整的记录
           if (!item.avatarId && !item.avatar_id) return false
           if (!item.avatarName && !item.avatar_name) return false
           if (seen.has(oid)) return false
           seen.add(oid)
           return true
-        }).map((item: any) => {
+        })
+        setAssignedOrders(items)
+
+        // 弹窗通知
+        if (items.length > 0 && !showOrderModal && !orderModalData) {
+          const item = items[0]
           let platforms = item.platforms
           if (typeof platforms === 'string') {
             try { platforms = JSON.parse(platforms) } catch { platforms = [platforms] }
           }
           if (!Array.isArray(platforms)) platforms = platforms ? [platforms] : ['通用']
-          const platformKey = platforms[0] || '通用'
-          const platformName = getPlatformName(platformKey)
-          
-          return {
+          const platformName = getPlatformName(platforms[0] || '通用')
+
+          setOrderModalData({
             id: item.orderId,
             dispatchId: item.dispatchId,
             avatarId: item.avatarId,
@@ -68,19 +142,56 @@ const Index: React.FC = () => {
             title: item.title || '新订单',
             budget: item.budget ? `¥${item.budget}` : '待定',
             deadline: '长期有效'
-          }
-        })
-        
-        if (orders.length > 0 && !showOrderModal && !orderModalData) {
-          setOrderModalData(orders[0])
+          })
           setShowOrderModal(true)
         }
       }
     } catch (err) {
       console.error('获取待接订单失败:', err)
     }
+  }, [])
+
+  // 接单
+  const handleAcceptOrder = async (orderId: string) => {
+    if (acceptingOrderIds[orderId] || acceptedOrderIds[orderId]) return
+    setAcceptingOrderIds(prev => ({ ...prev, [orderId]: true }))
+    try {
+      let avatarIdToUse = currentAvatarId
+      if (!avatarIdToUse || avatarIdToUse === 'undefined') {
+        const avatarRes = await Network.request({ url: '/api/avatar' })
+        if (avatarRes.data?.code === 200 && avatarRes.data?.data?.length > 0) {
+          avatarIdToUse = avatarRes.data.data[0].id || ''
+          if (!avatarIdToUse) {
+            Taro.showToast({ title: '分身数据异常', icon: 'none' })
+            return
+          }
+          setAvatarId(avatarIdToUse)
+        } else {
+          Taro.showToast({ title: '请先创建分身', icon: 'none' })
+          return
+        }
+      }
+      const res = await Network.request({
+        url: `/api/order-dispatch/avatar/${avatarIdToUse}/accept/${orderId}`,
+        method: 'POST'
+      })
+      if (res.data?.code === 200) {
+        setAcceptedOrderIds(prev => ({ ...prev, [orderId]: true }))
+        Taro.showToast({ title: '接单成功', icon: 'success' })
+        fetchOrders()
+        fetchStats()
+      } else {
+        Taro.showToast({ title: res.data?.message || '接单失败', icon: 'none' })
+      }
+    } catch (err) {
+      console.error('接单失败:', err)
+      Taro.showToast({ title: '接单失败，请重试', icon: 'none' })
+    } finally {
+      setAcceptingOrderIds(prev => ({ ...prev, [orderId]: false }))
+    }
   }
 
+  // 获取待接订单通知（弹窗用）
   const getPlatformName = (platform: string): string => {
     const nameMap: Record<string, string> = {
       'wechat': '微信', 'wechat_mp': '公众号', 'xiaohongshu': '小红书',
@@ -108,10 +219,10 @@ const Index: React.FC = () => {
         Taro.navigateTo({ url: '/pages/login/index' })
         return
       }
-      
+
       const res = await Network.request({ url: '/api/user-stats/overview' })
       console.log('统计数据:', res.data)
-      
+
       if (res.data?.code === 200 && res.data?.data) {
         const d = res.data.data
         setMindClones(d.avatarCount || 0)
@@ -126,37 +237,6 @@ const Index: React.FC = () => {
       }
     } catch (err) {
       console.error('获取统计数据失败:', err)
-    }
-  }
-
-  // 实时动态
-  const [activities, setActivities] = useState<any[]>([])
-
-  const fetchActivities = async () => {
-    try {
-      const res = await Network.request({ url: '/api/activities/recent' })
-      if (res.data?.code === 200 && res.data?.data) {
-        const mappedActivities = res.data.data.map((item: any) => {
-          let ActivityIcon = Coins
-          if (item.type === 'chat') ActivityIcon = Users
-          else if (item.type === 'content') ActivityIcon = FileText
-          else if (item.type === 'order') ActivityIcon = ShoppingBag
-          else if (item.type === 'earning') ActivityIcon = Coins
-          
-          return {
-            name: item.title,
-            action: item.type === 'earning' ? '收益到账' : item.type === 'chat' ? '对话完成' : item.type === 'content' ? '内容生成' : '订单完成',
-            desc: item.description,
-            icon: ActivityIcon,
-            time: getTimeAgo(item.timestamp),
-            amount: item.type === 'earning' ? '+¥' + (Math.random() * 100 + 50).toFixed(2) : null,
-            type: item.type === 'earning' ? 'coin' : item.type === 'order' ? 'order' : 'chat'
-          }
-        })
-        setActivities(mappedActivities)
-      }
-    } catch (err) {
-      console.error('获取实时动态失败:', err)
     }
   }
 
@@ -186,46 +266,29 @@ const Index: React.FC = () => {
       setGrowthCampaign(null)
     }
   }
-  
-  const getTimeAgo = (timestamp: string): string => {
-    const diffMs = Date.now() - new Date(timestamp).getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    if (diffMins < 60) return diffMins <= 1 ? '刚刚' : diffMins + '分钟前'
-    const diffHours = Math.floor(diffMs / 3600000)
-    if (diffHours < 24) return diffHours + '小时前'
-    return Math.floor(diffMs / 86400000) + '天前'
-  }
 
   useEffect(() => {
     loadUserFromStorage().then(() => {
       fetchStats()
-      fetchActivities()
       fetchGrowthCampaign()
-      fetchOrderNotifications()
+      fetchAssignedOrders()
+      fetchOrders()
     }).catch(err => console.error('初始化数据加载失败:', err))
   }, [])
 
   useDidShow(() => {
     loadUserFromStorage().then(() => {
       fetchStats()
-      fetchActivities()
       fetchGrowthCampaign()
-      fetchOrderNotifications()
+      fetchAssignedOrders()
+      fetchOrders()
     }).catch(err => console.error('刷新数据失败:', err))
   })
 
-  // 根据用户状态决定快捷功能 - 核心转化路径
-  const quickActions = mindClones === 0 ? [
-    { label: '创建分身', icon: Plus, color: '#6366F1', bg: 'linear-gradient(135deg, #EEF2FF 0%, #C7D2FE 100%)', path: '/package-avatar/pages/avatar-create/index', tag: '0元开始', tagColor: '#6366F1' },
-    { label: '订单广场', icon: Grid2x2, color: '#0EA5E9', bg: 'linear-gradient(135deg, #F0F9FF 0%, #BAE6FD 100%)', path: '/package-order/pages/order-square/index', tag: '我要接单', tagColor: '#0EA5E9' },
-    { label: '我要发单', icon: Send, color: '#8B5CF6', bg: 'linear-gradient(135deg, #F5F3FF 0%, #DDD6FE 100%)', path: '/package-order/pages/order-create/index', tag: '推广引流', tagColor: '#8B5CF6' },
-    { label: '邀请好友', icon: Gift, color: '#EC4899', bg: 'linear-gradient(135deg, #FDF2F8 0%, #FBCFE8 100%)', path: '/package-profile/pages/referral-center/index', tag: QUICK_ACTION_TAG, tagColor: '#EC4899' },
-  ] : [
-    { label: '创建分身', icon: Plus, color: '#6366F1', bg: 'linear-gradient(135deg, #EEF2FF 0%, #C7D2FE 100%)', path: '/package-avatar/pages/avatar-create/index', tag: mindClones + '个', tagColor: '#6366F1' },
-    { label: '我要发单', icon: Send, color: '#8B5CF6', bg: 'linear-gradient(135deg, #F5F3FF 0%, #DDD6FE 100%)', path: '/package-order/pages/order-create/index', tag: '推广引流', tagColor: '#8B5CF6' },
-    { label: '订单广场', icon: Grid2x2, color: '#0EA5E9', bg: 'linear-gradient(135deg, #F0F9FF 0%, #BAE6FD 100%)', path: '/package-order/pages/order-square/index', tag: '我要接单', tagColor: '#0EA5E9' },
-    { label: '邀请好友', icon: Gift, color: '#EC4899', bg: 'linear-gradient(135deg, #FDF2F8 0%, #FBCFE8 100%)', path: '/package-profile/pages/referral-center/index', tag: QUICK_ACTION_TAG, tagColor: '#EC4899' },
-  ]
+  // 平台切换时重新获取订单
+  useEffect(() => {
+    fetchOrders()
+  }, [activePlatform])
 
   const getGreeting = () => {
     const hour = new Date().getHours()
@@ -238,7 +301,6 @@ const Index: React.FC = () => {
     return '夜深了'
   }
 
-  // 获取价值主张文案 - 根据用户状态动态调整
   const getValueProp = () => {
     if (mindClones === 0) return '创建AI分身，开始自动赚钱'
     if (!allHostingEnabled) return '开启托管，让分身24h替你接单'
@@ -256,35 +318,10 @@ const Index: React.FC = () => {
 
   const handleOrderAccept = async () => {
     if (orderModalData?.id) {
-      try {
-        let avatarIdToUse = currentAvatarId
-        if (!avatarIdToUse || avatarIdToUse === 'undefined') {
-          const avatarRes = await Network.request({ url: '/api/avatar' })
-          if (avatarRes.data?.code === 200 && avatarRes.data?.data?.length > 0) {
-            avatarIdToUse = avatarRes.data.data[0].id || ''
-            if (!avatarIdToUse) {
-              Taro.showToast({ title: '分身数据异常', icon: 'none' })
-              return
-            }
-            setAvatarId(avatarIdToUse)
-          } else {
-            Taro.showToast({ title: '请先创建分身', icon: 'none' })
-            return
-          }
-        }
-        const res = await Network.request({
-          url: `/api/order-dispatch/avatar/${avatarIdToUse}/accept/${orderModalData.id}`,
-          method: 'POST'
-        })
-        if (res.data?.code === 200) {
-          setShowOrderModal(false)
-          Taro.navigateTo({ url: `/package-order/pages/order-content-creation/index?orderId=${orderModalData.id}` })
-        } else {
-          Taro.showToast({ title: res.data?.message || '接单失败', icon: 'none' })
-        }
-      } catch (err) {
-        console.error('接受订单失败:', err)
-        Taro.showToast({ title: '接单失败，请重试', icon: 'none' })
+      await handleAcceptOrder(orderModalData.id)
+      setShowOrderModal(false)
+      if (acceptedOrderIds[orderModalData.id]) {
+        Taro.navigateTo({ url: `/package-order/pages/order-content-creation/index?orderId=${orderModalData.id}` })
       }
     }
   }
@@ -308,6 +345,21 @@ const Index: React.FC = () => {
       console.error('开启托管失败:', err)
       Taro.showToast({ title: '开启失败', icon: 'none' })
     }
+  }
+
+  // 紧急程度标签
+  const getUrgencyTag = (order: OrderItem) => {
+    if (order.deliveryDays <= 1) return { text: '紧急', color: '#EF4444', bg: '#FEF2F2' }
+    if (order.deliveryDays <= 3) return { text: '较急', color: '#F59E0B', bg: '#FFFBEB' }
+    return null
+  }
+
+  // 匹配度颜色
+  const getMatchColor = (score?: number) => {
+    if (!score) return '#6366F1'
+    if (score >= 80) return '#10B981'
+    if (score >= 60) return '#F59E0B'
+    return '#6366F1'
   }
 
   return (
@@ -348,7 +400,7 @@ const Index: React.FC = () => {
       {/* 主内容区 */}
       <ScrollView scrollY className="content" enhanced showScrollbar={false}>
 
-        {/* 新用户引导：赚钱攻略（仅无分身时显示） */}
+        {/* 新用户引导（仅无分身时显示） */}
         {mindClones === 0 && (
           <View className="guide-section">
             <View className="guide-header">
@@ -389,9 +441,8 @@ const Index: React.FC = () => {
           </View>
         )}
 
-        {/* 核心数据区 - 根据用户状态展示不同重点 */}
+        {/* 核心数据区 */}
         <View className="stats-section">
-          {/* 有收益时突出显示 */}
           {totalEarnings > 0 && (
             <View className="earning-highlight" onClick={() => goToPage('/package-profile/pages/earning-center/index')}>
               <View className="earning-highlight-left">
@@ -448,7 +499,7 @@ const Index: React.FC = () => {
           </View>
         </View>
 
-        {/* 推广Banner - 根据用户阶段精准引导 */}
+        {/* 推广Banner */}
         {growthCampaign && (
           <View
             className="banner"
@@ -550,81 +601,141 @@ const Index: React.FC = () => {
           </View>
         </View>
 
-        {/* 快捷功能 - 每项附带利益点 */}
-        <View className="section">
-          <View className="section-header">
-            <Text className="section-title">赚钱工具</Text>
-            <View className="section-more">
-              <Text className="section-more-text">全部功能</Text>
-              <ChevronRight size={24} color="#9CA3AF" />
-            </View>
-          </View>
-          <View className="quick-grid">
-            {quickActions.map((action) => (
-              <View 
-                key={action.label} 
-                className="quick-item" 
-                onClick={() => goToPage(action.path)}
-              >
-                <View className="quick-icon" style={{ background: action.bg }}>
-                  <action.icon size={40} color={action.color} />
-                </View>
-                <Text className="quick-label">{action.label}</Text>
-                <Text className="quick-tag" style={{ color: action.tagColor, background: action.tagColor + '15' }}>{action.tag}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* 实时动态 - 社交证明，激发行动 */}
-        {/* <View className="section">
+        {/* ===== 订单广场板块 ===== */}
+        <View className="order-square-section">
+          {/* 板块标题 */}
           <View className="section-header">
             <View className="section-title-row">
-              <View className="title-dot" />
-              <Text className="section-title">实时收益</Text>
-            </View>
-            <View className="live-indicator">
-              <View className="live-dot" />
-              <Text className="live-text">LIVE</Text>
-            </View>
-          </View>
-          
-          <ScrollView scrollX className="activity-scroll-container" enhanced showScrollbar={false}>
-            <View className="activity-scroll-track">
-              {activities.length > 0 ? activities.map((item, index) => (
-                <View key={`${item.name}-${index}`} className="activity-card">
-                  <View className="activity-card-header">
-                    <View className="activity-icon-wrapper" style={{ background: item.type === 'coin' ? '#ECFDF5' : item.type === 'order' ? '#EEF2FF' : '#F5F3FF' }}>
-                      <item.icon size={28} color={item.type === 'coin' ? '#10B981' : item.type === 'order' ? '#6366F1' : '#8B5CF6'} />
-                    </View>
-                    <View className="activity-time-badge">{item.time}</View>
-                  </View>
-                  <View className="activity-card-content">
-                    <Text className="activity-name">{item.name}</Text>
-                    <Text className="activity-action">{item.action}</Text>
-                    {item.amount && (
-                      <Text className="activity-amount" style={{ color: item.type === 'coin' ? '#10B981' : '#6366F1' }}>
-                        {item.amount}
-                      </Text>
-                    )}
-                    {!item.amount && item.desc && (
-                      <Text className="activity-desc">{item.desc}</Text>
-                    )}
-                  </View>
-                </View>
-              )) : (
-                <View className="activity-empty">
-                  <Eye size={40} color="#CBD5E1" />
-                  <Text className="activity-empty-text">其他用户正在赚钱中...</Text>
-                  <Text className="activity-empty-hint">创建分身即可开始</Text>
+              <ShoppingBag size={24} color="#6366F1" />
+              <Text className="section-title">待接订单</Text>
+              {assignedOrders.length > 0 && (
+                <View className="assigned-count-badge">
+                  <Text className="assigned-count-text">{assignedOrders.length}单待我接</Text>
                 </View>
               )}
             </View>
+            <View className="section-more" onClick={() => goToPage('/package-order/pages/order-square/index')}>
+              <Text className="section-more-text">查看全部</Text>
+              <ChevronRight size={24} color="#9CA3AF" />
+            </View>
+          </View>
+
+          {/* 平台筛选 Tab */}
+          <ScrollView scrollX className="platform-scroll" enhanced showScrollbar={false}>
+            <View className="platform-tags">
+              {platformTabs.map(tab => (
+                <View
+                  key={tab.key}
+                  className={`platform-tag ${activePlatform === tab.key ? 'active' : ''}`}
+                  onClick={() => setActivePlatform(tab.key)}
+                >
+                  <Text className="platform-tag-text">{tab.label}</Text>
+                </View>
+              ))}
+            </View>
           </ScrollView>
-        </View> */}
+
+          {/* 订单列表 */}
+          <View className="home-order-list">
+            {ordersLoading ? (
+              <View className="order-loading">
+                <Text className="order-loading-text">加载中...</Text>
+              </View>
+            ) : orders.length > 0 ? (
+              orders.slice(0, 5).map(order => {
+                const platformConfig = getPlatformMeta(order.platform) || { color: '#7B3FE4', icon: '📋', name: order.platform }
+                const urgencyTag = getUrgencyTag(order)
+                const isAssigned = order.isAssigned
+
+                return (
+                  <View
+                    key={order.id}
+                    className="home-order-card"
+                    onClick={() => Taro.navigateTo({ url: `/package-order/pages/order-detail/index?orderId=${order.id}` })}
+                  >
+                    {/* 卡片顶部条 */}
+                    {urgencyTag && (
+                      <View className="home-card-strip" style={{ background: urgencyTag.color }} />
+                    )}
+                    {isAssigned && (
+                      <View className="home-card-strip assigned-strip" />
+                    )}
+
+                    {/* 头部：平台 + 紧急 + 时间 */}
+                    <View className="home-card-header">
+                      <View className="home-card-header-left">
+                        <View className="home-platform-badge" style={{ background: `${platformConfig.color}15` }}>
+                          <Text className="home-platform-icon">{platformConfig.icon}</Text>
+                          <Text className="home-platform-name" style={{ color: platformConfig.color }}>
+                            {getPlatformLabel(order.platform)}
+                          </Text>
+                        </View>
+                        {urgencyTag && (
+                          <View className="home-urgency-badge" style={{ background: urgencyTag.bg }}>
+                            <Text className="home-urgency-text" style={{ color: urgencyTag.color }}>{urgencyTag.text}</Text>
+                          </View>
+                        )}
+                        {isAssigned && (
+                          <View className="home-assigned-badge">
+                            <Text className="home-assigned-text">待我接</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text className="home-publish-time">{order.createdAt}</Text>
+                    </View>
+
+                    {/* 标题 + 匹配度 */}
+                    <View className="home-order-title-row">
+                      <Text className="home-order-title">{order.title}</Text>
+                      {order.matchScore && order.matchScore >= 80 && (
+                        <View className="home-match-badge" style={{ background: `${getMatchColor(order.matchScore)}15` }}>
+                          <TrendingUp size={12} color={getMatchColor(order.matchScore)} />
+                          <Text className="home-match-text" style={{ color: getMatchColor(order.matchScore) }}>
+                            {order.matchScore}%
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* 标签 + 收益 + 接单按钮 */}
+                    <View className="home-card-bottom">
+                      <View className="home-card-bottom-left">
+                        {order.requirements.slice(0, 2).map((req, idx) => (
+                          <View key={idx} className="home-req-tag">
+                            <Text className="home-req-tag-text">{req}</Text>
+                          </View>
+                        ))}
+                        <View className="home-earn-tag">
+                          <Coins size={14} color="#F59E0B" />
+                          <Text className="home-earn-value">¥{order.estimatedEarning}</Text>
+                        </View>
+                      </View>
+                      <View onClick={(e) => e.stopPropagation()}>
+                        <View
+                          className={`home-accept-btn ${acceptedOrderIds[order.id] ? 'accepted' : ''} ${acceptingOrderIds[order.id] ? 'loading' : ''}`}
+                          onClick={() => handleAcceptOrder(order.id)}
+                        >
+                          <Text className="home-accept-btn-text">
+                            {acceptedOrderIds[order.id] ? '已接单' : (acceptingOrderIds[order.id] ? '接单中' : '接单')}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                )
+              })
+            ) : (
+              <View className="home-order-empty">
+                <ShoppingBag size={48} color="#CBD5E1" />
+                <Text className="home-order-empty-text">暂无可接订单</Text>
+                <Text className="home-order-empty-hint">切换平台看看或稍后再来</Text>
+              </View>
+            )}
+          </View>
+        </View>
 
         {/* 底部留白 */}
-        {/* <View className="bottom-spacer" /> */}
+        <View className="bottom-spacer" />
       </ScrollView>
 
       {/* 订单通知弹窗 */}
@@ -637,13 +748,13 @@ const Index: React.FC = () => {
                 <Text className="order-modal-close-text">×</Text>
               </View>
             </View>
-            
+
             <View className="order-modal-content">
               <View className="order-modal-platform" style={{ background: orderModalData.platformColor }}>
                 {orderModalData.platform}
               </View>
               <Text className="order-modal-order-title">{orderModalData.title}</Text>
-              
+
               <View className="order-modal-info">
                 <View className="order-modal-info-item">
                   <Text className="order-modal-info-label">预算</Text>
@@ -655,7 +766,7 @@ const Index: React.FC = () => {
                 </View>
               </View>
             </View>
-            
+
             <View className="order-modal-actions">
               <View className="order-modal-btn dismiss" onClick={handleOrderDismiss}>
                 <Text className="order-modal-btn-text dismiss">暂不接单</Text>
