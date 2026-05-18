@@ -22,7 +22,6 @@ import { MediaModule } from './modules/media/media.module';
 import { ContentGenerationModule } from './modules/content-generation/content-generation.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { AsrModule } from './modules/asr/asr.module';
-import { RecommendationModule } from './modules/recommendation/recommendation.module';
 import { VideoModule } from './modules/video/video.module';
 import { VisionModule } from './modules/vision/vision.module';
 import { VoiceCloneModule } from './modules/voice-clone/voice-clone.module';
@@ -64,7 +63,6 @@ import { AiSkillModule } from './modules/ai-skill/ai-skill.module';
     ContentGenerationModule,
     UploadModule,
     AsrModule,
-    RecommendationModule,
     VideoModule,
     VisionModule,
     VoiceCloneModule,

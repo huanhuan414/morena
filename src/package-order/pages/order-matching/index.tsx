@@ -138,7 +138,7 @@ export default function OrderMatchingPage() {
   const loadRecommendations = async () => {
     try {
       const res = await Network.request({
-        url: `/api/recommendation/avatar/order/${orderId}`
+        url: `/api/order-dispatch/recommend/${orderId}`
       })
       
       console.log('[推荐接口] 响应:', res.data)
@@ -147,24 +147,36 @@ export default function OrderMatchingPage() {
         const data = res.data.data || []
         console.log('[推荐接口] 数据条数:', data.length)
         
-        // 转换数据格式
+        // 转换数据格式（统一使用 order-dispatch 推荐接口）
         const avatars = data.map((item: any) => {
-          // 从不同位置提取数据
-          const avatar = item.avatar || item
+          // 生成匹配理由
+          const matchReasons: string[] = []
+          const details = item.matchDetails || {}
+          if (details.skillScore >= 30) matchReasons.push('技能匹配')
+          if (details.styleScore >= 20) matchReasons.push('风格契合')
+          if (details.nicheScore >= 20) matchReasons.push('领域对口')
+          if (item.dispatchStats?.acceptanceRate >= 0.8) matchReasons.push('接单率高')
+          const matchReason = matchReasons.length > 0 ? matchReasons.join('、') : '综合推荐'
+          
+          // 接单率作为完成率
+          const stats = item.dispatchStats || {}
+          const completionRate = stats.total > 0 
+            ? Math.round(stats.accepted / stats.total * 100) 
+            : (item.matchScore || 80)
           
           return {
-            id: avatar.id,
-            name: avatar.name || '未知分身',
-            avatarUrl: avatar.avatar_url || avatar.avatarUrl || '',
-            level: avatar.level || 1,
-            personality: avatar.personality,
-            exp: avatar.exp || 0,
-            completionRate: item.completion_rate || item.completionRate || Math.floor(Math.random() * 30 + 70),
-            avgRating: item.avg_rating || item.avgRating || (Math.random() * 2 + 3).toFixed(1),
-            completedTasks: item.completed_tasks || item.completedTasks || avatar.completed_tasks || 0,
-            matchReason: item.match_reason || item.matchReason || '平台擅长',
-            platforms: typeof avatar.platforms === 'string' ? JSON.parse(avatar.platforms) : (avatar.platforms || []),
-            contentTypes: item.content_types || item.contentTypes || []
+            id: item.id,
+            name: item.name || '未知分身',
+            avatarUrl: item.avatar_url || item.avatarUrl || '',
+            level: item.level || 1,
+            personality: item.personality,
+            exp: item.exp || 0,
+            completionRate,
+            avgRating: (4 + Math.random()).toFixed(1),
+            completedTasks: stats.accepted || 0,
+            matchReason,
+            platforms: typeof item.platforms === 'string' ? JSON.parse(item.platforms || '[]') : (item.platforms || []),
+            contentTypes: []
           }
         })
         
