@@ -1,14 +1,14 @@
 /* 登录页面 - 紫色渐变风格 */
 .login-page {
   min-height: 100vh;
-  background-color: #F8F7FC;
+  background-color: #f8f7fc;
   display: flex;
   flex-direction: column;
 }
 
 /* 顶部渐变区域 */
 .login-header {
-  background: linear-gradient(135deg, #7B3FE4 0%, #9B6EF3 50%, #C4B5FD 100%);
+  background: linear-gradient(135deg, #7b3fe4 0%, #9b6ef3 50%, #c4b5fd 100%);
   padding: 120rpx 48rpx 80rpx;
   position: relative;
   overflow: hidden;
@@ -66,7 +66,7 @@
 .login-card-title {
   font-size: 40rpx;
   font-weight: 700;
-  color: #1A1A2E;
+  color: #1a1a2e;
   margin-bottom: 12rpx;
 }
 
@@ -89,18 +89,18 @@
 }
 
 .login-input-wrap {
-  background: #F8F7FC;
+  background: #f8f7fc;
   border-radius: 20rpx;
   padding: 0 28rpx;
   height: 96rpx;
   display: flex;
   align-items: center;
-  border: 2rpx solid #EEEEEE;
+  border: 2rpx solid #eeeeee;
   transition: border-color 0.2s;
 }
 
 .login-input-wrap:focus-within {
-  border-color: #7B3FE4;
+  border-color: #7b3fe4;
 }
 
 .login-input {
@@ -129,13 +129,13 @@
   border-radius: 20rpx !important;
   height: 96rpx !important;
   padding: 0 28rpx !important;
-  border-color: #7B3FE4 !important;
+  border-color: #7b3fe4 !important;
   min-width: 200rpx;
 }
 
 .login-code-btn-text {
   font-size: 26rpx;
-  color: #7B3FE4;
+  color: #7b3fe4;
 }
 
 /* 登录按钮 */
@@ -144,7 +144,7 @@
   margin-top: 48rpx !important;
   height: 100rpx !important;
   border-radius: 24rpx !important;
-  background: linear-gradient(135deg, #7B3FE4 0%, #9B6EF3 100%) !important;
+  background: linear-gradient(135deg, #7b3fe4 0%, #9b6ef3 100%) !important;
   font-size: 32rpx !important;
 }
 
@@ -158,10 +158,38 @@
 .login-agreement {
   display: flex;
   flex-direction: row;
+  align-items: center;
   justify-content: center;
   flex-wrap: wrap;
   margin-top: 40rpx;
   gap: 0;
+}
+
+.login-checkbox {
+  width: 32rpx;
+  height: 32rpx;
+  border: 3rpx solid #999999;
+  border-radius: 6rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10rpx;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.login-checkbox.checked {
+  background: #7b3fe4;
+  border-color: #7b3fe4;
+}
+
+.login-checkbox-tick {
+  font-size: 22rpx;
+  color: #fff;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .login-agreement-text {
@@ -171,7 +199,7 @@
 
 .login-agreement-link {
   font-size: 22rpx;
-  color: #7B3FE4;
+  color: #7b3fe4;
 }
 
 /* 邀请码标签行 */
@@ -181,4 +209,101 @@
   align-items: center;
   gap: 8rpx;
   margin-bottom: 16rpx;
+}
+
+/* Tab 切换 */
+.login-tabs {
+  display: flex;
+  flex-direction: row;
+  background: #f3f0ff;
+  border-radius: 20rpx;
+  padding: 6rpx;
+  margin-bottom: 40rpx;
+}
+
+.login-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 72rpx;
+  border-radius: 16rpx;
+  transition: all 0.25s ease;
+}
+
+.login-tab.active {
+  background: #7b3fe4;
+  box-shadow: 0 4rpx 16rpx rgba(123, 63, 228, 0.3);
+}
+
+.login-tab-text {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #7b3fe4;
+}
+
+.login-tab-text.active {
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Tab 内容区 */
+.login-tab-content {
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 微信授权登录 */
+.login-wechat-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48rpx 0 32rpx;
+}
+
+.login-wechat-icon-wrap {
+  width: 124rpx;
+  height: 124rpx;
+  border-radius: 50%;
+  background: #07c160;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(7, 193, 96, 0.3);
+}
+
+.login-wechat-icon {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.login-wechat-hint {
+  font-size: 26rpx;
+  color: #999;
+}
+
+.login-wechat-btn {
+  background: linear-gradient(135deg, #07c160 0%, #2dc84d 100%) !important;
+}
+
+.login-wechat-btn::after {
+  border: none;
+}
+
+.login-wechat-btn[disabled] {
+  background: #ccc !important;
+  opacity: 0.6;
 }
