@@ -581,7 +581,7 @@ const Index: React.FC = () => {
         </View>
 
         {/* 实时动态 - 社交证明，激发行动 */}
-        <View className="section">
+        {/* <View className="section">
           <View className="section-header">
             <View className="section-title-row">
               <View className="title-dot" />
@@ -625,10 +625,10 @@ const Index: React.FC = () => {
               )}
             </View>
           </ScrollView>
-        </View>
+        </View> */}
 
         {/* 底部留白 */}
-        <View className="bottom-spacer" />
+        {/* <View className="bottom-spacer" /> */}
       </ScrollView>
 
       {/* 订单通知弹窗 */}
