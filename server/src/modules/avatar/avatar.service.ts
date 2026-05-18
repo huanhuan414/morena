@@ -521,8 +521,13 @@ export class AvatarService {
 
     // 7. 最后删除分身本体
     const result = await db.delete('avatars', { id: avatarId, user_id: userId })
+    const affectedRows = (result as any)?.data?.affectedRows || 0
+    if (affectedRows === 0) {
+      console.error('[AvatarService] 分身删除失败，未匹配到记录:', avatarId, 'userId:', userId)
+      return { success: false, error: '分身删除失败，请重试' }
+    }
     console.log('[AvatarService] 分身删除完成:', avatarId)
-    return { success: (result as any)?.data?.affectedRows > 0 }
+    return { success: true }
   }
 
   /**

@@ -151,7 +151,10 @@ export class AvatarController {
     @Headers('x-user-id') userId: string
   ) {
     try {
-      await this.avatarService.deleteAvatar(id, userId)
+      const result = await this.avatarService.deleteAvatar(id, userId)
+      if (!result.success) {
+        return { code: 400, msg: result.error || '删除失败', data: null }
+      }
       return { code: 200, msg: 'success', data: null }
     } catch (err) {
       console.error('删除分身失败:', err)
