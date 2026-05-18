@@ -824,22 +824,26 @@
 .po-cb-benefit {
   background: #F0FDF4;
 }
-.po-cb-label {
+.po-cb-card-label {
   display: block;
   font-size: 22rpx;
   color: #94A3B8;
   margin-bottom: 6rpx;
 }
-.po-cb-value {
+.po-cb-card-value {
   display: block;
   font-size: 24rpx;
   font-weight: 600;
 }
-.po-cb-cost .po-cb-value {
+.po-cb-cost .po-cb-card-value {
   color: #DC2626;
 }
-.po-cb-benefit .po-cb-value {
+.po-cb-benefit .po-cb-card-value {
   color: #16A34A;
+}
+.po-cb-card-value-hl {
+  font-size: 32rpx !important;
+  font-weight: 700 !important;
 }
 
 /* 操作按钮行 */

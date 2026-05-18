@@ -18,6 +18,8 @@ interface OrderItem {
   platform: string
   platforms: string[]
   estimatedEarning: number
+  budget: number
+  avatarCountRaw: number
   deliveryDays: number
   acceptCount: number
   requirements: any
@@ -89,7 +91,9 @@ const Index: React.FC = () => {
           description: o.description || '',
           platform: canonicalizePlatform(o.platform || o.platforms?.[0]),
           platforms: Array.isArray(o.platforms) ? o.platforms : (o.platform ? [o.platform] : []),
-          estimatedEarning: Number(o.budget || o.price || o.estimatedEarning || 0),
+          budget: Number(o.budget || o.price || 0),
+          avatarCountRaw: Number(o.avatarCount || o.avatar_count || 0),
+          estimatedEarning: Number(o.budget || o.price || 0) / Math.max(Number(o.avatarCount || o.avatar_count || 0) || 1, 1),
           deliveryDays: o.deliveryDays || o.delivery_days || 3,
           acceptCount: o.acceptCount || o.accept_count || 0,
           requirements: o.requirements || {},
@@ -678,7 +682,6 @@ const Index: React.FC = () => {
               </View>
             ) : orders.length > 0 ? (
               orders.slice(0, 6).map(order => {
-                const platformConfig = getPlatformMeta(order.platform) || { color: '#7B3FE4', icon: '📋', name: order.platform }
                 const urgencyTag = getUrgencyTag(order)
                 const contentTypeTag = getContentTypeTag(order)
                 const priorityColor = urgencyTag ? urgencyTag.color : '#6366F1'
@@ -707,11 +710,16 @@ const Index: React.FC = () => {
                           </View>
                         )}
                         <View className="po-card-badges">
-                          <View className="po-platform-pill" style={{ background: `${platformConfig.color}15` }}>
-                            <Text className="po-platform-pill-text" style={{ color: platformConfig.color }}>
-                              {platformConfig.icon} {getPlatformLabel(order.platform)}
-                            </Text>
-                          </View>
+                          {(order.platforms && order.platforms.length > 0 ? order.platforms : [order.platform]).map((p: string, idx: number) => {
+                            const pc = getPlatformMeta(p) || { color: '#7B3FE4', icon: '📋', name: p }
+                            return (
+                              <View key={idx} className="po-platform-pill" style={{ background: `${pc.color}15` }}>
+                                <Text className="po-platform-pill-text" style={{ color: pc.color }}>
+                                  {pc.icon} {getPlatformLabel(p)}
+                                </Text>
+                              </View>
+                            )
+                          })}
                           {contentTypeTag && (
                             <View className="po-type-pill" style={{ background: contentTypeTag.bg }}>
                               <Text className="po-type-pill-text" style={{ color: contentTypeTag.color }}>{contentTypeTag.text}</Text>
@@ -801,41 +809,40 @@ const Index: React.FC = () => {
                         {order.description && (
                           <View className="po-req-block">
                             <Text className="po-req-block-title">📝 创作要求</Text>
-                            <Text className="po-req-block-content">{order.description}</Text>
+                            {order.description.split('\n').filter((line: string) => line.trim()).map((line: string, idx: number) => {
+                              const cleaned = line.replace(/^#{1,6}\s+/, '').replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1').replace(/^[-*]\s+/, '• ').replace(/^\d+\.\s+/, (m) => m)
+                              return <Text key={idx} className="block po-req-block-content">{cleaned}</Text>
+                            })}
                           </View>
                         )}
 
                         {/* 接单后流程 */}
                         <View className="po-steps">
-                          <View className="po-step">
-                            <View className="po-step-dot" style={{ background: '#6366F1' }} />
+                          <View className="po-step-row">
+                            <View className="po-step-dot po-step-dot-active"><Text className="po-step-num">1</Text></View>
                             <Text className="po-step-label">接单确认</Text>
                           </View>
-                          <View className="po-step-line" />
-                          <View className="po-step">
-                            <View className="po-step-dot" style={{ background: '#F59E0B' }} />
+                          <View className="po-step-connector" />
+                          <View className="po-step-row">
+                            <View className="po-step-dot" style={{ background: '#F59E0B' }}><Text className="po-step-num">2</Text></View>
                             <Text className="po-step-label">内容创作</Text>
                           </View>
-                          <View className="po-step-line" />
-                          <View className="po-step">
-                            <View className="po-step-dot" style={{ background: '#10B981' }} />
+                          <View className="po-step-connector" />
+                          <View className="po-step-row">
+                            <View className="po-step-dot po-step-dot-done"><Text className="po-step-num">3</Text></View>
                             <Text className="po-step-label">审核结算</Text>
                           </View>
                         </View>
 
                         {/* 付出与回报 */}
                         <View className="po-cost-benefit">
-                          <View className="po-cost-item">
-                            <Text className="po-cost-label">创作数量</Text>
-                            <Text className="po-cost-value">{order.quantityPerAvatar || 1}条/分身</Text>
+                          <View className="po-cb-card po-cb-cost">
+                            <Text className="block po-cb-card-label">创作数量</Text>
+                            <Text className="block po-cb-card-value">{order.quantityPerAvatar || 1}条/分身</Text>
                           </View>
-                          <View className="po-cost-item">
-                            <Text className="po-cost-label">分身数量</Text>
-                            <Text className="po-cost-value">{order.avatarCount || 1}个</Text>
-                          </View>
-                          <View className="po-cost-item">
-                            <Text className="po-cost-label">总收益</Text>
-                            <Text className="po-cost-value po-cost-value-highlight">¥{((order.estimatedEarning || 0) * (order.quantityPerAvatar || 1) * (order.avatarCount || 1)).toFixed(2)}</Text>
+                          <View className="po-cb-card po-cb-benefit">
+                            <Text className="block po-cb-card-label">预计收益</Text>
+                            <Text className="block po-cb-card-value po-cb-card-value-hl">¥{(order.estimatedEarning || 0).toFixed(2)}</Text>
                           </View>
                         </View>
                       </View>
@@ -843,14 +850,6 @@ const Index: React.FC = () => {
 
                     {/* 操作按钮 */}
                     <View className="po-card-actions">
-                      {!acceptedOrderIds[order.id] && (
-                        <View
-                          className="po-btn po-btn-decline"
-                          onClick={(e) => { e.stopPropagation() }}
-                        >
-                          <Text className="po-btn-label">婉拒</Text>
-                        </View>
-                      )}
                       <View
                         className="po-btn po-btn-accept"
                         onClick={(e) => {
