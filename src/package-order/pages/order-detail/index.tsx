@@ -143,7 +143,8 @@ export default function OrderDetailPage() {
 
   const orderId = Taro.getCurrentInstance().router?.params?.id
   const action = Taro.getCurrentInstance().router?.params?.action
-  const currentUserId = Taro.getStorageSync('userId')
+  const userInfo = Taro.getStorageSync('userInfo')
+  const currentUserId = userInfo?.id
 
   const fetchDetail = useCallback(async () => {
     if (!orderId) return

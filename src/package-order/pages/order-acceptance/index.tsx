@@ -82,7 +82,8 @@ export default function OrderAcceptance() {
       const res = await Network.request({ url: `/api/order/${orderId}` })
       if (res.data?.code === 200 && res.data.data?.summary_stats?.avatarStats) {
         const orderData = res.data.data
-        const currentUserId = Taro.getStorageSync('userId')
+        const userInfo = Taro.getStorageSync('userInfo')
+        const currentUserId = userInfo?.id
         const orderUserId = orderData.userId || orderData.user_id
         if (orderUserId && currentUserId && orderUserId !== currentUserId) {
           setHasPermission(false)
