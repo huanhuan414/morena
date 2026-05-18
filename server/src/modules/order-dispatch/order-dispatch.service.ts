@@ -781,9 +781,17 @@ async getExecutionProgress(orderId: string) {
     )
     const acceptedCount = acceptedCountRows?.[0]?.count || 0
     
-    // 📌 非匹配分身接单时，如果接单后名额已满，需要踢掉一个未接单的匹配分身（匹配度最低的优先踢出）
+    // 📌 非匹配分身接单时，如果 已接单数+匹配但未接单数 >= 需要分身数，需要踢掉一个未接单的匹配分身（匹配度最低的优先踢出）
     const isMatchedAvatar = request._isMatchedAvatar === true
-    if (!isMatchedAvatar && acceptedCount >= requiredCount) {
+    // 计算匹配但未接单的数量（status=pending 的分派记录）
+    const matchedPendingRows = await db.query(
+      `SELECT COUNT(*) as count FROM order_dispatch_requests WHERE order_id = ? AND status = 'pending'`,
+      [orderId]
+    )
+    const matchedPendingCount = matchedPendingRows?.[0]?.count || 0
+    const shouldKick = !isMatchedAvatar && (acceptedCount + matchedPendingCount) >= requiredCount
+    console.log(`[acceptOrder] 踢人判断: isMatched=${isMatchedAvatar}, accepted=${acceptedCount}, pending=${matchedPendingCount}, required=${requiredCount}, shouldKick=${shouldKick}`)
+    if (shouldKick) {
       // 找到该订单中仍处于 pending 状态的匹配分派记录（按匹配度从低到高排序，最低的优先踢出）
       const pendingDispatches = await db.query(
         `SELECT d.id, d.avatar_id, d.user_id, d.match_score 
