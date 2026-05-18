@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, ScrollView } from '@tarojs/components'
-import { Bell, Settings, Users, FileText, Coins, Plus, Zap, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye, ShoppingBag, ChevronRight, Gift, Rocket, Clock } from 'lucide-react-taro'
+import { Bell, Settings, Users, FileText, Coins, Plus, Zap, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye, ShoppingBag, ChevronRight, Gift, Rocket, Clock, CircleCheckBig } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { BANNER_TITLE, BANNER_DESC } from '@/constants/referral-rewards'
 import { PLATFORM_UI_ORDER, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
@@ -27,58 +27,6 @@ interface OrderItem {
   urgency?: string
   contentType?: string
 }
-
-// 精心设计的示例数据 — 刺激用户接单欲望
-const DEMO_ORDERS: OrderItem[] = [
-  {
-    id: 'demo_1', title: '小红书美妆种草笔记撰写',
-    description: '需要3篇原创种草笔记，要求真实感强、配图精美，符合小红书调性。',
-    platform: 'xiaohongshu', estimatedEarning: 420, deliveryDays: 2,
-    requirements: ['原创撰写', '3篇起', '配图3张/篇'],
-    publisher: { nickname: '花西子品牌方', rating: 4.9 },
-    createdAt: '30分钟前', isDemo: true, urgency: 'urgent', acceptCount: 3, matchScore: 95, contentType: 'content'
-  },
-  {
-    id: 'demo_2', title: '抖音短视频脚本创作',
-    description: '为新品30秒短视频创作脚本，需突出产品卖点和使用场景，节奏感强。',
-    platform: 'douyin', estimatedEarning: 680, deliveryDays: 3,
-    requirements: ['脚本撰写', '分镜设计', '配音稿'],
-    publisher: { nickname: '科技新品局', rating: 4.8 },
-    createdAt: '1小时前', isDemo: true, urgency: 'urgent', acceptCount: 5, matchScore: 88, contentType: 'video'
-  },
-  {
-    id: 'demo_3', title: '微信公众号品牌推广软文',
-    description: '撰写品牌推广软文，要求文笔流畅、传播力强，阅读量目标10w+。',
-    platform: 'wechat_mp', estimatedEarning: 560, deliveryDays: 2,
-    requirements: ['原创撰写', 'SEO优化', '配图设计'],
-    publisher: { nickname: '新消费品牌', rating: 4.7 },
-    createdAt: '2小时前', isDemo: true, urgency: 'normal', acceptCount: 2, matchScore: 82, contentType: 'marketing'
-  },
-  {
-    id: 'demo_4', title: 'B站数码产品深度测评',
-    description: '数码产品深度测评内容，包含图文和视频脚本，需要专业性和可读性。',
-    platform: 'bilibili', estimatedEarning: 1200, deliveryDays: 5,
-    requirements: ['深度测评', '对比分析', '实拍素材'],
-    publisher: { nickname: '数码研究所', rating: 4.95 },
-    createdAt: '3小时前', isDemo: true, urgency: 'hot', acceptCount: 8, matchScore: 91, contentType: 'content'
-  },
-  {
-    id: 'demo_5', title: '快手美食探店视频脚本',
-    description: '探店短视频脚本创作，需要创意拍摄方案和剪辑建议，吸引本地流量。',
-    platform: 'kuaishou', estimatedEarning: 380, deliveryDays: 2,
-    requirements: ['脚本撰写', '拍摄方案', '剪辑建议'],
-    publisher: { nickname: '城市美食家', rating: 4.6 },
-    createdAt: '5小时前', isDemo: true, urgency: 'normal', acceptCount: 1, matchScore: 76, contentType: 'video'
-  },
-  {
-    id: 'demo_6', title: '小红书旅行攻略图文',
-    description: '撰写热门旅行目的地攻略，包含行程规划、美食推荐、拍照打卡点。',
-    platform: 'xiaohongshu', estimatedEarning: 350, deliveryDays: 3,
-    requirements: ['原创撰写', '配图9张+', '行程规划'],
-    publisher: { nickname: '旅行研究所', rating: 4.8 },
-    createdAt: '6小时前', isDemo: true, urgency: 'normal', acceptCount: 0, matchScore: 73, contentType: 'content'
-  }
-]
 
 const Index: React.FC = () => {
   const [userName, setUserName] = useState('用户')
@@ -125,44 +73,32 @@ const Index: React.FC = () => {
       console.log('[首页] 获取公开订单 URL:/api/order/open, Method:GET, Params:', activePlatform !== 'all' ? { platform: activePlatform } : {}, 'Response:', res.data)
 
       if (res.data?.code === 200 && res.data?.data) {
-        const rawOrders = Array.isArray(res.data.data) ? res.data.data : (res.data.data.orders || res.data.data.list || [])
-        if (rawOrders.length > 0) {
-          const mapped: OrderItem[] = rawOrders.map((o: any) => ({
-            id: o.id,
-            title: o.title || '未命名订单',
-            description: o.description || o.requirements || '',
-            platform: canonicalizePlatform(o.platform || o.platforms?.[0]),
-            estimatedEarning: Number(o.budget || o.estimatedEarning || 0),
-            deliveryDays: o.deliveryDays || o.delivery_days || 3,
-            acceptCount: o.acceptCount || o.accept_count || 0,
-            requirements: Array.isArray(o.requirements) ? o.requirements : (o.tags ? o.tags.split(',').filter(Boolean) : []),
-            publisher: { nickname: o.publisher?.nickname || o.owner_nickname || '匿名', rating: o.publisher?.rating || 5.0 },
-            matchScore: o.matchScore || o.match_score,
-            createdAt: o.createdAt || o.created_at || '',
-          }))
-          setOrders(mapped)
-        } else {
-          // API 无数据时用 demo 兜底
-          setOrders(filterDemoByPlatform(activePlatform))
-        }
+        const apiData = res.data.data
+        const rawOrders = Array.isArray(apiData) ? apiData : (apiData.items || apiData.orders || apiData.list || [])
+        const mapped: OrderItem[] = rawOrders.map((o: any) => ({
+          id: o.id,
+          title: o.title || '未命名订单',
+          description: o.description || o.requirements || '',
+          platform: canonicalizePlatform(o.platform || o.platforms?.[0]),
+          estimatedEarning: Number(o.budget || o.estimatedEarning || 0),
+          deliveryDays: o.deliveryDays || o.delivery_days || 3,
+          acceptCount: o.acceptCount || o.accept_count || 0,
+          requirements: Array.isArray(o.requirements) ? o.requirements : (o.tags ? o.tags.split(',').filter(Boolean) : []),
+          publisher: { nickname: o.publisher?.nickname || o.owner_nickname || '匿名', rating: o.publisher?.rating || 5.0 },
+          matchScore: o.matchScore || o.match_score,
+          createdAt: o.createdAt || o.created_at || '',
+        }))
+        setOrders(mapped)
       } else {
-        setOrders(filterDemoByPlatform(activePlatform))
+        setOrders([])
       }
     } catch (err) {
       console.error('获取公开订单失败:', err)
-      setOrders(filterDemoByPlatform(activePlatform))
+      setOrders([])
     } finally {
       setOrdersLoading(false)
     }
   }, [activePlatform])
-
-  // 根据 Tab 筛选 demo 数据
-  const filterDemoByPlatform = (platform: string) => {
-    if (platform === 'all') return DEMO_ORDERS
-    return DEMO_ORDERS.filter(o => o.platform === platform).length > 0
-      ? DEMO_ORDERS.filter(o => o.platform === platform)
-      : DEMO_ORDERS
-  }
 
   // 获取分配给当前用户的待接订单（仅弹窗通知用）
   const fetchAssignedOrders = useCallback(async () => {
@@ -703,129 +639,144 @@ const Index: React.FC = () => {
             </View>
           </ScrollView>
 
-          {/* 订单列表 */}
+          {/* 订单列表 - 待接订单风格卡片 */}
           <View className="home-order-list">
             {ordersLoading ? (
-              <View className="order-loading">
-                <Text className="order-loading-text">加载中...</Text>
+              <View className="po-loading">
+                <View className="po-spinner" />
+                <Text className="po-loading-text">加载中...</Text>
               </View>
             ) : orders.length > 0 ? (
               orders.slice(0, 6).map(order => {
                 const platformConfig = getPlatformMeta(order.platform) || { color: '#7B3FE4', icon: '📋', name: order.platform }
                 const urgencyTag = getUrgencyTag(order)
                 const contentTypeTag = getContentTypeTag(order)
-                const isDemo = order.isDemo
+                const priorityColor = urgencyTag ? urgencyTag.color : '#6366F1'
 
                 return (
                   <View
                     key={order.id}
-                    className="home-order-card"
-                    onClick={() => {
-                      if (isDemo) {
-                        goToPage('/package-order/pages/order-square/index')
-                      } else {
-                        Taro.navigateTo({ url: `/package-order/pages/order-detail/index?orderId=${order.id}` })
-                      }
-                    }}
+                    className="po-card"
+                    onClick={() => Taro.navigateTo({ url: `/package-order/pages/order-detail/index?orderId=${order.id}` })}
                   >
-                    {/* 卡片顶部条 */}
-                    {urgencyTag && (
-                      <View className="home-card-strip" style={{ background: urgencyTag.color }} />
-                    )}
-                    {isDemo && (
-                      <View className="home-card-strip demo-strip" />
-                    )}
+                    {/* 优先级色条 */}
+                    <View className="po-priority-bar" style={{ background: priorityColor }} />
 
-                    {/* 头部：平台 + 紧急 + 内容类型 */}
-                    <View className="home-card-header">
-                      <View className="home-card-header-left">
-                        <View className="home-platform-badge" style={{ background: `${platformConfig.color}15` }}>
-                          <Text className="home-platform-icon">{platformConfig.icon}</Text>
-                          <Text className="home-platform-name" style={{ color: platformConfig.color }}>
-                            {getPlatformLabel(order.platform)}
+                    {/* 卡片头部：平台 + badges */}
+                    <View className="po-card-top">
+                      <View className="po-card-badges">
+                        <View className="po-platform-pill" style={{ background: `${platformConfig.color}15` }}>
+                          <Text className="po-platform-pill-text" style={{ color: platformConfig.color }}>
+                            {platformConfig.icon} {getPlatformLabel(order.platform)}
                           </Text>
                         </View>
-                        {urgencyTag && (
-                          <View className="home-urgency-badge" style={{ background: urgencyTag.bg }}>
-                            <Text className="home-urgency-text" style={{ color: urgencyTag.color }}>{urgencyTag.text}</Text>
+                        {contentTypeTag && (
+                          <View className="po-type-pill" style={{ background: contentTypeTag.bg }}>
+                            <Text className="po-type-pill-text" style={{ color: contentTypeTag.color }}>{contentTypeTag.text}</Text>
                           </View>
                         )}
-                        {contentTypeTag && (
-                          <View className="home-content-type-badge" style={{ background: contentTypeTag.bg }}>
-                            <Text className="home-content-type-text" style={{ color: contentTypeTag.color }}>{contentTypeTag.text}</Text>
+                        {urgencyTag && (
+                          <View className="po-priority-pill" style={{ background: urgencyTag.bg }}>
+                            <Text className="po-priority-pill-text" style={{ color: urgencyTag.color }}>{urgencyTag.text}</Text>
                           </View>
                         )}
                       </View>
-                      <Text className="home-publish-time">{order.createdAt}</Text>
-                    </View>
-
-                    {/* 标题 + 匹配度 */}
-                    <View className="home-order-title-row">
-                      <Text className="home-order-title">{order.title}</Text>
-                      {order.matchScore && order.matchScore >= 70 && (
-                        <View className="home-match-badge" style={{ background: `${getMatchColor(order.matchScore)}15` }}>
-                          <TrendingUp size={12} color={getMatchColor(order.matchScore)} />
-                          <Text className="home-match-text" style={{ color: getMatchColor(order.matchScore) }}>
-                            {order.matchScore}%
-                          </Text>
+                      {order.matchScore != null && order.matchScore > 0 && (
+                        <View className="po-avatar-match" style={{ background: `${getMatchColor(order.matchScore)}15`, color: getMatchColor(order.matchScore) }}>
+                          {order.matchScore}%匹配
                         </View>
                       )}
                     </View>
+
+                    {/* 标题 */}
+                    <Text className="po-card-title">{order.title}</Text>
 
                     {/* 描述 */}
                     {order.description && (
-                      <Text className="home-order-desc">{order.description}</Text>
+                      <Text className="po-card-desc">{order.description}</Text>
                     )}
 
-                    {/* 信息行：交付周期 + 已接单 + 发布者 */}
-                    <View className="home-order-info-row">
-                      <View className="home-info-item">
-                        <Clock size={12} color="#94A3B8" />
-                        <Text className="home-info-text">{order.deliveryDays}天交付</Text>
+                    {/* 回报卡片：收益 + 交付周期 */}
+                    <View className="po-reward-card">
+                      <View className="po-reward-left">
+                        <View className="po-reward-amount">
+                          <Text className="po-reward-symbol">¥</Text>
+                          <Text className="po-reward-value">{order.estimatedEarning.toFixed(2)}</Text>
+                          <Text className="po-reward-unit">/单</Text>
+                        </View>
+                        <Text className="po-reward-hint">预计创作收益</Text>
+                      </View>
+                      <View className="po-reward-divider" />
+                      <View className="po-reward-right">
+                        <View className="po-reward-meta">
+                          <Clock size={16} color="#6366F1" />
+                          <Text className="po-reward-meta-text">{order.deliveryDays}天</Text>
+                        </View>
+                        <Text className="po-reward-meta-sub">交付周期</Text>
                       </View>
                       {order.acceptCount > 0 && (
-                        <View className="home-info-item">
-                          <Users size={12} color="#94A3B8" />
-                          <Text className="home-info-text">{order.acceptCount}人已接</Text>
-                        </View>
+                        <>
+                          <View className="po-reward-divider" />
+                          <View className="po-reward-right">
+                            <View className="po-reward-meta">
+                              <Users size={16} color="#6366F1" />
+                              <Text className="po-reward-meta-text">{order.acceptCount}</Text>
+                            </View>
+                            <Text className="po-reward-meta-sub">已接单</Text>
+                          </View>
+                        </>
                       )}
-                      <View className="home-info-item">
-                        <Text className="home-info-text">{order.publisher?.nickname || '匿名'}</Text>
-                      </View>
                     </View>
 
-                    {/* 标签 + 收益 + 接单按钮 */}
-                    <View className="home-card-bottom">
-                      <View className="home-card-bottom-left">
-                        {order.requirements.slice(0, 2).map((req, idx) => (
-                          <View key={idx} className="home-req-tag">
-                            <Text className="home-req-tag-text">{req}</Text>
-                          </View>
+                    {/* 需求标签 */}
+                    {order.requirements.length > 0 && (
+                      <View className="po-match-tags" style={{ marginBottom: '12rpx' }}>
+                        {order.requirements.slice(0, 3).map((req, idx) => (
+                          <Text key={idx} className="po-match-tag po-match-tag-skill">{req}</Text>
                         ))}
-                        <View className="home-earn-tag">
-                          <Coins size={14} color="#F59E0B" />
-                          <Text className="home-earn-value">¥{order.estimatedEarning}</Text>
-                        </View>
                       </View>
-                      <View onClick={(e) => e.stopPropagation()}>
-                        <View
-                          className={`home-accept-btn ${isDemo ? 'demo' : ''} ${acceptedOrderIds[order.id] ? 'accepted' : ''} ${acceptingOrderIds[order.id] ? 'loading' : ''}`}
-                          onClick={() => handleAcceptOrder(order.id)}
-                        >
-                          <Text className="home-accept-btn-text">
-                            {isDemo ? '去接单' : (acceptedOrderIds[order.id] ? '已接单' : (acceptingOrderIds[order.id] ? '接单中' : '接单'))}
-                          </Text>
-                        </View>
+                    )}
+
+                    {/* 操作按钮 */}
+                    <View className="po-card-actions">
+                      <View
+                        className="po-btn po-btn-accept"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (!acceptedOrderIds[order.id] && !acceptingOrderIds[order.id]) {
+                            handleAcceptOrder(order.id)
+                          }
+                        }}
+                      >
+                        {acceptingOrderIds[order.id] ? (
+                          <>
+                            <View className="po-btn-mini-spinner" />
+                            <Text className="po-btn-label po-btn-label-primary">接单中...</Text>
+                          </>
+                        ) : acceptedOrderIds[order.id] ? (
+                          <>
+                            <CircleCheckBig size={16} color="#fff" />
+                            <Text className="po-btn-label po-btn-label-primary">已接单</Text>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={16} color="#fff" />
+                            <Text className="po-btn-label po-btn-label-primary">接单赚¥{order.estimatedEarning.toFixed(2)}</Text>
+                            <ChevronRight size={14} color="rgba(255,255,255,0.7)" />
+                          </>
+                        )}
                       </View>
                     </View>
                   </View>
                 )
               })
             ) : (
-              <View className="home-order-empty">
-                <ShoppingBag size={48} color="#CBD5E1" />
-                <Text className="home-order-empty-text">暂无可接订单</Text>
-                <Text className="home-order-empty-hint">切换平台看看或稍后再来</Text>
+              <View className="po-empty">
+                <View className="po-empty-icon">
+                  <ShoppingBag size={48} color="#CBD5E1" />
+                </View>
+                <Text className="po-empty-title">暂无可接订单</Text>
+                <Text className="po-empty-desc">切换平台看看或稍后再来</Text>
               </View>
             )}
           </View>
