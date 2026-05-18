@@ -286,7 +286,7 @@ export class AvatarService {
             SUM(amount) as total_earnings,
             SUM(CASE WHEN created_at >= ? THEN amount ELSE 0 END) as today_earnings
            FROM earnings 
-           WHERE avatar_id IN (${idList}) AND status = 'completed'
+           WHERE avatar_id IN (${idList}) AND status IN ('settled', 'completed')
            GROUP BY avatar_id`,
           [today]
         )
