@@ -373,6 +373,19 @@ export class ContentGenerationService implements OnModuleInit {
     }
 
     // 5. 根据各环节成败决定最终状态
+    // 注意：generateImages/generateVideos 返回空数组时不抛异常，但实际生成失败
+    // 所以除了检查 failed 标志，还要检查"需要生成但结果为空"的情况
+    const imageMissing = needImage && !imageFailed && images.length === 0
+    const videoMissing = needVideo && !videoFailed && videos.length === 0
+    if (imageMissing) {
+      imageFailed = true
+      this.logger.warn(`配图生成返回空结果，标记为失败`)
+    }
+    if (videoMissing) {
+      videoFailed = true
+      this.logger.warn(`视频生成返回空结果，标记为失败`)
+    }
+
     const hasAnyContent = textContent || images.length > 0 || videos.length > 0
     const allRequiredFailed = (needText && textFailed && !textContent) &&
                               (needImage && imageFailed && images.length === 0) &&

@@ -875,9 +875,12 @@ export default function OrderDetailPage() {
               </View>
             )}
             {isNeedMatching && (
-              <View className="od-action-btn od-action-primary" onClick={() => {
-                Taro.navigateTo({ url: `/package-order/pages/order-matching/index?orderId=${orderId}` })
-              }}>
+              <View
+                className="od-action-btn od-action-primary"
+                onClick={() => {
+                  Taro.navigateTo({ url: `/package-order/pages/order-matching/index?orderId=${orderId}` })
+                }}
+              >
                 <Users size={16} color="#fff" />
                 <Text className="block od-action-text" style={{ color: '#fff' }}>匹配分身</Text>
               </View>

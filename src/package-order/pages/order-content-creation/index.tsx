@@ -245,7 +245,6 @@ export default function OrderContentCreation() {
   // 生成中的状态集合 —— 只有这些状态算"还在生成"
   const GENERATING_STATUSES = ['pending', 'processing', 'generating_text', 'generating_images', 'generating_video']
   const isPartialFailed = rawStatus === 'partial_failed'
-  const isCompleted = !GENERATING_STATUSES.includes(rawStatus) && rawStatus !== 'failed' && !isPartialFailed
   const isGenerating = GENERATING_STATUSES.includes(rawStatus)
 
   // 重试生成失败内容
@@ -277,6 +276,15 @@ export default function OrderContentCreation() {
   const textContent = genContent?.content || ''
   const images = genContent?.images || []
   const videos = genContent?.videos || []
+
+  // preview 状态需额外检查：如果需要图片/视频但实际为空，视为部分失败
+  const needImage = contentType === 'image_text' || contentType === 'image'
+  const needVideo = contentType === 'video' || contentType === 'video_text'
+  const imageEmpty = needImage && images.length === 0
+  const videoEmpty = needVideo && videos.length === 0
+  const isPreviewWithMissing = rawStatus === 'preview' && (imageEmpty || videoEmpty)
+  const effectiveIsPartialFailed = isPartialFailed || isPreviewWithMissing
+  const isCompleted = !GENERATING_STATUSES.includes(rawStatus) && rawStatus !== 'failed' && !effectiveIsPartialFailed
 
   // 完成状态文案
   const getCompletedLabel = useCallback((status: string) => {
@@ -328,7 +336,7 @@ export default function OrderContentCreation() {
           <View className="cc-header-center">
             <Text className="cc-header-title">内容生成</Text>
             <Text className="cc-header-desc">
-              {isCompleted ? '内容已生成完成' : isPartialFailed ? '部分内容生成失败' : 'AI正在为你创作内容'}
+              {isCompleted ? '内容已生成完成' : effectiveIsPartialFailed ? '部分内容生成失败' : 'AI正在为你创作内容'}
             </Text>
           </View>
           <View className="cc-header-placeholder" />
@@ -340,8 +348,8 @@ export default function OrderContentCreation() {
         {orderInfo && (
           <View className="cc-order-card">
             <View className="cc-order-row">
-              <View className="cc-order-badge" style={{ background: isCompleted ? '#22C55E' : isPartialFailed ? '#EF4444' : '#6366F1' }}>
-                <Text className="cc-order-badge-text">{isCompleted ? '已完成' : isPartialFailed ? '部分失败' : '生成中'}</Text>
+              <View className="cc-order-badge" style={{ background: isCompleted ? '#22C55E' : effectiveIsPartialFailed ? '#EF4444' : '#6366F1' }}>
+                <Text className="cc-order-badge-text">{isCompleted ? '已完成' : effectiveIsPartialFailed ? '部分失败' : '生成中'}</Text>
               </View>
               <View className="cc-order-type">
                 <Text className="cc-order-type-text">{isVideo ? '视频' : '图文'}</Text>
@@ -476,13 +484,21 @@ export default function OrderContentCreation() {
         </View>
 
         {/* 完成/部分失败状态 - 内容展示 */}
-        {(isCompleted || isPartialFailed) && (
+        {(isCompleted || effectiveIsPartialFailed) && (
           <View className="cc-content-section">
             {/* 完成/部分失败横幅 */}
-            {isPartialFailed ? (
+            {effectiveIsPartialFailed ? (
               <View className="cc-done-banner" style={{ background: '#FEF2F2' }}>
                 <RefreshCw size={20} color="#EF4444" />
-                <Text className="block cc-done-text" style={{ color: '#EF4444' }}>部分内容生成失败，可点击重试</Text>
+                <Text className="block cc-done-text" style={{ color: '#EF4444' }}>
+                  {(() => {
+                    const missing: string[] = []
+                    if (imageEmpty) missing.push('配图')
+                    if (videoEmpty) missing.push('视频')
+                    if (missing.length > 0) return `${missing.join('和')}生成失败，可点击重试`
+                    return '部分内容生成失败，可点击重试'
+                  })()}
+                </Text>
               </View>
             ) : (
               <View className="cc-done-banner">
@@ -492,7 +508,7 @@ export default function OrderContentCreation() {
             )}
 
             {/* 重试按钮 */}
-            {isPartialFailed && (
+            {effectiveIsPartialFailed && (
               <View style={{ marginTop: '12rpx', marginBottom: '12rpx' }}>
                 <Button size="sm" variant="outline" onClick={handleRetry}>
                   <Text>重新生成失败内容</Text>

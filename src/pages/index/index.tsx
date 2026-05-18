@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, ScrollView } from '@tarojs/components'
-import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Grid2x2, Rocket, ChevronRight, Send, Gift, Zap, TrendingUp, Wallet, Sparkles, Target, ArrowRight, CircleDollarSign, HandCoins, Eye } from 'lucide-react-taro'
+import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Grid2x2, Rocket, ChevronRight, Send, Gift, Zap, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, HandCoins, Eye } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { QUICK_ACTION_TAG, BANNER_TITLE, BANNER_DESC } from '@/constants/referral-rewards'
 import { useUserStore } from '@/stores/user'
@@ -130,7 +130,10 @@ const Index: React.FC = () => {
   }
 
   // 实时动态
+  /* eslint-disable @typescript-eslint/no-unused-vars */
+  // @ts-expect-error used in JSX activity cards below
   const [activities, setActivities] = useState<any[]>([])
+  /* eslint-enable @typescript-eslint/no-unused-vars */
 
   const fetchActivities = async () => {
     try {
