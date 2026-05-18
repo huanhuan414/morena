@@ -212,7 +212,22 @@ const Index: React.FC = () => {
       console.log('[首页] 接单 URL:', `/api/order-dispatch/avatar/${avatarIdToUse}/accept/${orderId}`, 'Method:POST', 'Response:', res.data)
       if (res.data?.code === 200) {
         setAcceptedOrderIds(prev => ({ ...prev, [orderId]: true }))
-        Taro.showToast({ title: '接单成功', icon: 'success' })
+        Taro.showToast({ title: '接单成功，正在生成内容', icon: 'success' })
+        // 跳转到内容生成页面
+        const result = res.data?.data || {}
+        const nextRequestId = result.requestId || ''
+        const nextAvatarId = result.avatarId || avatarIdToUse
+        const nextOrderId = result.orderId || orderId
+        const query = [
+          `orderId=${encodeURIComponent(nextOrderId)}`,
+          `avatarId=${encodeURIComponent(nextAvatarId)}`,
+          nextRequestId ? `requestId=${encodeURIComponent(nextRequestId)}` : '',
+        ].filter(Boolean).join('&')
+        setTimeout(() => {
+          Taro.navigateTo({
+            url: `/package-order/pages/order-processing/index?${query}`
+          })
+        }, 500)
         fetchOrders()
         fetchStats()
       } else {

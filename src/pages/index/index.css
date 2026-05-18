@@ -1066,7 +1066,7 @@
   overflow: hidden;
 }
 .notification-modal-header {
-  background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+  background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #7C3AED 100%);
   display: flex;
   flex-direction: row;
   align-items: center;
