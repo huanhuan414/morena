@@ -132,6 +132,24 @@ export class AvatarService {
     // 尝试使用数据库
     try {
       const db = getMySQLClient()
+
+      // 确保用户存在于 users 表，避免外键约束报错
+      if (effectiveUserId && !TEST_USER_IDS.includes(effectiveUserId)) {
+        try {
+          const userResult = await db.query('SELECT id FROM users WHERE id = ?', [effectiveUserId])
+          const userRow = (userResult as any)?.data?.[0] || (Array.isArray(userResult) ? (userResult as any)[0] : null)
+          if (!userRow) {
+            console.warn('[AvatarService] 用户不存在于users表，自动创建, userId:', effectiveUserId)
+            await db.query(
+              'INSERT IGNORE INTO users (id, openid, nickname, level, exp, credits, created_at, updated_at) VALUES (?, ?, ?, 1, 0, 0, NOW(), NOW())',
+              [effectiveUserId, `auto_${effectiveUserId}`, avatarData.name ? `用户${avatarData.name.slice(0, 2)}` : `用户${effectiveUserId.slice(0, 6)}`]
+            )
+          }
+        } catch (userErr: any) {
+          console.warn('[AvatarService] 检查/创建用户记录失败:', userErr.message)
+        }
+      }
+
       let isFirstAvatar = false
       try {
         const countResult = await db.query('SELECT COUNT(*) as count FROM avatars WHERE user_id = ?', [effectiveUserId || 'dev_user'])
