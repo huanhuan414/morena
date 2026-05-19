@@ -972,7 +972,7 @@ async getExecutionProgress(orderId: string) {
   /**
    * 启动内容生成流程（带重试和兜底）
    */
-  private async startContentGeneration(orderId: string, avatarId: string, request: any) {
+  async startContentGeneration(orderId: string, avatarId: string, request: any) {
     const MAX_RETRIES = 3
     let lastError: any = null
 

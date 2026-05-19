@@ -2,6 +2,7 @@ import { Controller, Get, Post, Delete, Body, Param, Query, HttpCode, HttpStatus
 import { ContentGenerationService } from './content-generation.service'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { OrderService } from '../order/order.service'
+import { OrderDispatchService } from '../order-dispatch/order-dispatch.service'
 
 @Controller('content-generation')
 export class ContentGenerationController {
@@ -10,6 +11,7 @@ export class ContentGenerationController {
   constructor(
     @Inject(ContentGenerationService) private readonly contentGenerationService: ContentGenerationService,
     @Inject(forwardRef(() => OrderService)) private readonly orderService: OrderService,
+    @Inject(forwardRef(() => OrderDispatchService)) private readonly orderDispatchService: OrderDispatchService,
   ) {}
 
   private async getContentGenerationColumns(db: any) {
@@ -88,77 +90,23 @@ export class ContentGenerationController {
       }
       const record = records[0]
 
-      // 查询分身详细信息（补充缺失的字段）
-      let avatarName = ''
-      let avatarPersonality = ''
-      let avatarSkills: string[] = []
-      try {
-        const avatarRows: any = await db.query(
-          'SELECT name, personality FROM avatars WHERE id = ?',
-          [record.avatar_id]
-        )
-        if (avatarRows && avatarRows.length > 0) {
-          avatarName = avatarRows[0].name || ''
-          avatarPersonality = avatarRows[0].personality || ''
-        }
-        // 查询分身技能
-        const skillRows: any = await db.query(
-          'SELECT skill_id FROM avatar_skills WHERE avatar_id = ?',
-          [record.avatar_id]
-        )
-        if (skillRows && skillRows.length > 0) {
-          avatarSkills = skillRows.map((s: any) => s.skill_id)
-        }
-      } catch (e) {
-        console.warn('[retryGeneration] 查询分身信息失败:', e)
-      }
-
-      // 查询订单详细信息（获取 contentStyles, nicheTags）
-      let contentStyles: string[] = []
-      let nicheTags: string[] = []
-      try {
-        const orderRows: any = await db.query(
-          'SELECT preferred_styles, industry_tags FROM orders WHERE id = ?',
-          [record.order_id]
-        )
-        if (orderRows && orderRows.length > 0) {
-          const order = orderRows[0]
-          if (order.preferred_styles) {
-            try { contentStyles = JSON.parse(order.preferred_styles) } catch {}
-          }
-          if (order.industry_tags) {
-            try { nicheTags = JSON.parse(order.industry_tags) } catch {}
-          }
-        }
-      } catch (e) {
-        console.warn('[retryGeneration] 查询订单信息失败:', e)
-      }
-
-      // 将状态重置为 processing，触发重新生成
+      // 将状态重置为 processing
       await db.query(
         'UPDATE content_generation_requests SET status = ?, updated_at = NOW() WHERE id = ?',
         ['processing', requestId]
       )
 
-      // 异步触发重新生成（不阻塞响应）
-      const payload = {
-        orderId: record.order_id,
-        requestId: record.id,
-        avatarId: record.avatar_id,
-        avatarName,
-        avatarPersonality,
-        avatarSkills,
-        contentStyles,
-        nicheTags,
-        orderTitle: record.order_title || '',
-        orderDescription: record.order_description || '',
-        platforms: record.platforms ? JSON.parse(record.platforms) : [],
-        contentType: record.content_type || 'image',
-        targetAudience: record.target_audience || '通用用户',
-        contentQuantity: record.content_quantity || 1,
-      }
-
-      this.contentGenerationService.generateContent(payload).catch((err: any) => {
+      // 复用第一次生成的逻辑（自动获取订单、分身完整信息）
+      this.orderDispatchService.startContentGeneration(
+        record.order_id,
+        record.avatar_id,
+        {
+          order_title: record.order_title,
+          description: record.order_description,
+          target_audience: record.target_audience,
+          quantity_per_avatar: record.content_quantity,
+        }
+      ).catch((err: any) => {
         console.error('[ContentGeneration] retry generation error:', err.message)
       })
 
