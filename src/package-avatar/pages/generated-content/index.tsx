@@ -74,7 +74,7 @@ function safeParseJSON(val: any): any[] {
 // 内容类型图标和名称
 function getContentTypeInfo(type: string): { icon: any; name: string } {
   switch (type) {
-    case 'article': return { icon: FileText, name: '图文文章' }
+    case 'text': return { icon: FileText, name: '图文文章' }
     case 'video_text': case 'video_script': case 'video': return { icon: Play, name: '视频' }
     default: return { icon: ImagePlus, name: '文案+配图' }
   }

@@ -88,6 +88,52 @@ export class ContentGenerationController {
       }
       const record = records[0]
 
+      // 查询分身详细信息（补充缺失的字段）
+      let avatarName = ''
+      let avatarPersonality = ''
+      let avatarSkills: string[] = []
+      try {
+        const avatarRows: any = await db.query(
+          'SELECT name, personality FROM avatars WHERE id = ?',
+          [record.avatar_id]
+        )
+        if (avatarRows && avatarRows.length > 0) {
+          avatarName = avatarRows[0].name || ''
+          avatarPersonality = avatarRows[0].personality || ''
+        }
+        // 查询分身技能
+        const skillRows: any = await db.query(
+          'SELECT skill_id FROM avatar_skills WHERE avatar_id = ?',
+          [record.avatar_id]
+        )
+        if (skillRows && skillRows.length > 0) {
+          avatarSkills = skillRows.map((s: any) => s.skill_id)
+        }
+      } catch (e) {
+        console.warn('[retryGeneration] 查询分身信息失败:', e)
+      }
+
+      // 查询订单详细信息（获取 contentStyles, nicheTags）
+      let contentStyles: string[] = []
+      let nicheTags: string[] = []
+      try {
+        const orderRows: any = await db.query(
+          'SELECT preferred_styles, industry_tags FROM orders WHERE id = ?',
+          [record.order_id]
+        )
+        if (orderRows && orderRows.length > 0) {
+          const order = orderRows[0]
+          if (order.preferred_styles) {
+            try { contentStyles = JSON.parse(order.preferred_styles) } catch {}
+          }
+          if (order.industry_tags) {
+            try { nicheTags = JSON.parse(order.industry_tags) } catch {}
+          }
+        }
+      } catch (e) {
+        console.warn('[retryGeneration] 查询订单信息失败:', e)
+      }
+
       // 将状态重置为 processing，触发重新生成
       await db.query(
         'UPDATE content_generation_requests SET status = ?, updated_at = NOW() WHERE id = ?',
@@ -99,6 +145,11 @@ export class ContentGenerationController {
         orderId: record.order_id,
         requestId: record.id,
         avatarId: record.avatar_id,
+        avatarName,
+        avatarPersonality,
+        avatarSkills,
+        contentStyles,
+        nicheTags,
         orderTitle: record.order_title || '',
         orderDescription: record.order_description || '',
         platforms: record.platforms ? JSON.parse(record.platforms) : [],
@@ -113,6 +164,7 @@ export class ContentGenerationController {
 
       return { code: 200, message: '已开始重新生成', data: { requestId, status: 'processing' } }
     } catch (error: any) {
+      console.error('[ContentGeneration] retry error:', error)
       return { code: 500, message: '重试失败', error: error.message }
     }
   }
