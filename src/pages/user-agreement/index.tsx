@@ -193,7 +193,7 @@ const UserAgreement: React.FC = () => {
       </View>
 
       <View className="agreement-footer">
-        <Text className="footer-text">© 2025 莫瑞娜AI 版权所有</Text>
+        <Text className="footer-text">© 2026 莫瑞娜AI 版权所有</Text>
       </View>
     </View>
   )

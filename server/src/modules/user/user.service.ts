@@ -40,19 +40,15 @@ export class UserService {
    * 获取用户资料
    */
   async getUserProfile(userId: string) {
-    const client = await getMySQLClient()
-    const [rows] = await client.execute(
-      'SELECT id, nickname, avatar_url, phone, bio, level, exp, credits, created_at, updated_at FROM users WHERE id = ?',
-      [userId]
-    )
-    const user = rows[0]
+    const db = getMySQLClient()
+    const user = await db.queryOne('users', { id: userId })
     if (!user) {
       return { id: userId, nickname: '探索者', avatar: '', level: 1, exp: 0, credits: 0 }
     }
     return {
       id: user.id,
       nickname: user.nickname || '探索者',
-      avatar: user.avatar_url || '',
+      avatar: user.avatar || '',
       phone: user.phone || '',
       bio: user.bio || '',
       level: user.level || 1,
@@ -67,27 +63,25 @@ export class UserService {
    * 更新用户资料
    */
   async updateUserProfile(userId: string, updates: Record<string, any>) {
-    const client = await getMySQLClient()
-    const allowedFields = ['nickname', 'avatar_url', 'phone', 'bio']
-    const setClauses = []
-    const values = []
-
+    const db = getMySQLClient()
+    
+    const allowedUpdates: Record<string, any> = {}
+    const allowedFields = ['nickname', 'avatar', 'phone', 'bio']
+    
     for (const field of allowedFields) {
       if (updates[field] !== undefined) {
-        setClauses.push(`${field} = ?`)
-        values.push(updates[field])
+        allowedUpdates[field] = updates[field]
       }
     }
 
-    if (setClauses.length === 0) {
+    if (Object.keys(allowedUpdates).length === 0) {
       return this.getUserProfile(userId)
     }
 
-    values.push(userId)
-    await client.execute(
-      `UPDATE users SET ${setClauses.join(', ')}, updated_at = NOW() WHERE id = ?`,
-      values
-    )
+    const result = await db.update('users', userId, allowedUpdates)
+    if (result.error) {
+      console.error('[UserService] updateProfile error:', result.error)
+    }
 
     return this.getUserProfile(userId)
   }
@@ -96,43 +90,25 @@ export class UserService {
    * 获取用户统计数据
    */
   async getUserStats(userId: string) {
-    const client = await getMySQLClient()
+    const db = getMySQLClient()
 
     // 分身数量
-    const [avatarRows] = await client.execute(
-      'SELECT COUNT(*) as count FROM avatars WHERE user_id = ?',
-      [userId]
-    )
-    const avatarCount = avatarRows[0]?.count || 0
+    const avatarCount = await db.count('avatars', { user_id: userId })
 
     // 商单数量
-    const [orderRows] = await client.execute(
-      'SELECT COUNT(*) as count FROM orders WHERE user_id = ?',
-      [userId]
-    )
-    const taskCount = orderRows[0]?.count || 0
+    const taskCount = await db.count('orders', { user_id: userId })
 
     // 动态数量
-    const [postRows] = await client.execute(
-      'SELECT COUNT(*) as count FROM social_posts WHERE user_id = ?',
-      [userId]
-    )
-    const postCount = postRows[0]?.count || 0
+    const postCount = await db.count('social_posts', { user_id: userId })
 
     // 好友数量
-    const [friendRows] = await client.execute(
-      'SELECT COUNT(*) as count FROM friendships WHERE (user_id = ? OR friend_id = ?) AND status = ?',
-      [userId, userId, 'accepted']
-    )
-    const friendCount = friendRows[0]?.count || 0
+    const friendRows = await db.queryWhere('friendships', `(user_id = '${userId}' OR friend_id = '${userId}') AND status = 'accepted'`)
+    const friendCount = friendRows?.length || 0
 
     // 等级和经验值
-    const [userRows] = await client.execute(
-      'SELECT level, exp FROM users WHERE id = ?',
-      [userId]
-    )
-    const level = userRows[0]?.level || 1
-    const totalXp = userRows[0]?.exp || 0
+    const user = await db.queryOne('users', { id: userId })
+    const level = user?.level || 1
+    const totalXp = user?.exp || 0
 
     return {
       avatarCount,
@@ -174,19 +150,13 @@ export class UserService {
    * 修改密码
    */
   async changePassword(userId: string, oldPassword: string, newPassword: string) {
-    const client = await getMySQLClient()
-    const [rows] = await client.execute(
-      'SELECT password_hash FROM users WHERE id = ?',
-      [userId]
-    )
-    if (!rows[0]) {
+    const db = getMySQLClient()
+    const user = await db.queryOne('users', { id: userId })
+    if (!user) {
       throw new UnauthorizedException('用户不存在')
     }
     // 简单实现：直接更新密码（实际应该验证旧密码）
-    await client.execute(
-      'UPDATE users SET password_hash = ?, updated_at = NOW() WHERE id = ?',
-      [newPassword, userId]
-    )
+    await db.update('users', userId, { password_hash: newPassword })
     return { success: true }
   }
 }
