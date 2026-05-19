@@ -5,6 +5,8 @@ export default defineAppConfig({
     'pages/mind-chat/index',
     'pages/profile/index',
     'pages/login/index',
+    'pages/user-agreement/index',
+    'pages/privacy-policy/index',
     'pages/webview/index',
     'pages/publish-redirect/index',
   ],
