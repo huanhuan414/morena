@@ -53,6 +53,7 @@ export class OrderController {
 
   @Get('open')
   async getOpenOrders(
+    @Headers('x-user-id') userId: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('platform') platform?: string
@@ -60,7 +61,8 @@ export class OrderController {
     const result = await this.orderService.getOpenOrders(
       page ? parseInt(page) : 1,
       pageSize ? parseInt(pageSize) : 20,
-      platform
+      platform,
+      userId
     )
     return { code: 200, data: result, message: '获取成功' }
   }

@@ -292,9 +292,9 @@ const Login: React.FC = () => {
         {agreed && <Text className="login-checkbox-tick">✓</Text>}
       </View>
       <Text className="login-agreement-text">我已阅读并同意</Text>
-      <Text className="login-agreement-link">《用户协议》</Text>
+      <Text className="login-agreement-link" onClick={() => Taro.navigateTo({ url: '/pages/user-agreement/index' })}>《用户协议》</Text>
       <Text className="login-agreement-text">和</Text>
-      <Text className="login-agreement-link">《隐私政策》</Text>
+      <Text className="login-agreement-link" onClick={() => Taro.navigateTo({ url: '/pages/privacy-policy/index' })}>《隐私政策》</Text>
     </View>
   )
 

@@ -90,9 +90,29 @@ export class NotificationController {
     @Body() body: { orderId: string; contentTitle?: string }
   ) {
     try {
+      console.log('[urgeReview] 收到请求:', { userId, orderId: body?.orderId, contentTitle: body?.contentTitle })
+      
       if (this.notificationService && body?.orderId) {
+        const { getMySQLClient } = await import('../../storage/database/mysql-client')
+        const db = getMySQLClient()
+
+        const orderResult = await db.query(
+          `SELECT user_id FROM orders WHERE id = ?`,
+          [body.orderId]
+        )
+        console.log('[urgeReview] 查询订单结果:', orderResult)
+        
+        const orders = Array.isArray(orderResult) ? orderResult : (orderResult?.data || [])
+        const order = orders[0]
+        const orderUserId = order?.userId || order?.user_id
+
+        if (!orderUserId) {
+          console.log('[urgeReview] 订单不存在或user_id为空:', { order, orders })
+          return { code: 404, data: null, message: '订单不存在' }
+        }
+
         await this.notificationService.createNotification({
-          user_id: userId,
+          user_id: orderUserId,
           type: 'urge_review',
           title: '催验收提醒',
           content: `分身已完成内容"${body.contentTitle || '内容'}"的发布，请尽快验收`,
@@ -101,6 +121,7 @@ export class NotificationController {
       }
       return { code: 200, data: null, message: '催验收提醒已发送' }
     } catch (error) {
+      console.error('[urgeReview] 错误:', error)
       return { code: 500, data: null, message: '发送失败：' + (error as Error).message }
     }
   }

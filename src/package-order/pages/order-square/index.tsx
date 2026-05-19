@@ -144,6 +144,7 @@ interface OrderItem {
   urgency?: 'urgent' | 'hot' | 'normal'
   acceptCount?: number
   matchScore?: number
+  isAcceptedByMe?: boolean
 }
 
 export default function OrderSquarePage() {
@@ -154,7 +155,6 @@ export default function OrderSquarePage() {
   const [scrollTop, setScrollTop] = useState(0)
   const [refresherTriggered, setRefresherTriggered] = useState(false)
   const [acceptingOrderIds, setAcceptingOrderIds] = useState<Record<string, true>>({})
-  const [acceptedOrderIds, setAcceptedOrderIds] = useState<Record<string, true>>({})
 
 
   useDidShow(() => {
@@ -197,7 +197,8 @@ export default function OrderSquarePage() {
             requirements: Array.isArray(item.requirements?.requiredSkills) ? item.requirements.requiredSkills : (Array.isArray(item.requiredSkills) ? item.requiredSkills : []),
             publisher: { nickname: item.publisherNickname || item.publisher_nickname || '发布方', avatar: item.publisherAvatar || item.publisher_avatar || '', rating: item.publisherRating || 5 },
             createdAt: formatCreatedAt(item.createdAt || item.created_at),
-            acceptCount: Number(item.acceptCount || item.accept_count || 0)
+            acceptCount: Number(item.acceptCount || item.accept_count || 0),
+            isAcceptedByMe: Boolean(item.isAcceptedByMe || item.is_accepted_by_me)
           })) as OrderItem[]
 
           const filtered = currentPlatform === 'all'
@@ -289,7 +290,6 @@ export default function OrderSquarePage() {
       })
       if (res.data?.code === 200) {
         showToast({ title: '接单成功', icon: 'success' })
-        setAcceptedOrderIds((prev) => ({ ...prev, [orderId]: true }))
         setAcceptingOrderIds((prev) => {
           const { [orderId]: _, ...rest } = prev
           return rest
@@ -509,12 +509,12 @@ export default function OrderSquarePage() {
                     <Button
                       size="sm"
                       className="accept-btn"
-                      disabled={Boolean(acceptingOrderIds[order.id] || acceptedOrderIds[order.id])}
+                      disabled={Boolean(acceptingOrderIds[order.id] || order.isAcceptedByMe)}
                       onClick={() => handleAcceptOrder(order.id)}
                     >
                       <Zap size={14} color="#fff" />
                       <Text className="accept-btn-text">
-                        {acceptedOrderIds[order.id] ? '已接单' : (acceptingOrderIds[order.id] ? '接单中' : '接单')}
+                        {order.isAcceptedByMe ? '已接单' : (acceptingOrderIds[order.id] ? '接单中' : '接单')}
                       </Text>
                     </Button>
                   </View>

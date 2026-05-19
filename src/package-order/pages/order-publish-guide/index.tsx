@@ -570,7 +570,7 @@ export default function OrderPublishGuide() {
   return (
     <View className="publish-guide-page">
       {/* 顶部自定义导航 */}
-      <View className="guide-header" style={{ paddingTop: statusBarHeight + 'px' }}>
+      {/* <View className="guide-header" style={{ paddingTop: statusBarHeight + 'px' }}>
         <View className="guide-header-deco">
           <View className="guide-header-circle circle-a" />
           <View className="guide-header-circle circle-b" />
@@ -586,6 +586,23 @@ export default function OrderPublishGuide() {
         </View>
         <View className="guide-header-desc">
           <Text className="block">按步骤发布内容到目标平台</Text>
+        </View>
+      </View> */}
+
+      <View className="guide-header" style={{ paddingTop: `${statusBarHeight + 12}px` }}>
+        <View className="guide-header-deco">
+          <View className="guide-header-circle circle-a" />
+          <View className="guide-header-circle circle-b" />
+        </View>
+        <View className="guide-header-bar">
+          <View className="guide-back-btn" onClick={() => Taro.navigateBack()}>
+            <ArrowLeft size={20} color="#fff" />
+          </View>
+          <View className="guide-header-center">
+            <Text className="guide-header-title">发布引导</Text>
+            <Text className="guide-header-desc">按步骤发布内容到目标平台</Text>
+          </View>
+          <View className="guide-header-placeholder" />
         </View>
       </View>
 

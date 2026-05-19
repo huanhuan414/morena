@@ -2,6 +2,7 @@ import { Controller, Get, Post, Delete, Body, Param, Query, HttpCode, HttpStatus
 import { ContentGenerationService } from './content-generation.service'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { OrderService } from '../order/order.service'
+import { OrderDispatchService } from '../order-dispatch/order-dispatch.service'
 
 @Controller('content-generation')
 export class ContentGenerationController {
@@ -10,6 +11,7 @@ export class ContentGenerationController {
   constructor(
     @Inject(ContentGenerationService) private readonly contentGenerationService: ContentGenerationService,
     @Inject(forwardRef(() => OrderService)) private readonly orderService: OrderService,
+    @Inject(forwardRef(() => OrderDispatchService)) private readonly orderDispatchService: OrderDispatchService,
   ) {}
 
   private async getContentGenerationColumns(db: any) {
@@ -79,7 +81,7 @@ export class ContentGenerationController {
   async retryGeneration(@Param('requestId') requestId: string) {
     try {
       const db = await getMySQLClient()
-      const [records]: any = await db.query(
+      const records: any = await db.query(
         'SELECT * FROM content_generation_requests WHERE id = ?',
         [requestId]
       )
@@ -87,32 +89,32 @@ export class ContentGenerationController {
         return { code: 404, message: '记录不存在' }
       }
       const record = records[0]
+      const orderId = record.orderId || record.order_id
+      const avatarId = record.avatarId || record.avatar_id
 
-      // 将状态重置为 processing，触发重新生成
+      // 将状态重置为 processing
       await db.query(
         'UPDATE content_generation_requests SET status = ?, updated_at = NOW() WHERE id = ?',
         ['processing', requestId]
       )
 
-      // 异步触发重新生成（不阻塞响应）
-      const payload = {
-        orderId: record.order_id,
-        requestId: record.id,
-        avatarId: record.avatar_id,
-        orderTitle: record.order_title || '',
-        orderDescription: record.order_description || '',
-        platforms: record.platforms ? JSON.parse(record.platforms) : [],
-        contentType: record.content_type || 'image',
-        targetAudience: record.target_audience || '通用用户',
-        contentQuantity: record.content_quantity || 1,
-      }
-
-      this.contentGenerationService.generateContent(payload).catch((err: any) => {
+      // 复用第一次生成的逻辑（自动获取订单、分身完整信息）
+      this.orderDispatchService.startContentGeneration(
+        orderId,
+        avatarId,
+        {
+          order_title: record.orderTitle || record.order_title,
+          description: record.orderDescription || record.order_description,
+          target_audience: record.targetAudience || record.target_audience,
+          quantity_per_avatar: record.contentQuantity || record.content_quantity,
+        }
+      ).catch((err: any) => {
         console.error('[ContentGeneration] retry generation error:', err.message)
       })
 
       return { code: 200, message: '已开始重新生成', data: { requestId, status: 'processing' } }
     } catch (error: any) {
+      console.error('[ContentGeneration] retry error:', error)
       return { code: 500, message: '重试失败', error: error.message }
     }
   }

@@ -275,11 +275,20 @@ export class AuthService {
       }
 
       const openid = wxData.openid;
-      const accessToken = await this.getWechatAccessToken();
-      const phone = await this.getWechatPhoneNumber(accessToken, phoneCode);
-      if (!phone) {
+      let accessToken = await this.getWechatAccessToken();
+      let phoneResult = await this.getWechatPhoneNumber(accessToken, phoneCode);
+      
+      // 如果 access_token 无效 (errcode 40001)，强制刷新后重试一次
+      if (!phoneResult.phone && phoneResult.errcode === 40001) {
+        console.log('[wechatPhoneLogin] access_token无效，强制刷新后重试');
+        accessToken = await this.getWechatAccessToken(true);
+        phoneResult = await this.getWechatPhoneNumber(accessToken, phoneCode);
+      }
+      
+      if (!phoneResult.phone) {
         throw new Error("获取手机号失败");
       }
+      const phone = phoneResult.phone;
 
       const db = getMySQLClient();
       const result = await db.query("users", { phone });
@@ -381,12 +390,12 @@ export class AuthService {
   /**
    * 获取微信 access_token（用于调用 getPhoneNumber 接口）
    */
-  private async getWechatAccessToken(): Promise<string> {
+  private async getWechatAccessToken(forceRefresh: boolean = false): Promise<string> {
     const wxAppId = process.env.WX_APP_ID;
     const wxAppSecret = process.env.WX_APP_SECRET;
     const now = Date.now();
     const cached = this.accessTokenCache;
-    if (cached && cached.expiresAt > now) {
+    if (!forceRefresh && cached && cached.expiresAt > now) {
       return cached.token;
     }
 
@@ -401,6 +410,7 @@ export class AuthService {
       token: data.access_token,
       expiresAt: now + (data.expires_in - 300) * 1000,
     };
+    console.log('[getWechatAccessToken] 获取新access_token成功, 有效期:', data.expires_in, '秒');
     return data.access_token;
   }
 
@@ -410,7 +420,7 @@ export class AuthService {
   private async getWechatPhoneNumber(
     accessToken: string,
     phoneCode: string,
-  ): Promise<string | null> {
+  ): Promise<{ phone: string | null; errcode: number }> {
     const url = `https://api.weixin.qq.com/wxa/business/getuserphonenumber?access_token=${accessToken}`;
     const res = await fetch(url, {
       method: "POST",
@@ -420,12 +430,13 @@ export class AuthService {
     const data = await res.json();
     if (data.errcode !== 0) {
       console.error("[getWechatPhoneNumber] 获取手机号失败:", data);
-      return null;
+      return { phone: null, errcode: data.errcode };
     }
 
-    return (
-      data.phone_info?.phoneNumber || data.phone_info?.purePhoneNumber || null
-    );
+    return {
+      phone: data.phone_info?.phoneNumber || data.phone_info?.purePhoneNumber || null,
+      errcode: 0
+    };
   }
 
   /**
