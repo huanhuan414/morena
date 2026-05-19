@@ -20,14 +20,9 @@ import { getStatusBarHeight } from '@/utils/safe-area'
 import './index.css'
 
 const CONTENT_TYPES = [
-  // 测试模式价格
-  { id: 'text', label: '纯文案', icon: '📝', price: 1, desc: '文字内容创作', output: '篇原创文案' },
-  { id: 'image', label: '图文笔记', icon: '🖼️', price: 1, desc: '图文搭配呈现', output: '篇图文笔记' },
-  { id: 'video', label: '短视频', icon: '🎬', price: 1, desc: 'AI生成真实视频', output: '条短视频' },
-  // 正式模式价格
-  // { id: 'text', label: '纯文案', icon: '📝', price: 5, desc: '文字内容创作', output: '篇原创文案' },
-  // { id: 'image', label: '图文笔记', icon: '🖼️', price: 15, desc: '图文搭配呈现', output: '篇图文笔记' },
-  // { id: 'video', label: '短视频', icon: '🎬', price: 20, desc: '视频内容策划', output: '条短视频脚本' },
+  { id: 'text', label: '纯文案', icon: '📝', basePrice: 2, contentPrice: 0, desc: '文字内容创作', output: '篇原创文案' },
+  { id: 'image', label: '图文笔记', icon: '🖼️', basePrice: 3, contentPrice: 1, desc: '图文搭配呈现', output: '篇图文笔记' },
+  { id: 'video', label: '短视频', icon: '🎬', basePrice: 5, contentPrice: 20, desc: 'AI生成真实视频', output: '条短视频' },
 ]
 
 const PLATFORM_OPTIONS = PLATFORM_UI_ORDER
@@ -62,12 +57,10 @@ export default function OrderCreate() {
   useEffect(() => { return () => { stopAiPolling() } }, [])
 
   const selectedType = CONTENT_TYPES.find(t => t.id === form.contentType)
-  const contentPricePerUnit = selectedType?.price || 10
+  const basePricePerUnit = selectedType?.basePrice || 2
+  const contentPricePerUnit = selectedType?.contentPrice || 0
   const totalPrice = {
-    // 测试模式价格
-    base: 1 * form.avatarCount,
-    // 正式模式价格
-    // base: 10 * form.avatarCount,
+    base: basePricePerUnit * form.avatarCount,
     content: contentPricePerUnit * form.quantityPerAvatar * form.avatarCount,
     get total() { return this.base + this.content }
   }
@@ -621,7 +614,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                 <Text className="type-desc">{type.desc}</Text>
                 <View className="type-price-row">
                   <Coins size={10} color="#6366F1" />
-                  <Text className="type-price">¥{type.price}/个</Text>
+                  <Text className="type-price">¥{type.basePrice + type.contentPrice}/个</Text>
                 </View>
                 {form.contentType === type.id && (
                   <View className="type-check">

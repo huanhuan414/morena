@@ -197,6 +197,7 @@ export class OrderService {
       budget,
       status: 'pending_payment',
       expected_quantity: avatarCount,
+      avatar_count: avatarCount,
       quantity_per_avatar: orderData.quantityPerAvatar || orderData.quantity_per_avatar || 1,
       is_paid: 0,
       target_audience: orderData.targetAudience || orderData.target_audience || '',
@@ -627,7 +628,7 @@ export class OrderService {
     return this.getOrderById(orderId)
   }
 
-  async getOpenOrders(page: number = 1, pageSize: number = 20, platform?: string) {
+  async getOpenOrders(page: number = 1, pageSize: number = 20, platform?: string, userId?: string) {
     const db = getMySQLClient()
     const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1
     const safePageSize = Number.isFinite(pageSize) && pageSize > 0 ? Math.min(Math.floor(pageSize), 100) : 20
@@ -645,6 +646,8 @@ export class OrderService {
       )${platformClause}
     `
 
+    const userIdClause = userId ? `'${userId}'` : 'NULL'
+    console.log('[getOpenOrders] userId:', userId, 'userIdClause:', userIdClause)
     const rows = await db.query(
       `SELECT o.id, o.user_id, o.avatar_id, o.title, o.description, o.content_type, o.platforms, o.platform,
               o.requirements, o.target_audience, o.priority, o.deadline, o.content_deadline_at,
@@ -661,7 +664,10 @@ export class OrderService {
                 u.avatar
               ) as publisher_avatar,
               (SELECT COUNT(DISTINCT avatar_id) FROM order_dispatch_requests WHERE order_id = o.id AND status IN ('accepted', 'in_progress', 'completed')) as accept_count,
-              o.avatar_count as required_count
+              o.avatar_count as required_count,
+              (SELECT IF(COUNT(*) > 0, 1, 0) FROM order_dispatch_requests r 
+               INNER JOIN avatars a ON r.avatar_id = a.id 
+               WHERE r.order_id = o.id AND r.status = 'accepted' AND a.user_id = ${userIdClause}) as is_accepted_by_me
        FROM orders o
        LEFT JOIN users u ON u.id = o.user_id
        ${whereClause}
@@ -669,6 +675,7 @@ export class OrderService {
        ORDER BY o.priority DESC, o.created_at DESC
        LIMIT ${safePageSize} OFFSET ${offset}`
     )
+    console.log('[getOpenOrders] SQL返回行数:', rows?.length, '第一行数据:', JSON.stringify(rows?.[0], null, 2))
 
     const totalRows = await db.query(
       `SELECT COUNT(*) as total FROM (
@@ -708,8 +715,11 @@ export class OrderService {
       updatedAt: row.updatedAt || row.updated_at || null,
       publisherNickname: row.publisherNickname || row.publisher_nickname || '发布方',
       publisherAvatar: row.publisherAvatar || row.publisher_avatar || '',
-      acceptCount: Number(row.acceptCount || row.accept_count || 0)
+      acceptCount: Number(row.acceptCount || row.accept_count || 0),
+      isAcceptedByMe: Boolean(row.isAcceptedByMe ?? row.is_accepted_by_me ?? 0)
     }))
+
+    console.log('[getOpenOrders] 返回订单数:', items.length, '第一个订单的isAcceptedByMe:', items[0]?.isAcceptedByMe, '原始数据:', rows[0]?.is_accepted_by_me, '原始数据驼峰:', rows[0]?.isAcceptedByMe)
 
     return {
       page: safePage,

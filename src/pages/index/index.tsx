@@ -8,7 +8,7 @@ import { PLATFORM_UI_ORDER, getPlatformLabel, getPlatformMeta, canonicalizePlatf
 import { useUserStore } from '@/stores/user'
 import { useNotifications } from '@/hooks/useNotifications'
 import { Avatar as UiAvatar } from '@/components/ui/avatar'
-import { getStatusBarHeight } from '@/utils/safe-area'
+import { getStatusBarHeight, getCapsuleButtonBottom } from '@/utils/safe-area'
 import './index.css'
 
 interface OrderItem {
@@ -34,6 +34,7 @@ interface OrderItem {
   avatarCount: number
   quantityPerAvatar: number
   urgency: 'urgent' | 'high' | 'normal' | 'low'
+  isAcceptedByMe?: boolean
 }
 
 const Index: React.FC = () => {
@@ -52,6 +53,14 @@ const Index: React.FC = () => {
 
   const [showOrderModal, setShowOrderModal] = useState(false)
   const [orderModalData, setOrderModalData] = useState<any>(null)
+  const [dismissedOrderIds, setDismissedOrderIds] = useState<Set<string>>(() => {
+    try {
+      const stored = Taro.getStorageSync('dismissed_order_ids')
+      return stored ? new Set(JSON.parse(stored)) : new Set()
+    } catch {
+      return new Set()
+    }
+  })
   const loadUserFromStorage = useUserStore(state => state.loadUserFromStorage)
 
   const { unreadCount, showModal, currentNotification, closeModal } = useNotifications({
@@ -65,7 +74,6 @@ const Index: React.FC = () => {
   const [orders, setOrders] = useState<OrderItem[]>([])
   const [ordersLoading, setOrdersLoading] = useState(false)
   const [acceptingOrderIds, setAcceptingOrderIds] = useState<Record<string, boolean>>({})
-  const [acceptedOrderIds, setAcceptedOrderIds] = useState<Record<string, boolean>>({})
   const [orderPage, setOrderPage] = useState(1)
   const [, setOrderTotal] = useState(0)
   const [hasMoreOrders, setHasMoreOrders] = useState(true)
@@ -118,6 +126,7 @@ const Index: React.FC = () => {
           avatarCount: o.avatarCount || o.avatar_count || 1,
           quantityPerAvatar: o.quantityPerAvatar || o.quantity_per_avatar || 1,
           urgency: o.urgency || (o.priority >= 4 ? 'urgent' : o.priority >= 3 ? 'high' : o.priority >= 2 ? 'normal' : 'low'),
+          isAcceptedByMe: Boolean(o.isAcceptedByMe || o.is_accepted_by_me)
         }))
         console.log('[首页] 订单数据映射完成，共', mapped.length, '条, total:', total)
         setOrders(prev => append ? [...prev, ...mapped] : mapped)
@@ -144,10 +153,11 @@ const Index: React.FC = () => {
       if (res.data?.code === 200 && res.data?.data) {
         const seen = new Set<string>()
         const items = (res.data.data || []).filter((item: any) => {
-          const oid = item.orderId
+          const oid = item.orderId || item.order_id
           if (!item.avatarId && !item.avatar_id) return false
           if (!item.avatarName && !item.avatar_name) return false
           if (seen.has(oid)) return false
+          if (dismissedOrderIds.has(oid)) return false
           seen.add(oid)
           return true
         })
@@ -155,6 +165,7 @@ const Index: React.FC = () => {
         // 弹窗通知
         if (items.length > 0 && !showOrderModal && !orderModalData) {
           const item = items[0]
+          const orderId = item.orderId || item.order_id
           let platforms = item.platforms
           if (typeof platforms === 'string') {
             try { platforms = JSON.parse(platforms) } catch { platforms = [platforms] }
@@ -163,9 +174,9 @@ const Index: React.FC = () => {
           const platformName = getPlatformName(platforms[0] || '通用')
 
           setOrderModalData({
-            id: item.orderId,
-            dispatchId: item.dispatchId,
-            avatarId: item.avatarId,
+            id: orderId,
+            dispatchId: item.dispatchId || item.dispatch_id,
+            avatarId: item.avatarId || item.avatar_id,
             platform: platformName,
             platformColor: getPlatformColor(platformName),
             title: item.title || '新订单',
@@ -178,7 +189,7 @@ const Index: React.FC = () => {
     } catch (err) {
       console.error('获取待接订单失败:', err)
     }
-  }, [])
+  }, [dismissedOrderIds, showOrderModal, orderModalData])
 
   // 接单
   const handleAcceptOrder = async (orderId: string) => {
@@ -187,7 +198,7 @@ const Index: React.FC = () => {
       Taro.showToast({ title: '示例订单，请先创建分身', icon: 'none' })
       return
     }
-    if (acceptingOrderIds[orderId] || acceptedOrderIds[orderId]) return
+    if (acceptingOrderIds[orderId]) return
     setAcceptingOrderIds(prev => ({ ...prev, [orderId]: true }))
     try {
       let avatarIdToUse = currentAvatarId
@@ -211,8 +222,9 @@ const Index: React.FC = () => {
       })
       console.log('[首页] 接单 URL:', `/api/order-dispatch/avatar/${avatarIdToUse}/accept/${orderId}`, 'Method:POST', 'Response:', res.data)
       if (res.data?.code === 200) {
-        setAcceptedOrderIds(prev => ({ ...prev, [orderId]: true }))
         Taro.showToast({ title: '接单成功，正在生成内容', icon: 'success' })
+        fetchOrders()
+        fetchStats()
         // 跳转到内容生成页面
         const result = res.data?.data || {}
         const nextRequestId = result.requestId || ''
@@ -381,15 +393,30 @@ const Index: React.FC = () => {
 
   const handleOrderAccept = async () => {
     if (orderModalData?.id) {
-      await handleAcceptOrder(orderModalData.id)
+      const orderId = orderModalData.id
+      await handleAcceptOrder(orderId)
       setShowOrderModal(false)
-      if (acceptedOrderIds[orderModalData.id]) {
-        Taro.navigateTo({ url: `/package-order/pages/order-content-creation/index?orderId=${orderModalData.id}` })
-      }
+      const newDismissed = new Set(dismissedOrderIds)
+      newDismissed.add(orderId)
+      setDismissedOrderIds(newDismissed)
+      try {
+        Taro.setStorageSync('dismissed_order_ids', JSON.stringify([...newDismissed]))
+      } catch {}
+      Taro.navigateTo({ url: `/package-order/pages/order-content-creation/index?orderId=${orderId}` })
     }
   }
 
-  const handleOrderDismiss = () => { setShowOrderModal(false) }
+  const handleOrderDismiss = () => {
+    if (orderModalData?.id) {
+      const newDismissed = new Set(dismissedOrderIds)
+      newDismissed.add(orderModalData.id)
+      setDismissedOrderIds(newDismissed)
+      try {
+        Taro.setStorageSync('dismissed_order_ids', JSON.stringify([...newDismissed]))
+      } catch {}
+    }
+    setShowOrderModal(false)
+  }
 
   const enableAllTrust = async () => {
     try {
@@ -456,7 +483,7 @@ const Index: React.FC = () => {
       {/* 顶部通栏 */}
       <View className="header">
         <View className="header-bg" />
-        <View className="header-content" style={{ paddingTop: `${getStatusBarHeight() + 50}px` }}>
+        <View className="header-content" style={{ paddingTop: `${getCapsuleButtonBottom() + 10}px` }}>
           <View className="header-left">
             <View className="avatar-wrapper">
               <UiAvatar src={userAvatar || ''} name={userName} size={96} />
@@ -908,7 +935,7 @@ const Index: React.FC = () => {
                         className="po-btn po-btn-accept"
                         onClick={(e) => {
                           e.stopPropagation()
-                          if (!acceptedOrderIds[order.id] && !acceptingOrderIds[order.id]) {
+                          if (!order.isAcceptedByMe && !acceptingOrderIds[order.id]) {
                             handleAcceptOrder(order.id)
                           }
                         }}
@@ -918,7 +945,7 @@ const Index: React.FC = () => {
                             <View className="po-btn-mini-spinner" />
                             <Text className="po-btn-label po-btn-label-primary">接单中...</Text>
                           </>
-                        ) : acceptedOrderIds[order.id] ? (
+                        ) : order.isAcceptedByMe ? (
                           <>
                             <CircleCheckBig size={16} color="#fff" />
                             <Text className="po-btn-label po-btn-label-primary">已接单</Text>

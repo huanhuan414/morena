@@ -61,7 +61,7 @@ export function getSafeArea(): SafeArea {
 
   let capsuleButtonInfo: CapsuleButtonInfo | null = null
   let safeWidth = screenWidth
-  let placeholderWidth = 120 // 默认 120rpx 约等于 60px
+  let placeholderWidth = 0 // 默认不需要占位
 
   // 仅在小程序环境中计算胶囊按钮信息
   if (Taro.getEnv() === Taro.ENV_TYPE.WEAPP) {
@@ -82,9 +82,8 @@ export function getSafeArea(): SafeArea {
         // 左侧可用宽度 = 胶囊按钮左侧距离
         safeWidth = leftMargin
 
-        // 右侧占位宽度 = 屏幕宽度 - 胶囊按钮左侧距离 + 额外间距
-        // 加上 20px 额外间距，确保按钮不会贴近胶囊
-        placeholderWidth = screenWidth - leftMargin + 20
+        // 右侧占位宽度 = 胶囊按钮左边界距离屏幕右边的距离
+        placeholderWidth = screenWidth - menuButton.left + 5
 
         console.log('[SafeArea] 胶囊按钮信息:', {
           capsuleWidth: menuButton.width,
@@ -112,6 +111,31 @@ export function getSafeArea(): SafeArea {
     placeholderWidth,
     placeholderWidthRpx
   }
+}
+
+/**
+ * 获取胶囊按钮下边界位置（用于让内容在胶囊下方）
+ *
+ * @returns {number} 胶囊按钮下边界的 Y 坐标（单位：px）
+ */
+export function getCapsuleButtonBottom(): number {
+  // 默认值：状态栏高度 44 + 胶囊按钮高度约 32 + 上下间距约 8 = 84
+  let capsuleBottom = 84
+
+  if (Taro.getEnv() === Taro.ENV_TYPE.WEAPP) {
+    try {
+      const menuButton = Taro.getMenuButtonBoundingClientRect()
+      if (menuButton && menuButton.height > 0) {
+        // 胶囊按钮下边界 = top + height
+        capsuleBottom = menuButton.top + menuButton.height
+        console.log('[SafeArea] capsuleBottom:', capsuleBottom, 'menuButton:', menuButton)
+      }
+    } catch (error) {
+      console.error('[SafeArea] 获取胶囊按钮信息失败:', error)
+    }
+  }
+
+  return capsuleBottom
 }
 
 /**
