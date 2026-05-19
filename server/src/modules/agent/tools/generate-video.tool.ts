@@ -102,6 +102,15 @@ export class GenerateVideoTool implements ITool {
 
       // 保存记录
       const recordId = crypto.randomUUID()
+      // 确保用户存在，避免外键约束报错
+      const [existingUser] = await db.query('SELECT id FROM users WHERE id = ?', [userId]) as any
+      if (existingUser.length === 0) {
+        await db.query(
+          `INSERT IGNORE INTO users (id, openid, nickname, level, exp, credits, created_at, updated_at)
+           VALUES (?, ?, ?, 1, 0, 0, NOW(), NOW())`,
+          [userId, `auto_${userId}`, `用户${userId.slice(0, 6)}`]
+        )
+      }
       await db.insert('generated_content', {
         id: recordId,
         user_id: userId,

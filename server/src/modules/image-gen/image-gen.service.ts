@@ -26,6 +26,22 @@ export class ImageGenService {
   private readonly model = process.env.IMAGE_GEN_MODEL || 'gpt-image-2-all';
 
   /**
+   * 确保用户记录存在于 users 表，避免外键约束报错
+   */
+  private async ensureUserExists(userId: string): Promise<void> {
+    const pool = getPool();
+    const [rows] = await pool.query('SELECT id FROM users WHERE id = ?', [userId]) as any;
+    if (rows.length === 0) {
+      await pool.query(
+        `INSERT IGNORE INTO users (id, openid, nickname, level, exp, credits, created_at, updated_at)
+         VALUES (?, ?, ?, 1, 0, 0, NOW(), NOW())`,
+        [userId, `auto_${userId}`, `用户${userId.slice(0, 6)}`]
+      );
+      console.log('[ImageGenService] 自动创建用户记录, userId:', userId);
+    }
+  }
+
+  /**
    * 生成图片 - 直接将用户描述发送给图片生成API
    */
   async generate(params: ImageGenParams): Promise<ImageGenResult> {
@@ -82,6 +98,7 @@ export class ImageGenService {
     const recordId = crypto.randomUUID();
     try {
       const pool = getPool();
+      await this.ensureUserExists(userId);
       await pool.query(
         `INSERT INTO generated_content (id, user_id, avatar_id, task_id, type, order_id, content_type, prompt, result, images, video_url, status, metadata, created_at)
          VALUES (?, ?, NULL, NULL, ?, NULL, ?, ?, ?, ?, NULL, ?, ?, NOW())`,
