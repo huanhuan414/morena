@@ -89,6 +89,8 @@ export class ContentGenerationController {
         return { code: 404, message: '记录不存在' }
       }
       const record = records[0]
+      const orderId = record.orderId || record.order_id
+      const avatarId = record.avatarId || record.avatar_id
 
       // 将状态重置为 processing
       await db.query(
@@ -98,13 +100,13 @@ export class ContentGenerationController {
 
       // 复用第一次生成的逻辑（自动获取订单、分身完整信息）
       this.orderDispatchService.startContentGeneration(
-        record.order_id,
-        record.avatar_id,
+        orderId,
+        avatarId,
         {
-          order_title: record.order_title,
-          description: record.order_description,
-          target_audience: record.target_audience,
-          quantity_per_avatar: record.content_quantity,
+          order_title: record.orderTitle || record.order_title,
+          description: record.orderDescription || record.order_description,
+          target_audience: record.targetAudience || record.target_audience,
+          quantity_per_avatar: record.contentQuantity || record.content_quantity,
         }
       ).catch((err: any) => {
         console.error('[ContentGeneration] retry generation error:', err.message)
