@@ -91,8 +91,22 @@ export class NotificationController {
   ) {
     try {
       if (this.notificationService && body?.orderId) {
+        const { getMySQLClient } = await import('../../storage/database/mysql-client')
+        const db = getMySQLClient()
+
+        const orderResult = await db.query(
+          `SELECT user_id FROM orders WHERE id = ?`,
+          [body.orderId]
+        )
+        const orders = Array.isArray(orderResult) ? orderResult : (orderResult?.data || [])
+        const order = orders[0]
+
+        if (!order?.user_id) {
+          return { code: 404, data: null, message: '订单不存在' }
+        }
+
         await this.notificationService.createNotification({
-          user_id: userId,
+          user_id: order.user_id,
           type: 'urge_review',
           title: '催验收提醒',
           content: `分身已完成内容"${body.contentTitle || '内容'}"的发布，请尽快验收`,
