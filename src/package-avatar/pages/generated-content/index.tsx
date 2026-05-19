@@ -187,23 +187,26 @@ export default function GeneratedContentPage() {
   // 查看内容详情
   const handleView = (content: any) => {
     const normalizedStatus = BACKEND_STATUS_TO_TAB[content.status] || content.status
-    if (normalizedStatus === 'generating') {
-      const query = `orderId=${encodeURIComponent(content.orderId || '')}&requestId=${encodeURIComponent(content.id || '')}`
-      Taro.navigateTo({ url: `/package-order/pages/order-content-creation/index?${query}` })
-    } else if (normalizedStatus === 'awaiting_acceptance') {
-      const query = [
-        `contentId=${encodeURIComponent(content.id || '')}`,
-        `orderId=${encodeURIComponent(content.orderId || '')}`,
-        `readonly=true`,
-      ].filter(Boolean).join('&')
-      Taro.navigateTo({ url: `/package-order/pages/order-publish-guide/index?${query}` })
-    } else {
-      const query = [
-        `contentId=${encodeURIComponent(content.id || '')}`,
-        `orderId=${encodeURIComponent(content.orderId || '')}`,
-      ].filter(Boolean).join('&')
-      Taro.navigateTo({ url: `/package-order/pages/order-publish-guide/index?${query}` })
-    }
+    const query = `orderId=${encodeURIComponent(content.orderId || '')}&requestId=${encodeURIComponent(content.id || '')}`
+    Taro.navigateTo({ url: `/package-order/pages/order-content-creation/index?${query}` })
+
+    // if (normalizedStatus === 'generating') {
+    //   const query = `orderId=${encodeURIComponent(content.orderId || '')}&requestId=${encodeURIComponent(content.id || '')}`
+    //   Taro.navigateTo({ url: `/package-order/pages/order-content-creation/index?${query}` })
+    // } else if (normalizedStatus === 'awaiting_acceptance') {
+    //   const query = [
+    //     `contentId=${encodeURIComponent(content.id || '')}`,
+    //     `orderId=${encodeURIComponent(content.orderId || '')}`,
+    //     `readonly=true`,
+    //   ].filter(Boolean).join('&')
+    //   Taro.navigateTo({ url: `/package-order/pages/order-publish-guide/index?${query}` })
+    // } else {
+    //   const query = [
+    //     `contentId=${encodeURIComponent(content.id || '')}`,
+    //     `orderId=${encodeURIComponent(content.orderId || '')}`,
+    //   ].filter(Boolean).join('&')
+    //   Taro.navigateTo({ url: `/package-order/pages/order-publish-guide/index?${query}` })
+    // }
   }
 
   // 发布

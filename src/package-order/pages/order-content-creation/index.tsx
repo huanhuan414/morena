@@ -602,7 +602,7 @@ export default function OrderContentCreation() {
             {/* 操作按钮 */}
             <View className="cc-action-bar">
               <View className="cc-action-btn cc-action-secondary" onClick={handleRetry}>
-                <Text className="cc-action-secondary-text">返回</Text>
+                <Text className="cc-action-secondary-text">重新生成</Text>
               </View>
               <View className="cc-action-btn cc-action-primary" onClick={handlePublish}>
                 <Text className="cc-action-primary-text">去发布</Text>

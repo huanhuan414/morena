@@ -79,7 +79,7 @@ export class ContentGenerationController {
   async retryGeneration(@Param('requestId') requestId: string) {
     try {
       const db = await getMySQLClient()
-      const [records]: any = await db.query(
+      const records: any = await db.query(
         'SELECT * FROM content_generation_requests WHERE id = ?',
         [requestId]
       )
