@@ -293,12 +293,22 @@ export class NotificationService {
       const { getMySQLClient } = await import('../../storage/database/mysql-client')
       const db = getMySQLClient()
       await this.flushMemoryNotificationsToDb(userId)
-      const result = (await db.query('notifications', { user_id: userId })) as any
+      const result = await db.query(
+        `SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC`,
+        [userId]
+      )
       notifications = Array.isArray(result) ? result : (result?.data || [])
     } catch (dbError) {
       // 数据库读取失败，使用内存缓存
       notifications = sharedMemoryNotifications.get(userId) || []
     }
+
+    // 按创建时间降序排序（确保内存缓存的数据也有正确的顺序）
+    notifications.sort((a, b) => {
+      const timeA = new Date(a.created_at || 0).getTime()
+      const timeB = new Date(b.created_at || 0).getTime()
+      return timeB - timeA
+    })
 
     const total = notifications.length
     const offset = (page - 1) * pageSize
