@@ -172,8 +172,7 @@ export default function SkillsSquare() {
     return String(n)
   }
 
-  // 隐藏图片生成和视频生成技能
-  const visibleSkills = skills.filter(s => !['image_gen', 'video_gen'].includes(s.id))
+  const visibleSkills = skills
   const isAdded = (skillId: string) => avatarSkills.includes(skillId)
 
   const getIconConfig = (category: string) => SKILL_ICON_MAP[category] || SKILL_ICON_MAP.content
