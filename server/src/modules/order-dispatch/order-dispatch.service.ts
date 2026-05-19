@@ -792,12 +792,12 @@ async getExecutionProgress(orderId: string) {
     const shouldKick = !isMatchedAvatar && (acceptedCount + matchedPendingCount) >= requiredCount
     console.log(`[acceptOrder] 踢人判断: isMatched=${isMatchedAvatar}, accepted=${acceptedCount}, pending=${matchedPendingCount}, required=${requiredCount}, shouldKick=${shouldKick}`)
     if (shouldKick) {
-      // 找到该订单中仍处于 pending 状态的匹配分派记录（按匹配度从低到高排序，最低的优先踢出）
+      // 找到该订单中仍处于 pending 状态的匹配分派记录（按创建时间排序，最早的优先踢出）
       const pendingDispatches = await db.query(
-        `SELECT d.id, d.avatar_id, d.user_id, d.match_score 
+        `SELECT d.id, d.avatar_id, d.user_id
          FROM order_dispatch_requests d
          WHERE d.order_id = ? AND d.status = 'pending' 
-         ORDER BY d.match_score ASC, d.created_at ASC LIMIT 1`,
+         ORDER BY d.created_at ASC LIMIT 1`,
         [orderId]
       )
       const kickedDispatch = pendingDispatches?.[0]
@@ -811,7 +811,7 @@ async getExecutionProgress(orderId: string) {
           reject_reason: '订单已被其他分身抢先接单，名额已满',
           updated_at: new Date()
         })
-        console.log(`[acceptOrder] 踢出未接单匹配分身(匹配度最低): avatarId=${kickedAvatarId}, matchScore=${kickedDispatch.matchScore || kickedDispatch.match_score}, dispatchId=${kickedDispatch.id}`)
+        console.log(`[acceptOrder] 踢出未接单匹配分身: avatarId=${kickedAvatarId}, dispatchId=${kickedDispatch.id}`)
         
         // 获取被踢分身名称和订单标题
         let kickedAvatarName = '分身'
