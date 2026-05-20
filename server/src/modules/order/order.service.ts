@@ -634,9 +634,11 @@ export class OrderService {
     const safePageSize = Number.isFinite(pageSize) && pageSize > 0 ? Math.min(Math.floor(pageSize), 100) : 20
     const offset = (safePage - 1) * safePageSize
 
+    const platformParams: any[] = []
     let platformClause = ''
     if (platform && platform !== 'all') {
-      platformClause = ` AND (o.platforms LIKE '%"${platform}"%' OR o.platform = '${platform}')`
+      platformClause = ` AND (o.platforms LIKE ? OR o.platform = ?)`
+      platformParams.push(`%"${platform}"%`, platform)
     }
 
     const whereClause = `
@@ -646,46 +648,60 @@ export class OrderService {
       )${platformClause}
     `
 
-    const userIdClause = userId ? `'${userId}'` : 'NULL'
-    console.log('[getOpenOrders] userId:', userId, 'userIdClause:', userIdClause)
     const rows = await db.query(
       `SELECT o.id, o.user_id, o.avatar_id, o.title, o.description, o.content_type, o.platforms, o.platform,
               o.requirements, o.target_audience, o.priority, o.deadline, o.content_deadline_at,
               o.budget, o.price, o.status, o.expected_quantity, o.avatar_count, o.quantity_per_avatar, o.is_paid,
               o.created_at, o.updated_at,
-              COALESCE(
-                (SELECT a.name FROM avatars a WHERE a.id = o.avatar_id LIMIT 1),
-                (SELECT a.name FROM avatars a WHERE a.user_id = o.user_id AND a.status = 'active' ORDER BY a.created_at DESC LIMIT 1),
-                u.nickname
-              ) as publisher_nickname,
-              COALESCE(
-                (SELECT a.avatar_url FROM avatars a WHERE a.id = o.avatar_id LIMIT 1),
-                (SELECT a.avatar_url FROM avatars a WHERE a.user_id = o.user_id AND a.status = 'active' ORDER BY a.created_at DESC LIMIT 1),
-                u.avatar
-              ) as publisher_avatar,
-              (SELECT COUNT(DISTINCT avatar_id) FROM order_dispatch_requests WHERE order_id = o.id AND status IN ('accepted', 'in_progress', 'completed')) as accept_count,
-              o.avatar_count as required_count,
-              (SELECT IF(COUNT(*) > 0, 1, 0) FROM order_dispatch_requests r 
-               INNER JOIN avatars a ON r.avatar_id = a.id 
-               WHERE r.order_id = o.id AND r.status = 'accepted' AND a.user_id = ${userIdClause}) as is_accepted_by_me
+              COALESCE(a_order.name, a_latest.name, u.nickname) as publisher_nickname,
+              COALESCE(a_order.avatar_url, a_latest.avatar_url, u.avatar) as publisher_avatar,
+              COALESCE(odc.accept_count, 0) as accept_count,
+              COALESCE(o.avatar_count, 1) as required_count,
+              COALESCE(odm.is_accepted_by_me, 0) as is_accepted_by_me
        FROM orders o
        LEFT JOIN users u ON u.id = o.user_id
+       LEFT JOIN avatars a_order ON a_order.id = o.avatar_id
+       LEFT JOIN (
+         SELECT a1.user_id, a1.name, a1.avatar_url
+         FROM avatars a1
+         INNER JOIN (
+           SELECT user_id, MAX(created_at) as max_created_at
+           FROM avatars
+           WHERE status = 'active'
+           GROUP BY user_id
+         ) latest ON latest.user_id = a1.user_id AND latest.max_created_at = a1.created_at
+         WHERE a1.status = 'active'
+       ) a_latest ON a_latest.user_id = o.user_id
+       LEFT JOIN (
+         SELECT order_id, COUNT(DISTINCT CASE WHEN status IN ('accepted', 'in_progress', 'completed') THEN avatar_id END) as accept_count
+         FROM order_dispatch_requests
+         GROUP BY order_id
+       ) odc ON odc.order_id = o.id
+       LEFT JOIN (
+         SELECT r.order_id, 1 as is_accepted_by_me
+         FROM order_dispatch_requests r
+         INNER JOIN avatars a ON a.id = r.avatar_id
+         WHERE r.status = 'accepted' AND a.user_id = ?
+         GROUP BY r.order_id
+       ) odm ON odm.order_id = o.id
        ${whereClause}
-       HAVING accept_count < COALESCE(required_count, 1)
+       AND COALESCE(odc.accept_count, 0) < COALESCE(o.avatar_count, 1)
        ORDER BY o.priority DESC, o.created_at DESC
-       LIMIT ${safePageSize} OFFSET ${offset}`
+       LIMIT ? OFFSET ?`,
+      [userId || null, ...platformParams, safePageSize, offset]
     )
-    console.log('[getOpenOrders] SQL返回行数:', rows?.length, '第一行数据:', JSON.stringify(rows?.[0], null, 2))
 
     const totalRows = await db.query(
-      `SELECT COUNT(*) as total FROM (
-        SELECT o.id,
-          (SELECT COUNT(DISTINCT avatar_id) FROM order_dispatch_requests WHERE order_id = o.id AND status IN ('accepted', 'in_progress', 'completed')) as accept_count,
-          o.avatar_count as required_count
-        FROM orders o
-        ${whereClause}
-        HAVING accept_count < COALESCE(required_count, 1)
-      ) as t`
+      `SELECT COUNT(*) as total
+       FROM orders o
+       LEFT JOIN (
+         SELECT order_id, COUNT(DISTINCT CASE WHEN status IN ('accepted', 'in_progress', 'completed') THEN avatar_id END) as accept_count
+         FROM order_dispatch_requests
+         GROUP BY order_id
+       ) odc ON odc.order_id = o.id
+       ${whereClause}
+       AND COALESCE(odc.accept_count, 0) < COALESCE(o.avatar_count, 1)`,
+      [...platformParams]
     )
     const total = Number(totalRows?.[0]?.total || 0)
 
@@ -718,8 +734,6 @@ export class OrderService {
       acceptCount: Number(row.acceptCount || row.accept_count || 0),
       isAcceptedByMe: Boolean(row.isAcceptedByMe ?? row.is_accepted_by_me ?? 0)
     }))
-
-    console.log('[getOpenOrders] 返回订单数:', items.length, '第一个订单的isAcceptedByMe:', items[0]?.isAcceptedByMe, '原始数据:', rows[0]?.is_accepted_by_me, '原始数据驼峰:', rows[0]?.isAcceptedByMe)
 
     return {
       page: safePage,
