@@ -315,7 +315,12 @@ export class OrderProcessingService {
   private async findByOrderId(orderId: string): Promise<any | null> {
     const db = getMySQLClient()
     const rows = await db.query(
-      'SELECT * FROM content_generation_requests WHERE order_id = ? ORDER BY created_at DESC LIMIT 1',
+      `SELECT * FROM content_generation_requests 
+       WHERE order_id = ? 
+       ORDER BY 
+         CASE WHEN status IN ('failed', 'partial_failed') THEN 1 ELSE 0 END ASC,
+         created_at DESC 
+       LIMIT 1`,
       [orderId]
     )
     return rows?.[0] || null

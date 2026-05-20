@@ -59,7 +59,8 @@ export class OrderService {
   private normalizeContentStatus(status?: string): string {
     const value = String(status || '').trim().toLowerCase()
     if (['pending', 'processing', 'generating_text', 'generating_images', 'generating_video'].includes(value)) return 'generating'
-    if (['completed', 'revision_requested'].includes(value)) return 'preview'
+    if (['completed'].includes(value)) return 'preview'
+    if (['revision_requested'].includes(value)) return 'revision_requested'
     if (['published'].includes(value)) return 'published'
     if (['feedback_submitted'].includes(value)) return 'awaiting_acceptance'
     if (['settled', 'done'].includes(value)) return 'completed'
@@ -91,7 +92,7 @@ export class OrderService {
       const acceptedDispatchCount = allDispatchStatuses.filter(s => ['accepted', 'feedback_submitted'].includes(s)).length
       const completedDispatchCount = allDispatchStatuses.filter(s => ['completed', 'settled', 'done'].includes(s)).length
 
-      const hasProcessing = allContentStatuses.some(s => ['processing', 'publishing'].includes(s))
+      const hasProcessing = allContentStatuses.some(s => ['generating', 'publishing'].includes(s))
       const hasRevisionRequested = allContentStatuses.some(s => s === 'revision_requested')
       const allContentCompleted = totalContents > 0 && allContentStatuses.every(s => s === 'completed')
       const allContentAwaitingAcceptance = totalContents > 0 && allContentStatuses.every(s => ['awaiting_acceptance', 'completed'].includes(s))
@@ -100,7 +101,14 @@ export class OrderService {
       const currentOrder = await this.getOrderById(orderId)
       if (!currentOrder) return
       const currentStatus = currentOrder.status
-      const requiredAvatarCount = currentOrder.expectedQuantity || currentOrder.avatarCount || 1
+      const expectedQuantity = Number(currentOrder.expectedQuantity)
+      const avatarCount = Number(currentOrder.avatarCount)
+      const requiredAvatarCount =
+        Number.isFinite(expectedQuantity) && expectedQuantity > 0
+          ? expectedQuantity
+          : Number.isFinite(avatarCount) && avatarCount > 0
+            ? avatarCount
+            : 1
 
       let newStatus: string | null = null
 
@@ -174,7 +182,11 @@ export class OrderService {
     const id = crypto.randomUUID()
     console.log('[OrderService] 创建订单，ID:', id, '数据:', orderData)
     
-    const avatarCount = orderData.avatarCount || orderData.avatar_count || orderData.requiredAvatars || 1
+    const avatarCount = (() => {
+      const raw = orderData.avatarCount ?? orderData.avatar_count ?? orderData.requiredAvatars ?? 1
+      const n = Number(raw)
+      return Number.isFinite(n) && n > 0 ? n : 1
+    })()
     
     const priorityMap: Record<string, number> = {
       'low': 1,
@@ -290,10 +302,10 @@ export class OrderService {
     
     // SQL别名 avatar_id → 返回值为 avatarId
     const avatarRows = await db.query(
-      `SELECT odr.id, odr.avatar_id, odr.status, odr.platform, odr.reject_reason, odr.created_at,
+      `SELECT odr.id, COALESCE(odr.avatar_id, odr.target_avatar_id) as avatar_id, odr.status, odr.platform, odr.reject_reason, odr.created_at,
               a.name as nickname, a.avatar_url
        FROM order_dispatch_requests odr
-       LEFT JOIN avatars a ON odr.avatar_id = a.id
+       LEFT JOIN avatars a ON COALESCE(odr.avatar_id, odr.target_avatar_id) = a.id
        WHERE odr.order_id = ?
        ORDER BY odr.created_at DESC`,
       [orderId]
@@ -362,6 +374,20 @@ export class OrderService {
     const createdAt = order.createdAt instanceof Date 
       ? order.createdAt.toISOString() 
       : String(order.createdAt)
+
+    const budget = Number(order.budget) || 0
+    const expectedQuantity = Number(order.expectedQuantity)
+    const avatarCount = Number(order.avatarCount)
+    const requiredCount =
+      Number.isFinite(expectedQuantity) && expectedQuantity > 0
+        ? expectedQuantity
+        : Number.isFinite(avatarCount) && avatarCount > 0
+          ? avatarCount
+          : 1
+    const expectedEarnings =
+      budget > 0 && requiredCount > 0
+        ? Math.round((budget / requiredCount) * 100) / 100
+        : budget
     
     return {
       ...order,
@@ -375,12 +401,10 @@ export class OrderService {
       requirements: typeof order.requirements === 'string' 
         ? JSON.parse(order.requirements) 
         : (order.requirements || {}),
-      budget: order.budget,
-      expectedEarnings: (order.expectedQuantity && Number(order.budget) > 0)
-        ? Math.round(Number(order.budget) / order.expectedQuantity * 100) / 100
-        : Number(order.budget) || 0,
+      budget,
+      expectedEarnings,
       status: order.status,
-      avatarCount: order.expectedQuantity || order.avatarCount || 1,
+      avatarCount: requiredCount,
       avatarStats,
       summary_stats: summaryStats,
       createdAt
@@ -643,7 +667,7 @@ export class OrderService {
 
     const whereClause = `
       WHERE (
-        o.status IN ('pending', 'pending_acceptance', 'awaiting_acceptance', 'in_progress', 'accepted', 'content_generated', 'submitted', 'published', 'publish_failed', 'publish_timeout')
+        o.status IN ('open', 'pending_dispatch', 'pending', 'pending_acceptance', 'created', 'assigned')
         OR (o.status = 'pending_payment' AND IFNULL(o.is_paid, 0) = 1)
       )${platformClause}
     `
@@ -656,7 +680,7 @@ export class OrderService {
               COALESCE(a_order.name, a_latest.name, u.nickname) as publisher_nickname,
               COALESCE(a_order.avatar_url, a_latest.avatar_url, u.avatar) as publisher_avatar,
               COALESCE(odc.accept_count, 0) as accept_count,
-              COALESCE(o.avatar_count, 1) as required_count,
+              GREATEST(COALESCE(NULLIF(o.avatar_count, 0), NULLIF(o.expected_quantity, 0), 1), 1) as required_count,
               COALESCE(odm.is_accepted_by_me, 0) as is_accepted_by_me
        FROM orders o
        LEFT JOIN users u ON u.id = o.user_id
@@ -665,11 +689,17 @@ export class OrderService {
          SELECT a1.user_id, a1.name, a1.avatar_url
          FROM avatars a1
          INNER JOIN (
-           SELECT user_id, MAX(created_at) as max_created_at
-           FROM avatars
-           WHERE status = 'active'
-           GROUP BY user_id
-         ) latest ON latest.user_id = a1.user_id AND latest.max_created_at = a1.created_at
+           SELECT x.user_id, MIN(x.id) as picked_id
+           FROM avatars x
+           INNER JOIN (
+             SELECT user_id, MAX(created_at) as max_created_at
+             FROM avatars
+             WHERE status = 'active'
+             GROUP BY user_id
+           ) m ON m.user_id = x.user_id AND m.max_created_at = x.created_at
+           WHERE x.status = 'active'
+           GROUP BY x.user_id
+         ) pick ON pick.picked_id = a1.id
          WHERE a1.status = 'active'
        ) a_latest ON a_latest.user_id = o.user_id
        LEFT JOIN (
@@ -685,7 +715,7 @@ export class OrderService {
          GROUP BY r.order_id
        ) odm ON odm.order_id = o.id
        ${whereClause}
-       AND COALESCE(odc.accept_count, 0) < COALESCE(o.avatar_count, 1)
+       AND COALESCE(odc.accept_count, 0) < GREATEST(COALESCE(NULLIF(o.avatar_count, 0), NULLIF(o.expected_quantity, 0), 1), 1)
        ORDER BY o.priority DESC, o.created_at DESC
        LIMIT ? OFFSET ?`,
       [userId || null, ...platformParams, safePageSize, offset]
@@ -700,13 +730,16 @@ export class OrderService {
          GROUP BY order_id
        ) odc ON odc.order_id = o.id
        ${whereClause}
-       AND COALESCE(odc.accept_count, 0) < COALESCE(o.avatar_count, 1)`,
+       AND COALESCE(odc.accept_count, 0) < GREATEST(COALESCE(NULLIF(o.avatar_count, 0), NULLIF(o.expected_quantity, 0), 1), 1)`,
       [...platformParams]
     )
     const total = Number(totalRows?.[0]?.total || 0)
 
     // 读取DB返回值 → camelCase
-    const items = (rows || []).map((row: any) => ({
+    const items = (rows || []).map((row: any) => {
+      const platforms = this.safeParseJson<any[]>(row.platforms, [])
+      const primaryPlatform = platforms?.[0] || row.platform || 'general'
+      return ({
       id: row.id,
       userId: row.userId || row.user_id,
       avatarId: row.avatarId || row.avatar_id,
@@ -714,7 +747,8 @@ export class OrderService {
       description: row.description || '',
       contentType: row.contentType || row.content_type,
       platform: row.platform || 'general',
-      platforms: this.safeParseJson<any[]>(row.platforms, []),
+      platforms,
+      primaryPlatform,
       requirements: this.safeParseJson<Record<string, any>>(row.requirements, {}),
       targetAudience: row.targetAudience || row.target_audience || '',
       priority: Number(row.priority ?? 0),
@@ -723,7 +757,11 @@ export class OrderService {
       budget: Number(row.budget || 0),
       price: Number(row.price || row.price || 0),
       status: row.status,
-      avatarCount: row.expectedQuantity || row.expected_quantity || row.avatarCount || row.avatar_count || 1,
+      avatarCount: (() => {
+        const raw = row.expectedQuantity ?? row.expected_quantity ?? row.avatarCount ?? row.avatar_count ?? 1
+        const n = Number(raw)
+        return Number.isFinite(n) && n > 0 ? n : 1
+      })(),
       quantityPerAvatar: row.quantityPerAvatar || row.quantity_per_avatar || 1,
       isPaid: row.isPaid ?? row.is_paid ?? 0,
       acceptCount: Number(row.acceptCount || row.accept_count || 0),
@@ -733,7 +771,8 @@ export class OrderService {
       publisherAvatar: row.publisherAvatar || row.publisher_avatar || '',
       acceptCount: Number(row.acceptCount || row.accept_count || 0),
       isAcceptedByMe: Boolean(row.isAcceptedByMe ?? row.is_accepted_by_me ?? 0)
-    }))
+      })
+    })
 
     return {
       page: safePage,
@@ -1089,30 +1128,73 @@ export class OrderService {
   private async triggerSettlement(orderId: string) {
     const order = await this.getOrderById(orderId)
     if (!order || order.status !== 'completed') return
+    if (Number((order as any).isPaid ?? (order as any).is_paid ?? 0) !== 1) return
 
     const db = getMySQLClient()
-    
-    const dispatchRequests = await db.query(
-      'SELECT avatar_id, user_id FROM order_dispatch_requests WHERE order_id = ? AND status = ?',
-      [orderId, 'completed']
+
+    const existingRewardRows = await db.query(
+      `SELECT id, status
+       FROM earnings
+       WHERE order_id = ? AND type = ?
+       LIMIT 1`,
+      [orderId, 'order_reward']
     )
+    if (existingRewardRows?.[0]) {
+      await this.earningService.settleOrderEarnings(orderId)
+      return
+    }
+    
+    const requiredCount = (() => {
+      const raw =
+        (order as any).requiredCount ??
+        (order as any).required_count ??
+        (order as any).avatarCount ??
+        (order as any).avatar_count ??
+        (order as any).expectedQuantity ??
+        (order as any).expected_quantity ??
+        1
+      const n = Number(raw)
+      return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1
+    })()
 
     const totalAmount = Number(order.budget || 0)
-    const participantCount = dispatchRequests.length || 1
-    const amountPerAvatar = totalAmount / participantCount
+    const totalCents = Math.max(0, Math.round(totalAmount * 100))
+    if (totalCents <= 0) return
 
-    // 读取DB返回值 → camelCase
-    const participants = dispatchRequests.map((request: any) => ({
-      user_id: request.userId,
-      avatar_id: request.avatarId,
-      amount: amountPerAvatar
-    }))
+    const dispatchRequests = await db.query(
+      `SELECT avatar_id, user_id, updated_at as done_at
+       FROM order_dispatch_requests
+       WHERE order_id = ? AND status = 'completed'
+         AND avatar_id IS NOT NULL AND avatar_id <> '' AND avatar_id <> 'undefined'
+       ORDER BY updated_at ASC`,
+      [orderId]
+    )
+
+    const uniqueParticipantsMap = new Map<string, { user_id: string; avatar_id: string }>()
+    for (const request of dispatchRequests || []) {
+      const avatarId = request.avatarId || request.avatar_id
+      const userId = request.userId || request.user_id
+      if (!avatarId || !userId) continue
+      if (uniqueParticipantsMap.has(avatarId)) continue
+      uniqueParticipantsMap.set(avatarId, { user_id: userId, avatar_id: avatarId })
+      if (uniqueParticipantsMap.size >= requiredCount) break
+    }
+
+    const amountPerSlotCents = Math.floor(totalCents / requiredCount)
+    const slotRemainderCents = totalCents - amountPerSlotCents * requiredCount
+
+    const baseParticipants = Array.from(uniqueParticipantsMap.values())
+    const extraCount = Math.min(Math.max(slotRemainderCents, 0), baseParticipants.length)
+    const participants = baseParticipants.map((p, idx) => {
+      const cents = amountPerSlotCents + (idx < extraCount ? 1 : 0)
+      return { ...p, amount: cents / 100 }
+    })
 
     await this.earningService.createOrderEarnings(orderId, participants)
     
     await this.earningService.settleOrderEarnings(orderId)
 
-    console.log(`[OrderService] 订单 ${orderId} 结算完成，共 ${participantCount} 个参与者，每人 ${amountPerAvatar.toFixed(2)} 元`)
+    console.log(`[OrderService] 订单 ${orderId} 结算完成，共 ${participants.length}/${requiredCount} 个参与者`)
   }
 
   async submitRating(orderId: string, rating: number, comment?: string) {

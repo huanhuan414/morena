@@ -112,7 +112,7 @@ const Index: React.FC = () => {
           id: o.id,
           title: o.title || '未命名订单',
           description: o.description || '',
-          platform: canonicalizePlatform(o.platform || o.platforms?.[0]),
+          platform: canonicalizePlatform(o.primaryPlatform || o.platforms?.[0] || o.platform),
           platforms: Array.isArray(o.platforms) ? o.platforms : (o.platform ? [o.platform] : []),
           budget: Number(o.budget || o.price || 0),
           avatarCountRaw: Number(o.avatarCount || o.avatar_count || 0),
