@@ -409,6 +409,12 @@ export class ContentGenerationService implements OnModuleInit {
       this.logger.warn(`视频生成返回空结果且无后台任务，标记为失败`)
     }
 
+    const expectedImageCount = needImage ? this.getDefaultImageCount(platform, input.contentType || 'image') : 0
+    const imageIncomplete = needImage && !imageFailed && images.length > 0 && images.length < expectedImageCount
+    if (imageIncomplete) {
+      this.logger.warn(`配图生成不完整: 预期${expectedImageCount}张，实际${images.length}张`)
+    }
+
     const hasAnyContent = textContent || images.length > 0 || videos.length > 0
     const allRequiredFailed = (needText && textFailed && !textContent) &&
                               (needImage && imageFailed && images.length === 0) &&
@@ -425,10 +431,11 @@ export class ContentGenerationService implements OnModuleInit {
       // 定时任务 pollPendingVideoTasks 会在视频完成后更新状态
       finalStatus = 'generating_video'
       this.logger.log(`视频任务在后台生成中，保持 generating_video 状态`)
-    } else if (textFailed || imageFailed || videoFailed) {
-      // 部分失败（视频不在后台生成中）
+    } else if (textFailed || imageFailed || videoFailed || imageIncomplete) {
+      // 部分失败（视频不在后台生成中）或图片不完整
       if (needText && textFailed && !textContent) failedParts.push('文案')
       if (needImage && imageFailed && images.length === 0) failedParts.push('配图')
+      if (imageIncomplete) failedParts.push(`配图不完整(${images.length}/${expectedImageCount})`)
       if (needVideo && videoFailed && videos.length === 0) failedParts.push('视频')
       finalStatus = 'partial_failed'
     } else {
