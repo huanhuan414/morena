@@ -154,6 +154,9 @@ export default function OrderSquarePage() {
   const [showBackToTop, setShowBackToTop] = useState(false)
   const [scrollTop, setScrollTop] = useState(0)
   const [refresherTriggered, setRefresherTriggered] = useState(false)
+  const [ordersLoading, setOrdersLoading] = useState(false)
+  const [orderPage, setOrderPage] = useState(1)
+  const [hasMoreOrders, setHasMoreOrders] = useState(true)
   const [acceptingOrderIds, setAcceptingOrderIds] = useState<Record<string, true>>({})
 
 
@@ -172,17 +175,25 @@ export default function OrderSquarePage() {
     setScrollTop(prev => prev + 1)
   }
 
-  const fetchOrders = async (platform?: string) => {
+  const fetchOrders = async (platform?: string, page = 1, append = false) => {
     const currentPlatform = platform ?? selectedPlatform
-    setRefresherTriggered(true)
+    if (ordersLoading) return
+    setOrdersLoading(true)
+    if (page === 1) setRefresherTriggered(true)
     try {
       const res = await Network.request({
-        url: '/api/order/open?page=1&pageSize=50'
+        url: '/api/order/open',
+        data: {
+          page,
+          pageSize: 20,
+          ...(currentPlatform !== 'all' ? { platform: currentPlatform } : {})
+        }
       })
 
       if (res.data?.code === 200) {
         const data = res.data?.data
         const items = Array.isArray(data) ? data : (data?.items || data?.list || [])
+        const total = Number(data?.total || items.length || 0)
 
         if (items.length > 0) {
           const mapped = items.map((item: any) => ({
@@ -201,26 +212,45 @@ export default function OrderSquarePage() {
             isAcceptedByMe: Boolean(item.isAcceptedByMe || item.is_accepted_by_me)
           })) as OrderItem[]
 
-          const filtered = currentPlatform === 'all'
-            ? mapped
-            : mapped.filter((item) => item.platform === currentPlatform)
-          
-          setOrders(filtered)
+          const filtered = currentPlatform === 'all' ? mapped : mapped.filter((item) => item.platform === currentPlatform)
+          let nextLength = 0
+          setOrders(prev => {
+            const next = append ? [...prev, ...filtered] : filtered
+            nextLength = next.length
+            return next
+          })
           setIsDemo(false)
+          setOrderPage(page)
+          setHasMoreOrders(nextLength < total)
         } else {
-          setOrders(getDemoOrdersForPlatform(currentPlatform))
-          setIsDemo(true)
+          if (page === 1) {
+            setOrders(getDemoOrdersForPlatform(currentPlatform))
+            setIsDemo(true)
+            setHasMoreOrders(false)
+            setOrderPage(1)
+          } else {
+            setHasMoreOrders(false)
+          }
         }
       } else {
-        setOrders(getDemoOrdersForPlatform(currentPlatform))
-        setIsDemo(true)
+        if (page === 1) {
+          setOrders(getDemoOrdersForPlatform(currentPlatform))
+          setIsDemo(true)
+          setHasMoreOrders(false)
+          setOrderPage(1)
+        }
       }
     } catch (error) {
       console.error('获取订单失败:', error)
-      setOrders(getDemoOrdersForPlatform(currentPlatform))
-      setIsDemo(true)
+      if (page === 1) {
+        setOrders(getDemoOrdersForPlatform(currentPlatform))
+        setIsDemo(true)
+        setHasMoreOrders(false)
+        setOrderPage(1)
+      }
     } finally {
-      setRefresherTriggered(false)
+      if (page === 1) setRefresherTriggered(false)
+      setOrdersLoading(false)
     }
   }
 
@@ -231,11 +261,19 @@ export default function OrderSquarePage() {
 
   const handlePlatformChange = (key: string) => {
     setSelectedPlatform(key)
+    setOrderPage(1)
+    setHasMoreOrders(true)
     if (isDemo) {
       setOrders(getDemoOrdersForPlatform(key))
     } else {
-      fetchOrders(key)
+      fetchOrders(key, 1, false)
     }
+  }
+
+  const handleLoadMore = () => {
+    if (isDemo) return
+    if (!hasMoreOrders) return
+    fetchOrders(undefined, orderPage + 1, true)
   }
 
   const handleAcceptOrder = async (orderId: string) => {
@@ -407,6 +445,8 @@ export default function OrderSquarePage() {
         refresherTriggered={refresherTriggered}
         onRefresherRefresh={() => fetchOrders()}
         onScroll={handleScroll}
+        lowerThreshold={200}
+        onScrollToLower={handleLoadMore}
         scrollTop={scrollTop}
         scrollWithAnimation
       >

@@ -1,5 +1,4 @@
 import React from 'react'
-import Taro from '@tarojs/taro'
 import { View, Text } from '@tarojs/components'
 import './index.css'
 
@@ -15,7 +14,7 @@ const UserAgreement: React.FC = () => {
       <View className="agreement-content">
         <View className="agreement-section">
           <Text className="section-content">
-            欢迎您使用「莫瑞娜AI应用」（以下简称"本应用"）。请您仔细阅读以下条款，如果您未满18周岁，请在法定监护人的陪同下阅读本协议。您使用我们的服务即表示您已同意本协议内容。
+            欢迎您使用「莫瑞娜AI应用」（以下简称“本应用”）。请您仔细阅读以下条款，如果您未满18周岁，请在法定监护人的陪同下阅读本协议。您使用我们的服务即表示您已同意本协议内容。
           </Text>
           <Text className="section-content">
             <Text className="highlight-text">重要提示：</Text>本协议是您与应用开发者之间关于使用AI智能体应用服务所订立的协议。本协议内容涵盖了您使用本应用的权利义务，请仔细阅读。
@@ -148,7 +147,7 @@ const UserAgreement: React.FC = () => {
         <View className="agreement-section">
           <Text className="section-title">7. 免责声明</Text>
           <Text className="section-content">
-            <Text className="content-title">7.1</Text>本应用按"现状"提供，我们不提供任何形式的保证。
+            <Text className="content-title">7.1</Text>本应用按“现状”提供，我们不提供任何形式的保证。
           </Text>
           <Text className="section-content">
             <Text className="content-title">7.2</Text>我们不保证服务不会中断，也不保证服务的及时性、安全性和准确性。

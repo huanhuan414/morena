@@ -186,7 +186,6 @@ export default function GeneratedContentPage() {
 
   // 查看内容详情
   const handleView = (content: any) => {
-    const normalizedStatus = BACKEND_STATUS_TO_TAB[content.status] || content.status
     const query = `orderId=${encodeURIComponent(content.orderId || '')}&requestId=${encodeURIComponent(content.id || '')}`
     Taro.navigateTo({ url: `/package-order/pages/order-content-creation/index?${query}` })
 

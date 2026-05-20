@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { Bell, Settings, Users, FileText, Coins, Plus, Zap, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye, ShoppingBag, ChevronRight, Gift, Rocket, Clock, CircleCheckBig, ChevronDown } from 'lucide-react-taro'
@@ -8,7 +8,7 @@ import { PLATFORM_UI_ORDER, getPlatformLabel, getPlatformMeta, canonicalizePlatf
 import { useUserStore } from '@/stores/user'
 import { useNotifications } from '@/hooks/useNotifications'
 import { Avatar as UiAvatar } from '@/components/ui/avatar'
-import { getStatusBarHeight, getCapsuleButtonBottom } from '@/utils/safe-area'
+import { getCapsuleButtonBottom } from '@/utils/safe-area'
 import './index.css'
 
 interface OrderItem {
@@ -78,6 +78,8 @@ const Index: React.FC = () => {
   const [, setOrderTotal] = useState(0)
   const [hasMoreOrders, setHasMoreOrders] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const ordersFetchInFlightRef = useRef(false)
+  const lastOrdersFetchAtRef = useRef(0)
 
   const platformTabs = [
     { key: 'all', label: '全部' },
@@ -86,6 +88,11 @@ const Index: React.FC = () => {
 
   // 获取公开订单列表（订单广场数据）
   const fetchOrders = useCallback(async (page = 1, append = false) => {
+    if (ordersFetchInFlightRef.current) return
+    const now = Date.now()
+    if (now - lastOrdersFetchAtRef.current < 800 && page === 1 && !append) return
+    ordersFetchInFlightRef.current = true
+    lastOrdersFetchAtRef.current = now
     try {
       if (page === 1) setOrdersLoading(true)
       const pageSize = 10
@@ -97,8 +104,6 @@ const Index: React.FC = () => {
           ...(activePlatform !== 'all' ? { platform: activePlatform } : {})
         }
       })
-      console.log('[首页] 获取公开订单 page:', page, 'Response:', res.data)
-
       if (res.data?.code === 200 && res.data?.data) {
         const apiData = res.data.data
         const rawOrders = Array.isArray(apiData) ? apiData : (apiData.items || apiData.orders || apiData.list || [])
@@ -128,12 +133,15 @@ const Index: React.FC = () => {
           urgency: o.urgency || (o.priority >= 4 ? 'urgent' : o.priority >= 3 ? 'high' : o.priority >= 2 ? 'normal' : 'low'),
           isAcceptedByMe: Boolean(o.isAcceptedByMe || o.is_accepted_by_me)
         }))
-        console.log('[首页] 订单数据映射完成，共', mapped.length, '条, total:', total)
-        setOrders(prev => append ? [...prev, ...mapped] : mapped)
+        let nextLength = 0
+        setOrders(prev => {
+          const next = append ? [...prev, ...mapped] : mapped
+          nextLength = next.length
+          return next
+        })
         setOrderTotal(total)
         setOrderPage(page)
-        const newLength = append ? orders.length + mapped.length : mapped.length
-        setHasMoreOrders(newLength < total)
+        setHasMoreOrders(nextLength < total)
       } else {
         if (!append) setOrders([])
       }
@@ -143,6 +151,7 @@ const Index: React.FC = () => {
     } finally {
       setOrdersLoading(false)
       setIsRefreshing(false)
+      ordersFetchInFlightRef.current = false
     }
   }, [activePlatform])
 
@@ -240,8 +249,6 @@ const Index: React.FC = () => {
             url: `/package-order/pages/order-processing/index?${query}`
           })
         }, 500)
-        fetchOrders()
-        fetchStats()
       } else {
         Taro.showToast({ title: res.data?.message || '接单失败', icon: 'none' })
       }
@@ -327,15 +334,6 @@ const Index: React.FC = () => {
       setGrowthCampaign(null)
     }
   }
-
-  useEffect(() => {
-    loadUserFromStorage().then(() => {
-      fetchStats()
-      fetchGrowthCampaign()
-      fetchAssignedOrders()
-      fetchOrders()
-    }).catch(err => console.error('初始化数据加载失败:', err))
-  }, [])
 
   useDidShow(() => {
     loadUserFromStorage().then(() => {
