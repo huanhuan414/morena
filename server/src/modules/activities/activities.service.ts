@@ -17,8 +17,17 @@ export interface Activity {
 
 @Injectable()
 export class ActivitiesService {
+  private tablesEnsured = false
+
   private async ensureGrowthCampaignTables() {
+    if (this.tablesEnsured) return
     await ensureGrowthCampaignTables()
+    this.tablesEnsured = true
+  }
+
+  async onModuleInit() {
+    // 服务启动时确保表存在，避免每次请求都执行 CREATE TABLE IF NOT EXISTS
+    await this.ensureGrowthCampaignTables()
   }
 
   async getCampaignConfig() {
