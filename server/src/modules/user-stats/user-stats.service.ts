@@ -50,8 +50,11 @@ export class UserStatsService {
     try {
       db = getMySQLClient()
       
-      // 1. 获取用户所有活跃分身（过滤已删除/训练中的）
-      const dbAvatars = await db.query('avatars', { user_id: userId, status: 'active' }) as any[]
+      // 1. 获取用户所有活跃分身（只查需要的字段，避免读取 photo_analysis 等大字段）
+      const dbAvatars = await db.query(
+        `SELECT id, user_id, name, nickname, avatar_url, status, is_hosted, hosting_enabled FROM avatars WHERE user_id = ? AND status = ?`,
+        [userId, 'active']
+      ) as any[]
       console.log('[UserStats] DB avatars for', userId, ':', dbAvatars?.length || 0)
       avatarList = dbAvatars || []
       
@@ -153,43 +156,41 @@ export class UserStatsService {
       totalEarnings = cachedStats.totalEarnings || 0
     }
     
-    // 计算每个分身的统计（从 content_generation_requests 实时查询，不依赖缓存列）
+    // 批量查询所有分身统计（避免逐个循环查询导致 N+1 问题）
     let avatarStatsResult: any[] = []
-    if (db) {
+    if (db && avatarIds.length > 0) {
       try {
+        const avatarIdList = avatarIds.map((id: string) => `'${id}'`).join(',')
+        // 一次性查询所有分身的订单统计
+        const statsResult = await db.query(
+          `SELECT
+             cgr.avatar_id,
+             COUNT(DISTINCT cgr.order_id) as total_orders,
+             COUNT(DISTINCT CASE WHEN cgr.status IN ('completed','approved','published','awaiting_acceptance','settled','done','preview') THEN cgr.order_id END) as completed_orders
+           FROM content_generation_requests cgr
+           WHERE cgr.avatar_id IN (${avatarIdList})
+             AND cgr.status NOT IN ('pending', 'cancelled')
+           GROUP BY cgr.avatar_id`
+        ) as any[]
+        const statsMap = new Map(statsResult.map((r: any) => [r.avatarId || r.avatar_id, r]))
+
+        // 一次性查询所有分身的收益统计
+        const earnResult = await db.query(
+          `SELECT avatar_id, COALESCE(SUM(amount), 0) as total
+           FROM earnings
+           WHERE avatar_id IN (${avatarIdList}) AND status IN ('settled', 'completed')
+           GROUP BY avatar_id`
+        ) as any[]
+        const earnMap = new Map(earnResult.map((r: any) => [r.avatarId || r.avatar_id, Number(r.total || 0)]))
+
         for (const a of avatarList) {
-          let avatarTotalOrders = 0
-          let avatarCompletedOrders = 0
-          let avatarEarnings = 0
-
-          try {
-            const statsResult = await db.query(
-              `SELECT
-                 COUNT(DISTINCT cgr.order_id) as total_orders,
-                 COUNT(DISTINCT CASE WHEN cgr.status IN ('completed','approved','published','awaiting_acceptance','settled','done','preview') THEN cgr.order_id END) as completed_orders
-               FROM content_generation_requests cgr
-               WHERE cgr.avatar_id = ?
-                 AND cgr.status NOT IN ('pending', 'cancelled')`,
-              [a.id]
-            ) as any[]
-            avatarTotalOrders = statsResult?.[0]?.totalOrders || statsResult?.[0]?.total_orders || 0
-            avatarCompletedOrders = statsResult?.[0]?.completedOrders || statsResult?.[0]?.completed_orders || 0
-          } catch (e) { console.error(`[user-stats] avatar stats error for ${a.id}:`, e.message) }
-
-          try {
-            const earnResult = await db.query(
-              `SELECT COALESCE(SUM(amount), 0) as total FROM earnings
-               WHERE avatar_id = ? AND status IN ('settled', 'completed')`,
-              [a.id]
-            ) as any[]
-            avatarEarnings = Number(earnResult?.[0]?.total || 0)
-          } catch (e) {}
-
+          const stats = statsMap.get(a.id)
+          const earnings = earnMap.get(a.id) || 0
           avatarStatsResult.push({
             id: a.id,
-            totalOrders: avatarTotalOrders,
-            completedOrders: avatarCompletedOrders,
-            totalEarnings: avatarEarnings,
+            totalOrders: stats?.totalOrders || stats?.total_orders || 0,
+            completedOrders: stats?.completedOrders || stats?.completed_orders || 0,
+            totalEarnings: earnings,
           })
         }
       } catch (e) { console.error('[user-stats] avatar stats error:', e.message) }
@@ -235,8 +236,11 @@ export class UserStatsService {
     try {
       const db = getMySQLClient()
       
-      // 获取用户所有活跃分身
-      const avatars = await db.query('avatars', { user_id: userId, status: 'active' }) as any[]
+      // 获取用户所有活跃分身（只查需要的字段）
+      const avatars = await db.query(
+        `SELECT id, user_id, name, nickname, avatar_url, status FROM avatars WHERE user_id = ? AND status = ?`,
+        [userId, 'active']
+      ) as any[]
       avatarList = avatars || []
       const avatarIds = avatarList.map((a: any) => a.id)
       
@@ -296,8 +300,11 @@ export class UserStatsService {
     try {
       const db = getMySQLClient()
       
-      // 获取用户所有活跃分身
-      const avatars = await db.query('avatars', { user_id: userId, status: 'active' }) as any[]
+      // 获取用户所有活跃分身（只查需要的字段）
+      const avatars = await db.query(
+        `SELECT id, user_id, name, nickname, avatar_url, status FROM avatars WHERE user_id = ? AND status = ?`,
+        [userId, 'active']
+      ) as any[]
       avatarList = avatars || []
       const avatarIds = avatarList.map((a: any) => a.id)
       
