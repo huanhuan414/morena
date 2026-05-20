@@ -52,7 +52,7 @@ export class UserStatsService {
       
       // 1. 获取用户所有活跃分身（只查需要的字段，避免读取 photo_analysis 等大字段）
       const dbAvatars = await db.query(
-        `SELECT id, user_id, name, nickname, avatar_url, status, is_hosted, hosting_enabled FROM avatars WHERE user_id = ? AND status = ?`,
+        `SELECT id, user_id, name, avatar_url, status, is_hosted, hosting_enabled FROM avatars WHERE user_id = ? AND status = ?`,
         [userId, 'active']
       ) as any[]
       console.log('[UserStats] DB avatars for', userId, ':', dbAvatars?.length || 0)
@@ -144,21 +144,10 @@ export class UserStatsService {
       // 存入内存缓存
       sharedMemoryAvatars.set(userId, avatarList)
       sharedMemoryStats.set(userId, { pendingOrders, generatedContents, totalEarnings })
-    } catch (error) {
-      // 数据库不可用，使用内存缓存
-      avatarList = sharedMemoryAvatars.get(userId) || []
-      avatarCount = avatarList.length
       
-      // 从内存统计获取
-      const cachedStats = sharedMemoryStats.get(userId) || {}
-      pendingOrders = cachedStats.pendingOrders || 0
-      generatedContents = cachedStats.generatedContents || 0
-      totalEarnings = cachedStats.totalEarnings || 0
-    }
-    
-    // 批量查询所有分身统计（避免逐个循环查询导致 N+1 问题）
-    let avatarStatsResult: any[] = []
-    if (db && avatarIds.length > 0) {
+      // 批量查询所有分身统计（避免逐个循环查询导致 N+1 问题）
+      let avatarStatsResult: any[] = []
+      if (avatarIds.length > 0) {
       try {
         const avatarIdList = avatarIds.map((id: string) => `'${id}'`).join(',')
         // 一次性查询所有分身的订单统计
@@ -223,6 +212,38 @@ export class UserStatsService {
       invitedCount,
       totalWorkHours
     }
+    } catch (error) {
+      // 数据库不可用，使用内存缓存
+      avatarList = sharedMemoryAvatars.get(userId) || []
+      avatarCount = avatarList.length
+      
+      const cachedStats = sharedMemoryStats.get(userId) || {}
+      pendingOrders = cachedStats.pendingOrders || 0
+      generatedContents = cachedStats.generatedContents || 0
+      totalEarnings = cachedStats.totalEarnings || 0
+      
+      return {
+        avatarCount,
+        pendingOrders,
+        generatedContents,
+        totalEarnings,
+        allHostingEnabled: avatarCount > 0,
+        avatars: avatarList.map((a: any) => ({
+          id: a.id,
+          name: a.name || a.nickname || '分身',
+          avatar: a.avatar_url || a.avatarUrl || '',
+          status: a.status || 'active',
+          totalOrders: 0,
+          completedOrders: 0,
+          totalEarnings: 0,
+        })),
+        nickname: '',
+        avatar: '',
+        referralCode: '',
+        invitedCount: 0,
+        totalWorkHours: 0
+      }
+    }
   }
   
   /**
@@ -238,7 +259,7 @@ export class UserStatsService {
       
       // 获取用户所有活跃分身（只查需要的字段）
       const avatars = await db.query(
-        `SELECT id, user_id, name, nickname, avatar_url, status FROM avatars WHERE user_id = ? AND status = ?`,
+        `SELECT id, user_id, name, avatar_url, status FROM avatars WHERE user_id = ? AND status = ?`,
         [userId, 'active']
       ) as any[]
       avatarList = avatars || []
@@ -302,7 +323,7 @@ export class UserStatsService {
       
       // 获取用户所有活跃分身（只查需要的字段）
       const avatars = await db.query(
-        `SELECT id, user_id, name, nickname, avatar_url, status FROM avatars WHERE user_id = ? AND status = ?`,
+        `SELECT id, user_id, name, avatar_url, status FROM avatars WHERE user_id = ? AND status = ?`,
         [userId, 'active']
       ) as any[]
       avatarList = avatars || []
