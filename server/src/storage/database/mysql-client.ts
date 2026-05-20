@@ -13,7 +13,9 @@ export function getPool(): Pool {
       database: process.env.MYSQL_DATABASE || 'mrl',
       waitForConnections: true,
       connectionLimit: 10,
-      queueLimit: 0,
+      queueLimit: 100,
+      connectTimeout: 5000,
+      acquireTimeout: 10000,
       decimalNumbers: true,
     });
   }
