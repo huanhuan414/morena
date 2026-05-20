@@ -59,7 +59,8 @@ export class OrderService {
   private normalizeContentStatus(status?: string): string {
     const value = String(status || '').trim().toLowerCase()
     if (['pending', 'processing', 'generating_text', 'generating_images', 'generating_video'].includes(value)) return 'generating'
-    if (['completed', 'revision_requested'].includes(value)) return 'preview'
+    if (['completed'].includes(value)) return 'preview'
+    if (['revision_requested'].includes(value)) return 'revision_requested'
     if (['published'].includes(value)) return 'published'
     if (['feedback_submitted'].includes(value)) return 'awaiting_acceptance'
     if (['settled', 'done'].includes(value)) return 'completed'
@@ -91,7 +92,7 @@ export class OrderService {
       const acceptedDispatchCount = allDispatchStatuses.filter(s => ['accepted', 'feedback_submitted'].includes(s)).length
       const completedDispatchCount = allDispatchStatuses.filter(s => ['completed', 'settled', 'done'].includes(s)).length
 
-      const hasProcessing = allContentStatuses.some(s => ['processing', 'publishing'].includes(s))
+      const hasProcessing = allContentStatuses.some(s => ['generating', 'publishing'].includes(s))
       const hasRevisionRequested = allContentStatuses.some(s => s === 'revision_requested')
       const allContentCompleted = totalContents > 0 && allContentStatuses.every(s => s === 'completed')
       const allContentAwaitingAcceptance = totalContents > 0 && allContentStatuses.every(s => ['awaiting_acceptance', 'completed'].includes(s))
@@ -290,10 +291,10 @@ export class OrderService {
     
     // SQL别名 avatar_id → 返回值为 avatarId
     const avatarRows = await db.query(
-      `SELECT odr.id, odr.avatar_id, odr.status, odr.platform, odr.reject_reason, odr.created_at,
+      `SELECT odr.id, COALESCE(odr.avatar_id, odr.target_avatar_id) as avatar_id, odr.status, odr.platform, odr.reject_reason, odr.created_at,
               a.name as nickname, a.avatar_url
        FROM order_dispatch_requests odr
-       LEFT JOIN avatars a ON odr.avatar_id = a.id
+       LEFT JOIN avatars a ON COALESCE(odr.avatar_id, odr.target_avatar_id) = a.id
        WHERE odr.order_id = ?
        ORDER BY odr.created_at DESC`,
       [orderId]
@@ -362,6 +363,20 @@ export class OrderService {
     const createdAt = order.createdAt instanceof Date 
       ? order.createdAt.toISOString() 
       : String(order.createdAt)
+
+    const budget = Number(order.budget) || 0
+    const expectedQuantity = Number(order.expectedQuantity)
+    const avatarCount = Number(order.avatarCount)
+    const requiredCount =
+      Number.isFinite(expectedQuantity) && expectedQuantity > 0
+        ? expectedQuantity
+        : Number.isFinite(avatarCount) && avatarCount > 0
+          ? avatarCount
+          : 1
+    const expectedEarnings =
+      budget > 0 && requiredCount > 0
+        ? Math.round((budget / requiredCount) * 100) / 100
+        : budget
     
     return {
       ...order,
@@ -375,12 +390,10 @@ export class OrderService {
       requirements: typeof order.requirements === 'string' 
         ? JSON.parse(order.requirements) 
         : (order.requirements || {}),
-      budget: order.budget,
-      expectedEarnings: (order.expectedQuantity && Number(order.budget) > 0)
-        ? Math.round(Number(order.budget) / order.expectedQuantity * 100) / 100
-        : Number(order.budget) || 0,
+      budget,
+      expectedEarnings,
       status: order.status,
-      avatarCount: order.expectedQuantity || order.avatarCount || 1,
+      avatarCount: requiredCount,
       avatarStats,
       summary_stats: summaryStats,
       createdAt
@@ -665,11 +678,17 @@ export class OrderService {
          SELECT a1.user_id, a1.name, a1.avatar_url
          FROM avatars a1
          INNER JOIN (
-           SELECT user_id, MAX(created_at) as max_created_at
-           FROM avatars
-           WHERE status = 'active'
-           GROUP BY user_id
-         ) latest ON latest.user_id = a1.user_id AND latest.max_created_at = a1.created_at
+           SELECT x.user_id, MIN(x.id) as picked_id
+           FROM avatars x
+           INNER JOIN (
+             SELECT user_id, MAX(created_at) as max_created_at
+             FROM avatars
+             WHERE status = 'active'
+             GROUP BY user_id
+           ) m ON m.user_id = x.user_id AND m.max_created_at = x.created_at
+           WHERE x.status = 'active'
+           GROUP BY x.user_id
+         ) pick ON pick.picked_id = a1.id
          WHERE a1.status = 'active'
        ) a_latest ON a_latest.user_id = o.user_id
        LEFT JOIN (
@@ -706,7 +725,10 @@ export class OrderService {
     const total = Number(totalRows?.[0]?.total || 0)
 
     // 读取DB返回值 → camelCase
-    const items = (rows || []).map((row: any) => ({
+    const items = (rows || []).map((row: any) => {
+      const platforms = this.safeParseJson<any[]>(row.platforms, [])
+      const primaryPlatform = platforms?.[0] || row.platform || 'general'
+      return ({
       id: row.id,
       userId: row.userId || row.user_id,
       avatarId: row.avatarId || row.avatar_id,
@@ -714,7 +736,8 @@ export class OrderService {
       description: row.description || '',
       contentType: row.contentType || row.content_type,
       platform: row.platform || 'general',
-      platforms: this.safeParseJson<any[]>(row.platforms, []),
+      platforms,
+      primaryPlatform,
       requirements: this.safeParseJson<Record<string, any>>(row.requirements, {}),
       targetAudience: row.targetAudience || row.target_audience || '',
       priority: Number(row.priority ?? 0),
@@ -733,7 +756,8 @@ export class OrderService {
       publisherAvatar: row.publisherAvatar || row.publisher_avatar || '',
       acceptCount: Number(row.acceptCount || row.accept_count || 0),
       isAcceptedByMe: Boolean(row.isAcceptedByMe ?? row.is_accepted_by_me ?? 0)
-    }))
+      })
+    })
 
     return {
       page: safePage,
