@@ -101,7 +101,14 @@ export class OrderService {
       const currentOrder = await this.getOrderById(orderId)
       if (!currentOrder) return
       const currentStatus = currentOrder.status
-      const requiredAvatarCount = currentOrder.expectedQuantity || currentOrder.avatarCount || 1
+      const expectedQuantity = Number(currentOrder.expectedQuantity)
+      const avatarCount = Number(currentOrder.avatarCount)
+      const requiredAvatarCount =
+        Number.isFinite(expectedQuantity) && expectedQuantity > 0
+          ? expectedQuantity
+          : Number.isFinite(avatarCount) && avatarCount > 0
+            ? avatarCount
+            : 1
 
       let newStatus: string | null = null
 
@@ -1121,30 +1128,73 @@ export class OrderService {
   private async triggerSettlement(orderId: string) {
     const order = await this.getOrderById(orderId)
     if (!order || order.status !== 'completed') return
+    if (Number((order as any).isPaid ?? (order as any).is_paid ?? 0) !== 1) return
 
     const db = getMySQLClient()
-    
-    const dispatchRequests = await db.query(
-      'SELECT avatar_id, user_id FROM order_dispatch_requests WHERE order_id = ? AND status = ?',
-      [orderId, 'completed']
+
+    const existingRewardRows = await db.query(
+      `SELECT id, status
+       FROM earnings
+       WHERE order_id = ? AND type = ?
+       LIMIT 1`,
+      [orderId, 'order_reward']
     )
+    if (existingRewardRows?.[0]) {
+      await this.earningService.settleOrderEarnings(orderId)
+      return
+    }
+    
+    const requiredCount = (() => {
+      const raw =
+        (order as any).requiredCount ??
+        (order as any).required_count ??
+        (order as any).avatarCount ??
+        (order as any).avatar_count ??
+        (order as any).expectedQuantity ??
+        (order as any).expected_quantity ??
+        1
+      const n = Number(raw)
+      return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1
+    })()
 
     const totalAmount = Number(order.budget || 0)
-    const participantCount = dispatchRequests.length || 1
-    const amountPerAvatar = totalAmount / participantCount
+    const totalCents = Math.max(0, Math.round(totalAmount * 100))
+    if (totalCents <= 0) return
 
-    // 读取DB返回值 → camelCase
-    const participants = dispatchRequests.map((request: any) => ({
-      user_id: request.userId,
-      avatar_id: request.avatarId,
-      amount: amountPerAvatar
-    }))
+    const dispatchRequests = await db.query(
+      `SELECT avatar_id, user_id, updated_at as done_at
+       FROM order_dispatch_requests
+       WHERE order_id = ? AND status = 'completed'
+         AND avatar_id IS NOT NULL AND avatar_id <> '' AND avatar_id <> 'undefined'
+       ORDER BY updated_at ASC`,
+      [orderId]
+    )
+
+    const uniqueParticipantsMap = new Map<string, { user_id: string; avatar_id: string }>()
+    for (const request of dispatchRequests || []) {
+      const avatarId = request.avatarId || request.avatar_id
+      const userId = request.userId || request.user_id
+      if (!avatarId || !userId) continue
+      if (uniqueParticipantsMap.has(avatarId)) continue
+      uniqueParticipantsMap.set(avatarId, { user_id: userId, avatar_id: avatarId })
+      if (uniqueParticipantsMap.size >= requiredCount) break
+    }
+
+    const amountPerSlotCents = Math.floor(totalCents / requiredCount)
+    const slotRemainderCents = totalCents - amountPerSlotCents * requiredCount
+
+    const baseParticipants = Array.from(uniqueParticipantsMap.values())
+    const extraCount = Math.min(Math.max(slotRemainderCents, 0), baseParticipants.length)
+    const participants = baseParticipants.map((p, idx) => {
+      const cents = amountPerSlotCents + (idx < extraCount ? 1 : 0)
+      return { ...p, amount: cents / 100 }
+    })
 
     await this.earningService.createOrderEarnings(orderId, participants)
     
     await this.earningService.settleOrderEarnings(orderId)
 
-    console.log(`[OrderService] 订单 ${orderId} 结算完成，共 ${participantCount} 个参与者，每人 ${amountPerAvatar.toFixed(2)} 元`)
+    console.log(`[OrderService] 订单 ${orderId} 结算完成，共 ${participants.length}/${requiredCount} 个参与者`)
   }
 
   async submitRating(orderId: string, rating: number, comment?: string) {

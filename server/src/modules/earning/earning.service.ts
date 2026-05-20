@@ -132,15 +132,17 @@ export class EarningService {
   }>) {
     const pool = getPool()
 
-    // 检查是否已经创建过收益记录
-    const [existingEarnings] = await pool.query('SELECT id FROM earnings WHERE order_id = ?', [orderId]) as any[]
-    if (existingEarnings && existingEarnings.length > 0) {
-      console.log(`[EarningService] 订单 ${orderId} 已创建收益记录，跳过重复创建`)
-      return []
-    }
-
     const results = []
     for (const participant of participants) {
+      if (!participant?.user_id || !participant?.avatar_id) continue
+      const [existing] = await pool.query(
+        'SELECT id FROM earnings WHERE order_id = ? AND avatar_id = ? AND type = ? LIMIT 1',
+        [orderId, participant.avatar_id, 'order_reward']
+      ) as any[]
+      if (existing && existing.length > 0) {
+        continue
+      }
+
       const id = crypto.randomUUID()
       try {
         await pool.query(
@@ -162,19 +164,42 @@ export class EarningService {
    */
   async settleOrderEarnings(orderId: string) {
     const pool = getPool()
+    const conn = await pool.getConnection()
+    try {
+      await conn.beginTransaction()
 
-    const [earnings] = await pool.query('SELECT * FROM earnings WHERE order_id = ? AND status = ?', [orderId, 'pending']) as any[]
+      const [earnings] = await conn.query(
+        `SELECT id, user_id, amount
+         FROM earnings
+         WHERE order_id = ? AND status = 'pending'
+         FOR UPDATE`,
+        [orderId]
+      ) as any[]
 
-    for (const earning of earnings) {
-      await pool.query('UPDATE earnings SET status = ? WHERE id = ?', ['settled', earning.id])
+      for (const earning of (Array.isArray(earnings) ? earnings : [])) {
+        await conn.query(
+          'UPDATE users SET balance = balance + ?, total_earnings = total_earnings + ? WHERE id = ?',
+          [earning.amount, earning.amount, earning.user_id]
+        )
 
-      await pool.query(
-        'UPDATE users SET balance = balance + ?, total_earnings = total_earnings + ? WHERE id = ?',
-        [earning.amount, earning.amount, earning.user_id]
-      )
+        await conn.query(
+          `UPDATE earnings
+           SET status = 'settled', updated_at = NOW()
+           WHERE id = ? AND status = 'pending'`,
+          [earning.id]
+        )
+      }
+
+      await conn.commit()
+      return { count: Array.isArray(earnings) ? earnings.length : 0 }
+    } catch (err) {
+      try {
+        await conn.rollback()
+      } catch {}
+      throw err
+    } finally {
+      conn.release()
     }
-
-    return { count: earnings.length }
   }
 
   /**
