@@ -175,7 +175,11 @@ export class OrderService {
     const id = crypto.randomUUID()
     console.log('[OrderService] 创建订单，ID:', id, '数据:', orderData)
     
-    const avatarCount = orderData.avatarCount || orderData.avatar_count || orderData.requiredAvatars || 1
+    const avatarCount = (() => {
+      const raw = orderData.avatarCount ?? orderData.avatar_count ?? orderData.requiredAvatars ?? 1
+      const n = Number(raw)
+      return Number.isFinite(n) && n > 0 ? n : 1
+    })()
     
     const priorityMap: Record<string, number> = {
       'low': 1,
@@ -656,7 +660,7 @@ export class OrderService {
 
     const whereClause = `
       WHERE (
-        o.status IN ('pending', 'pending_acceptance', 'awaiting_acceptance', 'in_progress', 'accepted', 'content_generated', 'submitted', 'published', 'publish_failed', 'publish_timeout')
+        o.status IN ('open', 'pending_dispatch', 'pending', 'pending_acceptance', 'created', 'assigned')
         OR (o.status = 'pending_payment' AND IFNULL(o.is_paid, 0) = 1)
       )${platformClause}
     `
@@ -669,7 +673,7 @@ export class OrderService {
               COALESCE(a_order.name, a_latest.name, u.nickname) as publisher_nickname,
               COALESCE(a_order.avatar_url, a_latest.avatar_url, u.avatar) as publisher_avatar,
               COALESCE(odc.accept_count, 0) as accept_count,
-              COALESCE(o.avatar_count, 1) as required_count,
+              GREATEST(COALESCE(NULLIF(o.avatar_count, 0), NULLIF(o.expected_quantity, 0), 1), 1) as required_count,
               COALESCE(odm.is_accepted_by_me, 0) as is_accepted_by_me
        FROM orders o
        LEFT JOIN users u ON u.id = o.user_id
@@ -704,7 +708,7 @@ export class OrderService {
          GROUP BY r.order_id
        ) odm ON odm.order_id = o.id
        ${whereClause}
-       AND COALESCE(odc.accept_count, 0) < COALESCE(o.avatar_count, 1)
+       AND COALESCE(odc.accept_count, 0) < GREATEST(COALESCE(NULLIF(o.avatar_count, 0), NULLIF(o.expected_quantity, 0), 1), 1)
        ORDER BY o.priority DESC, o.created_at DESC
        LIMIT ? OFFSET ?`,
       [userId || null, ...platformParams, safePageSize, offset]
@@ -719,7 +723,7 @@ export class OrderService {
          GROUP BY order_id
        ) odc ON odc.order_id = o.id
        ${whereClause}
-       AND COALESCE(odc.accept_count, 0) < COALESCE(o.avatar_count, 1)`,
+       AND COALESCE(odc.accept_count, 0) < GREATEST(COALESCE(NULLIF(o.avatar_count, 0), NULLIF(o.expected_quantity, 0), 1), 1)`,
       [...platformParams]
     )
     const total = Number(totalRows?.[0]?.total || 0)
@@ -746,7 +750,11 @@ export class OrderService {
       budget: Number(row.budget || 0),
       price: Number(row.price || row.price || 0),
       status: row.status,
-      avatarCount: row.expectedQuantity || row.expected_quantity || row.avatarCount || row.avatar_count || 1,
+      avatarCount: (() => {
+        const raw = row.expectedQuantity ?? row.expected_quantity ?? row.avatarCount ?? row.avatar_count ?? 1
+        const n = Number(raw)
+        return Number.isFinite(n) && n > 0 ? n : 1
+      })(),
       quantityPerAvatar: row.quantityPerAvatar || row.quantity_per_avatar || 1,
       isPaid: row.isPaid ?? row.is_paid ?? 0,
       acceptCount: Number(row.acceptCount || row.accept_count || 0),

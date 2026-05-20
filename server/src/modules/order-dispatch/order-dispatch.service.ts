@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { Injectable, Inject, Logger, forwardRef } from '@nestjs/common'
-import { getMySQLClient } from '../../storage/database/mysql-client'
+import { getMySQLClient, getPool } from '../../storage/database/mysql-client'
 import { SmsService } from '../sms/sms.service'
 import { NotificationService } from '../notification/notification.service'
 import { OrderService } from '../order/order.service'
@@ -658,199 +658,216 @@ async getExecutionProgress(orderId: string) {
    */
   async acceptOrder(avatarId: string, orderId: string) {
     const db = getMySQLClient()
-    
+    const pool = getPool()
+    const conn = await pool.getConnection()
     let request: any = null
+    let actualAvatarId: string | undefined = avatarId
+    let requiredCount = 1
 
-    // 尝试从 order_dispatch_requests 查找 pending 的分派记录
-    if (!avatarId || avatarId === 'undefined') {
-      const acceptRows1 = await db.query(`
-        SELECT r.*, o.title as order_title, o.user_id as owner_user_id, o.description, o.platforms, o.budget, o.expected_quantity, o.quantity_per_avatar, o.target_audience
-        FROM order_dispatch_requests r 
-        LEFT JOIN orders o ON r.order_id = o.id 
-        WHERE r.order_id = ? AND r.status = 'pending' 
-        LIMIT 1`, 
+    try {
+      await conn.beginTransaction()
+
+      const [orderRows] = await conn.query(
+        `SELECT id, status,
+                GREATEST(COALESCE(NULLIF(avatar_count, 0), NULLIF(expected_quantity, 0), 1), 1) as required_count
+         FROM orders
+         WHERE id = ?
+         FOR UPDATE`,
         [orderId]
       )
-      request = acceptRows1?.[0]
-    } else {
-      const acceptRows2 = await db.query(`
-        SELECT r.*, o.title as order_title, o.user_id as owner_user_id, o.description, o.platforms, o.budget, o.expected_quantity, o.quantity_per_avatar, o.target_audience
-        FROM order_dispatch_requests r 
-        LEFT JOIN orders o ON r.order_id = o.id 
-        WHERE r.avatar_id = ? AND r.order_id = ? AND r.status = 'pending'`, 
-        [avatarId, orderId]
-      )
-      request = acceptRows2?.[0]
-      if (request) request._isMatchedAvatar = true  // 标记：从匹配记录中找到的分身
-    }
-
-    // 如果没有分派记录，尝试直接从 orders 表查找可接单的订单，自动创建分派记录
-    if (!request) {
-      console.log(`[acceptOrder] 无分派记录，尝试直接从 orders 查找: orderId=${orderId}, avatarId=${avatarId}`)
-      const acceptOrderRows = await db.query(`
-        SELECT id, title, user_id as owner_user_id, description, platforms, budget, expected_quantity, quantity_per_avatar, target_audience, status
-        FROM orders WHERE id = ?`, 
-        [orderId]
-      )
-      const order = acceptOrderRows?.[0]
-      
-      if (!order) {
+      const orderRow: any = (orderRows as any[])?.[0]
+      if (!orderRow) {
         throw new Error('订单不存在')
       }
-      
-      // 检查订单状态是否允许接单
+
+      requiredCount = Number(orderRow.required_count || 1) || 1
+
       const acceptablStatuses = ['pending', 'pending_payment', 'open', 'created', 'assigned', 'pending_acceptance', 'pending_dispatch']
-      if (!acceptablStatuses.includes(order.status)) {
-        throw new Error(`订单已${order.status === 'in_progress' ? '进行中' : order.status === 'completed' ? '完成' : '处理'}, 无法接单`)
+      if (!acceptablStatuses.includes(orderRow.status)) {
+        throw new Error(`订单已${orderRow.status === 'in_progress' ? '进行中' : orderRow.status === 'completed' ? '完成' : '处理'}, 无法接单`)
       }
 
-      // 检查该分身是否已经接单（防止重复接单）
-      if (avatarId) {
-        const existingDispatchRows = await db.query(
-          'SELECT id, status FROM order_dispatch_requests WHERE order_id = ? AND avatar_id = ?',
+      if (!avatarId || avatarId === 'undefined') {
+        const [acceptRows1] = await conn.query(
+          `SELECT r.*, o.title as order_title, o.user_id as owner_user_id, o.description, o.platforms, o.budget, o.expected_quantity, o.quantity_per_avatar, o.target_audience
+           FROM order_dispatch_requests r
+           LEFT JOIN orders o ON r.order_id = o.id
+           WHERE r.order_id = ? AND r.status = 'pending'
+           LIMIT 1
+           FOR UPDATE`,
+          [orderId]
+        )
+        request = (acceptRows1 as any[])?.[0]
+      } else {
+        const [acceptRows2] = await conn.query(
+          `SELECT r.*, o.title as order_title, o.user_id as owner_user_id, o.description, o.platforms, o.budget, o.expected_quantity, o.quantity_per_avatar, o.target_audience
+           FROM order_dispatch_requests r
+           LEFT JOIN orders o ON r.order_id = o.id
+           WHERE r.avatar_id = ? AND r.order_id = ? AND r.status = 'pending'
+           LIMIT 1
+           FOR UPDATE`,
+          [avatarId, orderId]
+        )
+        request = (acceptRows2 as any[])?.[0]
+        if (request) request._isMatchedAvatar = true
+      }
+
+      if (!request && avatarId && avatarId !== 'undefined') {
+        const [existingDispatchRows] = await conn.query(
+          'SELECT id, status FROM order_dispatch_requests WHERE order_id = ? AND avatar_id = ? LIMIT 1 FOR UPDATE',
           [orderId, avatarId]
         )
-        const existingDispatch = existingDispatchRows?.[0]
+        const existingDispatch: any = (existingDispatchRows as any[])?.[0]
         if (existingDispatch) {
           throw new Error(`该分身已接单（状态：${existingDispatch.status}），不能重复接单`)
         }
       }
 
-      // 自动创建分派记录
-      const dispatchId = 'odr-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8)
-      const insertResult = await db.insert('order_dispatch_requests', {
-        id: dispatchId,
-        order_id: orderId,
-        avatar_id: avatarId || null,
-        user_id: order.ownerUserId || null,
-        platform: Array.isArray(order.platforms) ? order.platforms[0] : (order.platforms || 'general'),
-        status: 'pending',
-      })
-      
-      if (insertResult.error) {
-        console.error('[acceptOrder] 创建分派记录失败:', insertResult.error)
-        throw new Error('创建分派记录失败: ' + (insertResult.error.message || JSON.stringify(insertResult.error)))
-      }
-      console.log(`[acceptOrder] 自动创建分派记录成功: ${dispatchId}`)
+      if (!request) {
+        console.log(`[acceptOrder] 无分派记录，尝试直接从 orders 查找: orderId=${orderId}, avatarId=${avatarId}`)
+        const [acceptOrderRows] = await conn.query(
+          `SELECT id, title, user_id as owner_user_id, description, platforms, budget, expected_quantity, quantity_per_avatar, target_audience, status
+           FROM orders WHERE id = ? FOR UPDATE`,
+          [orderId]
+        )
+        const order: any = (acceptOrderRows as any[])?.[0]
+        if (!order) {
+          throw new Error('订单不存在')
+        }
 
-      // 用订单数据构造 request 对象（避免重新查询的延迟问题）
-      request = {
-        id: dispatchId,
-        order_id: orderId,
-        avatar_id: avatarId || null,
-        user_id: order.ownerUserId || null,
-        platform: Array.isArray(order.platforms) ? order.platforms[0] : (order.platforms || 'general'),
-        status: 'pending',
-        order_title: order.title,
-        owner_user_id: order.ownerUserId,
-        description: order.description,
-        platforms: order.platforms,
-        budget: order.budget,
-        expectedQuantity: order.expectedQuantity || order.expected_quantity,
-        expected_quantity: order.expectedQuantity || order.expected_quantity,
-        quantity_per_avatar: order.quantityPerAvatar,
-        target_audience: order.targetAudience,
-      }
-    }
-    
-    // 使用实际的 avatarId（可能是自动选择的）
-    const actualAvatarId = request.avatarId || avatarId
+        const dispatchId = 'odr-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8)
+        await conn.query(
+          `INSERT INTO order_dispatch_requests (id, order_id, avatar_id, user_id, platform, status, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, 'pending', NOW(), NOW())`,
+          [
+            dispatchId,
+            orderId,
+            avatarId || null,
+            order.owner_user_id || null,
+            Array.isArray(order.platforms) ? order.platforms[0] : (order.platforms || 'general'),
+          ]
+        )
 
-    // 验证分身仍然存在且活跃（防止已删除分身接单）
-    if (actualAvatarId) {
-      const avatarCheckRows = await db.query('SELECT id, status FROM avatars WHERE id = ?', [actualAvatarId])
-      const avatarCheck = avatarCheckRows || []
-      if (avatarCheck.length === 0 || avatarCheck[0].status !== 'active') {
-        throw new Error('分身不存在或已失效，无法接单')
-      }
-    }
-    
-    // 更新状态为 accepted
-    await db.updateWhere('order_dispatch_requests', { id: request.id }, {
-      status: 'accepted',
-      responded_at: new Date(),
-      updated_at: new Date()
-    })
-    
-    // 检查是否所有需要的分身都已接单
-    const requiredCount = request.avatarCount || request.avatar_count || 1
-    console.log(`[acceptOrder] 检查接单进度: avatarCount=${request.avatarCount}, avatar_count=${request.avatar_count}, requiredCount=${requiredCount}`)
-    const acceptedCountRows = await db.query(
-      'SELECT COUNT(*) as count FROM order_dispatch_requests WHERE order_id = ? AND status = ?',
-      [orderId, 'accepted']
-    )
-    const acceptedCount = acceptedCountRows?.[0]?.count || 0
-    
-    // 📌 非匹配分身接单时，如果 已接单数+匹配但未接单数 >= 需要分身数，需要踢掉一个未接单的匹配分身（匹配度最低的优先踢出）
-    const isMatchedAvatar = request._isMatchedAvatar === true
-    // 计算匹配但未接单的数量（status=pending 的分派记录）
-    const matchedPendingRows = await db.query(
-      `SELECT COUNT(*) as count FROM order_dispatch_requests WHERE order_id = ? AND status = 'pending'`,
-      [orderId]
-    )
-    const matchedPendingCount = matchedPendingRows?.[0]?.count || 0
-    const shouldKick = !isMatchedAvatar && (acceptedCount + matchedPendingCount) >= requiredCount
-    console.log(`[acceptOrder] 踢人判断: isMatched=${isMatchedAvatar}, accepted=${acceptedCount}, pending=${matchedPendingCount}, required=${requiredCount}, shouldKick=${shouldKick}`)
-    if (shouldKick) {
-      // 找到该订单中仍处于 pending 状态的匹配分派记录（按创建时间排序，最早的优先踢出）
-      const pendingDispatches = await db.query(
-        `SELECT d.id, d.avatar_id, d.user_id
-         FROM order_dispatch_requests d
-         WHERE d.order_id = ? AND d.status = 'pending' 
-         ORDER BY d.created_at ASC LIMIT 1`,
-        [orderId]
-      )
-      const kickedDispatch = pendingDispatches?.[0]
-      if (kickedDispatch) {
-        const kickedAvatarId = kickedDispatch.avatarId || kickedDispatch.avatar_id
-        const kickedUserId = kickedDispatch.userId || kickedDispatch.user_id
-        
-        // 更新被踢分派记录状态为 kicked
-        await db.updateWhere('order_dispatch_requests', { id: kickedDispatch.id }, {
-          status: 'kicked',
-          reject_reason: '订单已被其他分身抢先接单，名额已满',
-          updated_at: new Date()
-        })
-        console.log(`[acceptOrder] 踢出未接单匹配分身: avatarId=${kickedAvatarId}, dispatchId=${kickedDispatch.id}`)
-        
-        // 获取被踢分身名称和订单标题
-        let kickedAvatarName = '分身'
-        try {
-          const avatarInfo = await db.query('SELECT name FROM avatars WHERE id = ?', [kickedAvatarId])
-          kickedAvatarName = avatarInfo?.[0]?.name || '分身'
-        } catch {}
-        
-        // 通知被踢分身所属用户：你的分身订单被别人抢了
-        try {
-          await this.notificationService.createNotification({
-            user_id: kickedUserId,
-            type: 'order_snatched',
-            title: '订单被抢',
-            content: `你的分身"${kickedAvatarName}"的订单"${request.orderTitle || request.order_title || '内容创作'}"已被其他分身抢先接单，你太慢了！`,
-            metadata: {
-              avatarId: kickedAvatarId,
-              orderId,
-              dispatchRequestId: kickedDispatch.id,
-              kickedReason: 'order_snatched'
-            }
-          })
-          console.log(`[acceptOrder] 已通知被踢分身用户: userId=${kickedUserId}`)
-        } catch (err) {
-          console.error('[acceptOrder] 创建被踢通知失败:', err)
+        request = {
+          id: dispatchId,
+          order_id: orderId,
+          avatar_id: avatarId || null,
+          user_id: order.owner_user_id || null,
+          platform: Array.isArray(order.platforms) ? order.platforms[0] : (order.platforms || 'general'),
+          status: 'pending',
+          order_title: order.title,
+          owner_user_id: order.owner_user_id,
+          description: order.description,
+          platforms: order.platforms,
+          budget: order.budget,
+          expected_quantity: order.expected_quantity,
+          quantity_per_avatar: order.quantity_per_avatar,
+          target_audience: order.target_audience,
         }
       }
+
+      actualAvatarId = request.avatarId || request.avatar_id || avatarId
+
+      if (actualAvatarId) {
+        const [avatarCheckRows] = await conn.query('SELECT id, status FROM avatars WHERE id = ? FOR UPDATE', [actualAvatarId])
+        const avatarCheck: any = (avatarCheckRows as any[])?.[0]
+        if (!avatarCheck || avatarCheck.status !== 'active') {
+          throw new Error('分身不存在或已失效，无法接单')
+        }
+      }
+
+      const [acceptedDistinctRows] = await conn.query(
+        `SELECT COUNT(DISTINCT avatar_id) as count
+         FROM order_dispatch_requests
+         WHERE order_id = ? AND status IN ('accepted', 'completed')
+         FOR UPDATE`,
+        [orderId]
+      )
+      const acceptedDistinctCount = Number((acceptedDistinctRows as any[])?.[0]?.count || 0)
+      if (acceptedDistinctCount >= requiredCount) {
+        throw new Error('订单名额已满')
+      }
+
+      await conn.query(
+        `UPDATE order_dispatch_requests
+         SET status = 'accepted',
+             accepted_at = IFNULL(accepted_at, NOW()),
+             responded_at = NOW(),
+             updated_at = NOW()
+         WHERE id = ? AND status = 'pending'`,
+        [request.id]
+      )
+
+      const [acceptedCountRows] = await conn.query(
+        `SELECT COUNT(DISTINCT avatar_id) as count
+         FROM order_dispatch_requests
+         WHERE order_id = ? AND status IN ('accepted', 'completed')
+         FOR UPDATE`,
+        [orderId]
+      )
+      const acceptedCount = Number((acceptedCountRows as any[])?.[0]?.count || 0)
+
+      const isMatchedAvatar = request._isMatchedAvatar === true
+      const [matchedPendingRows] = await conn.query(
+        `SELECT COUNT(*) as count
+         FROM order_dispatch_requests
+         WHERE order_id = ? AND status = 'pending'
+         FOR UPDATE`,
+        [orderId]
+      )
+      const matchedPendingCount = Number((matchedPendingRows as any[])?.[0]?.count || 0)
+      const shouldKick = !isMatchedAvatar && (acceptedCount + matchedPendingCount) >= requiredCount
+      console.log(`[acceptOrder] 踢人判断: isMatched=${isMatchedAvatar}, accepted=${acceptedCount}, pending=${matchedPendingCount}, required=${requiredCount}, shouldKick=${shouldKick}`)
+      if (shouldKick) {
+        const [pendingDispatches] = await conn.query(
+          `SELECT d.id, d.avatar_id, d.user_id
+           FROM order_dispatch_requests d
+           WHERE d.order_id = ? AND d.status = 'pending'
+           ORDER BY d.created_at ASC
+           LIMIT 1
+           FOR UPDATE`,
+          [orderId]
+        )
+        const kickedDispatch: any = (pendingDispatches as any[])?.[0]
+        if (kickedDispatch) {
+          await conn.query(
+            `UPDATE order_dispatch_requests
+             SET status = 'expired',
+                 reject_reason = '订单已被其他分身抢先接单，名额已满',
+                 updated_at = NOW()
+             WHERE id = ? AND status = 'pending'`,
+            [kickedDispatch.id]
+          )
+        }
+      }
+
+      if (acceptedCount >= requiredCount) {
+        await conn.query(
+          `UPDATE orders
+           SET status = 'in_progress',
+               updated_at = NOW()
+           WHERE id = ?`,
+          [orderId]
+        )
+        console.log(`[acceptOrder] 所有分身已接单(${acceptedCount}/${requiredCount})，订单状态更新为 in_progress`)
+      }
+
+      await conn.commit()
+    } catch (error) {
+      try {
+        await conn.rollback()
+      } catch {}
+      throw error
+    } finally {
+      conn.release()
     }
-    
-    // 只有当已接单数量 >= 需要数量时，才更新订单状态为 in_progress
-    if (acceptedCount >= requiredCount) {
-      await db.updateWhere('orders', { id: orderId }, {
-        status: 'in_progress',
-        updated_at: new Date()
-      })
-      console.log(`[acceptOrder] 所有分身已接单(${acceptedCount}/${requiredCount})，订单状态更新为 in_progress`)
-    } else {
-      console.log(`[acceptOrder] 分身接单进度: ${acceptedCount}/${requiredCount}，等待其他分身接单`)
+
+    if (!actualAvatarId) {
+      throw new Error('缺少分身ID')
     }
+
+    request.ownerUserId = request.ownerUserId || request.owner_user_id
+    request.orderTitle = request.orderTitle || request.order_title
     
     // 📌 记录事件：分身已接单
     let acceptedAvatarName = '分身'
@@ -945,7 +962,7 @@ async getExecutionProgress(orderId: string) {
     
     // 更新状态为 declined
     await db.updateWhere('order_dispatch_requests', { id: dispatchId }, {
-      status: 'declined',
+      status: 'rejected',
       responded_at: new Date(),
       updated_at: new Date()
     })
