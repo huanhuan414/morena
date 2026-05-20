@@ -1,0 +1,159 @@
+.avatar-chats-page {
+  padding: 32rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.back-btn {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 12rpx;
+  background: var(--secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.detail-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.header-placeholder {
+  width: 64rpx;
+  height: 64rpx;
+}
+
+.conversations-card {
+  background: var(--card);
+  border-radius: 16rpx;
+  border: 1rpx solid var(--border);
+  overflow: hidden;
+}
+
+.conv-row {
+  padding: 20rpx 24rpx;
+  border-bottom: 1rpx solid var(--border-light);
+  display: flex;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.conv-row.active {
+  background: rgba(123, 63, 228, 0.08);
+}
+
+.conv-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+  flex: 1;
+}
+
+.conv-title {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.conv-sub {
+  font-size: 24rpx;
+  color: var(--text-tertiary);
+}
+
+.conv-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+  align-items: flex-end;
+}
+
+.conv-time {
+  font-size: 22rpx;
+  color: var(--text-tertiary);
+}
+
+.conv-count {
+  font-size: 22rpx;
+  color: var(--primary);
+  background: rgba(123, 63, 228, 0.12);
+  padding: 4rpx 10rpx;
+  border-radius: 999rpx;
+}
+
+.messages-card {
+  background: var(--card);
+  border-radius: 16rpx;
+  border: 1rpx solid var(--border);
+  overflow: hidden;
+  flex: 1;
+  min-height: 360rpx;
+}
+
+.messages-header {
+  padding: 16rpx 24rpx;
+  border-bottom: 1rpx solid var(--border-light);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.messages-title {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.messages-body {
+  max-height: 800rpx;
+}
+
+.msg-row {
+  padding: 16rpx 24rpx;
+  display: flex;
+}
+
+.msg-row.user {
+  justify-content: flex-end;
+}
+
+.msg-row.assistant {
+  justify-content: flex-start;
+}
+
+.msg-bubble {
+  max-width: 560rpx;
+  padding: 14rpx 16rpx;
+  border-radius: 16rpx;
+  font-size: 26rpx;
+  line-height: 1.6;
+  word-break: break-all;
+}
+
+.msg-row.user .msg-bubble {
+  background: rgba(123, 63, 228, 0.12);
+  color: var(--text-primary);
+}
+
+.msg-row.assistant .msg-bubble {
+  background: var(--secondary);
+  color: var(--text-primary);
+}
+
+.msg-time {
+  font-size: 22rpx;
+  color: var(--text-tertiary);
+  margin-top: 8rpx;
+  display: block;
+}
+
+.empty-text {
+  padding: 24rpx;
+  color: var(--text-tertiary);
+}

@@ -76,6 +76,27 @@ ADD COLUMN IF NOT EXISTS price DECIMAL(10,2) DEFAULT 0 AFTER assigned_to;
 -- 5. 创建缺失的表
 -- ============================================
 
+-- 引荐发放审核表（邀请奖励/订单分佣）
+CREATE TABLE IF NOT EXISTS referral_payouts (
+  id VARCHAR(36) PRIMARY KEY,
+  payout_type VARCHAR(50) NOT NULL,
+  referrer_id VARCHAR(36) NOT NULL,
+  user_id VARCHAR(36) NOT NULL,
+  referred_id VARCHAR(36),
+  order_id VARCHAR(36),
+  amount DECIMAL(10,2) NOT NULL,
+  status VARCHAR(20) DEFAULT 'pending',
+  review_reason TEXT,
+  reviewed_by VARCHAR(36),
+  reviewed_at TIMESTAMP NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_referrer_id (referrer_id),
+  INDEX idx_user_id (user_id),
+  INDEX idx_status (status),
+  INDEX idx_payout_type (payout_type),
+  INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- 验证码表
 CREATE TABLE IF NOT EXISTS verification_codes (
   id VARCHAR(36) PRIMARY KEY,

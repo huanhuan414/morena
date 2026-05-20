@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+LOCAL_PORT="${1:-13306}"
+shift || true
+
+EXTRA_SSH_ARGS=()
+if [ "${1:-}" = "--" ]; then
+  shift
+  while [ $# -gt 0 ]; do
+    EXTRA_SSH_ARGS+=("$1")
+    shift
+  done
+fi
+
+if ! command -v ssh >/dev/null 2>&1; then
+  echo "ssh not found in PATH"
+  exit 127
+fi
+
+AUTH_WRAPPER="/Users/aiden/Projects/morena/.trae/skills/morena-remote-admin/bin/morena-ssh-auth"
+HOST_ALIAS="morena-prod"
+
+if [ -f "$HOME/.ssh/config" ] && grep -qE "^[[:space:]]*Host[[:space:]]+$HOST_ALIAS([[:space:]]|$)" "$HOME/.ssh/config"; then
+  "$AUTH_WRAPPER" -o ExitOnForwardFailure=yes -o ConnectTimeout=5 "${EXTRA_SSH_ARGS[@]}" -N -L "${LOCAL_PORT}:127.0.0.1:16033" "$HOST_ALIAS"
+else
+  "$AUTH_WRAPPER" -o ExitOnForwardFailure=yes -o ConnectTimeout=5 "${EXTRA_SSH_ARGS[@]+"${EXTRA_SSH_ARGS[@]}"}" -p 22 -N -L "${LOCAL_PORT}:127.0.0.1:16033" root@180.184.205.74
+fi

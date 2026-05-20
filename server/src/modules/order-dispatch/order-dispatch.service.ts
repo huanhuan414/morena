@@ -6,6 +6,7 @@ import { NotificationService } from '../notification/notification.service'
 import { OrderService } from '../order/order.service'
 import { ContentGenerationService } from '../content-generation/content-generation.service'
 import { OrderEventService } from './order-event.service'
+import { ensureDispatchStatus } from '../order/order-status'
 
 @Injectable()
 export class OrderDispatchService {
@@ -116,11 +117,12 @@ export class OrderDispatchService {
   async updateDispatchStatus(dispatchId: string, status: string, rejectReason?: string) {
     const db = getMySQLClient()
     
+    const nextStatus = ensureDispatchStatus(status)
     const updateData: Record<string, any> = {
-      status,
+      status: nextStatus,
       updated_at: new Date()
     }
-    if (status === 'accepted' || status === 'rejected') {
+    if (nextStatus === 'accepted' || nextStatus === 'rejected') {
       updateData.responded_at = new Date()
     }
     if (rejectReason) {

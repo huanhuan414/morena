@@ -1,5 +1,4 @@
 import React from 'react'
-import Taro from '@tarojs/taro'
 import { View, Text } from '@tarojs/components'
 import './index.css'
 
@@ -15,7 +14,7 @@ const PrivacyPolicy: React.FC = () => {
       <View className="policy-content">
         <View className="policy-section">
           <Text className="section-content">
-            欢迎您使用我们的「莫瑞娜AI」应用（以下简称"本应用"）。我们深知个人信息对您的重要性，并庄严承诺保护您的隐私安全。本隐私政策旨在清晰地说明我们在您使用本应用的服务过程中，如何收集、使用、存储、共享和保护您的个人信息，并告知您如何行使对个人信息的权利。
+            欢迎您使用我们的「莫瑞娜AI」应用（以下简称&quot;本应用&quot;）。我们深知个人信息对您的重要性，并庄严承诺保护您的隐私安全。本隐私政策旨在清晰地说明我们在您使用本应用的服务过程中，如何收集、使用、存储、共享和保护您的个人信息，并告知您如何行使对个人信息的权利。
           </Text>
           <Text className="section-content">
             特别提示：我们的产品基于京东Taro框架开发，应用运行期间需要收集您的设备唯一识别码（IMEI/android ID/DEVICE_ID/IDFA、SIM卡IMSI信息、OAID）以提供统计分析服务，并通过应用启动数据及异常错误日志分析改进性能和用户体验，为用户提供更好的服务。

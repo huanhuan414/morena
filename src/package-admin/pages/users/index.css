@@ -9,16 +9,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #fff;
   padding: 24rpx 32rpx;
-  border-radius: 12rpx;
 }
 
 .search-box {
   display: flex;
   align-items: center;
   gap: 12rpx;
-  background: #f3f4f6;
+  background: var(--secondary);
   border-radius: 8rpx;
   padding: 0 16rpx;
   width: 400rpx;
@@ -27,8 +25,7 @@
 .search-input {
   flex: 1;
   height: 64rpx;
-  font-size: 26rpx;
-  color: #374151;
+  color: var(--text-primary);
 }
 
 .header-stats {
@@ -38,28 +35,24 @@
 }
 
 .stat-text {
-  font-size: 26rpx;
-  color: #6b7280;
+  color: var(--text-tertiary);
 }
 
 /* 数据表格 */
 .data-table {
-  background: #fff;
-  border-radius: 12rpx;
   overflow: hidden;
 }
 
 .table-header {
   display: flex;
-  background: #f9fafb;
+  background: var(--muted);
   padding: 20rpx 24rpx;
-  border-bottom: 1rpx solid #e5e7eb;
+  border-bottom: 1rpx solid var(--border);
 }
 
 .th {
-  font-size: 24rpx;
   font-weight: 600;
-  color: #4b5563;
+  color: var(--text-secondary);
 }
 
 .table-body {
@@ -69,17 +62,16 @@
 .table-row {
   display: flex;
   padding: 20rpx 24rpx;
-  border-bottom: 1rpx solid #f3f4f6;
+  border-bottom: 1rpx solid var(--border-light);
   align-items: center;
 }
 
 .table-row:hover {
-  background: #f9fafb;
+  background: var(--muted);
 }
 
 .td {
-  font-size: 26rpx;
-  color: #374151;
+  color: var(--text-primary);
 }
 
 /* 列宽 */
@@ -115,14 +107,13 @@
 }
 
 .avatar-text-sm {
-  font-size: 24rpx;
+  font-size: var(--font-size-xs);
   color: #fff;
   font-weight: 600;
 }
 
 .user-nickname {
-  font-size: 26rpx;
-  color: #374151;
+  color: var(--text-primary);
   font-weight: 500;
 }
 
@@ -131,7 +122,7 @@
   display: inline-block;
   padding: 6rpx 16rpx;
   border-radius: 20rpx;
-  font-size: 22rpx;
+  font-size: var(--font-size-xs);
 }
 
 .status-badge.active {
@@ -185,14 +176,12 @@
   justify-content: center;
   gap: 24rpx;
   padding: 24rpx;
-  background: #fff;
-  border-radius: 12rpx;
   margin-top: 24rpx;
 }
 
 .page-btn {
   padding: 16rpx 32rpx;
-  background: #7B3FE4;
+  background: var(--primary);
   border-radius: 8rpx;
 }
 
@@ -202,12 +191,10 @@
 }
 
 .page-btn-text {
-  font-size: 26rpx;
   color: #fff;
   font-weight: 500;
 }
 
 .page-info {
-  font-size: 28rpx;
-  color: #374151;
+  color: var(--text-primary);
 }

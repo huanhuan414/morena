@@ -3,6 +3,7 @@ import { ContentGenerationService } from './content-generation.service'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { OrderService } from '../order/order.service'
 import { OrderDispatchService } from '../order-dispatch/order-dispatch.service'
+import { ensureVerificationStatus } from '../order/order-status'
 
 @Controller('content-generation')
 export class ContentGenerationController {
@@ -339,7 +340,7 @@ export class ContentGenerationController {
       const payload: any = {
         publish_url: body.publishUrl || null,
         publish_screenshot: body.publishScreenshot || null,
-        verification_status: 'pending',
+        verification_status: ensureVerificationStatus('pending'),
         verified_at: null,
         updated_at: new Date(),
       }
@@ -382,7 +383,7 @@ export class ContentGenerationController {
     try {
       const db = await getMySQLClient()
       const columns = await this.getContentGenerationColumns(db)
-      const verificationStatus = body.verified ? 'verified' : 'failed'
+      const verificationStatus = ensureVerificationStatus(body.verified ? 'verified' : 'failed')
 
       const payload: any = {
         verification_status: verificationStatus,

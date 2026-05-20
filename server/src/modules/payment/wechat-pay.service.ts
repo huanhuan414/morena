@@ -317,7 +317,11 @@ export class WechatPayService {
       // 根据 order_type 分别处理
       if (order.orderType === 'order' || order.order_type === 'order') {
         // 订单支付场景：激活订单 → 自动派单
+        await this.writeTransactionForOrder(order, totalFee / 100);
         await this.activateOrder(order, transactionId);
+        await this.trySettleReferralCommission(order, totalFee / 100);
+      } else if (order.orderType === 'recharge' || order.order_type === 'recharge') {
+        await this.creditUserBalanceForRecharge(order, totalFee / 100, transactionId);
       } else {
         // 订阅支付场景：激活订阅
         await this.activateSubscription(order);
@@ -330,6 +334,101 @@ export class WechatPayService {
     } catch (error) {
       this.logger.error(`处理支付回调失败: ${error.message}`, error.stack);
       return { code: 'FAIL', message: error.message };
+    }
+  }
+
+  private async creditUserBalanceForRecharge(order: any, amount: number, transactionId: string) {
+    try {
+      const db = getMySQLClient()
+      const userId = order.userId || order.user_id
+      if (!userId) return
+
+      const userColumns = await db.query(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users'`,
+        []
+      )
+      const cols = new Set((userColumns || []).map((r: any) => String(r.columnName || r.COLUMN_NAME || r.column_name || '').toLowerCase()))
+      const balanceCol = cols.has('balance') ? 'balance' : (cols.has('current_balance') ? 'current_balance' : '')
+      if (!balanceCol) return
+
+      const user = (await db.query(`SELECT ${balanceCol} as balance FROM users WHERE id = ?`, [userId]))?.[0] || {}
+      const before = Number(user.balance) || 0
+
+      await db.query(`UPDATE users SET ${balanceCol} = ${balanceCol} + ? WHERE id = ?`, [amount, userId])
+
+      await db.query(
+        `INSERT INTO transactions (id, user_id, type, amount, balance_before, balance_after, status, description, reference_id, created_at)
+         VALUES (?, ?, 'recharge', ?, ?, ?, 'completed', ?, ?, NOW())`,
+        [crypto.randomUUID(), userId, amount, before, before + amount, '余额充值', order.id || order.orderId || transactionId]
+      )
+    } catch (e) {
+      this.logger.warn(`充值入账失败(不影响支付回调): ${e.message}`)
+    }
+  }
+
+  private async writeTransactionForOrder(order: any, amount: number) {
+    try {
+      const db = getMySQLClient()
+      const userId = order.userId || order.user_id
+      const orderId = order.planId || order.plan_id
+      if (!userId || !orderId) return
+      await db.query(
+        `INSERT INTO transactions (id, user_id, type, amount, status, description, reference_id, created_at)
+         VALUES (?, ?, 'order', ?, 'completed', ?, ?, NOW())`,
+        [crypto.randomUUID(), userId, amount, '订单支付收入', orderId]
+      )
+    } catch (e) {
+      this.logger.warn(`订单流水写入失败(不影响支付回调): ${e.message}`)
+    }
+  }
+
+  private async trySettleReferralCommission(order: any, amount: number) {
+    try {
+      const db = getMySQLClient()
+      const buyerId = order.userId || order.user_id
+      const orderId = order.planId || order.plan_id
+      if (!buyerId || !orderId) return
+
+      const buyer = await db.queryOne('users', { id: buyerId }) as any
+      const inviterId = buyer?.invitedBy || buyer?.invited_by || buyer?.referredBy || buyer?.referred_by
+      if (!inviterId) return
+
+      let commissionRate = 10
+      try {
+        const config = await db.query(`SELECT commission_rate FROM system_config WHERE id = 'system'`)
+        const rate = Number(config?.[0]?.commissionRate ?? config?.[0]?.commission_rate)
+        if (Number.isFinite(rate) && rate >= 0) {
+          commissionRate = rate
+        }
+      } catch (_) {}
+
+      const commission = Math.max(0, Math.round(amount * (commissionRate / 100) * 100) / 100)
+      if (!commission) return
+
+      const userColumns = await db.query(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users'`,
+        []
+      )
+      const cols = new Set((userColumns || []).map((r: any) => String(r.columnName || r.COLUMN_NAME || r.column_name || '').toLowerCase()))
+      const balanceCol = cols.has('balance') ? 'balance' : (cols.has('current_balance') ? 'current_balance' : '')
+      if (!balanceCol) return
+
+      const inviter = (await db.query(`SELECT ${balanceCol} as balance FROM users WHERE id = ?`, [inviterId]))?.[0] || {}
+      const before = Number(inviter.balance) || 0
+
+      await db.query(`UPDATE users SET ${balanceCol} = ${balanceCol} + ? WHERE id = ?`, [commission, inviterId])
+      await db.query(
+        `INSERT INTO earnings (id, user_id, type, amount, description, status, order_id, created_at)
+         VALUES (?, ?, 'order_commission', ?, ?, 'completed', ?, NOW())`,
+        [crypto.randomUUID(), inviterId, commission, '订单分佣', orderId]
+      )
+      await db.query(
+        `INSERT INTO transactions (id, user_id, type, amount, balance_before, balance_after, status, description, reference_id, created_at)
+         VALUES (?, ?, 'commission', ?, ?, ?, 'completed', ?, ?, NOW())`,
+        [crypto.randomUUID(), inviterId, commission, before, before + commission, '订单分佣', orderId]
+      )
+    } catch (e) {
+      this.logger.warn(`订单分佣处理失败(不影响支付回调): ${e.message}`)
     }
   }
 

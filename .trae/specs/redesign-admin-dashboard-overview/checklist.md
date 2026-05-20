@@ -1,0 +1,11 @@
+- [ ] `GET /api/admin/dashboard/overview` 未授权返回 `{ code: 401, data: null, message: "未授权" }`
+- [ ] `GET /api/admin/dashboard/overview` 授权返回结构包含 `range/kpi/trends/queues/campaign/alerts`
+- [ ] `kpi.trade` 同时包含 `todayGmv` 与 `todayRevenue`，并包含对应增长率字段
+- [ ] 趋势数据返回 `points[]`，每个点包含 `date/newUsers/orders/gmv/revenue`
+- [ ] 订单状态统计口径与订单列表保持一致（同一状态分组/映射）
+- [ ] 前端 Dashboard 不再存在硬编码趋势文案，增长率来自接口字段
+- [ ] Dashboard 首屏布局满足“用户/交易/供给/财务”四象限 + 趋势 + 工作台 + 告警
+- [ ] 时间范围切换（7/14/30）会触发重新拉取并刷新展示
+- [ ] `pnpm validate` 通过
+- [ ] 旧接口仍可调用（不要求前端继续使用）
+

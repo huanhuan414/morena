@@ -93,7 +93,7 @@ const clearAuthStorage = () => {
 const handleAuthError = (originalUrl: string) => {
   if (isHandlingAuthError) return
 
-  const loginPath = isAdminApi(originalUrl) ? '/pages/admin/login/index' : '/pages/login/index'
+  const loginPath = isAdminApi(originalUrl) ? '/package-admin/pages/login/index' : '/pages/login/index'
   const currentPath = buildCurrentPath()
   if (currentPath.startsWith(loginPath)) return
 

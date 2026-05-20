@@ -140,8 +140,9 @@ export class EarningsService {
     const pool = getPool()
 
     // 检查余额
-    const [userRows] = await pool.query('SELECT balance, frozen_balance FROM users WHERE id = ?', [userId])
-    const balance = Number(userRows[0]?.balance) || 0
+    const [userRows] = await pool.query('SELECT * FROM users WHERE id = ?', [userId])
+    const user = userRows?.[0] || {}
+    const balance = Number(user?.balance ?? user?.current_balance ?? user?.currentBalance ?? 0) || 0
 
     if (amount <= 0) {
       throw new Error('提现金额必须大于0')
@@ -151,14 +152,24 @@ export class EarningsService {
     }
 
     // 冻结余额
-    await pool.query('UPDATE users SET balance = balance - ?, frozen_balance = frozen_balance + ? WHERE id = ?', [amount, amount, userId])
+    try {
+      await pool.query('UPDATE users SET balance = balance - ?, frozen_balance = frozen_balance + ? WHERE id = ?', [amount, amount, userId])
+    } catch (e) {
+      await pool.query('UPDATE users SET current_balance = current_balance - ?, frozen_balance = frozen_balance + ? WHERE id = ?', [amount, amount, userId])
+    }
 
-    // 创建提现记录（适配 withdrawals 表结构）
     const id = crypto.randomUUID()
     await pool.query(
-      `INSERT INTO withdrawals (id, user_id, amount, bank_name, bank_account, bank_holder, status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)`,
-      [id, userId, amount, paymentMethod === 'wechat' ? '微信' : '银行卡', paymentAccount, '', new Date()]
+      `INSERT INTO withdrawal_requests (id, user_id, amount, status, payment_method, payment_account, created_at)
+       VALUES (?, ?, ?, 'pending', ?, ?, ?)`,
+      [id, userId, amount, paymentMethod === 'wechat' ? 'wechat' : 'bank', paymentAccount, new Date()]
+    )
+
+    const txId = crypto.randomUUID()
+    await pool.query(
+      `INSERT INTO transactions (id, user_id, type, amount, balance_before, balance_after, status, description, reference_id, created_at)
+       VALUES (?, ?, 'withdraw', ?, ?, ?, 'pending', ?, ?, ?)`,
+      [txId, userId, amount, balance, balance - amount, '提现申请', id, new Date()]
     )
 
     return { id, amount, status: 'pending' }

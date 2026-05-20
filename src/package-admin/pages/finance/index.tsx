@@ -12,6 +12,7 @@ interface FinanceStats {
   totalRecharge: number
   totalWithdraw: number
   totalCommission: number
+  totalOrderIncome: number
   balance: number
   pendingWithdraw: number
 }
@@ -32,6 +33,7 @@ export default function FinanceManagement() {
     totalRecharge: 0,
     totalWithdraw: 0,
     totalCommission: 0,
+    totalOrderIncome: 0,
     balance: 0,
     pendingWithdraw: 0
   })
@@ -46,11 +48,24 @@ export default function FinanceManagement() {
     fetchTransactions()
   }, [typeFilter])
 
+  const toNumber = (value: any) => {
+    const num = Number(value)
+    return Number.isFinite(num) ? num : 0
+  }
+
   const fetchStats = async () => {
     try {
       const res = await Network.request({ url: '/api/admin/finance/stats' })
       if (res.data.code === 200) {
-        setStats(res.data.data)
+        const raw = res.data.data || {}
+        setStats({
+          totalRecharge: toNumber(raw.totalRecharge ?? raw.total_recharge ?? raw.totalRevenue ?? raw.total_revenue ?? 0),
+          totalWithdraw: toNumber(raw.totalWithdraw ?? raw.total_withdraw ?? raw.totalWithdrawal ?? raw.total_withdrawal ?? 0),
+          totalCommission: toNumber(raw.totalCommission ?? raw.total_commission ?? 0),
+          totalOrderIncome: toNumber(raw.totalOrderIncome ?? raw.total_order_income ?? 0),
+          balance: toNumber(raw.balance ?? 0),
+          pendingWithdraw: toNumber(raw.pendingWithdraw ?? raw.pending_withdraw ?? 0)
+        })
       }
     } catch (err) {
       console.error('获取财务统计失败:', err)
@@ -65,7 +80,13 @@ export default function FinanceManagement() {
       }
       const res = await Network.request({ url })
       if (res.data.code === 200) {
-        setTransactions(res.data.data.list)
+        const list = Array.isArray(res.data.data?.list) ? res.data.data.list : []
+        setTransactions(
+          list.map((item: any) => ({
+            ...item,
+            amount: toNumber(item?.amount)
+          }))
+        )
       }
     } catch (err) {
       console.error('获取交易记录失败:', err)
@@ -148,10 +169,20 @@ export default function FinanceManagement() {
             </View>
             <View className="stat-info">
               <Text className="stat-value">¥{stats.totalRecharge.toFixed(2)}</Text>
-              <Text className="stat-label">累计充值</Text>
+              <Text className="stat-label">钱包充值</Text>
             </View>
           </View>
           
+          <View className="stat-card order">
+            <View className="stat-icon">
+              <CreditCard size={24} color="#8b5cf6" />
+            </View>
+            <View className="stat-info">
+              <Text className="stat-value">¥{stats.totalOrderIncome.toFixed(2)}</Text>
+              <Text className="stat-label">订单收入</Text>
+            </View>
+          </View>
+
           <View className="stat-card withdraw">
             <View className="stat-icon">
               <ArrowUp size={24} color="#ef4444" />

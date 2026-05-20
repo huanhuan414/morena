@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v ssh >/dev/null 2>&1; then
+  echo "ssh not found in PATH"
+  exit 127
+fi
+
+AUTH_WRAPPER="/Users/aiden/Projects/morena/.trae/skills/morena-remote-admin/bin/morena-ssh-auth"
+HOST_ALIAS="morena-prod"
+
+if [ -f "$HOME/.ssh/config" ] && grep -qE "^[[:space:]]*Host[[:space:]]+$HOST_ALIAS([[:space:]]|$)" "$HOME/.ssh/config"; then
+  "$AUTH_WRAPPER" "$HOST_ALIAS" "$@"
+else
+  "$AUTH_WRAPPER" -p 22 root@180.184.205.74 "$@"
+fi

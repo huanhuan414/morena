@@ -93,6 +93,8 @@ export default defineAppConfig({
         'pages/users/index',
         'pages/users/detail/index',
         'pages/avatars/index',
+        'pages/avatars/detail/index',
+        'pages/avatars/chats/index',
         'pages/orders/index',
         'pages/finance/index',
         'pages/content/index',

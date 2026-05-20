@@ -88,8 +88,8 @@ export default function EarningCenterPage() {
         method: 'POST',
         data: {
           amount: toNumber(overview.balance),
-          method: 'wechat',
-          accountInfo: {}
+          paymentMethod: 'wechat',
+          paymentAccount: ''
         }
       })
       if (res.data?.code === 200) {

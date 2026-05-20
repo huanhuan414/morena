@@ -1,29 +1,62 @@
-export type FulfillmentStatus =
-  | 'queuing'
-  | 'generating'
-  | 'preview'
-  | 'publishing'
-  | 'published'
-  | 'awaiting_acceptance'
-  | 'revision_requested'
-  | 'settled'
-  | 'failed'
-  | 'partial_failed'
+export const FULFILLMENT_STATUSES = [
+  'queuing',
+  'generating',
+  'preview',
+  'publishing',
+  'published',
+  'awaiting_acceptance',
+  'revision_requested',
+  'settled',
+  'failed',
+  'partial_failed',
+] as const
 
-export type DispatchStatus = 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'completed' | 'settled' | 'done'
+export type FulfillmentStatus = (typeof FULFILLMENT_STATUSES)[number]
 
-export type OrderStatus =
-  | 'pending_payment'
-  | 'open'
-  | 'pending_dispatch'
-  | 'pending_acceptance'
-  | 'in_progress'
-  | 'submitted'
-  | 'awaiting_acceptance'
-  | 'revision_requested'
-  | 'completed'
-  | 'cancelled'
-  | 'rejected'
+export const DISPATCH_STATUSES = [
+  'pending',
+  'accepted',
+  'rejected',
+  'cancelled',
+  'expired',
+  'timeout',
+  'completed',
+  'settled',
+  'done',
+] as const
+
+export type DispatchStatus = (typeof DISPATCH_STATUSES)[number]
+
+export const ORDER_STATUSES = [
+  'pending_payment',
+  'open',
+  // 已支付待接单（旧口径/兼容口径）
+  'pending',
+  'pending_dispatch',
+  'pending_acceptance',
+  // 少数流程会直接写入（兼容口径）
+  'accepted',
+  'in_progress',
+  // 内容生成/发布流程（兼容旧实现）
+  'content_generated',
+  'submitted',
+  'published',
+  'awaiting_acceptance',
+  'revision_requested',
+  'publish_failed',
+  'publish_timeout',
+  'completed',
+  'cancelled',
+  'rejected',
+  'auto_cancelled',
+  'expired',
+  'timeout',
+] as const
+
+export type OrderStatus = (typeof ORDER_STATUSES)[number]
+
+export const VERIFICATION_STATUSES = ['pending', 'verified', 'failed'] as const
+export type VerificationStatus = (typeof VERIFICATION_STATUSES)[number]
 
 export type OrderStatusDeriveReason =
   | 'NO_DISPATCH'
@@ -35,17 +68,26 @@ export type OrderStatusDeriveReason =
   | 'PENDING_ACCEPTANCE'
   | 'NO_MATCH'
 
-const fulfillmentStatusSet = new Set<FulfillmentStatus>([
-  'queuing',
-  'generating',
-  'preview',
-  'publishing',
-  'published',
-  'awaiting_acceptance',
-  'revision_requested',
-  'settled',
-  'failed',
-])
+const fulfillmentStatusSet = new Set<FulfillmentStatus>(FULFILLMENT_STATUSES)
+const dispatchStatusSet = new Set<DispatchStatus>(DISPATCH_STATUSES)
+const orderStatusSet = new Set<OrderStatus>(ORDER_STATUSES)
+const verificationStatusSet = new Set<VerificationStatus>(VERIFICATION_STATUSES)
+
+export function isFulfillmentStatus(status: any): status is FulfillmentStatus {
+  return fulfillmentStatusSet.has(status)
+}
+
+export function isDispatchStatus(status: any): status is DispatchStatus {
+  return dispatchStatusSet.has(status)
+}
+
+export function isOrderStatus(status: any): status is OrderStatus {
+  return orderStatusSet.has(status)
+}
+
+export function isVerificationStatus(status: any): status is VerificationStatus {
+  return verificationStatusSet.has(status)
+}
 
 export function normalizeDispatchStatus(status?: string): DispatchStatus {
   const value = String(status || '').trim().toLowerCase()
@@ -60,6 +102,11 @@ export function normalizeDispatchStatus(status?: string): DispatchStatus {
   if (value === 'cancelled') return 'cancelled'
   if (value === 'accepted') return 'accepted'
   return 'pending'
+}
+
+export function ensureDispatchStatus(status?: string, fallback: DispatchStatus = 'pending'): DispatchStatus {
+  const normalized = normalizeDispatchStatus(status)
+  return dispatchStatusSet.has(normalized) ? normalized : fallback
 }
 
 export function normalizeFulfillmentStatus(status?: string): FulfillmentStatus {
@@ -79,6 +126,28 @@ export function normalizeFulfillmentStatus(status?: string): FulfillmentStatus {
   if (value === 'partial_failed') return 'partial_failed'
   if (fulfillmentStatusSet.has(value as FulfillmentStatus)) return value as FulfillmentStatus
   return 'generating'
+}
+
+export function ensureFulfillmentStatus(status?: string, fallback: FulfillmentStatus = 'queuing'): FulfillmentStatus {
+  const normalized = normalizeFulfillmentStatus(status)
+  return fulfillmentStatusSet.has(normalized) ? normalized : fallback
+}
+
+export function normalizeVerificationStatus(status?: string): VerificationStatus {
+  const value = String(status || '').trim().toLowerCase()
+  if (!value) return 'pending'
+  if (['verify', 'verified', 'pass', 'passed', 'success', 'approved'].includes(value)) return 'verified'
+  if (['fail', 'failed', 'reject', 'rejected'].includes(value)) return 'failed'
+  if (verificationStatusSet.has(value as VerificationStatus)) return value as VerificationStatus
+  return 'pending'
+}
+
+export function ensureVerificationStatus(
+  status?: string,
+  fallback: VerificationStatus = 'pending'
+): VerificationStatus {
+  const normalized = normalizeVerificationStatus(status)
+  return verificationStatusSet.has(normalized) ? normalized : fallback
 }
 
 export function isDispatchAccepted(status?: string): boolean {

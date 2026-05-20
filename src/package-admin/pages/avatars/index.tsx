@@ -29,25 +29,66 @@ export default function AvatarManagement() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [page] = useState(1)
 
+  const toNumber = (value: any) => {
+    const num = Number(value)
+    return Number.isFinite(num) ? num : 0
+  }
+
+  const mapStatusFromDb = (status: any): Avatar['status'] => {
+    if (status === 'active') return 'active'
+    if (status === 'training') return 'pending_review'
+    return 'banned'
+  }
+
+  const mapStatusToDb = (status: string | undefined) => {
+    if (!status) return undefined
+    if (status === 'active') return 'active'
+    if (status === 'pending_review') return 'training'
+    if (status === 'banned') return 'inactive'
+    return status
+  }
+
+  const formatDate = (value: any) => {
+    const date = value ? new Date(value) : null
+    if (!date || Number.isNaN(date.getTime())) return '-'
+    return date.toLocaleDateString('zh-CN')
+  }
+
   useEffect(() => {
     fetchAvatars()
   }, [page, searchKeyword, statusFilter])
 
   const fetchAvatars = async () => {
     try {
+      const { user_id } = Taro.getCurrentInstance().router?.params || {}
+      const data: Record<string, any> = { page, limit: 20 }
+      if (searchKeyword) data.keyword = searchKeyword
+      if (statusFilter !== 'all') data.status = mapStatusToDb(statusFilter)
+      if (user_id) data.user_id = user_id
       const res = await Network.request({
         url: '/api/admin/avatars',
-        data: { 
-          page, 
-          limit: 20, 
-          keyword: searchKeyword,
-          status: statusFilter === 'all' ? undefined : statusFilter
-        }
+        data
       })
       
       if (res.data.code === 200) {
-        setAvatars(res.data.data.list)
-        setTotal(res.data.data.total)
+        const list = Array.isArray(res.data.data?.list) ? res.data.data.list : []
+        setAvatars(
+          list.map((raw: any) => ({
+            id: raw.id,
+            name: raw.name,
+            avatar_url: raw.avatar_url ?? raw.avatarUrl,
+            description: raw.description,
+            status: mapStatusFromDb(raw.status),
+            user_id: raw.user_id ?? raw.userId,
+            user_phone: raw.user_phone ?? raw.userPhone ?? raw.phone,
+            created_at: raw.created_at ?? raw.createdAt,
+            is_public: Boolean(raw.is_public ?? raw.isPublic ?? raw.hosting_enabled ?? raw.hostingEnabled),
+            price: toNumber(raw.price ?? raw.hosting_price ?? raw.hostingPrice),
+            order_count: toNumber(raw.order_count ?? raw.orderCount ?? raw.total_orders ?? raw.totalOrders),
+            rating: toNumber(raw.rating ?? raw.completion_rate ?? raw.completionRate)
+          }))
+        )
+        setTotal(toNumber(res.data.data?.total))
       }
     } catch (err) {
       console.error('获取分身列表失败:', err)
@@ -68,7 +109,7 @@ export default function AvatarManagement() {
               method: 'POST',
               data: { 
                 avatar_id: avatarId, 
-                status: currentStatus === 'active' ? 'banned' : 'active'
+                status: currentStatus === 'active' ? 'inactive' : 'active'
               }
             })
             
@@ -85,11 +126,11 @@ export default function AvatarManagement() {
   }
 
   const handleViewDetail = (_avatarId: string) => {
-    Taro.showToast({ title: '功能开发中', icon: 'none' })
+    Taro.navigateTo({ url: `/package-admin/pages/avatars/detail/index?id=${_avatarId}` })
   }
 
   const handleViewChats = (_avatarId: string) => {
-    Taro.showToast({ title: '功能开发中', icon: 'none' })
+    Taro.navigateTo({ url: `/package-admin/pages/avatars/chats/index?avatar_id=${_avatarId}` })
   }
 
   const statusOptions = [
@@ -163,8 +204,8 @@ export default function AvatarManagement() {
                   </View>
                 </View>
                 <Text className="td col-user">{avatar.user_phone || '-'}</Text>
-                <Text className="td col-price">¥{avatar.price || 0}</Text>
-                <Text className="td col-stats">{avatar.order_count}单 / {avatar.rating}分</Text>
+                <Text className="td col-price">¥{toNumber(avatar.price)}</Text>
+                <Text className="td col-stats">{toNumber(avatar.order_count)}单 / {toNumber(avatar.rating)}分</Text>
                 <View className="td col-status">
                   <View className={`status-badge ${avatar.status}`}>
                     <Text className="status-text">
@@ -173,7 +214,7 @@ export default function AvatarManagement() {
                     </Text>
                   </View>
                 </View>
-                <Text className="td col-date">{new Date(avatar.created_at).toLocaleDateString('zh-CN')}</Text>
+                <Text className="td col-date">{formatDate(avatar.created_at)}</Text>
                 <View className="td col-action">
                   <View className="action-btns">
                     <View className="action-btn view" onClick={() => handleViewDetail(avatar.id)}>

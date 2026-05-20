@@ -14,7 +14,7 @@ interface LayoutProps {
 }
 
 const menuItems = [
-  { key: 'dashboard', label: '系统概览', icon: LayoutDashboard, path: '/package-admin/pages/dashboard/index' },
+  { key: 'dashboard', label: '指标看板', icon: LayoutDashboard, path: '/package-admin/pages/dashboard/index' },
   { key: 'users', label: '用户管理', icon: Users, path: '/package-admin/pages/users/index' },
   { key: 'avatars', label: '分身管理', icon: Bot, path: '/package-admin/pages/avatars/index' },
   { key: 'skills', label: '技能管理', icon: Wrench, path: '/package-admin/pages/skills/index' },

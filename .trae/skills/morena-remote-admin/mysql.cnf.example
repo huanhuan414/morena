@@ -1,0 +1,5 @@
+[client]
+host=180.184.205.74
+port=16033
+user=mrl
+password=YOUR_DB_PASSWORD

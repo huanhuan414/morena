@@ -1,32 +1,33 @@
 .content-page {
-  padding: 20px;
+  padding: 0;
 }
 
 .content-header {
-  margin-bottom: 16px;
+  margin-bottom: var(--spacing-xl);
 }
 
 .filter-tabs {
   display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xl);
   overflow-x: auto;
 }
 
 .filter-tab {
-  padding: 8px 16px;
-  background: #f3f4f6;
-  border-radius: 20px;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--secondary);
+  border-radius: var(--radius-full);
   white-space: nowrap;
 }
 
 .filter-tab.active {
-  background: #3b82f6;
+  background: var(--primary);
 }
 
 .filter-text {
-  font-size: 14px;
-  color: #6b7280;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .filter-tab.active .filter-text {
@@ -35,52 +36,53 @@
 
 .search-box {
   display: flex;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .search-input {
   flex: 1;
-  padding: 10px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 14px;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
 }
 
 .search-btn {
-  padding: 10px 16px;
-  background: #3b82f6;
-  border-radius: 8px;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--primary);
+  border-radius: var(--radius-md);
 }
 
 .search-text {
   color: #fff;
-  font-size: 14px;
+  font-size: var(--font-size-sm);
 }
 
 .total-info {
-  font-size: 14px;
-  color: #6b7280;
-  margin-bottom: 16px;
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  margin-bottom: var(--spacing-xl);
 }
 
 .posts-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--spacing-xl);
 }
 
 .post-card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  background: var(--card);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-2xl);
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--border-light);
 }
 
 .post-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-lg);
 }
 
 .author-info {

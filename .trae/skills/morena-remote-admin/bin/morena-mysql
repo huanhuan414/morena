@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CNF="/Users/aiden/Projects/morena/.trae/skills/morena-remote-admin/local/mysql.cnf"
+EXAMPLE="/Users/aiden/Projects/morena/.trae/skills/morena-remote-admin/mysql.cnf.example"
+CNF_DIR="/Users/aiden/Projects/morena/.trae/skills/morena-remote-admin/local"
+
+if [ ! -f "$CNF" ]; then
+  mkdir -p "$CNF_DIR"
+  if [ -f "$EXAMPLE" ]; then
+    cp "$EXAMPLE" "$CNF"
+  else
+    cat > "$CNF" <<'EOF'
+[client]
+host=180.184.205.74
+port=16033
+user=mrl
+password=YOUR_DB_PASSWORD
+EOF
+  fi
+  chmod 600 "$CNF" || true
+  echo "created cnf: $CNF"
+  echo "edit password in cnf, then re-run"
+  exit 2
+fi
+
+MYSQL_BIN=""
+if command -v mysql >/dev/null 2>&1; then
+  MYSQL_BIN="mysql"
+elif [ -x "/opt/homebrew/opt/mysql-client/bin/mysql" ]; then
+  MYSQL_BIN="/opt/homebrew/opt/mysql-client/bin/mysql"
+elif [ -x "/usr/local/opt/mysql-client/bin/mysql" ]; then
+  MYSQL_BIN="/usr/local/opt/mysql-client/bin/mysql"
+elif [ -x "/opt/homebrew/bin/mysql" ]; then
+  MYSQL_BIN="/opt/homebrew/bin/mysql"
+elif [ -x "/usr/local/bin/mysql" ]; then
+  MYSQL_BIN="/usr/local/bin/mysql"
+fi
+
+if [ -z "$MYSQL_BIN" ]; then
+  echo "mysql client not found"
+  echo "install (Homebrew): brew install mysql-client"
+  echo "then ensure PATH contains:"
+  echo "  /opt/homebrew/opt/mysql-client/bin (Apple Silicon) or /usr/local/opt/mysql-client/bin (Intel)"
+  exit 127
+fi
+
+"$MYSQL_BIN" --defaults-extra-file="$CNF" "$@" mrl

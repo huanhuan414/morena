@@ -8,7 +8,7 @@ import { PLATFORM_UI_ORDER, getPlatformLabel, getPlatformMeta, canonicalizePlatf
 import { useUserStore } from '@/stores/user'
 import { useNotifications } from '@/hooks/useNotifications'
 import { Avatar as UiAvatar } from '@/components/ui/avatar'
-import { getStatusBarHeight, getCapsuleButtonBottom } from '@/utils/safe-area'
+import { getCapsuleButtonBottom } from '@/utils/safe-area'
 import './index.css'
 
 interface OrderItem {

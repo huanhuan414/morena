@@ -2,6 +2,10 @@
 /* 在大屏幕下使用固定像素单位 */
 
 @media screen and (min-width: 1024px) {
+  .admin-layout {
+    font-size: 13px !important;
+  }
+
   /* 侧边栏 - PC端加宽 */
   .admin-sidebar {
     width: 240px !important;
@@ -28,11 +32,11 @@
   
   /* Logo */
   .sidebar-logo {
-    font-size: 20px !important;
+    font-size: var(--font-size-lg) !important;
   }
   
   .sidebar-subtitle {
-    font-size: 12px !important;
+    font-size: var(--font-size-xs) !important;
   }
   
   /* 菜单 */
@@ -42,25 +46,25 @@
   }
   
   .menu-item-text {
-    font-size: 14px !important;
+    font-size: var(--font-size-sm) !important;
   }
   
   /* 管理员信息 */
   .admin-name {
-    font-size: 14px !important;
+    font-size: var(--font-size-sm) !important;
   }
   
   .admin-role {
-    font-size: 12px !important;
+    font-size: var(--font-size-xs) !important;
   }
   
   .logout-text {
-    font-size: 14px !important;
+    font-size: var(--font-size-sm) !important;
   }
   
   /* 页面标题 */
   .header-title {
-    font-size: 18px !important;
+    font-size: var(--font-size-md) !important;
   }
   
   /* 内容区 */
@@ -68,6 +72,100 @@
     padding: 24px !important;
     max-width: 1400px;
     margin: 0 auto;
+  }
+
+  .admin-layout .dashboard-page,
+  .admin-layout .users-page,
+  .admin-layout .orders-page,
+  .admin-layout .avatars-page,
+  .admin-layout .skills-page,
+  .admin-layout .settings-page,
+  .admin-layout .referral-page,
+  .admin-layout .finance-page {
+    gap: 16px !important;
+  }
+
+  .admin-layout .page-header {
+    padding: 16px 20px !important;
+  }
+
+  .admin-layout .search-box {
+    width: 360px !important;
+    padding: 0 12px !important;
+    gap: 8px !important;
+  }
+
+  .admin-layout .search-input {
+    height: 34px !important;
+    font-size: 13px !important;
+  }
+
+  .admin-layout .filter-tabs {
+    padding: 12px 20px !important;
+    gap: 12px !important;
+  }
+
+  .admin-layout .filter-tab {
+    padding: 8px 14px !important;
+  }
+
+  .admin-layout .filter-tab-text,
+  .admin-layout .filter-text {
+    font-size: 13px !important;
+  }
+
+  .admin-layout .section-title {
+    font-size: var(--font-size-md) !important;
+  }
+
+  .admin-layout .stat-text,
+  .admin-layout .order-id,
+  .admin-layout .header-time {
+    font-size: 12px !important;
+  }
+
+  .admin-layout .th {
+    font-size: 12px !important;
+  }
+
+  .admin-layout .td {
+    font-size: 13px !important;
+  }
+
+  .admin-layout .table-header {
+    padding: 12px 16px !important;
+  }
+
+  .admin-layout .table-row {
+    padding: 12px 16px !important;
+  }
+
+  .admin-layout .stat-cards {
+    gap: 16px !important;
+  }
+
+  .admin-layout .stat-card {
+    padding: 16px !important;
+    gap: 12px !important;
+  }
+
+  .admin-layout .stat-icon {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  .admin-layout .quick-stats-section,
+  .admin-layout .quick-actions-section {
+    padding: 16px !important;
+  }
+
+  .admin-layout .quick-stats-grid,
+  .admin-layout .quick-actions-grid {
+    gap: 12px !important;
+  }
+
+  .admin-layout .quick-action-btn {
+    padding: 16px !important;
   }
 }
 
@@ -89,7 +187,7 @@
 /* 表格在PC端优化 */
 @media screen and (min-width: 1024px) {
   .data-table {
-    font-size: 14px;
+    font-size: var(--font-size-sm);
   }
   
   .data-table th,

@@ -64,17 +64,20 @@ export class EarningsController {
   @Post('withdraw')
   async requestWithdrawal(
     @Headers('x-user-id') userId: string,
-    @Body() body: { amount: number; paymentMethod?: string; paymentAccount?: string }
+    @Body() body: any
   ) {
     if (!userId) {
       return { code: 401, msg: '未登录', data: null }
     }
     try {
+      const amount = Number(body?.amount) || 0
+      const paymentMethod = body?.paymentMethod || body?.method || 'wechat'
+      const paymentAccount = body?.paymentAccount || body?.accountInfo || body?.account || ''
       const result = await this.earningsService.requestWithdrawal(
         userId,
-        body.amount,
-        body.paymentMethod || 'wechat',
-        body.paymentAccount || ''
+        amount,
+        paymentMethod,
+        typeof paymentAccount === 'string' ? paymentAccount : JSON.stringify(paymentAccount || {})
       )
       return { code: 200, msg: '提现申请已提交', data: result }
     } catch (e) {

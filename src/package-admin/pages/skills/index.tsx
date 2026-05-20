@@ -5,6 +5,13 @@ import { Plus, Pencil, Trash2, Eye } from 'lucide-react-taro'
 import AdminLayout from '@/components/admin/Layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import * as Network from '@/network'
 import './index.css'
 
@@ -30,7 +37,7 @@ export default function SkillManagement() {
     name: '',
     description: '',
     icon: '🔧',
-    category: 'general',
+    category: 'content',
     price: 0
   })
 
@@ -75,7 +82,7 @@ export default function SkillManagement() {
         })
         setShowModal(false)
         setEditingSkill(null)
-        setFormData({ name: '', description: '', icon: '🔧', category: 'general', price: 0 })
+        setFormData({ name: '', description: '', icon: '🔧', category: 'content', price: 0 })
         fetchSkills()
       }
     } catch (err) {
@@ -139,11 +146,20 @@ export default function SkillManagement() {
   }
 
   const categories = [
-    { key: 'general', label: '通用' },
-    { key: 'writing', label: '写作' },
-    { key: 'coding', label: '编程' },
-    { key: 'design', label: '设计' },
-    { key: 'analysis', label: '分析' }
+    { key: 'content', label: '内容创作' },
+    { key: 'video', label: '视频制作' },
+    { key: 'audio', label: '音频处理' },
+    { key: 'image', label: '图片生成' },
+    { key: 'music', label: '音乐推荐' },
+    { key: 'life', label: '生活服务' },
+    { key: 'marketing', label: '营销推广' },
+    { key: 'social', label: '社交互动' },
+    { key: 'education', label: '教育学习' },
+    { key: 'tool', label: '实用工具' },
+    { key: 'service', label: '生活服务' },
+    { key: 'growth', label: '成长提升' },
+    { key: 'community', label: '社区互动' },
+    { key: 'knowledge', label: '知识百科' }
   ]
 
   return (
@@ -156,7 +172,7 @@ export default function SkillManagement() {
             className="add-btn"
             onClick={() => {
               setEditingSkill(null)
-              setFormData({ name: '', description: '', icon: '🔧', category: 'general', price: 0 })
+              setFormData({ name: '', description: '', icon: '🔧', category: 'content', price: 0 })
               setShowModal(true)
             }}
           >
@@ -244,6 +260,25 @@ export default function SkillManagement() {
                   value={formData.icon}
                   onInput={(e: any) => setFormData({...formData, icon: e.detail?.value || ''})}
                 />
+              </View>
+
+              <View className="form-group">
+                <Text className="form-label">分类</Text>
+                <Select
+                  value={formData.category}
+                  onValueChange={(value) => setFormData({ ...formData, category: value })}
+                >
+                  <SelectTrigger className="form-input">
+                    <SelectValue placeholder="请选择分类" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((c) => (
+                      <SelectItem key={c.key} value={c.key}>
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </View>
               
               <View className="form-group">

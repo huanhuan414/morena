@@ -1,3 +1,3 @@
 export default typeof definePageConfig === 'function'
-  ? definePageConfig({ navigationBarTitleText: '管理后台' })
-  : { navigationBarTitleText: '管理后台' }
+  ? definePageConfig({ navigationBarTitleText: '指标看板' })
+  : { navigationBarTitleText: '指标看板' }

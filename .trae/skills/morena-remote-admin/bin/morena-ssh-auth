@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PASS_FILE="/Users/aiden/Projects/morena/.trae/skills/morena-remote-admin/local/ssh.pass"
+
+if [ -f "$PASS_FILE" ] && command -v sshpass >/dev/null 2>&1; then
+  exec sshpass -f "$PASS_FILE" ssh "$@"
+fi
+
+exec ssh "$@"

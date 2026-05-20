@@ -1,12 +1,15 @@
-import { useState, useEffect } from 'react'
-import { View, Text } from '@tarojs/components'
+import { useState, useEffect, useRef } from 'react'
+import { View, Text, Canvas } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { 
-  Users, Bot, ShoppingCart, Wallet, TrendingUp, Eye
+  Users, Bot, ShoppingCart, Wallet, TrendingUp, Eye, RefreshCw
 } from 'lucide-react-taro'
 import AdminLayout from '@/components/admin/Layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { canUseDOM, isH5 } from '@/lib/platform'
 import * as Network from '@/network'
 import './index.css'
 
@@ -40,7 +43,70 @@ interface CampaignStats {
   daily: Array<{ day: string; exposures: number; clicks: number }>
 }
 
+type TrendMetric = 'newUsers' | 'orders' | 'revenue'
+
+interface DashboardTrends {
+  days: number
+  totalNewUsers: number
+  totalOrders: number
+  totalRevenue: number
+  daily: Array<{ day: string; newUsers: number; orders: number; revenue: number }>
+}
+
+interface MetricsRangeResolved {
+  mode: 'days' | 'custom'
+  days: number
+  startAt: string
+  endAt: string
+}
+
+interface AdminMetricsOverview {
+  range: MetricsRangeResolved
+  northStar: {
+    verifiedGmv: number
+    verifiedOrderCount: number
+  }
+  kpi: {
+    totalOrders: number
+    paidOrders: number | null
+    totalGmv: number
+    newUsers: number
+    activeAvatars: number
+  }
+}
+
+interface FunnelStep {
+  key: string
+  label: string
+  count: number | null
+  conversionFromPrev: number | null
+}
+
+interface AdminMetricsFunnel {
+  range: MetricsRangeResolved
+  demand: FunnelStep[]
+  supply: FunnelStep[]
+  flags: {
+    ordersPaidSupported: boolean
+    dispatchSettledSupported: boolean
+  }
+}
+
+interface FailureReasonGroup {
+  key: 'dispatch' | 'fulfillment' | 'verification' | 'settlement'
+  label: string
+  items: Array<{ reason: string; count: number }>
+}
+
+interface AdminFailureReasons {
+  range: MetricsRangeResolved
+  top: number
+  groups: FailureReasonGroup[]
+}
+
 export default function AdminDashboard() {
+  const showFunnel = false
+  const showFailureReasons = false
   const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0,
     totalAvatars: 0,
@@ -73,13 +139,46 @@ export default function AdminDashboard() {
     clickThroughRate: 0,
     daily: [],
   })
+  const [trends, setTrends] = useState<DashboardTrends>({
+    days: 7,
+    totalNewUsers: 0,
+    totalOrders: 0,
+    totalRevenue: 0,
+    daily: [],
+  })
+  const [trendMetric, setTrendMetric] = useState<TrendMetric>('newUsers')
+  const trendCanvasIdRef = useRef(`admin-dashboard-trend-canvas`)
+  const [metricsLoading, setMetricsLoading] = useState(false)
+  const [metricsError, setMetricsError] = useState('')
+  const [metricsOverview, setMetricsOverview] = useState<AdminMetricsOverview | null>(null)
+  const [metricsFunnel, setMetricsFunnel] = useState<AdminMetricsFunnel | null>(null)
+  const [failureReasons, setFailureReasons] = useState<AdminFailureReasons | null>(null)
+  const [funnelMode, setFunnelMode] = useState<'demand' | 'supply'>('demand')
+
+  const formatInt = (v: number | null | undefined) => (v == null ? '-' : Number(v).toLocaleString())
+  const formatMoney = (v: number | null | undefined) => {
+    if (v == null) return '-'
+    const n = Number(v) || 0
+    return n % 1 === 0 ? n.toLocaleString() : n.toFixed(2)
+  }
+  const formatPercent = (v: number | null | undefined) => (v == null ? '-' : `${(Number(v) * 100).toFixed(1)}%`)
 
   useEffect(() => {
     fetchDashboardData()
   }, [])
 
+  useEffect(() => {
+    if (!trends.daily.length) return
+    const t = setTimeout(() => {
+      drawTrendChart()
+    }, 50)
+    return () => clearTimeout(t)
+  }, [trends.daily, trendMetric])
+
   const fetchDashboardData = async () => {
     try {
+      setMetricsLoading(true)
+      setMetricsError('')
       const res = await Network.request({
         url: '/api/admin/dashboard/stats'
       })
@@ -94,9 +193,15 @@ export default function AdminDashboard() {
         Network.request({ url: '/api/admin/queues/supply', data: { queue: 'awaiting_acceptance', limit: 10 } }),
       ])
 
-      const [campaignConfigRes, campaignStatsRes] = await Promise.all([
+      const [campaignConfigRes, campaignStatsRes, trendsRes, metricsOverviewRes, metricsFunnelRes, failureReasonsRes] = await Promise.all([
         Network.request({ url: '/api/admin/activities/campaign' }),
         Network.request({ url: '/api/admin/activities/campaign/stats', data: { days: 7 } }),
+        Network.request({ url: '/api/admin/dashboard/trends', data: { days: 7 } }),
+        Network.request({ url: '/api/admin/metrics/overview', data: { days: 30 } }),
+        showFunnel ? Network.request({ url: '/api/admin/metrics/funnel', data: { days: 30 } }) : Promise.resolve(null),
+        showFailureReasons
+          ? Network.request({ url: '/api/admin/metrics/failure-reasons', data: { days: 30, top: 10 } })
+          : Promise.resolve(null),
       ])
 
       setSupplyQueues({
@@ -119,9 +224,169 @@ export default function AdminDashboard() {
       if (campaignStatsRes?.data?.code === 200 && campaignStatsRes?.data?.data) {
         setCampaignStats(campaignStatsRes.data.data)
       }
+
+      if (trendsRes?.data?.code === 200 && trendsRes?.data?.data) {
+        setTrends(trendsRes.data.data)
+      }
+
+      if (metricsOverviewRes?.data?.code === 200 && metricsOverviewRes?.data?.data) {
+        setMetricsOverview(metricsOverviewRes.data.data)
+      } else {
+        setMetricsOverview(null)
+      }
+
+      if (showFunnel && metricsFunnelRes?.data?.code === 200 && metricsFunnelRes?.data?.data) {
+        setMetricsFunnel(metricsFunnelRes.data.data)
+      } else {
+        setMetricsFunnel(null)
+      }
+
+      if (showFailureReasons && failureReasonsRes?.data?.code === 200 && failureReasonsRes?.data?.data) {
+        setFailureReasons(failureReasonsRes.data.data)
+      } else {
+        setFailureReasons(null)
+      }
+
+      setMetricsLoading(false)
     } catch (err) {
       console.error('获取仪表盘数据失败:', err)
+      setMetricsError('获取指标数据失败')
+      setMetricsLoading(false)
     }
+  }
+
+  const drawTrendChart = () => {
+    const canvasId = trendCanvasIdRef.current
+    const series = trends.daily.slice().reverse()
+    if (!series.length) return
+
+    const values = series.map((d) => {
+      if (trendMetric === 'newUsers') return Number(d.newUsers || 0)
+      if (trendMetric === 'orders') return Number(d.orders || 0)
+      return Number(d.revenue || 0)
+    })
+
+    const maxValue = Math.max(...values, 0)
+    const safeMax = maxValue > 0 ? maxValue : 1
+
+    const draw = (params: {
+      ctx: any
+      width: number
+      height: number
+      dpr: number
+      resetScale: boolean
+    }) => {
+      const { ctx, width, height, dpr, resetScale } = params
+
+      if (resetScale) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0)
+      }
+      ctx.clearRect(0, 0, width, height)
+      ctx.scale(dpr, dpr)
+
+      const paddingLeft = 36
+      const paddingRight = 12
+      const paddingTop = 12
+      const paddingBottom = 24
+      const chartW = Math.max(1, width / dpr - paddingLeft - paddingRight)
+      const chartH = Math.max(1, height / dpr - paddingTop - paddingBottom)
+
+      ctx.strokeStyle = '#e5e7eb'
+      ctx.lineWidth = 1
+      for (let i = 0; i <= 4; i++) {
+        const y = paddingTop + (chartH * i) / 4
+        ctx.beginPath()
+        ctx.moveTo(paddingLeft, y)
+        ctx.lineTo(paddingLeft + chartW, y)
+        ctx.stroke()
+      }
+
+      ctx.fillStyle = '#6b7280'
+      ctx.font = '12px sans-serif'
+      ctx.textAlign = 'right'
+      ctx.textBaseline = 'middle'
+      for (let i = 0; i <= 2; i++) {
+        const v = (safeMax * (2 - i)) / 2
+        const y = paddingTop + (chartH * i) / 2
+        ctx.fillText(trendMetric === 'revenue' ? v.toFixed(0) : String(Math.round(v)), paddingLeft - 6, y)
+      }
+
+      const color = trendMetric === 'newUsers' ? '#3b82f6' : trendMetric === 'orders' ? '#f59e0b' : '#10b981'
+      ctx.strokeStyle = color
+      ctx.lineWidth = 2
+      ctx.lineJoin = 'round'
+      ctx.lineCap = 'round'
+
+      const stepX = values.length <= 1 ? chartW : chartW / (values.length - 1)
+      const toY = (v: number) => paddingTop + chartH - (v / safeMax) * chartH
+
+      ctx.beginPath()
+      values.forEach((v, idx) => {
+        const x = paddingLeft + stepX * idx
+        const y = toY(v)
+        if (idx === 0) ctx.moveTo(x, y)
+        else ctx.lineTo(x, y)
+      })
+      ctx.stroke()
+
+      ctx.fillStyle = color
+      values.forEach((v, idx) => {
+        const x = paddingLeft + stepX * idx
+        const y = toY(v)
+        ctx.beginPath()
+        ctx.arc(x, y, 3, 0, Math.PI * 2)
+        ctx.fill()
+      })
+
+      const labels = series.map((d) => String(d.day || '').slice(5))
+      ctx.fillStyle = '#6b7280'
+      ctx.font = '11px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'top'
+      const labelIdx = values.length <= 3 ? values.map((_, i) => i) : [0, Math.floor((values.length - 1) / 2), values.length - 1]
+      labelIdx.forEach((idx) => {
+        const x = paddingLeft + stepX * idx
+        const y = paddingTop + chartH + 6
+        ctx.fillText(labels[idx] || '', x, y)
+      })
+    }
+
+    if (isH5() && canUseDOM()) {
+      const el = document.getElementById(canvasId) as any
+      if (!el) return
+      const rect = el.getBoundingClientRect?.()
+      const width = Number(rect?.width || el.clientWidth || 0)
+      const height = Number(rect?.height || el.clientHeight || 0)
+      if (!width || !height) return
+
+      const dpr = Number(window.devicePixelRatio || 1)
+      el.width = Math.floor(width * dpr)
+      el.height = Math.floor(height * dpr)
+      const ctx = el.getContext?.('2d')
+      if (!ctx) return
+      draw({ ctx, width: el.width, height: el.height, dpr, resetScale: true })
+      return
+    }
+
+    const query = Taro.createSelectorQuery()
+    query
+      .select(`#${canvasId}`)
+      .fields({ node: true, size: true })
+      .exec((res: any) => {
+        const info = res?.[0]
+        const canvas = info?.node
+        const width = Number(info?.width || 0)
+        const height = Number(info?.height || 0)
+        if (!canvas || !width || !height) return
+
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+
+        const dpr = Number(Taro.getSystemInfoSync()?.pixelRatio || 1)
+        canvas.width = Math.floor(width * dpr)
+        canvas.height = Math.floor(height * dpr)
+        draw({ ctx, width: canvas.width, height: canvas.height, dpr, resetScale: false })
+      })
   }
 
   const handleSaveCampaign = async () => {
@@ -162,8 +427,148 @@ export default function AdminDashboard() {
   ]
 
   return (
-    <AdminLayout title="系统概览">
+    <AdminLayout title="指标看板">
       <View className="dashboard-page">
+        {/* 指标看板 */}
+        <View className="quick-stats-section">
+          <View className="flex flex-row items-center justify-between">
+            <Text className="section-title metrics-title">指标看板（近{metricsOverview?.range?.days || 30}天）</Text>
+            <Button variant="outline" size="sm" onClick={fetchDashboardData}>
+              <RefreshCw size={16} color="#6b7280" />
+              <Text>刷新</Text>
+            </Button>
+          </View>
+
+          {metricsLoading ? (
+            <Text className="block mt-3 text-sm text-gray-500">加载中...</Text>
+          ) : metricsError ? (
+            <Text className="block mt-3 text-sm text-red-500">{metricsError}</Text>
+          ) : (
+            <View className="flex flex-col gap-4 mt-3">
+              <View className="metrics-grid">
+                {[
+                  { key: 'verifiedGmv', label: '北极星 GMV(元)', value: formatMoney(metricsOverview?.northStar?.verifiedGmv) },
+                  { key: 'verifiedOrderCount', label: '北极星订单数', value: formatInt(metricsOverview?.northStar?.verifiedOrderCount) },
+                  { key: 'totalOrders', label: '下单量', value: formatInt(metricsOverview?.kpi?.totalOrders) },
+                  { key: 'paidOrders', label: '支付订单', value: formatInt(metricsOverview?.kpi?.paidOrders) },
+                  { key: 'totalGmv', label: 'GMV(元)', value: formatMoney(metricsOverview?.kpi?.totalGmv) },
+                  { key: 'newUsers', label: '新增用户', value: formatInt(metricsOverview?.kpi?.newUsers) },
+                  { key: 'activeAvatars', label: '活跃分身', value: formatInt(metricsOverview?.kpi?.activeAvatars) },
+                ].map((item) => (
+                  <View key={item.key} className="quick-stat-item metric-item">
+                    <Text className="quick-stat-label metric-label">{item.label}</Text>
+                    <Text className="quick-stat-value metric-value">{item.value}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {showFunnel && (
+                <Card>
+                  <CardHeader className="p-4 pb-0">
+                    <View className="flex flex-row items-center justify-between">
+                      <Text className="block text-sm font-medium text-gray-900">漏斗</Text>
+                      <View className="funnel-switch">
+                        <Button
+                          variant={funnelMode === 'demand' ? 'default' : 'outline'}
+                          size="sm"
+                          className="w-full justify-center"
+                          onClick={() => setFunnelMode('demand')}
+                        >
+                          <Text>需求侧</Text>
+                        </Button>
+                        <Button
+                          variant={funnelMode === 'supply' ? 'default' : 'outline'}
+                          size="sm"
+                          className="w-full justify-center"
+                          onClick={() => setFunnelMode('supply')}
+                        >
+                          <Text>供给侧</Text>
+                        </Button>
+                      </View>
+                    </View>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead><Text className="block">步骤</Text></TableHead>
+                          <TableHead className="text-right"><Text className="block">数量</Text></TableHead>
+                          <TableHead className="text-right"><Text className="block">转化率</Text></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(funnelMode === 'demand' ? (metricsFunnel?.demand || []) : (metricsFunnel?.supply || [])).map((step) => (
+                          <TableRow key={step.key}>
+                            <TableCell><Text className="block text-sm text-gray-800">{step.label}</Text></TableCell>
+                            <TableCell className="text-right"><Text className="block text-sm text-gray-800">{formatInt(step.count)}</Text></TableCell>
+                            <TableCell className="text-right">
+                              <Text className="block text-sm text-gray-600">{formatPercent(step.conversionFromPrev)}</Text>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {!((funnelMode === 'demand' ? metricsFunnel?.demand : metricsFunnel?.supply) || []).length && (
+                          <TableRow>
+                            <TableCell colSpan={3}>
+                              <Text className="block text-sm text-gray-500">暂无数据</Text>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              )}
+
+              {showFailureReasons && (
+                <Card>
+                  <CardHeader className="p-4 pb-0">
+                    <Text className="block text-sm font-medium text-gray-900">失败原因 Top</Text>
+                  </CardHeader>
+                  <CardContent className="p-4">
+                    <View className="grid grid-cols-2 gap-4">
+                      {(failureReasons?.groups || []).map((group) => (
+                        <Card key={group.key}>
+                          <CardHeader className="p-4 pb-0">
+                            <Text className="block text-sm font-medium text-gray-900">{group.label}</Text>
+                          </CardHeader>
+                          <CardContent className="p-0">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead><Text className="block">原因</Text></TableHead>
+                                  <TableHead className="text-right"><Text className="block">次数</Text></TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {(group.items || []).map((item) => (
+                                  <TableRow key={item.reason}>
+                                    <TableCell><Text className="block text-sm text-gray-800">{item.reason}</Text></TableCell>
+                                    <TableCell className="text-right"><Text className="block text-sm text-gray-800">{formatInt(item.count)}</Text></TableCell>
+                                  </TableRow>
+                                ))}
+                                {!(group.items || []).length && (
+                                  <TableRow>
+                                    <TableCell colSpan={2}>
+                                      <Text className="block text-sm text-gray-500">暂无数据</Text>
+                                    </TableCell>
+                                  </TableRow>
+                                )}
+                              </TableBody>
+                            </Table>
+                          </CardContent>
+                        </Card>
+                      ))}
+                      {!(failureReasons?.groups || []).length && (
+                        <Text className="block text-sm text-gray-500">暂无数据</Text>
+                      )}
+                    </View>
+                  </CardContent>
+                </Card>
+              )}
+            </View>
+          )}
+        </View>
+
         {/* 核心数据卡片 */}
         <View className="stat-cards">
           {statCards.map(card => {
@@ -203,6 +608,44 @@ export default function AdminDashboard() {
                 )}
               </View>
             ))}
+          </View>
+        </View>
+
+        <View className="quick-stats-section">
+          <Text className="section-title">趋势（近{trends.days}天）</Text>
+          <View className="trend-switch mt-3">
+            <Button
+              variant={trendMetric === 'newUsers' ? 'default' : 'outline'}
+              size="sm"
+              className="w-full justify-center"
+              onClick={() => setTrendMetric('newUsers')}
+            >
+              <Text>新增用户</Text>
+            </Button>
+            <Button
+              variant={trendMetric === 'orders' ? 'default' : 'outline'}
+              size="sm"
+              className="w-full justify-center"
+              onClick={() => setTrendMetric('orders')}
+            >
+              <Text>订单</Text>
+            </Button>
+            <Button
+              variant={trendMetric === 'revenue' ? 'default' : 'outline'}
+              size="sm"
+              className="w-full justify-center"
+              onClick={() => setTrendMetric('revenue')}
+            >
+              <Text>收入</Text>
+            </Button>
+          </View>
+          <View className="mt-4 rounded-xl bg-white p-3">
+            <Canvas
+              id={trendCanvasIdRef.current}
+              canvasId={trendCanvasIdRef.current}
+              type="2d"
+              className="trend-canvas"
+            />
           </View>
         </View>
 
@@ -312,7 +755,7 @@ export default function AdminDashboard() {
           <Text className="section-title">供给队列</Text>
           <View className="data-table">
             <View className="table-header">
-              <Text className="th col-order">队列</Text>
+              <Text className="th col-queue">队列</Text>
               <Text className="th col-order">订单</Text>
               <Text className="th col-avatar">分身</Text>
               <Text className="th col-date">时间</Text>
@@ -326,7 +769,7 @@ export default function AdminDashboard() {
               <View key={q.key}>
                 {(q.list || []).map((row: any) => (
                   <View key={`${q.key}-${row.id || row.order_id || row.orderId}`} className="table-row">
-                    <Text className="td col-order">{q.label}</Text>
+                    <Text className="td col-queue">{q.label}</Text>
                     <View className="td col-order">
                       <Text className="order-title">{row.order_title || row.title || '-'}</Text>
                       <Text className="order-id">ID: {(row.order_id || row.id || '').slice(-8)}</Text>

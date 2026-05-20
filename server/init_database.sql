@@ -622,6 +622,30 @@ CREATE TABLE IF NOT EXISTS referrals (
   FOREIGN KEY (referred_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 引荐发放审核表（邀请奖励/订单分佣）
+CREATE TABLE IF NOT EXISTS referral_payouts (
+  id VARCHAR(36) PRIMARY KEY,
+  payout_type VARCHAR(50) NOT NULL,
+  referrer_id VARCHAR(36) NOT NULL,
+  user_id VARCHAR(36) NOT NULL,
+  referred_id VARCHAR(36),
+  order_id VARCHAR(36),
+  amount DECIMAL(10,2) NOT NULL,
+  status VARCHAR(20) DEFAULT 'pending',
+  review_reason TEXT,
+  reviewed_by VARCHAR(36),
+  reviewed_at TIMESTAMP NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_referrer_id (referrer_id),
+  INDEX idx_user_id (user_id),
+  INDEX idx_status (status),
+  INDEX idx_payout_type (payout_type),
+  INDEX idx_created_at (created_at),
+  FOREIGN KEY (referrer_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (referred_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- ============================================
 -- 11. 平台配置表
 -- ============================================

@@ -92,6 +92,53 @@ export class PaymentController {
   }
 
   /**
+   * 创建余额充值订单
+   * POST /api/payment/wechat/recharge
+   */
+  @Post('wechat/recharge')
+  @HttpCode(HttpStatus.OK)
+  async createRechargePayment(@Body() body: any) {
+    const { userId, openid, amount } = body
+    this.logger.log(`创建充值请求 - userId: ${userId}, amount: ${amount}, openid: ${openid ? '***' : 'missing'}`)
+
+    if (!userId || !openid) {
+      return { code: 400, msg: '缺少必要参数: userId, openid', data: null }
+    }
+    const rechargeAmount = Number(amount)
+    if (!Number.isFinite(rechargeAmount) || rechargeAmount <= 0) {
+      return { code: 400, msg: '充值金额必须大于0', data: null }
+    }
+
+    try {
+      const result = await this.wechatPayService.createMiniProgramOrder({
+        userId,
+        openid,
+        planId: `recharge_${Date.now()}`,
+        description: `余额充值 ${rechargeAmount} 元`,
+        amount: rechargeAmount,
+        orderType: 'recharge',
+      })
+
+      return {
+        code: 200,
+        msg: '订单创建成功',
+        data: {
+          orderId: result.orderId,
+          outTradeNo: result.outTradeNo,
+          timeStamp: result.timeStamp,
+          nonceStr: result.nonceStr,
+          packageValue: result.packageValue,
+          signType: result.signType,
+          paySign: result.paySign,
+        },
+      }
+    } catch (error) {
+      this.logger.error(`创建充值订单失败: ${error.message}`, error.stack)
+      return { code: 500, msg: `创建订单失败: ${error.message}`, data: null }
+    }
+  }
+
+  /**
    * 微信支付回调通知（V2 XML格式）
    * POST /api/payment/wechat/notify
    *

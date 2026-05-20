@@ -12,8 +12,9 @@ interface User {
   phone: string
   nickname: string
   avatar?: string
-  status: 'active' | 'banned'
-  created_at: string
+  banned?: boolean | number
+  createdAt?: string
+  created_at?: string
   balance: number
   avatar_count: number
   order_count: number
@@ -22,12 +23,32 @@ interface User {
 export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([])
   const [searchKeyword, setSearchKeyword] = useState('')
-  const [page] = useState(1)
+  const getPageFromRoute = () => {
+    const { page: routePage } = Taro.getCurrentInstance().router?.params || {}
+    const num = Number(routePage)
+    return Number.isFinite(num) && num > 0 ? num : 1
+  }
+  const [page, setPage] = useState(getPageFromRoute())
   const [total, setTotal] = useState(0)
 
   useEffect(() => {
     fetchUsers()
   }, [page, searchKeyword])
+
+  useEffect(() => {
+    setPage(getPageFromRoute())
+  }, [])
+
+  const getUserStatus = (user: any): 'active' | 'banned' => {
+    if (user?.status === 'active' || user?.status === 'banned') return user.status
+    return user?.banned ? 'banned' : 'active'
+  }
+
+  const formatDate = (value: any) => {
+    const date = value ? new Date(value) : null
+    if (!date || Number.isNaN(date.getTime())) return '-'
+    return date.toLocaleDateString('zh-CN')
+  }
 
   const fetchUsers = async () => {
     try {
@@ -37,8 +58,16 @@ export default function UserManagement() {
       })
       
       if (res.data.code === 200) {
-        setUsers(res.data.data.list)
-        setTotal(res.data.data.total)
+        const list = Array.isArray(res.data.data?.list) ? res.data.data.list : []
+        setUsers(
+          list.map((item: any) => ({
+            ...item,
+            balance: Number(item?.balance) || 0,
+            avatar_count: Number(item?.avatar_count ?? item?.avatarCount) || 0,
+            order_count: Number(item?.order_count ?? item?.orderCount) || 0
+          }))
+        )
+        setTotal(Number(res.data.data?.total) || 0)
       }
     } catch (err) {
       console.error('获取用户列表失败:', err)
@@ -76,12 +105,13 @@ export default function UserManagement() {
   }
 
   const handleViewDetail = (userId: string) => {
-    Taro.navigateTo({ url: `/package-admin/pages/detail/index?id=${userId}` })
+    Taro.navigateTo({ url: `/package-admin/pages/users/detail/index?id=${userId}` })
   }
 
   const handlePageChange = (newPage: number) => {
     if (newPage < 1) return
-    Taro.navigateTo({ url: `/package-admin/pages/users/index?page=${newPage}` })
+    setPage(newPage)
+    Taro.redirectTo({ url: `/package-admin/pages/users/index?page=${newPage}` })
   }
 
   return (
@@ -135,21 +165,21 @@ export default function UserManagement() {
                 <Text className="td col-stats">{user.avatar_count || 0} / {user.order_count || 0}</Text>
                 <Text className="td col-balance">¥{(user.balance || 0).toFixed(2)}</Text>
                 <View className="td col-status">
-                  <View className={`status-badge ${user.status}`}>
-                    <Text className="status-text">{user.status === 'active' ? '正常' : '已禁用'}</Text>
+                  <View className={`status-badge ${getUserStatus(user)}`}>
+                    <Text className="status-text">{getUserStatus(user) === 'active' ? '正常' : '已禁用'}</Text>
                   </View>
                 </View>
-                <Text className="td col-date">{new Date(user.created_at).toLocaleDateString('zh-CN')}</Text>
+                <Text className="td col-date">{formatDate(user.createdAt || user.created_at)}</Text>
                 <View className="td col-action">
                   <View className="action-btns">
                     <View className="action-btn view" onClick={() => handleViewDetail(user.id)}>
                       <Eye size={16} color="#3b82f6" />
                     </View>
                     <View 
-                      className={`action-btn ${user.status === 'active' ? 'ban' : 'unban'}`}
-                      onClick={() => handleBanUser(user.id, user.status)}
+                      className={`action-btn ${getUserStatus(user) === 'active' ? 'ban' : 'unban'}`}
+                      onClick={() => handleBanUser(user.id, getUserStatus(user))}
                     >
-                      {user.status === 'active' ? (
+                      {getUserStatus(user) === 'active' ? (
                         <Ban size={16} color="#ef4444" />
                       ) : (
                         <Text style={{ color: '#10b981', fontSize: '16px' }}>✓</Text>

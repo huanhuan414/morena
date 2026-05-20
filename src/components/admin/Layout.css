@@ -2,14 +2,17 @@
 .admin-layout {
   display: flex;
   min-height: 100vh;
-  background: #f3f4f6;
+  background: var(--background);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
 }
 
 /* 侧边栏 */
 .admin-sidebar {
   width: 260rpx;
-  background: #fff;
-  border-right: 1rpx solid #e5e7eb;
+  background: var(--card);
+  border-right: 1rpx solid var(--border);
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -25,20 +28,20 @@
 
 .sidebar-header {
   padding: 32rpx 24rpx;
-  border-bottom: 1rpx solid #e5e7eb;
+  border-bottom: 1rpx solid var(--border);
 }
 
 .sidebar-logo {
   display: block;
   font-size: 32rpx;
   font-weight: 700;
-  color: #7B3FE4;
+  color: var(--primary);
 }
 
 .sidebar-subtitle {
   display: block;
   font-size: 22rpx;
-  color: #9ca3af;
+  color: var(--text-tertiary);
   margin-top: 4rpx;
 }
 
@@ -60,11 +63,11 @@
   border-radius: 12rpx;
   margin-bottom: 8rpx;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.12s;
 }
 
 .menu-item:hover {
-  background: #f3f4f6;
+  background: var(--secondary);
 }
 
 .menu-item.active {
@@ -73,12 +76,12 @@
 
 .menu-item-text {
   font-size: 26rpx;
-  color: #4b5563;
+  color: var(--text-secondary);
+  font-weight: 600;
 }
 
 .menu-item.active .menu-item-text {
-  color: #7B3FE4;
-  font-weight: 600;
+  color: var(--primary);
 }
 
 .sidebar-collapsed .menu-item-text {
@@ -87,7 +90,7 @@
 
 .sidebar-footer {
   padding: 20rpx;
-  border-top: 1rpx solid #e5e7eb;
+  border-top: 1rpx solid var(--border);
 }
 
 .admin-info {
@@ -98,13 +101,13 @@
   display: block;
   font-size: 26rpx;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-primary);
 }
 
 .admin-role {
   display: block;
   font-size: 22rpx;
-  color: #9ca3af;
+  color: var(--text-tertiary);
   margin-top: 4rpx;
 }
 
@@ -150,8 +153,8 @@
 /* 顶部栏 */
 .admin-header {
   height: 88rpx;
-  background: #fff;
-  border-bottom: 1rpx solid #e5e7eb;
+  background: var(--card);
+  border-bottom: 1rpx solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -178,22 +181,64 @@
 }
 
 .menu-toggle:hover {
-  background: #f3f4f6;
+  background: var(--secondary);
 }
 
 .header-title {
-  font-size: 32rpx;
+  font-size: var(--font-size-lg);
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-primary);
 }
 
 .header-time {
-  font-size: 24rpx;
-  color: #6b7280;
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
 }
 
 /* 页面内容 */
 .admin-content {
   flex: 1;
   padding: 32rpx;
+}
+
+.admin-layout .page-header,
+.admin-layout .filter-tabs,
+.admin-layout .data-table,
+.admin-layout .pagination,
+.admin-layout .quick-stats-section,
+.admin-layout .quick-actions-section,
+.admin-layout .stat-card,
+.admin-layout .post-card {
+  background: var(--card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--border-light);
+}
+
+.admin-layout .search-box,
+.admin-layout .quick-action-btn,
+.admin-layout .quick-stat-item {
+  background: var(--secondary);
+}
+
+.admin-layout .section-title {
+  font-size: var(--font-size-lg);
+  color: var(--text-primary);
+}
+
+.admin-layout .stat-text,
+.admin-layout .order-id,
+.admin-layout .header-time {
+  font-size: var(--font-size-xs);
+}
+
+.admin-layout .th {
+  font-size: var(--font-size-xs);
+}
+
+.admin-layout .td,
+.admin-layout .search-input,
+.admin-layout .filter-tab-text,
+.admin-layout .filter-text {
+  font-size: var(--font-size-sm);
 }

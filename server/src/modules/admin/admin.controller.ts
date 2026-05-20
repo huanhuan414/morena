@@ -46,6 +46,69 @@ export class AdminController {
     }
   }
 
+  @Get('dashboard/trends')
+  async getDashboardTrends(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Query('days') days: number = 7
+  ) {
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
+    if (!admin) {
+      return { code: 401, data: null, message: '未授权' }
+    }
+
+    const trends = await this.adminService.getDashboardTrends(days)
+    return {
+      code: 200,
+      data: trends,
+      message: 'success'
+    }
+  }
+
+  // ===== 指标 =====
+
+  @Get('metrics/overview')
+  async getMetricsOverview(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Query('days') days?: number,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
+    if (!admin) return { code: 401, data: null, message: '未授权' }
+
+    const data = await this.adminService.getMetricsOverview({ days, startDate, endDate })
+    return { code: 200, data, message: 'success' }
+  }
+
+  @Get('metrics/funnel')
+  async getMetricsFunnel(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Query('days') days?: number,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
+    if (!admin) return { code: 401, data: null, message: '未授权' }
+
+    const data = await this.adminService.getMetricsFunnel({ days, startDate, endDate })
+    return { code: 200, data, message: 'success' }
+  }
+
+  @Get('metrics/failure-reasons')
+  async getFailureReasons(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Query('days') days?: number,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('top') top?: number,
+  ) {
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
+    if (!admin) return { code: 401, data: null, message: '未授权' }
+
+    const data = await this.adminService.getFailureReasons({ days, startDate, endDate, top })
+    return { code: 200, data, message: 'success' }
+  }
+
   // ===== 用户管理 =====
 
   /**
@@ -146,19 +209,68 @@ export class AdminController {
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
     @Query('keyword') keyword?: string,
-    @Query('status') status?: string
+    @Query('status') status?: string,
+    @Query('user_id') userId?: string
   ) {
     const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
     
-    const result = await this.adminService.getAvatars(page, limit)
+    const result = await this.adminService.getAvatars(page, limit, keyword, status, userId)
     return {
       code: 200,
       data: result,
       message: 'success'
     }
+  }
+
+  @Get('avatars/:id')
+  async getAvatarDetail(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Param('id') avatarId: string
+  ) {
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
+    if (!admin) {
+      return { code: 401, data: null, message: '未授权' }
+    }
+
+    const avatar = await this.adminService.getAvatarDetail(avatarId)
+    return {
+      code: avatar ? 200 : 404,
+      data: avatar,
+      message: avatar ? 'success' : '分身不存在'
+    }
+  }
+
+  @Get('avatars/:id/conversations')
+  async getAvatarConversations(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Param('id') avatarId: string,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 20
+  ) {
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
+    if (!admin) {
+      return { code: 401, data: null, message: '未授权' }
+    }
+
+    const result = await this.adminService.getAvatarConversations(avatarId, Number(page) || 1, Number(limit) || 20)
+    return { code: 200, data: result, message: 'success' }
+  }
+
+  @Get('conversations/:id/messages')
+  async getConversationMessages(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Param('id') conversationId: string
+  ) {
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
+    if (!admin) {
+      return { code: 401, data: null, message: '未授权' }
+    }
+
+    const messages = await this.adminService.getConversationMessages(conversationId)
+    return { code: 200, data: messages, message: 'success' }
   }
 
   /**
@@ -201,7 +313,7 @@ export class AdminController {
       return { code: 401, data: null, message: '未授权' }
     }
     
-    const result = await this.adminService.getOrders(page, limit, status)
+    const result = await this.adminService.getOrders(Number(page) || 1, Number(limit) || 20, keyword, status)
     return {
       code: 200,
       data: result,
@@ -570,6 +682,20 @@ export class AdminController {
     }
   }
 
+  @Get('referral/referrers')
+  async getReferralReferrers(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Query('days') days?: string
+  ) {
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
+    if (!admin) {
+      return { code: 401, data: null, message: '未授权' }
+    }
+
+    const result = await this.adminService.getReferralReferrers(Number(days) || 14)
+    return { code: 200, data: result, message: 'success' }
+  }
+
   /**
    * 更新分佣设置
    */
@@ -589,6 +715,55 @@ export class AdminController {
       data: null,
       message: result.message
     }
+  }
+
+  @Get('referral/payouts')
+  async getReferralPayouts(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Query('status') status?: string,
+    @Query('type') type?: string,
+    @Query('days') days?: string
+  ) {
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
+    if (!admin) {
+      return { code: 401, data: null, message: '未授权' }
+    }
+
+    const result = await this.adminService.getReferralPayouts({
+      status: status || 'pending',
+      type: type || undefined,
+      days: Number(days) || 14,
+    })
+    return { code: 200, data: result, message: 'success' }
+  }
+
+  @Post('referral/payouts/approve')
+  async approveReferralPayouts(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Body('ids') ids: string[]
+  ) {
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
+    if (!admin) {
+      return { code: 401, data: null, message: '未授权' }
+    }
+
+    const result = await this.adminService.approveReferralPayouts(admin.id, ids || [])
+    return { code: result.success ? 200 : 400, data: result.data || null, message: result.message }
+  }
+
+  @Post('referral/payouts/reject')
+  async rejectReferralPayouts(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Body('ids') ids: string[],
+    @Body('reason') reason: string
+  ) {
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
+    if (!admin) {
+      return { code: 401, data: null, message: '未授权' }
+    }
+
+    const result = await this.adminService.rejectReferralPayouts(admin.id, ids || [], reason || '')
+    return { code: result.success ? 200 : 400, data: result.data || null, message: result.message }
   }
 
   @Get('activities/campaign')

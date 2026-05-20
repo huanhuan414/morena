@@ -9,16 +9,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #fff;
   padding: 24rpx 32rpx;
-  border-radius: 12rpx;
 }
 
 .search-box {
   display: flex;
   align-items: center;
   gap: 12rpx;
-  background: #f3f4f6;
+  background: var(--secondary);
   border-radius: 8rpx;
   padding: 0 16rpx;
   width: 400rpx;
@@ -27,63 +25,55 @@
 .search-input {
   flex: 1;
   height: 64rpx;
-  font-size: 26rpx;
-  color: #374151;
+  color: var(--text-primary);
 }
 
 .stat-text {
-  font-size: 26rpx;
-  color: #6b7280;
+  color: var(--text-tertiary);
 }
 
 /* 筛选标签 */
 .filter-tabs {
   display: flex;
   gap: 16rpx;
-  background: #fff;
   padding: 20rpx 32rpx;
-  border-radius: 12rpx;
 }
 
 .filter-tab {
   padding: 12rpx 24rpx;
-  background: #f3f4f6;
+  background: var(--secondary);
   border-radius: 8rpx;
   cursor: pointer;
 }
 
 .filter-tab.active {
-  background: #7B3FE4;
+  background: var(--primary);
 }
 
 .filter-tab-text {
-  font-size: 26rpx;
-  color: #4b5563;
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .filter-tab.active .filter-tab-text {
   color: #fff;
-  font-weight: 500;
 }
 
 /* 数据表格 */
 .data-table {
-  background: #fff;
-  border-radius: 12rpx;
   overflow: hidden;
 }
 
 .table-header {
   display: flex;
-  background: #f9fafb;
+  background: var(--muted);
   padding: 20rpx 24rpx;
-  border-bottom: 1rpx solid #e5e7eb;
+  border-bottom: 1rpx solid var(--border);
 }
 
 .th {
-  font-size: 24rpx;
   font-weight: 600;
-  color: #4b5563;
+  color: var(--text-secondary);
 }
 
 .table-body {
@@ -93,17 +83,17 @@
 .table-row {
   display: flex;
   padding: 20rpx 24rpx;
-  border-bottom: 1rpx solid #f3f4f6;
+  border-bottom: 1rpx solid var(--border-light);
   align-items: center;
 }
 
 .table-row:hover {
-  background: #f9fafb;
+  background: var(--muted);
 }
 
 .td {
-  font-size: 26rpx;
-  color: #374151;
+  color: var(--text-primary);
+  line-height: 36rpx;
 }
 
 /* 列宽 */
@@ -118,20 +108,18 @@
 /* 订单信息 */
 .order-title {
   display: block;
-  font-size: 26rpx;
-  color: #374151;
+  color: var(--text-primary);
   font-weight: 500;
   margin-bottom: 4rpx;
 }
 
 .order-id {
   display: block;
-  font-size: 22rpx;
-  color: #9ca3af;
+  color: var(--text-tertiary);
 }
 
 .td.col-price.highlight {
-  color: #7B3FE4;
+  color: var(--primary);
   font-weight: 600;
 }
 
@@ -140,7 +128,10 @@
   display: inline-block;
   padding: 6rpx 16rpx;
   border-radius: 20rpx;
-  font-size: 22rpx;
+}
+
+.status-text {
+  font-weight: 500;
 }
 
 .status-badge.pending {
@@ -168,22 +159,22 @@
 }
 
 .status-badge.cancelled {
-  background: #f3f4f6;
+  background: var(--secondary);
 }
 
 .status-badge.cancelled .status-text {
-  color: #6b7280;
+  color: var(--text-secondary);
 }
 
 /* 操作按钮 */
 .action-btns {
   display: flex;
-  gap: 8rpx;
+  gap: 12rpx;
 }
 
 .action-btn {
-  width: 44rpx;
-  height: 44rpx;
+  width: 48rpx;
+  height: 48rpx;
   border-radius: 8rpx;
   display: flex;
   align-items: center;

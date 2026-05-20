@@ -174,6 +174,38 @@ export class ReferralService {
       [INVITEE_REWARD, INVITEE_REWARD, now, inviteeId]
     )
 
+    try {
+      let inviterBefore = 0
+      try {
+        const inviterBeforeRows = await db.query('SELECT balance FROM users WHERE id = ?', [inviterId])
+        inviterBefore = Number(inviterBeforeRows?.[0]?.balance) || 0
+      } catch (_) {
+        const inviterBeforeRows = await db.query('SELECT current_balance as balance FROM users WHERE id = ?', [inviterId])
+        inviterBefore = Number(inviterBeforeRows?.[0]?.balance) || 0
+      }
+      await db.query(
+        `INSERT INTO transactions (id, user_id, type, amount, balance_before, balance_after, status, description, reference_id, created_at)
+         VALUES (?, ?, 'commission', ?, ?, ?, 'completed', ?, ?, ?)`,
+        [crypto.randomUUID(), inviterId, INVITER_REWARD, inviterBefore - INVITER_REWARD, inviterBefore, '邀请好友奖励', referral.id, now]
+      )
+    } catch (e) {}
+
+    try {
+      let inviteeBefore = 0
+      try {
+        const inviteeBeforeRows = await db.query('SELECT balance FROM users WHERE id = ?', [inviteeId])
+        inviteeBefore = Number(inviteeBeforeRows?.[0]?.balance) || 0
+      } catch (_) {
+        const inviteeBeforeRows = await db.query('SELECT current_balance as balance FROM users WHERE id = ?', [inviteeId])
+        inviteeBefore = Number(inviteeBeforeRows?.[0]?.balance) || 0
+      }
+      await db.query(
+        `INSERT INTO transactions (id, user_id, type, amount, balance_before, balance_after, status, description, reference_id, created_at)
+         VALUES (?, ?, 'commission', ?, ?, ?, 'completed', ?, ?, ?)`,
+        [crypto.randomUUID(), inviteeId, INVITEE_REWARD, inviteeBefore - INVITEE_REWARD, inviteeBefore, '受邀创建分身奖励', referral.id, now]
+      )
+    } catch (e) {}
+
     return { completed: true, inviterId }
   }
 
