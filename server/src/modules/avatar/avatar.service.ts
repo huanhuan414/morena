@@ -264,13 +264,16 @@ export class AvatarService {
     try {
       const db = getMySQLClient()
       
+      // 只查列表页需要的字段，避免读取 personality/config/photo_analysis 等大字段
+      const selectFields = `id, user_id, name, nickname, avatar_url, photo, status, gender, age, 
+        location_text, latitude, longitude, voice_type, voice_url, hosting_enabled, is_hosted, trust_enabled, 
+        personality, config, created_at, updated_at`
+      
       if (hasValidUserId) {
-        console.log('[AvatarService] 查询用户分身，userId:', userId)
-        const result = await db.query(`SELECT * FROM avatars WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC`, [userId])
+        const result = await db.query(`SELECT ${selectFields} FROM avatars WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC`, [userId])
         rows = Array.isArray(result) ? result : (result?.data || [])
       } else if (isTestUser) {
-        console.log('[AvatarService] 测试用户，返回所有分身')
-        const result = await db.query(`SELECT * FROM avatars WHERE status = 'active' ORDER BY created_at DESC LIMIT 50`)
+        const result = await db.query(`SELECT ${selectFields} FROM avatars WHERE status = 'active' ORDER BY created_at DESC LIMIT 50`)
         rows = Array.isArray(result) ? result : (result?.data || [])
       } else {
         rows = []
@@ -291,8 +294,6 @@ export class AvatarService {
     const avatarIds = rows.map((a: any) => a.id || a.avatarId)
     let earningsMap: Record<string, { total: number; today: number }> = {}
     
-    console.log('[AvatarService] 分身ID列表:', avatarIds)
-    
     if (avatarIds.length > 0) {
       try {
         const db = getMySQLClient()
@@ -300,8 +301,6 @@ export class AvatarService {
         today.setHours(0, 0, 0, 0)
         
         const idList = avatarIds.map(id => `'${id}'`).join(', ')
-        console.log('[AvatarService] SQL查询条件 - idList:', idList)
-        console.log('[AvatarService] SQL查询条件 - today:', today)
         
         const earningsRows = await db.query(
           `SELECT 
@@ -313,8 +312,6 @@ export class AvatarService {
            GROUP BY avatar_id`,
           [today]
         )
-        
-        console.log('[AvatarService] 收益查询结果:', earningsRows)
         
         const earningsData = Array.isArray(earningsRows) ? earningsRows : (earningsRows?.data || [])
         for (const e of earningsData) {
