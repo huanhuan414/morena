@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { View, Text, Image as TaroImage, ScrollView } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { Network } from '@/network'
-import { ArrowLeft, FileText, Image as ImageIcon, Video as VideoIcon, Sparkles, CircleCheck, Clock, Zap, Film, Loader, RefreshCw } from 'lucide-react-taro'
+import { ArrowLeft, FileText, Image as ImageIcon, Video as VideoIcon, Sparkles, CircleCheck, Clock, Zap, Film, Loader, RefreshCw, CircleAlert } from 'lucide-react-taro'
 import { Button } from '@/components/ui/button'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
@@ -256,6 +256,8 @@ export default function OrderContentCreation() {
   const GENERATING_STATUSES = ['pending', 'processing', 'generating_text', 'generating_images', 'generating_video']
   const isPartialFailed = rawStatus === 'partial_failed'
   const isGenerating = GENERATING_STATUSES.includes(rawStatus)
+  const isRejected = rawStatus === 'rejected'
+  const rejectReason = processingData?.publishFeedback?.rejectReason || processingData?.publishFeedback?.reject_reason
 
   // 重试生成失败内容
   const handleRetry = useCallback(async () => {
@@ -294,7 +296,7 @@ export default function OrderContentCreation() {
   const videoEmpty = needVideo && videos.length === 0
   const isPreviewWithMissing = rawStatus === 'preview' && (imageEmpty || videoEmpty)
   const effectiveIsPartialFailed = isPartialFailed || isPreviewWithMissing
-  const isCompleted = !GENERATING_STATUSES.includes(rawStatus) && rawStatus !== 'failed' && !effectiveIsPartialFailed
+  const isCompleted = !GENERATING_STATUSES.includes(rawStatus) && rawStatus !== 'failed' && !effectiveIsPartialFailed && !isRejected
 
   // 完成状态文案
   const getCompletedLabel = useCallback((status: string) => {
@@ -599,15 +601,105 @@ export default function OrderContentCreation() {
               </View>
             )}
 
-            {/* 操作按钮 */}
-            <View className="cc-action-bar">
-              <View className="cc-action-btn cc-action-secondary" onClick={handleRetry}>
-                <Text className="cc-action-secondary-text">重新生成</Text>
+            {/* 驳回原因 */}
+            {isRejected && rejectReason && (
+              <View className="cc-content-card" style={{ background: '#FEF2F2', borderColor: '#FECACA' }}>
+                <View className="cc-card-header">
+                  <CircleAlert size={16} color="#EF4444" />
+                  <Text className="cc-card-title" style={{ color: '#EF4444' }}>驳回原因</Text>
+                </View>
+                <View className="cc-markdown-body">
+                  <Text style={{ color: '#DC2626' }}>{rejectReason}</Text>
+                </View>
               </View>
-              <View className="cc-action-btn cc-action-primary" onClick={handlePublish}>
-                <Text className="cc-action-primary-text">去发布</Text>
+            )}
+
+            {/* 操作按钮 - 驳回状态不显示 */}
+            {!isRejected && (
+              <View className="cc-action-bar">
+                <View className="cc-action-btn cc-action-secondary" onClick={handleRetry}>
+                  <Text className="cc-action-secondary-text">重新生成</Text>
+                </View>
+                <View className="cc-action-btn cc-action-primary" onClick={handlePublish}>
+                  <Text className="cc-action-primary-text">去发布</Text>
+                </View>
               </View>
+            )}
+          </View>
+        )}
+
+        {/* 驳回状态单独显示 */}
+        {isRejected && !isCompleted && !effectiveIsPartialFailed && (
+          <View className="cc-content-section">
+            <View className="cc-done-banner" style={{ background: '#FEF2F2' }}>
+              <CircleAlert size={20} color="#EF4444" />
+              <Text className="block cc-done-text" style={{ color: '#DC2626' }}>订单已被驳回</Text>
             </View>
+            {textContent && (
+              <View className="cc-content-card">
+                <View className="cc-card-header">
+                  <FileText size={16} color="#6366F1" />
+                  <Text className="cc-card-title">文案内容</Text>
+                </View>
+                <View className="cc-markdown-body">
+                  <MarkdownRenderer content={textContent} />
+                </View>
+              </View>
+            )}
+            {images.length > 0 && (
+              <View className="cc-content-card">
+                <View className="cc-card-header">
+                  <ImageIcon size={16} color="#6366F1" />
+                  <Text className="cc-card-title">配图 ({images.length})</Text>
+                </View>
+                <View className="cc-images-grid">
+                  {images.map((img, i) => (
+                    <View className="cc-image-item" key={i}>
+                      <TaroImage className="cc-image-preview" src={img} mode="aspectFill" onClick={() => { Taro.previewImage({ urls: images, current: img }) }} />
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+            {videos.length > 0 && (
+              <View className="cc-content-card">
+                <View className="cc-card-header">
+                  <VideoIcon size={16} color="#6366F1" />
+                  <Text className="cc-card-title">视频</Text>
+                </View>
+                <View className="cc-video-cover-list">
+                  {videos.map((v, i) => (
+                    <View className="cc-video-cover" key={i}>
+                      <View className="cc-video-play" onClick={() => {
+                        const isMiniApp = [Taro.ENV_TYPE.WEAPP as string, Taro.ENV_TYPE.TT as string].includes(Taro.getEnv())
+                        if (isMiniApp) {
+                          Taro.previewMedia({ sources: [{ url: v, type: 'video' }] })
+                        } else {
+                          Taro.setClipboardData({ data: v })
+                          Taro.showToast({ title: '视频链接已复制', icon: 'none' })
+                        }
+                      }}>
+                        <View className="cc-play-circle">
+                          <View className="cc-play-triangle" />
+                        </View>
+                      </View>
+                      <Text className="cc-video-label">15秒视频</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+            {rejectReason && (
+              <View className="cc-content-card" style={{ background: '#FEF2F2', borderColor: '#FECACA' }}>
+                <View className="cc-card-header">
+                  <CircleAlert size={16} color="#EF4444" />
+                  <Text className="cc-card-title" style={{ color: '#EF4444' }}>驳回原因</Text>
+                </View>
+                <View className="cc-markdown-body">
+                  <Text style={{ color: '#DC2626' }}>{rejectReason}</Text>
+                </View>
+              </View>
+            )}
           </View>
         )}
 
