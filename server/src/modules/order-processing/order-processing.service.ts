@@ -294,11 +294,17 @@ export class OrderProcessingService {
     incoming: Record<string, any>
   ): Record<string, any> {
     const base = { ...(existing || {}) }
-    Object.entries(incoming || {}).forEach(([platform, payload]) => {
-      const canonicalPlatform = this.canonicalizePlatform(platform)
-      if (!canonicalPlatform) return
-      const prev = base[canonicalPlatform] || {}
-      base[canonicalPlatform] = { ...prev, ...(payload || {}) }
+    const nonPlatformFields = ['rejectReason', 'reject_reason', 'status', 'rating', 'comment', 'feedback', 'revision_requested']
+    Object.entries(incoming || {}).forEach(([key, value]) => {
+      if (nonPlatformFields.includes(key)) {
+        base[key] = value
+        return
+      }
+      const canonicalPlatform = this.canonicalizePlatform(key)
+      if (canonicalPlatform && !nonPlatformFields.includes(canonicalPlatform)) {
+        const prev = base[canonicalPlatform] || {}
+        base[canonicalPlatform] = { ...prev, ...(typeof value === 'object' ? value : { status: value }) }
+      }
     })
     return base
   }

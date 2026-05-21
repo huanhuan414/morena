@@ -638,6 +638,17 @@ export default function OrderContentCreation() {
               <CircleAlert size={20} color="#EF4444" />
               <Text className="block cc-done-text" style={{ color: '#DC2626' }}>订单已被驳回</Text>
             </View>
+            {rejectReason && (
+              <View className="cc-content-card" style={{ background: '#FEF2F2', borderColor: '#FECACA' }}>
+                <View className="cc-card-header">
+                  <CircleAlert size={16} color="#EF4444" />
+                  <Text className="cc-card-title" style={{ color: '#EF4444' }}>驳回原因</Text>
+                </View>
+                <View className="cc-markdown-body">
+                  <Text style={{ color: '#DC2626' }}>{rejectReason}</Text>
+                </View>
+              </View>
+            )}
             {textContent && (
               <View className="cc-content-card">
                 <View className="cc-card-header">
@@ -689,17 +700,6 @@ export default function OrderContentCreation() {
                       <Text className="cc-video-label">15秒视频</Text>
                     </View>
                   ))}
-                </View>
-              </View>
-            )}
-            {rejectReason && (
-              <View className="cc-content-card" style={{ background: '#FEF2F2', borderColor: '#FECACA' }}>
-                <View className="cc-card-header">
-                  <CircleAlert size={16} color="#EF4444" />
-                  <Text className="cc-card-title" style={{ color: '#EF4444' }}>驳回原因</Text>
-                </View>
-                <View className="cc-markdown-body">
-                  <Text style={{ color: '#DC2626' }}>{rejectReason}</Text>
                 </View>
               </View>
             )}
