@@ -60,6 +60,7 @@ const STATUS_TABS = [
   { key: 'published', label: '待反馈' },
   { key: 'awaiting_acceptance', label: '待验收' },
   { key: 'completed', label: '已完成' },
+  { key: 'rejected', label: '已驳回' },
   { key: 'failed', label: '生成失败' },
 ]
 

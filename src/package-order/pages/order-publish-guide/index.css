@@ -548,6 +548,20 @@
   color: #3B82F6;
 }
 
+.save-tip-row {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-top: 12rpx;
+  padding: 0 4rpx;
+}
+
+.save-tip-text {
+  font-size: 20rpx;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
 /* 注意事项卡片 */
 .notice-card {
   background: #FFFBEB;

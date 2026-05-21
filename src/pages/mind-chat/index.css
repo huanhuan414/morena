@@ -1032,3 +1032,16 @@
   font-weight: 500;
   color: #64748b;
 }
+
+.load-more-tip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  padding: 32rpx 0;
+}
+
+.load-more-text {
+  font-size: 24rpx;
+  color: #94a3b8;
+}

@@ -98,7 +98,7 @@ export class ContentGenerationService implements OnModuleInit {
   }
 
   /**
-   * 恢复卡住的生成任务（状态超过10分钟未更新则标记为completed）
+   * 恢复卡住的生成任务（状态超过10分钟未更新则标记为preview）
    */
   private async recoverStuckGenerations() {
     try {
@@ -120,7 +120,7 @@ export class ContentGenerationService implements OnModuleInit {
       this.logger.warn(`发现 ${stuckRecords.length} 条卡住的生成任务，将自动完成`)
       for (const record of stuckRecords) {
         this.logger.warn(`恢复卡住任务: id=${record.id}, status=${record.status}`)
-        await db.update('content_generation_requests', record.id, { status: 'completed' })
+        await db.update('content_generation_requests', record.id, { status: 'preview' })
         // 清除缓存
         setCache(record.id, null)
       }

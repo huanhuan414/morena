@@ -167,6 +167,8 @@ export default function OrderContentCreation() {
   const startTimeRef = useRef<number>(Date.now())
 
   const orderId = router.params.orderId || ''
+  const requestId = router.params.requestId || ''
+  const queryId = requestId || orderId
 
   // 计时器
   useEffect(() => {
@@ -189,7 +191,7 @@ export default function OrderContentCreation() {
 
   // 轮询状态
   useEffect(() => {
-    if (!orderId) return
+    if (!queryId) return
 
     const fetchStatus = async () => {
       try {
@@ -200,7 +202,7 @@ export default function OrderContentCreation() {
           setIsTimeout(true)
         }
 
-        const res = await Network.request({ url: `/api/order-processing/status/${orderId}` })
+        const res = await Network.request({ url: `/api/order-processing/status/${queryId}` })
         console.log('[content-creation] status response:', JSON.stringify(res.data))
         const data = res.data?.data || res.data
         if (data) {
@@ -232,7 +234,7 @@ export default function OrderContentCreation() {
     fetchStatus()
     pollRef.current = setInterval(fetchStatus, 2000) // 2秒轮询
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
-  }, [orderId])
+  }, [queryId])
 
   // 获取订单信息
   useEffect(() => {

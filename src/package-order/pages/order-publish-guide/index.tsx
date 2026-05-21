@@ -445,6 +445,7 @@ export default function OrderPublishGuide() {
     Taro.showLoading({ title: '保存中...' })
     Network.downloadFile({
       url,
+      timeout: 60000,
       success: (res) => {
         Taro.saveImageToPhotosAlbum({
           filePath: res.tempFilePath,
@@ -452,14 +453,16 @@ export default function OrderPublishGuide() {
             Taro.hideLoading()
             Taro.showToast({ title: '已保存到相册', icon: 'success' })
           },
-          fail: () => {
+          fail: (err) => {
             Taro.hideLoading()
+            console.error('[保存图片] 保存到相册失败:', err)
             Taro.showToast({ title: '保存失败', icon: 'none' })
           }
         })
       },
-      fail: () => {
+      fail: (err) => {
         Taro.hideLoading()
+        console.error('[保存图片] 下载失败:', err)
         Taro.showToast({ title: '下载失败', icon: 'none' })
       }
     })
@@ -507,24 +510,33 @@ export default function OrderPublishGuide() {
       return
     }
 
-    Taro.showLoading({ title: '保存中...' })
+    Taro.showLoading({ title: '准备保存...' })
     let savedCount = 0
     let failedCount = 0
 
     for (let i = 0; i < images.length; i++) {
+      Taro.showLoading({ title: `保存中 ${i + 1}/${images.length}` })
       try {
-        const res: any = await Network.downloadFile({ url: images[i] })
+        const res: any = await Network.downloadFile({ 
+          url: images[i],
+          timeout: 60000
+        })
+        console.log(`[保存图片] 第${i + 1}张下载结果:`, res.statusCode, res.tempFilePath)
         if (res.statusCode === 200) {
           try {
             await Taro.saveImageToPhotosAlbum({ filePath: res.tempFilePath })
             savedCount++
-          } catch {
+            console.log(`[保存图片] 第${i + 1}张保存成功`)
+          } catch (saveErr) {
+            console.error(`[保存图片] 第${i + 1}张保存到相册失败:`, saveErr)
             failedCount++
           }
         } else {
+          console.error(`[保存图片] 第${i + 1}张下载失败, statusCode:`, res.statusCode)
           failedCount++
         }
-      } catch {
+      } catch (downloadErr) {
+        console.error(`[保存图片] 第${i + 1}张下载异常:`, downloadErr)
         failedCount++
       }
     }
@@ -767,6 +779,10 @@ export default function OrderPublishGuide() {
                   <Save size={14} color="#3b82f6" />
                   <Text className="save-all-text">保存全部</Text>
                 </View>
+              </View>
+              <View className="save-tip-row">
+                <CircleAlert size={12} color="#94a3b8" />
+                <Text className="save-tip-text">若保存失败，请点击图片后长按保存</Text>
               </View>
 
               <View className="image-grid">

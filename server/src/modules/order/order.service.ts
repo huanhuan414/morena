@@ -147,10 +147,6 @@ export class OrderService {
         const params = [...Object.values(payload), orderId]
         await db.query(`UPDATE orders SET ${setClause} WHERE id = ?`, params)
         console.log(`[OrderService] 订单状态同步: ${currentStatus} → ${newStatus}, orderId=${orderId}, 已验收${completedDispatchCount}/${requiredAvatarCount}`)
-
-        if (newStatus === 'completed') {
-          await this.triggerSettlement(orderId)
-        }
       }
     } catch (error: any) {
       console.error(`[OrderService] 同步订单状态失败: orderId=${orderId}, error=${error.message}`)
@@ -850,10 +846,6 @@ export class OrderService {
     await db.query(`UPDATE orders SET ${setClause} WHERE id = ?`, params)
 
     await this.notifyStatusChange(orderId, status)
-
-    if (status === 'completed') {
-      await this.triggerSettlement(orderId)
-    }
 
     return this.getOrderById(orderId)
   }
