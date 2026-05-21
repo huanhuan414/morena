@@ -695,7 +695,7 @@ export class OrderProcessingService {
   }
 
   /**
-   * 请求修改（进入修改流程）
+   * 驳回订单（拒绝，不可重新提交）
    */
   async requestRevision(identifier: string, feedback: Record<string, any>): Promise<any> {
     const current = await this.findRecordByIdentifier(identifier)
@@ -708,7 +708,7 @@ export class OrderProcessingService {
     const mergedFeedback = this.mergeFeedback(existingFeedback, feedback || {})
 
     const record = await this.updateRecordByIdentifier(identifier, {
-      status: 'revision_requested',
+      status: 'rejected',
       publish_feedback: JSON.stringify(mergedFeedback)
     })
     if (!record) return null
@@ -716,6 +716,39 @@ export class OrderProcessingService {
     const normalized = this.normalizeRecord(record)
     setCache(normalized.requestId, normalized)
     setCache(normalized.orderId, normalized)
+
+    const db = getMySQLClient()
+    if (normalized.orderId && normalized.avatarId) {
+      await db.query(
+        `UPDATE order_dispatch_requests SET status = 'rejected', reject_reason = ?, updated_at = NOW() WHERE order_id = ? AND avatar_id = ?`,
+        [feedback.rejectReason || '', normalized.orderId, normalized.avatarId]
+      )
+      this.logger.log(`[驳回] 已更新派单记录状态: orderId=${normalized.orderId}, avatarId=${normalized.avatarId}`)
+
+      const [avatarRows] = await db.query(
+        `SELECT a.user_id, o.title FROM avatars a LEFT JOIN orders o ON o.id = ? WHERE a.id = ?`,
+        [normalized.orderId, normalized.avatarId]
+      )
+      const avatarInfo: any = (avatarRows as any[])?.[0]
+      if (avatarInfo?.user_id) {
+        try {
+          const notificationService = new NotificationService()
+          await notificationService.createNotification({
+            user_id: avatarInfo.user_id,
+            type: 'order_rejected',
+            title: '订单已驳回',
+            content: avatarInfo.title 
+              ? `订单「${avatarInfo.title}」已被驳回，原因：${feedback.rejectReason || '无'}`
+              : `订单已被驳回，原因：${feedback.rejectReason || '无'}`,
+            metadata: { orderId: normalized.orderId, requestId: normalized.requestId }
+          })
+          this.logger.log(`[驳回] 已发送通知给用户: ${avatarInfo.user_id}`)
+        } catch (err: any) {
+          this.logger.warn(`[驳回] 发送通知失败: ${err.message}`)
+        }
+      }
+    }
+
     await this.syncOrderStatus(normalized.orderId)
 
     return normalized
