@@ -100,8 +100,8 @@ export const PLATFORM_META_MAP: Record<CanonicalPlatformKey, PlatformMeta> = {
     icon: '🎵',
     color: '#00F2EA',
     bgColor: '#E0FFFD',
-    requiresBinding: false,
-    description: '发布短视频，获取流量曝光',
+    requiresBinding: true,
+    description: 'OAuth 授权后可半自动发布（预填内容，确认发布）',
     contentTips: ['视频前3秒要抓住眼球', '配文要简短有力', '添加热门音乐', '使用热门话题标签'],
     requirements: [
       { id: 'fans', label: '粉丝量要求', placeholder: '如：1000' },

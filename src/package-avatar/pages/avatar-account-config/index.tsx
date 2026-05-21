@@ -1,11 +1,11 @@
 /* eslint-disable no-undef */
 // @ts-nocheck
 import { useState } from 'react'
-import { useLoad, useDidShow, navigateBack, showToast, getSystemInfoSync } from '@tarojs/taro'   
+import Taro, { useLoad, useDidShow, navigateBack, showToast, getSystemInfoSync } from '@tarojs/taro'
 import { View, Text, ScrollView, Picker, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Pencil, Save, Trash2, ArrowLeft, Search, Loader, RefreshCw } from 'lucide-react-taro'
+import { Plus, Pencil, Save, Trash2, ArrowLeft, Search, Loader, RefreshCw, ExternalLink } from 'lucide-react-taro'
 import * as Network from '@/network'
 import './index.css'
 
@@ -70,6 +70,11 @@ export default function AvatarAccountConfigPage() {
     serverIp?: string
   } | null>(null)
 
+  // 抖音 OAuth 授权状态
+  const [isDouyinOauthing, setIsDouyinOauthing] = useState(false)
+  const [douyinOauthPollTimer, setDouyinOauthPollTimer] = useState<ReturnType<typeof setInterval> | null>(null)
+  const [douyinOauthResult, setDouyinOauthResult] = useState<any>(null)
+
   useLoad((options) => {
     if (options.avatarId) {
       setAvatarId(options.avatarId as string)
@@ -83,7 +88,135 @@ export default function AvatarAccountConfigPage() {
     if (avatarId) {
       fetchAccounts()
     }
+
+    // 检查是否从 OAuth 回调返回
+    const instance = Taro.getCurrentInstance()
+    const params = instance?.router?.params || {}
+    if (params.bindResult === 'success' && params.platform === 'douyin') {
+      showToast({ title: '抖音授权绑定成功！', icon: 'success' })
+      fetchAccounts()
+    } else if (params.bindResult === 'fail' && params.platform === 'douyin') {
+      showToast({ title: decodeURIComponent(params.message || '授权失败'), icon: 'none' })
+    }
   })
+
+  // ==================== 抖音 OAuth 授权 ====================
+
+  /**
+   * 发起抖音 OAuth 授权
+   */
+  const handleDouyinOauth = async () => {
+    if (!avatarId) {
+      showToast({ title: '请先创建AI分身', icon: 'none' })
+      return
+    }
+
+    try {
+      setIsDouyinOauthing(true)
+      setDouyinOauthResult(null)
+
+      // 1. 检查抖音是否已配置
+      const configRes = await Network.request({
+        url: '/api/douyin/config',
+      })
+      const configData = configRes.data as any
+      if (!configData?.data?.configured) {
+        showToast({ title: '抖音开放平台暂未配置，请联系管理员', icon: 'none', duration: 3000 })
+        setIsDouyinOauthing(false)
+        return
+      }
+
+      // 2. 创建授权任务
+      const res = await Network.request({
+        url: '/api/douyin/auth/create-task',
+        method: 'POST',
+        data: { avatarId, userId: 'current_user' },
+      })
+      const resData = res.data as any
+      console.log('[抖音OAuth] 创建授权任务:', resData)
+
+      if (resData?.code !== 200 || !resData?.data?.url) {
+        showToast({ title: resData?.msg || '创建授权任务失败', icon: 'none' })
+        setIsDouyinOauthing(false)
+        return
+      }
+
+      const { url: authUrl, taskId } = resData.data
+
+      // 3. 在新窗口/WebView 中打开授权页面
+      const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP
+      if (isWeapp) {
+        // 小程序：使用 web-view 打开
+        Taro.navigateTo({
+          url: `/package-avatar/pages/oauth-webview/index?url=${encodeURIComponent(authUrl)}&taskId=${taskId}&platform=douyin`,
+        })
+      } else {
+        // H5：直接打开新窗口
+        window.open(authUrl, '_blank')
+      }
+
+      // 4. 开始轮询授权状态
+      startDouyinOauthPolling(taskId)
+    } catch (error: any) {
+      console.error('[抖音OAuth] 授权失败:', error)
+      showToast({ title: error.message || '授权失败', icon: 'none' })
+      setIsDouyinOauthing(false)
+    }
+  }
+
+  /**
+   * 轮询抖音授权状态
+   */
+  const startDouyinOauthPolling = (taskId: string) => {
+    // 清除旧的定时器
+    if (douyinOauthPollTimer) {
+      clearInterval(douyinOauthPollTimer)
+    }
+
+    let pollCount = 0
+    const maxPolls = 120 // 最多轮询 2 分钟
+
+    const timer = setInterval(async () => {
+      pollCount++
+      if (pollCount > maxPolls) {
+        clearInterval(timer)
+        setDouyinOauthPollTimer(null)
+        setIsDouyinOauthing(false)
+        showToast({ title: '授权超时，请重试', icon: 'none' })
+        return
+      }
+
+      try {
+        const res = await Network.request({
+          url: `/api/douyin/auth/task-status?taskId=${taskId}`,
+        })
+        const resData = res.data as any
+
+        if (resData?.data?.completed) {
+          clearInterval(timer)
+          setDouyinOauthPollTimer(null)
+          setIsDouyinOauthing(false)
+
+          const result = resData.data
+          if (result.nickname) {
+            setDouyinOauthResult(result)
+            setFetchedUserInfo({
+              nickname: result.nickname,
+              avatar_url: result.avatar,
+            })
+            setAccountName(result.nickname)
+            showToast({ title: `授权成功：${result.nickname}`, icon: 'success' })
+          } else {
+            showToast({ title: result.message || '授权失败', icon: 'none' })
+          }
+        }
+      } catch (err) {
+        // 继续轮询
+      }
+    }, 2000)
+
+    setDouyinOauthPollTimer(timer)
+  }
 
   const fetchAccounts = async () => {
     try {
@@ -619,6 +752,31 @@ export default function AvatarAccountConfigPage() {
                     </View>
                   )}
 
+                  {/* 抖音显示 OAuth 绑定状态 */}
+                  {account.platform === 'douyin' && (() => {
+                    let dyExtra: any = {}
+                    try { dyExtra = JSON.parse(account.extra_info || '{}') } catch {}
+                    const hasOAuth = !!(dyExtra.access_token || dyExtra.open_id)
+                    return (
+                      <View className="wechat-config-info">
+                        <View className="wechat-config-item">
+                          <Text className="wechat-config-label">绑定方式：</Text>
+                          <Text className={`wechat-config-value ${hasOAuth ? 'verified' : ''}`}>
+                            {hasOAuth ? 'OAuth 授权 ✓' : '手动输入'}
+                          </Text>
+                        </View>
+                        {hasOAuth && (
+                          <View className="wechat-config-item">
+                            <Text className="wechat-config-label">Token 状态：</Text>
+                            <Text className={`wechat-config-value ${dyExtra.expires_at && Date.now() < dyExtra.expires_at ? 'verified' : ''}`}>
+                              {dyExtra.expires_at && Date.now() < dyExtra.expires_at ? '有效 ✓' : '已过期，需重新授权'}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    )
+                  })()}
+
                   <View className="account-actions">
                     <View
                       className="action-btn"
@@ -680,8 +838,55 @@ export default function AvatarAccountConfigPage() {
               {/* 根据平台显示不同的表单字段 */}
               {PLATFORMS[platformIndex].id === 'douyin' && (
                 <>
+                  {/* 抖音 OAuth 授权绑定 */}
                   <View className="form-item">
-                    <Text className="form-label required">抖音号/SecUid</Text>
+                    <Text className="form-label">OAuth 授权绑定（推荐）</Text>
+                    <Text className="form-tip" style={{ marginBottom: '8px' }}>
+                      通过抖音开放平台授权，绑定后可半自动发布内容到抖音
+                    </Text>
+                    <Button
+                      className="douyin-oauth-btn"
+                      onClick={handleDouyinOauth}
+                      disabled={isDouyinOauthing}
+                      style={{ width: '100%', marginBottom: '12px' }}
+                    >
+                      {isDouyinOauthing ? (
+                        <>
+                          <Loader className="animate-spin" size={16} />
+                          <Text>授权中，请在弹出的页面完成授权...</Text>
+                        </>
+                      ) : (
+                        <>
+                          <ExternalLink size={16} />
+                          <Text>授权绑定抖音账号</Text>
+                        </>
+                      )}
+                    </Button>
+
+                    {/* 显示 OAuth 授权结果 */}
+                    {douyinOauthResult && (
+                      <View className="user-info-card">
+                        <View className="user-info-header">
+                          {douyinOauthResult.avatar && (
+                            <Image className="user-avatar" src={douyinOauthResult.avatar} mode="aspectFill" />
+                          )}
+                          <View className="user-info-content">
+                            <Text className="user-name">{douyinOauthResult.nickname}</Text>
+                            <Text className="user-desc">已通过 OAuth 授权绑定</Text>
+                          </View>
+                        </View>
+                      </View>
+                    )}
+
+                    <View style={{ display: 'flex', alignItems: 'center', margin: '8px 0' }}>
+                      <View style={{ flex: 1, height: '1px', backgroundColor: '#e5e5e5' }} />
+                      <Text style={{ padding: '0 12px', fontSize: '12px', color: '#999' }}>或手动输入</Text>
+                          <View style={{ flex: 1, height: '1px', backgroundColor: '#e5e5e5' }} />
+                        </View>
+                  </View>
+
+                  <View className="form-item">
+                    <Text className="form-label">抖音号/SecUid</Text>
                     <View className="input-with-action">
                       <Input
                         className="form-input"

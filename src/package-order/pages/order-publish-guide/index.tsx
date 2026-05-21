@@ -288,6 +288,11 @@ export default function OrderPublishGuide() {
       return
     }
 
+    if (platform === 'douyin') {
+      handleDouyinPublish(bindingStatus.account)
+      return
+    }
+
     // 小红书跳转
     if (platform === 'xiaohongshu') {
       Taro.navigateToMiniProgram({
@@ -310,6 +315,130 @@ export default function OrderPublishGuide() {
       confirmText: '我知道了',
       showCancel: false
     })
+  }
+
+  // 处理抖音 shareSchema 半自动发布
+  const handleDouyinPublish = async (account?: AvatarAccount) => {
+    console.log('[发布引导] handleDouyinPublish called, account:', JSON.stringify(account))
+
+    // 检查是否已绑定抖音 OAuth
+    if (!account) {
+      // 未绑定 OAuth，走手动发布
+      Taro.showModal({
+        title: '发布到抖音',
+        content: '需要先绑定抖音账号（OAuth授权），才能半自动发布。\n\n是否前往绑定？',
+        confirmText: '去绑定',
+        cancelText: '手动发布',
+        success: (res) => {
+          if (res.confirm) {
+            Taro.navigateTo({
+              url: `/package-avatar/pages/avatar-account-config/index?avatarId=${avatarId}`
+            })
+          } else {
+            // 手动发布提示
+            handleCopyContent()
+            Taro.showModal({
+              title: '手动发布',
+              content: '内容已复制到剪贴板\n\n请打开抖音APP，点击底部"+"号发布',
+              confirmText: '知道了',
+              showCancel: false
+            })
+          }
+        }
+      })
+      return
+    }
+
+    // 已绑定 OAuth，生成 shareSchema
+    try {
+      const modalRes = await Taro.showModal({
+        title: '发布到抖音',
+        content: `将生成发布链接并调起抖音APP\n\n内容会预填到抖音发布页面，您仍需在抖音中确认发布`,
+        confirmText: '生成链接',
+        cancelText: '取消',
+      })
+      if (!modalRes.confirm) return
+
+      setPublishing(true)
+      Taro.showLoading({ title: '生成发布链接...' })
+
+      // 提取 hashtags（从内容中提取 #xxx 格式的标签）
+      const hashtagRegex = /#([^\s#]+)/g
+      const hashtags: string[] = []
+      let match
+      while ((match = hashtagRegex.exec(content)) !== null) {
+        hashtags.push(match[1])
+      }
+
+      console.log('[发布引导] 调用抖音 shareSchema 接口, images:', images.length, 'videos:', videos.length, 'hashtags:', hashtags)
+
+      const result = await Network.request({
+        url: '/api/douyin/publish/share-schema',
+        method: 'POST',
+        data: {
+          videoUrl: videos.length > 0 ? videos[0] : undefined,
+          imageUrls: images.length > 0 ? images : undefined,
+          title: title || content?.substring(0, 50) || '',
+          hashtags: hashtags.length > 0 ? hashtags : undefined,
+        }
+      })
+
+      Taro.hideLoading()
+      const resData = result.data as any
+      console.log('[发布引导] 抖音 shareSchema 结果:', resData)
+
+      if (resData?.code === 200 && resData?.data?.schemaUrl) {
+        const { schemaUrl, tips } = resData.data
+
+        // 尝试通过 schema URL 打开抖音
+        const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP
+        if (isWeapp) {
+          // 小程序端：复制链接提示
+          Taro.setClipboardData({
+            data: schemaUrl,
+            success: () => {
+              Taro.showModal({
+                title: '链接已复制',
+                content: `${tips || '发布链接已复制到剪贴板'}\n\n请在浏览器中打开此链接，将自动跳转到抖音APP`,
+                confirmText: '我知道了',
+                showCancel: false,
+              })
+            }
+          })
+        } else {
+          // H5 端：直接跳转
+          window.location.href = schemaUrl
+          Taro.showModal({
+            title: '正在跳转抖音',
+            content: '系统正在尝试打开抖音APP，请在抖音中确认发布内容',
+            confirmText: '我知道了',
+            showCancel: false,
+          })
+        }
+      } else {
+        // shareSchema 生成失败，降级为手动
+        Taro.showModal({
+          title: '自动发布链接生成失败',
+          content: resData?.msg || '请手动打开抖音APP发布',
+          confirmText: '复制内容手动发布',
+          showCancel: false,
+          success: () => {
+            handleCopyContent()
+          }
+        })
+      }
+    } catch (error: any) {
+      Taro.hideLoading()
+      console.error('[发布引导] 抖音发布异常:', error)
+      Taro.showModal({
+        title: '发布失败',
+        content: error.message || '网络错误，请重试',
+        confirmText: '知道了',
+        showCancel: false,
+      })
+    } finally {
+      setPublishing(false)
+    }
   }
 
   // 处理微信公众号

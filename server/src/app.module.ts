@@ -39,6 +39,7 @@ import { SkillModule } from './modules/skill/skill.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { ImageGenModule } from './modules/image-gen/image-gen.module';
 import { AiSkillModule } from './modules/ai-skill/ai-skill.module';
+import { DouyinModule } from './modules/douyin/douyin.module';
 
 @Module({
   imports: [
@@ -78,7 +79,8 @@ import { AiSkillModule } from './modules/ai-skill/ai-skill.module';
     SkillModule,
     PaymentModule,
     ImageGenModule,
-    AiSkillModule
+    AiSkillModule,
+    DouyinModule
   ],
   controllers: [AppController],
   providers: [AppService],

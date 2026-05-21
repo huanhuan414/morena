@@ -4,6 +4,7 @@ import { memoryStorage } from 'multer';
 import { AiSkillController } from './ai-skill.controller';
 import { AiSkillService } from './ai-skill.service';
 import { StorageService } from '../storage/storage.service';
+import { VolcengineService } from '../upload/volcengine.service';
 
 @Module({
   imports: [
@@ -13,7 +14,7 @@ import { StorageService } from '../storage/storage.service';
     }),
   ],
   controllers: [AiSkillController],
-  providers: [AiSkillService, StorageService],
+  providers: [AiSkillService, StorageService, VolcengineService],
   exports: [AiSkillService],
 })
 export class AiSkillModule {}
