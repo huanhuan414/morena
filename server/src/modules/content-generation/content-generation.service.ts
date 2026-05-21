@@ -24,6 +24,9 @@ export class ContentGenerationService implements OnModuleInit {
   private readonly logger = new Logger(ContentGenerationService.name)
   // 超时阈值：10分钟（毫秒）
   private readonly GENERATION_TIMEOUT_MS = 10 * 60 * 1000
+  // CDN上传重试配置
+  private readonly CDN_UPLOAD_RETRIES = 3
+  private readonly CDN_UPLOAD_RETRY_DELAY_MS = 2000
 
   // 图片生成：直接 HTTP 调用 api.aaigc.top（coze SDK ImageGenerationClient 线上报 Invalid URL）
   private readonly imageGenBaseUrl = process.env.IMAGE_GEN_API_BASE_URL || 'https://api.aaigc.top'
@@ -35,13 +38,66 @@ export class ContentGenerationService implements OnModuleInit {
   private readonly seedanceBaseUrl = process.env.SEEDANCE_BASE_URL || 'https://ark.cn-beijing.volces.com'
   private readonly seedanceModel = process.env.SEEDANCE_MODEL || 'doubao-seedance-2-0-260128'
 
+  // 修复：使用实际的 VolcengineService 实例（处理DI可能失败的情况）
+  private volcengineServiceInstance: VolcengineService
+
   constructor(
     @Inject(forwardRef(() => OrderService))
     private readonly orderService: OrderService,
     private readonly storageService: StorageService,
-    private readonly volcengineService: VolcengineService
+    @Inject(VolcengineService)
+    volcengineService: VolcengineService
   ) {
+    // 修复：如果DI注入失败（undefined），则手动创建实例
+    if (volcengineService) {
+      this.volcengineServiceInstance = volcengineService
+    } else {
+      this.logger.warn('[ContentGenerationService] VolcengineService DI注入失败，手动创建实例')
+      this.volcengineServiceInstance = new VolcengineService()
+    }
     this.logger.log('ContentGenerationService 初始化，使用 ARK API 直连')
+  }
+
+  /**
+   * 获取可用的 VolcengineService 实例
+   */
+  private get volcengineService(): VolcengineService {
+    if (!this.volcengineServiceInstance) {
+      this.volcengineServiceInstance = new VolcengineService()
+    }
+    return this.volcengineServiceInstance
+  }
+
+  /**
+   * 带重试的异步操作封装
+   */
+  private async withRetry<T>(
+    operation: () => Promise<T>,
+    retries: number,
+    delayMs: number,
+    operationName: string
+  ): Promise<T> {
+    let lastError: Error | null = null
+
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        this.logger.log(`[Retry] ${operationName} 第 ${attempt}/${retries} 次尝试`)
+        const result = await operation()
+        this.logger.log(`[Retry] ${operationName} 第 ${attempt} 次尝试成功`)
+        return result
+      } catch (error: any) {
+        lastError = error
+        this.logger.warn(`[Retry] ${operationName} 第 ${attempt}/${retries} 次尝试失败: ${error.message}`)
+        
+        if (attempt < retries) {
+          this.logger.log(`[Retry] ${operationName} 等待 ${delayMs}ms 后重试...`)
+          await new Promise(resolve => setTimeout(resolve, delayMs))
+        }
+      }
+    }
+
+    this.logger.error(`[Retry] ${operationName} 已达最大重试次数 ${retries}，全部失败`)
+    throw lastError || new Error(`${operationName} 重试失败`)
   }
 
   /**
@@ -286,7 +342,7 @@ export class ContentGenerationService implements OnModuleInit {
       // ===== 图文文章模式 =====
       try {
         const imageCount = this.getDefaultImageCount(platform, contentType)
-        this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
+        await this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
         textContent = await this.generateArticleContent(platform, input, imageCount)
         this.logger.log(`图文文章生成完成: ${textContent.length}字`)
         await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
@@ -305,7 +361,7 @@ export class ContentGenerationService implements OnModuleInit {
       // ===== 传统模式：文案 + 配图分离 =====
       if (needText) {
         try {
-          this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
+          await this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
           textContent = await this.generateTextContent(platform, input)
           this.logger.log(`文案生成完成: ${textContent.length}字`)
           await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
@@ -322,7 +378,7 @@ export class ContentGenerationService implements OnModuleInit {
         // 视频类型：生成视频脚本作为文案内容（分身参考+发布指引）
         if (needVideoScript && !textContent) {
           try {
-            this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
+            await this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
             const skillStrategy = getSkillStrategy(primarySkill)
             textContent = await this.generateVideoScript(platform, input, '', skillStrategy) || ''
             this.logger.log(`视频脚本生成完成: ${textContent.length}字`)
@@ -339,7 +395,7 @@ export class ContentGenerationService implements OnModuleInit {
         } else {
           if (needImage) {
             try {
-              this.updateDetailedStatus(requestId, input.orderId, 'generating_images')
+              await this.updateDetailedStatus(requestId, input.orderId, 'generating_images')
               images = await this.generateImages(platform, input, textContent, requestId)
               this.logger.log(`图片生成完成: ${images.length}张`)
               await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
@@ -356,7 +412,7 @@ export class ContentGenerationService implements OnModuleInit {
     // 视频结果由 pollPendingVideoTasks 定时任务轮询获取
     if (needVideo && !textFailed) {
       try {
-        this.updateDetailedStatus(requestId, input.orderId, 'generating_video')
+        await this.updateDetailedStatus(requestId, input.orderId, 'generating_video')
         await this.generateVideos(platform, input, textContent, images, requestId)
         // 视频任务是异步的，此时 videos 为空，状态保持 generating_video
         // 如果 Seedance 任务创建成功，seedance_task_id 已存到数据库
@@ -1304,13 +1360,14 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
   }
 
   /**
-   * 更新细化的生成状态
+   * 更新细化的生成状态（同时更新缓存和数据库）
    */
-  private updateDetailedStatus(
+  private async updateDetailedStatus(
     requestId: string,
     orderId: string,
     status: string
-  ): void {
+  ): Promise<void> {
+    // 1. 更新缓存
     const cacheData = getCache(requestId) || getCache(orderId) || {}
     const updatedCache = {
       ...cacheData,
@@ -1321,6 +1378,18 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
     }
     setCache(requestId, updatedCache)
     setCache(orderId, updatedCache)
+
+    // 2. 同时更新数据库（修复进度倒回问题）
+    try {
+      const db = getMySQLClient()
+      await db.query(
+        'UPDATE content_generation_requests SET status = ?, updated_at = NOW() WHERE id = ?',
+        [status, requestId]
+      )
+    } catch (err: any) {
+      this.logger.warn(`更新详细状态到数据库失败: ${err.message}`)
+    }
+
     this.logger.log(`状态更新: requestId=${requestId}, status=${status}`)
   }
 
@@ -1507,22 +1576,31 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
       const firstItem = result.data[0]
       if (firstItem.url) {
         // 下载临时URL并转存到veImageX CDN，避免第三方链接过期
+        // ⚠️ 必须上传CDN成功，否则跳过此图（上层有try-catch处理）
         try {
           this.logger.log(`[ImageHTTP] 下载临时图片并转存veImageX CDN: ${firstItem.url.slice(0, 80)}...`)
           const imgResponse = await fetch(firstItem.url)
           if (imgResponse.ok) {
             const imgBuffer = Buffer.from(await imgResponse.arrayBuffer())
             const fileName = `ai-generated_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.png`
-            const uploadResult = await this.volcengineService.uploadImage({ buffer: imgBuffer, originalname: fileName, mimetype: 'image/png' } as Express.Multer.File)
+            
+            // ✅ 带重试的CDN上传，失败则抛出错误（不使用原始URL）
+            const uploadResult = await this.withRetry(
+              () => this.volcengineService.uploadImage({ buffer: imgBuffer, originalname: fileName, mimetype: 'image/png' } as Express.Multer.File),
+              this.CDN_UPLOAD_RETRIES,
+              this.CDN_UPLOAD_RETRY_DELAY_MS,
+              'CDN图片上传'
+            )
+            
             imageUrl = uploadResult.url
             this.logger.log(`[ImageHTTP] 图片转存veImageX CDN成功: ${imageUrl.slice(0, 80)}...`)
           } else {
-            this.logger.warn(`[ImageHTTP] 下载临时图片失败: ${imgResponse.status}，使用原始URL`)
-            imageUrl = firstItem.url
+            this.logger.error(`[ImageHTTP] 下载临时图片失败: ${imgResponse.status}，跳过此图`)
+            throw new Error(`下载临时图片失败: ${imgResponse.status}`)
           }
         } catch (downloadErr: any) {
-          this.logger.warn(`[ImageHTTP] 图片转存veImageX CDN失败: ${downloadErr.message}，使用原始URL`)
-          imageUrl = firstItem.url
+          this.logger.error(`[ImageHTTP] 图片转存veImageX CDN失败: ${downloadErr.message}，跳过此图`)
+          throw new Error(`图片转存CDN失败: ${downloadErr.message}`)
         }
       } else if (firstItem.b64_json) {
         // base64 图片上传到 veImageX CDN
@@ -1531,12 +1609,20 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
           const base64Data = firstItem.b64_json
           const buffer = Buffer.from(base64Data, 'base64')
           const fileName = `ai-generated_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.png`
-          const uploadResult = await this.volcengineService.uploadImage({ buffer, originalname: fileName, mimetype: 'image/png' } as Express.Multer.File)
+          
+          // ✅ 带重试的CDN上传，失败则抛出错误
+          const uploadResult = await this.withRetry(
+            () => this.volcengineService.uploadImage({ buffer, originalname: fileName, mimetype: 'image/png' } as Express.Multer.File),
+            this.CDN_UPLOAD_RETRIES,
+            this.CDN_UPLOAD_RETRY_DELAY_MS,
+            'CDN base64图片上传'
+          )
+          
           imageUrl = uploadResult.url
           this.logger.log(`[ImageHTTP] base64上传veImageX成功: ${imageUrl.slice(0, 80)}...`)
         } catch (uploadErr: any) {
-          this.logger.error(`[ImageHTTP] base64上传veImageX失败: ${uploadErr.message}`)
-          throw new Error(`图片上传CDN失败: ${uploadErr.message}`)
+          this.logger.error(`[ImageHTTP] base64上传veImageX失败: ${uploadErr.message}，跳过此图`)
+          throw new Error(`base64图片上传CDN失败: ${uploadErr.message}`)
         }
       }
     }
