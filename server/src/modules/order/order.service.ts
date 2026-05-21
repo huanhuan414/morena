@@ -282,8 +282,10 @@ export class OrderService {
   }
 
   async getOrderById(orderId: string) {
+    const _t0 = Date.now()
     const db = getMySQLClient()
     
+    console.log(`[getOrderById] ${orderId} 开始查询, ${Date.now()-_t0}ms`)
     const orderRows = await db.query(
       `SELECT id, user_id, avatar_id, title, description, content_type, 
        platforms, requirements, budget, status, result, created_at, updated_at,
@@ -313,7 +315,7 @@ export class OrderService {
 
     let processingRows: any[] = []
     try {
-      const sql = `SELECT id, order_id, avatar_id, status, content_type, content, images, video_url, publish_feedback, created_at, updated_at FROM content_generation_requests WHERE order_id = ? ORDER BY updated_at DESC, created_at DESC`
+      const sql = `SELECT id, order_id, avatar_id, status, content_type, video_url, publish_feedback, created_at, updated_at, SUBSTRING(content, 1, 500) as content_preview, CASE WHEN images IS NOT NULL AND images != '' AND images != '[]' AND images NOT LIKE '%base64%' THEN JSON_LENGTH(images) WHEN images LIKE '%base64%' THEN 1 ELSE 0 END as image_count FROM content_generation_requests WHERE order_id = ? ORDER BY updated_at DESC, created_at DESC`
       processingRows = await db.query(sql, [orderId])
     } catch (err) {
       console.log('[OrderService] processingRows error:', err)
@@ -347,8 +349,9 @@ export class OrderService {
         contentStatus: processing?.status || null,
         rejectReason: row.rejectReason || null,
         contentType: processing?.contentType || order.contentType || 'image_text',
-        content: processing?.content || null,
-        images: this.safeParseJson<any[]>(processing?.images, []),
+        content: processing?.contentPreview || null,
+        images: processing?.imageCount || 0,
+        hasImages: (processing?.imageCount || 0) > 0,
         videoUrl: this.safeParseJson<string[]>(processing?.videoUrl, []),
         contentUpdatedAt: processing?.updatedAt ? new Date(processing.updatedAt).toISOString() : null,
         publishFeedback: this.safeParseJson(processing?.publishFeedback, {}),

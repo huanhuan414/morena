@@ -305,7 +305,7 @@ export class ContentGenerationController {
   async getHistory(@Param('avatarId') avatarId: string, @Query('orderId') orderId?: string) {
     try {
       const pool = await getMySQLClient()
-      let sql = 'SELECT * FROM content_generation_requests WHERE avatar_id = ?'
+      let sql = 'SELECT id, order_id, avatar_id, status, content_type, platform, platforms, video_url, publish_feedback, created_at, updated_at, SUBSTRING(content, 1, 500) as content_preview, CASE WHEN images IS NOT NULL AND images != \'\' AND images != \'[]\' THEN JSON_LENGTH(images) ELSE 0 END as image_count FROM content_generation_requests WHERE avatar_id = ?'
       const params: string[] = [avatarId]
       if (orderId) {
         sql += ' AND order_id = ?'

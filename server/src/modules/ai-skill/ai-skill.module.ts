@@ -3,7 +3,6 @@ import { MulterModule } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { AiSkillController } from './ai-skill.controller';
 import { AiSkillService } from './ai-skill.service';
-import { VolcengineService } from '../upload/volcengine.service';
 import { StorageService } from '../storage/storage.service';
 
 @Module({
@@ -14,7 +13,7 @@ import { StorageService } from '../storage/storage.service';
     }),
   ],
   controllers: [AiSkillController],
-  providers: [AiSkillService, VolcengineService, StorageService],
+  providers: [AiSkillService, StorageService],
   exports: [AiSkillService],
 })
 export class AiSkillModule {}

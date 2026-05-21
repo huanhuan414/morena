@@ -15,7 +15,6 @@ export function getPool(): Pool {
       connectionLimit: 10,
       queueLimit: 100,
       connectTimeout: 5000,
-      acquireTimeout: 10000,
       decimalNumbers: true,
     });
   }

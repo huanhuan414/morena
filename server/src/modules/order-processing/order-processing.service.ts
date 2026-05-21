@@ -306,7 +306,7 @@ export class OrderProcessingService {
   private async findByRequestId(requestId: string): Promise<any | null> {
     const db = getMySQLClient()
     const rows = await db.query(
-      'SELECT * FROM content_generation_requests WHERE id = ? ORDER BY created_at DESC LIMIT 1',
+      'SELECT id, order_id, avatar_id, status, content_type, video_url, publish_feedback, created_at, updated_at, SUBSTRING(content, 1, 500) as content_preview, CASE WHEN images IS NOT NULL AND images != \'\' AND images != \'[]\' THEN JSON_LENGTH(images) ELSE 0 END as image_count FROM content_generation_requests WHERE id = ? ORDER BY created_at DESC LIMIT 1',
       [requestId]
     )
     return rows?.[0] || null
@@ -315,7 +315,7 @@ export class OrderProcessingService {
   private async findByOrderId(orderId: string): Promise<any | null> {
     const db = getMySQLClient()
     const rows = await db.query(
-      `SELECT * FROM content_generation_requests 
+      `SELECT id, order_id, avatar_id, status, content_type, video_url, publish_feedback, created_at, updated_at, SUBSTRING(content, 1, 500) as content_preview, CASE WHEN images IS NOT NULL AND images != '' AND images != '[]' THEN JSON_LENGTH(images) ELSE 0 END as image_count FROM content_generation_requests 
        WHERE order_id = ? 
        ORDER BY 
          CASE WHEN status IN ('failed', 'partial_failed') THEN 1 ELSE 0 END ASC,
@@ -411,8 +411,12 @@ export class OrderProcessingService {
   }
 
   async getProcessingByRequestId(requestId: string): Promise<any> {
-    const record = await this.findByRequestId(requestId)
-    return record ? this.normalizeRecord(record) : null
+    const db = getMySQLClient()
+    const rows = await db.query(
+      'SELECT id,order_id,avatar_id,content_type,platform,status,created_at,updated_at,video_url FROM content_generation_requests WHERE id = ? LIMIT 1',
+      [requestId]
+    ) as any[]
+    return rows?.[0] ? this.normalizeRecord(rows[0]) : null
   }
 
   async createProcessingOrder(data: {
@@ -465,9 +469,22 @@ export class OrderProcessingService {
   async getProcessingStatus(identifier: string, userId?: string): Promise<any> {
     this.logger.log(`查询订单处理状态: identifier=${identifier}, userId=${userId || ''}`)
 
-    // 1. 先从数据库查询
+    // 1. 先从数据库查询（完整数据，前端需要展示 content/images）
     try {
-      const record = await this.findRecordByIdentifier(identifier)
+      const db = getMySQLClient()
+      // 先按 requestId 查（精简字段避免读取大字段）
+      let rows = await db.query(
+        'SELECT id,order_id,avatar_id,content_type,platform,status,created_at,updated_at FROM content_generation_requests WHERE id = ? LIMIT 1',
+        [identifier]
+      ) as any[]
+      // 没找到则按 orderId 查
+      if (!rows?.[0]) {
+        rows = await db.query(
+          `SELECT id,order_id,avatar_id,content_type,platform,status,created_at,updated_at FROM content_generation_requests WHERE order_id = ? ORDER BY CASE WHEN status IN ('failed', 'partial_failed') THEN 1 ELSE 0 END ASC, created_at DESC LIMIT 1`,
+          [identifier]
+        ) as any[]
+      }
+      const record = rows?.[0]
       if (record) {
         this.logger.log(`从数据库找到记录: id=${record.id}, status=${record.status}`)
 
@@ -727,7 +744,7 @@ export class OrderProcessingService {
   async getOrderProcessings(orderId: string): Promise<any[]> {
     const db = getMySQLClient()
     const rows = await db.query(
-      `SELECT * FROM content_generation_requests WHERE order_id = ? ORDER BY created_at DESC`,
+      `SELECT id, order_id, avatar_id, status, content_type, video_url, publish_feedback, created_at, updated_at, SUBSTRING(content, 1, 500) as content_preview, CASE WHEN images IS NOT NULL AND images != '' AND images != '[]' THEN JSON_LENGTH(images) ELSE 0 END as image_count FROM content_generation_requests WHERE order_id = ? ORDER BY created_at DESC`,
       [orderId]
     ) as any[]
 

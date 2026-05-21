@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { getPool } from '../../storage/database/mysql-client';
+import { VolcengineService } from '../upload/volcengine.service';
 import * as crypto from 'crypto';
 
 interface ImageGenParams {
@@ -21,6 +22,7 @@ interface ImageGenResult {
 
 @Injectable()
 export class ImageGenService {
+  constructor(private readonly volcengineService: VolcengineService) {}
   private readonly baseUrl = process.env.IMAGE_GEN_API_BASE_URL || 'https://api.aaigc.top';
   private readonly apiKey = process.env.IMAGE_GEN_API_KEY || 'sk-z1CFQbVdKI6x7ciJLwQkp1vPJPp8P9lQWW0jJGQWUdkSuQsK';
   private readonly model = process.env.IMAGE_GEN_MODEL || 'gpt-image-2-all';
@@ -66,9 +68,34 @@ export class ImageGenService {
     if (result.data && Array.isArray(result.data) && result.data.length > 0) {
       const firstItem = result.data[0];
       if (firstItem.url) {
-        imageUrl = firstItem.url;
+        // 下载临时URL并转存到veImageX CDN
+        try {
+          const imgResponse = await fetch(firstItem.url)
+          if (imgResponse.ok) {
+            const imgBuffer = Buffer.from(await imgResponse.arrayBuffer())
+            const fileName = `ai-gen_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.png`
+            const uploadResult = await this.volcengineService.uploadImage({ buffer: imgBuffer, originalname: fileName, mimetype: 'image/png' } as Express.Multer.File)
+            imageUrl = uploadResult.url
+            console.log(`[ImageGenService] 图片转存veImageX成功: ${imageUrl.slice(0, 80)}...`)
+          } else {
+            imageUrl = firstItem.url
+          }
+        } catch (e: any) {
+          console.warn(`[ImageGenService] 转存veImageX失败: ${e.message}，使用原始URL`)
+          imageUrl = firstItem.url
+        }
       } else if (firstItem.b64_json) {
-        imageUrl = `data:image/png;base64,${firstItem.b64_json}`;
+        // base64 图片上传到 veImageX CDN，不存 base64 到数据库
+        try {
+          const buffer = Buffer.from(firstItem.b64_json, 'base64')
+          const fileName = `ai-gen_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.png`
+          const uploadResult = await this.volcengineService.uploadImage({ buffer, originalname: fileName, mimetype: 'image/png' } as Express.Multer.File)
+          imageUrl = uploadResult.url
+          console.log(`[ImageGenService] base64上传veImageX成功: ${imageUrl.slice(0, 80)}...`)
+        } catch (uploadErr: any) {
+          console.error(`[ImageGenService] base64上传veImageX失败: ${uploadErr.message}，跳过此图`)
+          imageUrl = ''
+        }
       }
     }
 

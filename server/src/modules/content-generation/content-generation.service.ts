@@ -1526,8 +1526,20 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
           this.logger.log(`[ImageHTTP] base64上传veImageX成功: ${imageUrl.slice(0, 80)}...`)
         } catch (uploadErr: any) {
           this.logger.error(`[ImageHTTP] base64上传veImageX失败: ${uploadErr.message}`)
-          // 降级：仍然返回 base64（保证功能不中断）
-          imageUrl = `data:image/png;base64,${firstItem.b64_json}`
+          // 重试一次
+          try {
+            this.logger.log('[ImageHTTP] 重试上传base64到veImageX...')
+            await new Promise(r => setTimeout(r, 1000))
+            const buffer2 = Buffer.from(firstItem.b64_json, 'base64')
+            const fileName2 = `ai-generated_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.png`
+            const uploadResult2 = await this.volcengineService.uploadImage({ buffer: buffer2, originalname: fileName2, mimetype: 'image/png' } as Express.Multer.File)
+            imageUrl = uploadResult2.url
+            this.logger.log(`[ImageHTTP] 重试上传veImageX成功: ${imageUrl.slice(0, 80)}...`)
+          } catch (retryErr: any) {
+            this.logger.error(`[ImageHTTP] 重试上传veImageX也失败: ${retryErr.message}，跳过此图`)
+            // 不存 base64 到数据库，避免数据库膨胀，返回空字符串
+            imageUrl = ''
+          }
         }
       }
     }

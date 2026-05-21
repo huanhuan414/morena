@@ -4,13 +4,12 @@ import { ContentGenerationController } from './content-generation.controller'
 import { AvatarAgentModule } from '../avatar-agent/avatar-agent.module'
 import { OrderModule } from '../order/order.module'
 import { OrderDispatchModule } from '../order-dispatch/order-dispatch.module'
-import { VolcengineService } from '../upload/volcengine.service'
-import { StorageService } from '../storage/storage.service'
+import { UploadModule } from '../upload/upload.module'
 
 @Module({
-  imports: [AvatarAgentModule, forwardRef(() => OrderModule), forwardRef(() => OrderDispatchModule)],
+  imports: [AvatarAgentModule, forwardRef(() => OrderModule), forwardRef(() => OrderDispatchModule), UploadModule],
   controllers: [ContentGenerationController],
-  providers: [ContentGenerationService, VolcengineService, StorageService],
+  providers: [ContentGenerationService],
   exports: [ContentGenerationService]
 })
 export class ContentGenerationModule {}
