@@ -214,10 +214,11 @@ export default function OrderContentCreation() {
             orderTitle: data.orderTitle,
             contentType: data.contentType,
             generatedContent: data.generatedContent,
+            publishFeedback: data.publishFeedback || data.publish_feedback,
           })
 
           // 终态：生成完成后停止计时和轮询
-          const terminalStatuses = ['completed', 'published', 'awaiting_acceptance', 'feedback_submitted', 'settled', 'done', 'preview', 'failed', 'partial_failed']
+          const terminalStatuses = ['completed', 'published', 'awaiting_acceptance', 'feedback_submitted', 'settled', 'done', 'preview', 'failed', 'partial_failed', 'rejected']
           if (terminalStatuses.includes(data.rawStatus) || terminalStatuses.includes(data.status)) {
             if (timerRef.current) clearInterval(timerRef.current)
             if (pollRef.current) clearInterval(pollRef.current)
@@ -614,8 +615,8 @@ export default function OrderContentCreation() {
               </View>
             )}
 
-            {/* 操作按钮 - 驳回状态不显示 */}
-            {!isRejected && (
+            {/* 操作按钮 - 只有待发布状态才显示 */}
+            {rawStatus === 'preview' && (
               <View className="cc-action-bar">
                 <View className="cc-action-btn cc-action-secondary" onClick={handleRetry}>
                   <Text className="cc-action-secondary-text">重新生成</Text>
