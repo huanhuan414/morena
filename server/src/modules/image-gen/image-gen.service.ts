@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { getPool } from '../../storage/database/mysql-client';
 import * as crypto from 'crypto';
+import { VolcengineService } from '../upload/volcengine.service';
 
 interface ImageGenParams {
   userId: string;
@@ -24,6 +25,10 @@ export class ImageGenService {
   private readonly baseUrl = process.env.IMAGE_GEN_API_BASE_URL || 'https://api.aaigc.top';
   private readonly apiKey = process.env.IMAGE_GEN_API_KEY || 'sk-z1CFQbVdKI6x7ciJLwQkp1vPJPp8P9lQWW0jJGQWUdkSuQsK';
   private readonly model = process.env.IMAGE_GEN_MODEL || 'gpt-image-2-all';
+
+  constructor(
+    @Inject(VolcengineService) private readonly volcengineService: VolcengineService,
+  ) {}
 
   /**
    * 生成图片 - 直接将用户描述发送给图片生成API
@@ -68,7 +73,19 @@ export class ImageGenService {
       if (firstItem.url) {
         imageUrl = firstItem.url;
       } else if (firstItem.b64_json) {
-        imageUrl = `data:image/png;base64,${firstItem.b64_json}`;
+        // base64 图片上传到 veImageX CDN，避免存入数据库
+        console.log('[ImageGenService] API返回base64，上传到veImageX CDN...');
+        try {
+          const base64Data = firstItem.b64_json;
+          const buffer = Buffer.from(base64Data, 'base64');
+          const fileName = `image-gen_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.png`;
+          const uploadResult = await this.volcengineService.uploadImage({ buffer, originalname: fileName, mimetype: 'image/png' } as Express.Multer.File);
+          imageUrl = uploadResult.url;
+          console.log(`[ImageGenService] base64上传veImageX成功: ${imageUrl.slice(0, 80)}...`);
+        } catch (uploadErr: any) {
+          console.error(`[ImageGenService] base64上传veImageX失败: ${uploadErr.message}`);
+          throw new Error(`图片上传CDN失败: ${uploadErr.message}`);
+        }
       }
     }
 

@@ -148,39 +148,49 @@ export class ContentGenerationService implements OnModuleInit {
     preferredStyles?: string[]
     industryTags?: string[]
     contentQuantity?: number
+    requestId?: string
   }): Promise<any[]> {
     const results: any[] = []
 
-    // 确定分身的核心技能
     const primarySkill = this.detectPrimarySkill(input.avatarSkills || [], input.contentType)
-
-    // 如果技能明确指定了内容类型，覆盖默认的 contentType
     const effectiveContentType = this.resolveContentType(primarySkill, input.contentType)
 
-    this.logger.log(`内容生成: orderId=${input.orderId}, avatarId=${input.avatarId}, primarySkill=${primarySkill}, contentType=${input.contentType}->${effectiveContentType}, skills=${input.avatarSkills?.join(',')}`)
+    this.logger.log(`内容生成: orderId=${input.orderId}, avatarId=${input.avatarId}, primarySkill=${primarySkill}, contentType=${input.contentType}->${effectiveContentType}, skills=${input.avatarSkills?.join(',')}, requestId=${input.requestId || 'new'}`)
 
     for (const platform of input.platforms) {
-      const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      const requestId = input.requestId || `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
-      // 1. 先在数据库创建 pending 记录，立即返回
       const db = getMySQLClient()
-      try {
-        await db.insert('content_generation_requests', {
-          id: requestId,
-          avatar_id: input.avatarId,
-          order_id: input.orderId,
-          platform,
-          status: 'processing',
-          content_type: effectiveContentType,
-          content_quantity: input.contentQuantity || 1,
-          content: '',
-          images: null,
-          video_url: null,
-          created_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
-        })
-        this.logger.log(`创建生成记录: ${requestId}, 状态: processing`)
-      } catch (dbError: any) {
-        this.logger.warn(`数据库创建记录失败: ${dbError.message}`)
+      
+      if (input.requestId) {
+        try {
+          await db.query(
+            'UPDATE content_generation_requests SET status = ?, updated_at = NOW() WHERE id = ?',
+            ['processing', requestId]
+          )
+          this.logger.log(`复用生成记录: ${requestId}, 状态: processing`)
+        } catch (dbError: any) {
+          this.logger.warn(`更新记录失败: ${dbError.message}`)
+        }
+      } else {
+        try {
+          await db.insert('content_generation_requests', {
+            id: requestId,
+            avatar_id: input.avatarId,
+            order_id: input.orderId,
+            platform,
+            status: 'processing',
+            content_type: effectiveContentType,
+            content_quantity: input.contentQuantity || 1,
+            content: '',
+            images: null,
+            video_url: null,
+            created_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+          })
+          this.logger.log(`创建生成记录: ${requestId}, 状态: processing`)
+        } catch (dbError: any) {
+          this.logger.warn(`数据库创建记录失败: ${dbError.message}`)
+        }
       }
 
       // 2. 写入缓存（processing 状态）
@@ -363,19 +373,19 @@ export class ContentGenerationService implements OnModuleInit {
       videoFailed = true
     }
 
-    // 4. 内容质量自检（仅文本内容）
+    // 4. 内容质量自检（仅文本内容）- 已禁用自动重试
     if (textContent) {
       try {
         const qualityResult = await this.qualityCheck(textContent, input)
         this.logger.log(`内容质量评分: ${qualityResult.score}/100, 通过: ${qualityResult.passed}`)
-        if (!qualityResult.passed && qualityResult.score < 50) {
-          // 评分太低，自动重试一次
-          this.logger.warn(`内容质量过低(${qualityResult.score}分)，自动重试...`)
-          const retryText = await this.generateTextContent(platform, input)
-          if (retryText && retryText.length > textContent.length * 0.5) {
-            textContent = retryText
-          }
-        }
+        // 自动重试已禁用 - 用户需手动点击"重新生成"
+        // if (!qualityResult.passed && qualityResult.score < 50) {
+        //   this.logger.warn(`内容质量过低(${qualityResult.score}分)，自动重试...`)
+        //   const retryText = await this.generateTextContent(platform, input)
+        //   if (retryText && retryText.length > textContent.length * 0.5) {
+        //     textContent = retryText
+        //   }
+        // }
       } catch (err: any) {
         this.logger.warn(`质量自检失败(不影响发布): ${err.message}`)
       }
@@ -1526,8 +1536,7 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
           this.logger.log(`[ImageHTTP] base64上传veImageX成功: ${imageUrl.slice(0, 80)}...`)
         } catch (uploadErr: any) {
           this.logger.error(`[ImageHTTP] base64上传veImageX失败: ${uploadErr.message}`)
-          // 降级：仍然返回 base64（保证功能不中断）
-          imageUrl = `data:image/png;base64,${firstItem.b64_json}`
+          throw new Error(`图片上传CDN失败: ${uploadErr.message}`)
         }
       }
     }

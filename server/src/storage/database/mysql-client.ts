@@ -12,7 +12,7 @@ export function getPool(): Pool {
       password: process.env.MYSQL_PASSWORD || 'SYDPHJB8aGBn83Eh',
       database: process.env.MYSQL_DATABASE || 'mrl',
       waitForConnections: true,
-      connectionLimit: 10,
+      connectionLimit: 1500,
       queueLimit: 0,
       decimalNumbers: true,
     });

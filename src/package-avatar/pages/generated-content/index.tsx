@@ -213,9 +213,24 @@ export default function GeneratedContentPage() {
     Taro.navigateTo({ url: `/package-order/pages/order-publish-guide/index?contentId=${encodeURIComponent(content.id)}` })
   }
 
-  // 重新生成
-  const handleRegenerate = (content: any) => {
-    Taro.navigateTo({ url: `/package-order/pages/order-content-creation/index?orderId=${content.orderId}` })
+  const handleRegenerate = async (content: any) => {
+    try {
+      Taro.showLoading({ title: '正在重新生成...' })
+      const res = await Network.request({
+        url: `/api/content-generation/retry/${content.id}`,
+        method: 'POST',
+      })
+      Taro.hideLoading()
+      if (res.data?.code === 200) {
+        Taro.showToast({ title: '已开始重新生成', icon: 'success' })
+        loadData()
+      } else {
+        Taro.showToast({ title: res.data?.message || '重试失败', icon: 'none' })
+      }
+    } catch (err) {
+      Taro.hideLoading()
+      Taro.showToast({ title: '重试请求失败', icon: 'none' })
+    }
   }
 
   // 删除

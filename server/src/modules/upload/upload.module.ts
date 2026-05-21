@@ -77,6 +77,6 @@ import * as multer from 'multer'
   ],
   controllers: [UploadController],
   providers: [UploadService, VolcengineService],
-  exports: [UploadService]
+  exports: [UploadService, VolcengineService]
 })
 export class UploadModule {}

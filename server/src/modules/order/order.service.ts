@@ -667,7 +667,7 @@ export class OrderService {
 
     const whereClause = `
       WHERE (
-        o.status IN ('open', 'pending_dispatch', 'pending', 'pending_acceptance', 'created', 'assigned')
+        o.status IN ('open', 'pending_dispatch', 'pending', 'pending_acceptance', 'awaiting_acceptance', 'created', 'assigned')
         OR (o.status = 'pending_payment' AND IFNULL(o.is_paid, 0) = 1)
       )${platformClause}
     `
@@ -715,7 +715,6 @@ export class OrderService {
          GROUP BY r.order_id
        ) odm ON odm.order_id = o.id
        ${whereClause}
-       AND COALESCE(odc.accept_count, 0) < GREATEST(COALESCE(NULLIF(o.avatar_count, 0), NULLIF(o.expected_quantity, 0), 1), 1)
        ORDER BY o.priority DESC, o.created_at DESC
        LIMIT ? OFFSET ?`,
       [userId || null, ...platformParams, safePageSize, offset]
@@ -724,13 +723,7 @@ export class OrderService {
     const totalRows = await db.query(
       `SELECT COUNT(*) as total
        FROM orders o
-       LEFT JOIN (
-         SELECT order_id, COUNT(DISTINCT CASE WHEN status IN ('accepted', 'in_progress', 'completed') THEN avatar_id END) as accept_count
-         FROM order_dispatch_requests
-         GROUP BY order_id
-       ) odc ON odc.order_id = o.id
-       ${whereClause}
-       AND COALESCE(odc.accept_count, 0) < GREATEST(COALESCE(NULLIF(o.avatar_count, 0), NULLIF(o.expected_quantity, 0), 1), 1)`,
+       ${whereClause}`,
       [...platformParams]
     )
     const total = Number(totalRows?.[0]?.total || 0)

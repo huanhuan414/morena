@@ -75,7 +75,6 @@ export class ContentGenerationController {
     }
   }
 
-  /** 重试生成失败的内容 */
   @Post('retry/:requestId')
   @HttpCode(HttpStatus.OK)
   async retryGeneration(@Param('requestId') requestId: string) {
@@ -92,13 +91,11 @@ export class ContentGenerationController {
       const orderId = record.orderId || record.order_id
       const avatarId = record.avatarId || record.avatar_id
 
-      // 将状态重置为 processing
       await db.query(
         'UPDATE content_generation_requests SET status = ?, updated_at = NOW() WHERE id = ?',
         ['processing', requestId]
       )
 
-      // 复用第一次生成的逻辑（自动获取订单、分身完整信息）
       this.orderDispatchService.startContentGeneration(
         orderId,
         avatarId,
@@ -107,7 +104,8 @@ export class ContentGenerationController {
           description: record.orderDescription || record.order_description,
           target_audience: record.targetAudience || record.target_audience,
           quantity_per_avatar: record.contentQuantity || record.content_quantity,
-        }
+        },
+        requestId
       ).catch((err: any) => {
         console.error('[ContentGeneration] retry generation error:', err.message)
       })
