@@ -663,8 +663,8 @@ export class OrderService {
 
     const whereClause = `
       WHERE (
-        o.status IN ('open', 'pending_dispatch', 'pending', 'pending_acceptance', 'awaiting_acceptance', 'created', 'assigned')
-        OR (o.status = 'pending_payment' AND IFNULL(o.is_paid, 0) = 1)
+        IFNULL(o.is_paid, 0) = 1 
+        AND o.status NOT IN ('completed', 'cancelled', 'closed', 'rejected')
       )${platformClause}
     `
 

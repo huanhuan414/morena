@@ -794,9 +794,9 @@ async getExecutionProgress(orderId: string) {
 
       requiredCount = Number(orderRow.required_count || 1) || 1
 
-      const acceptablStatuses = ['pending', 'pending_payment', 'open', 'created', 'assigned', 'pending_acceptance', 'pending_dispatch', 'awaiting_acceptance']
+      const acceptablStatuses = ['pending', 'pending_payment', 'open', 'created', 'assigned', 'pending_acceptance', 'pending_dispatch', 'awaiting_acceptance', 'in_progress']
       if (!acceptablStatuses.includes(orderRow.status)) {
-        throw new Error(`订单已${orderRow.status === 'in_progress' ? '进行中' : orderRow.status === 'completed' ? '完成' : '处理'}, 无法接单`)
+        throw new Error(`订单已${orderRow.status === 'completed' ? '完成' : orderRow.status === 'cancelled' ? '取消' : '关闭'}, 无法接单`)
       }
       if (orderRow.status === 'pending_payment' && Number(orderRow.is_paid || 0) !== 1) {
         throw new Error('订单未支付，无法接单')
