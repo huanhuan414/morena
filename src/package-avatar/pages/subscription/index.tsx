@@ -34,28 +34,49 @@ interface UserSubscription {
   canReceiveOrders: boolean
 }
 
-// 权益对比项
+// 权益对比项 —— 与 docs/pricing-model.md v2 保持一致
 const COMPARISON_ITEMS = [
+  // 代币配额
+  { key: 'monthlyTokens', label: '每月代币', icon: Zap, freeVal: '30币', basicVal: '150币', proVal: '500币', enterpriseVal: '2000币' },
+  { key: 'tokenDiscount', label: '充值折扣', icon: Gift, freeVal: '无', basicVal: '95折', proVal: '9折', enterpriseVal: '85折' },
+  // AI分身
   { key: 'maxAvatars', label: 'AI分身数量', icon: Users, freeVal: '1个', basicVal: '3个', proVal: '10个', enterpriseVal: '无限' },
-  { key: 'canReceiveOrders', label: '接单赚钱', icon: CircleDollarSign, freeVal: false, basicVal: false, proVal: true, enterpriseVal: true },
-  { key: 'skillUsesPerDay', label: '技能使用/天', icon: Sparkles, freeVal: '3次', basicVal: '10次', proVal: '50次', enterpriseVal: '无限' },
-  { key: 'skillCategories', label: '技能类目', icon: Bot, freeVal: '生活类', basicVal: '生活+创作', proVal: '4大类目', enterpriseVal: '全类目' },
-  { key: 'contentStyles', label: '内容风格', icon: Palette, freeVal: '1种', basicVal: '3种', proVal: '6种', enterpriseVal: '8种+' },
-  { key: 'customPersonality', label: '自定义性格', icon: Star, freeVal: false, basicVal: true, proVal: true, enterpriseVal: true },
-  { key: 'batchPublish', label: '批量发布', icon: Layers, freeVal: false, basicVal: false, proVal: true, enterpriseVal: true },
-  { key: 'analytics', label: '数据分析', icon: ChartBar, freeVal: false, basicVal: false, proVal: true, enterpriseVal: true },
-  { key: 'prioritySupport', label: '优先客服', icon: Headphones, freeVal: false, basicVal: false, proVal: true, enterpriseVal: true },
-  { key: 'orderPriority', label: '订单优先级', icon: TrendingUp, freeVal: '普通', basicVal: '优先', proVal: '高级', enterpriseVal: '最高' },
-  { key: 'storageLimit', label: '存储空间', icon: Shield, freeVal: '100MB', basicVal: '1GB', proVal: '10GB', enterpriseVal: '100GB' },
+  { key: 'customPersonality', label: '自定义人格', icon: Star, freeVal: false, basicVal: true, proVal: true, enterpriseVal: true },
+  { key: 'domainTags', label: '专业领域标签', icon: BadgeCheck, freeVal: false, basicVal: false, proVal: '30个', enterpriseVal: '无限' },
+  // 技能权限
+  { key: 'palmReading', label: '看手相', icon: Bot, freeVal: '3次/天', basicVal: '10次/天', proVal: '30次/天', enterpriseVal: '不限' },
+  { key: 'wechatMpArticle', label: '公众号爆款', icon: Sparkles, freeVal: false, basicVal: '10次/天', proVal: '30次/天', enterpriseVal: '不限' },
+  { key: 'fashionMakeover', label: '衣品改造', icon: Palette, freeVal: false, basicVal: '10次/天', proVal: '30次/天', enterpriseVal: '不限' },
+  { key: 'imageGen', label: '图片生成', icon: Sparkles, freeVal: false, basicVal: '10次/天', proVal: '30次/天', enterpriseVal: '不限' },
+  { key: 'videoGen', label: '视频生成', icon: Sparkles, freeVal: false, basicVal: false, proVal: '10次/天', enterpriseVal: '不限' },
+  { key: 'contentStyles', label: '内容风格', icon: Palette, freeVal: '1种', basicVal: '3种', proVal: '6种', enterpriseVal: '8种+自定义' },
   { key: 'exclusiveSkills', label: '专属技能', icon: Gift, freeVal: false, basicVal: false, proVal: false, enterpriseVal: true },
+  // 接单赚钱
+  { key: 'canReceiveOrders', label: '接单赚钱', icon: CircleDollarSign, freeVal: false, basicVal: false, proVal: true, enterpriseVal: true },
+  { key: 'commissionRate', label: '平台抽佣', icon: CircleDollarSign, freeVal: '—', basicVal: '—', proVal: '20%', enterpriseVal: '12%' },
+  { key: 'orderPriority', label: '订单优先级', icon: TrendingUp, freeVal: '—', basicVal: '—', proVal: '高级', enterpriseVal: '最高' },
+  // 发布能力
+  { key: 'semiAutoPublish', label: '半自动发布', icon: Layers, freeVal: false, basicVal: '抖音/公众号', proVal: '+小红书', enterpriseVal: '全平台' },
+  { key: 'oneClickPublish', label: '一键发布', icon: Layers, freeVal: false, basicVal: false, proVal: '公众号', enterpriseVal: '全平台' },
+  { key: 'bindPlatforms', label: '绑定平台数', icon: Users, freeVal: '1个', basicVal: '3个', proVal: '5个', enterpriseVal: '无限' },
+  { key: 'batchPublish', label: '批量/定时发布', icon: Layers, freeVal: false, basicVal: false, proVal: true, enterpriseVal: true },
+  { key: 'crossPlatformSync', label: '跨平台同步', icon: Layers, freeVal: false, basicVal: false, proVal: false, enterpriseVal: true },
+  // 数据分析
+  { key: 'analytics', label: '数据分析', icon: ChartBar, freeVal: false, basicVal: '基础', proVal: '高级', enterpriseVal: '高级+API' },
+  { key: 'revenueDashboard', label: '收益看板', icon: CircleDollarSign, freeVal: false, basicVal: false, proVal: true, enterpriseVal: true },
+  { key: 'dataExport', label: '数据导出', icon: ChartBar, freeVal: false, basicVal: false, proVal: false, enterpriseVal: true },
+  // 存储与服务
+  { key: 'storageLimit', label: '存储空间', icon: Shield, freeVal: '100MB', basicVal: '1GB', proVal: '10GB', enterpriseVal: '100GB' },
+  { key: 'contentRetention', label: '内容保存', icon: Shield, freeVal: '7天', basicVal: '30天', proVal: '永久', enterpriseVal: '永久' },
+  { key: 'support', label: '客服支持', icon: Headphones, freeVal: '社区', basicVal: '在线', proVal: '优先', enterpriseVal: '1v1专属' },
 ]
 
 // 套餐列定义
 const PLAN_COLUMNS = [
-  { id: 'plan_free', name: '免费', theme: 'free' },
-  { id: 'plan_basic', name: '基础', theme: 'basic' },
-  { id: 'plan_pro', name: '专业', theme: 'pro' },
-  { id: 'plan_enterprise', name: '企业', theme: 'enterprise' },
+  { id: 'plan_free', name: '免费版', theme: 'free' },
+  { id: 'plan_basic', name: '创作者', theme: 'basic' },
+  { id: 'plan_pro', name: '赚钱版', theme: 'pro' },
+  { id: 'plan_enterprise', name: '企业版', theme: 'enterprise' },
 ]
 
 export default function SubscriptionPage() {
