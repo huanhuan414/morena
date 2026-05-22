@@ -412,6 +412,11 @@ const Index: React.FC = () => {
   }
 
   const goToPage = (path: string) => {
+    const storedUserInfo = Taro.getStorageSync('userInfo')
+    if (!storedUserInfo?.id) {
+      Taro.navigateTo({ url: `/pages/login/index?redirect=${encodeURIComponent(path)}` })
+      return
+    }
     if (path === "/pages/mind-chat/index" || path === "/pages/index/index" || path === "/pages/profile/index") {
       Taro.switchTab({ url: path })
       return
