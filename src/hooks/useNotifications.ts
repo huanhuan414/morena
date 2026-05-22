@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import Taro from '@tarojs/taro'
 import { Network } from '@/network'
 
 export interface Notification {
@@ -44,6 +45,12 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
 
   // 获取通知列表
   const fetchNotifications = useCallback(async () => {
+    const storedUserInfo = Taro.getStorageSync('userInfo')
+    if (!storedUserInfo?.id) {
+      console.log('[useNotifications] 用户未登录，跳过获取通知')
+      return
+    }
+    
     try {
       const res = await Network.request({
         url: '/api/notifications'
@@ -63,6 +70,12 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
 
   // 获取未读数量
   const fetchUnreadCount = useCallback(async () => {
+    const storedUserInfo = Taro.getStorageSync('userInfo')
+    if (!storedUserInfo?.id) {
+      console.log('[useNotifications] 用户未登录，跳过获取未读数量')
+      return
+    }
+    
     try {
       const res = await Network.request({
         url: '/api/notifications/unread-count'
@@ -99,6 +112,12 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
 
   // 标记单条为已读
   const markAsRead = useCallback(async (notificationId: string) => {
+    const storedUserInfo = Taro.getStorageSync('userInfo')
+    if (!storedUserInfo?.id) {
+      console.log('[useNotifications] 用户未登录，跳过标记已读')
+      return
+    }
+    
     try {
       await Network.request({
         url: `/api/notifications/${notificationId}/read`,
@@ -115,6 +134,12 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
 
   // 标记全部已读
   const markAllAsRead = useCallback(async () => {
+    const storedUserInfo = Taro.getStorageSync('userInfo')
+    if (!storedUserInfo?.id) {
+      console.log('[useNotifications] 用户未登录，跳过标记全部已读')
+      return
+    }
+    
     try {
       await Network.request({
         url: '/api/notifications/read-all',

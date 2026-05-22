@@ -49,6 +49,7 @@ const Index: React.FC = () => {
   const [generatedContents, setGeneratedContents] = useState(0)
   const [growthCampaign, setGrowthCampaign] = useState<any>(null)
   const [trackedCampaignId, setTrackedCampaignId] = useState('')
+  const [hasCancelledLogin, setHasCancelledLogin] = useState(false)
   const { avatarId: currentAvatarId, setAvatarId } = useUserStore(state => state)
 
   const [showOrderModal, setShowOrderModal] = useState(false)
@@ -88,6 +89,12 @@ const Index: React.FC = () => {
 
   // 获取公开订单列表（订单广场数据）
   const fetchOrders = useCallback(async (page = 1, append = false) => {
+    const storedUserInfo = Taro.getStorageSync('userInfo')
+    if (!storedUserInfo?.id) {
+      console.log('用户未登录，跳过获取订单')
+      return
+    }
+
     if (ordersFetchInFlightRef.current) return
     const now = Date.now()
     if (now - lastOrdersFetchAtRef.current < 800 && page === 1 && !append) return
@@ -98,8 +105,8 @@ const Index: React.FC = () => {
       const pageSize = 10
       const res = await Network.request({
         url: '/api/order/open',
-        data: { 
-          page, 
+        data: {
+          page,
           pageSize,
           ...(activePlatform !== 'all' ? { platform: activePlatform } : {})
         }
@@ -157,6 +164,12 @@ const Index: React.FC = () => {
 
   // 获取分配给当前用户的待接订单（仅弹窗通知用）
   const fetchAssignedOrders = useCallback(async () => {
+    const storedUserInfo = Taro.getStorageSync('userInfo')
+    if (!storedUserInfo?.id) {
+      console.log('用户未登录，跳过获取分配订单')
+      return
+    }
+
     try {
       const res = await Network.request({ url: '/api/order-dispatch/pending-requests' })
       if (res.data?.code === 200 && res.data?.data) {
@@ -283,8 +296,19 @@ const Index: React.FC = () => {
     try {
       const storedUserInfo = await Taro.getStorage({ key: 'userInfo' }).catch(() => null)
       if (!storedUserInfo?.data?.id) {
-        console.log('用户未登录，静默跳转到登录页')
-        Taro.navigateTo({ url: '/pages/login/index' })
+        Taro.showModal({
+          title: '提示',
+          content: '您还未登录，是否前往登录？',
+          confirmText: '去登录',
+          cancelText: '取消',
+          success: (res) => {
+            if (res.confirm) {
+              Taro.navigateTo({ url: '/pages/login/index' })
+            } else {
+              setHasCancelledLogin(true)
+            }
+          }
+        })
         return
       }
 
@@ -321,6 +345,12 @@ const Index: React.FC = () => {
   }
 
   const fetchGrowthCampaign = async () => {
+    const storedUserInfo = Taro.getStorageSync('userInfo')
+    if (!storedUserInfo?.id) {
+      console.log('用户未登录，跳过获取增长活动')
+      return
+    }
+
     try {
       const res = await Network.request({ url: '/api/activities/campaign/active' })
       const campaign = res.data?.data || null
@@ -399,7 +429,7 @@ const Index: React.FC = () => {
       setDismissedOrderIds(newDismissed)
       try {
         Taro.setStorageSync('dismissed_order_ids', JSON.stringify([...newDismissed]))
-      } catch {}
+      } catch { }
       Taro.navigateTo({ url: `/package-order/pages/order-content-creation/index?orderId=${orderId}` })
     }
   }
@@ -411,7 +441,7 @@ const Index: React.FC = () => {
       setDismissedOrderIds(newDismissed)
       try {
         Taro.setStorageSync('dismissed_order_ids', JSON.stringify([...newDismissed]))
-      } catch {}
+      } catch { }
     }
     setShowOrderModal(false)
   }
@@ -512,10 +542,10 @@ const Index: React.FC = () => {
       </View>
 
       {/* 主内容区 */}
-      <ScrollView 
-        scrollY 
-        className="content" 
-        enhanced 
+      <ScrollView
+        scrollY
+        className="content"
+        enhanced
         showScrollbar={false}
         refresherEnabled
         refresherTriggered={isRefreshing}
