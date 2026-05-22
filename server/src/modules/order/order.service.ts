@@ -663,8 +663,10 @@ export class OrderService {
 
     const whereClause = `
       WHERE (
-        IFNULL(o.is_paid, 0) = 1 
-        AND o.status NOT IN ('completed', 'cancelled', 'closed', 'rejected')
+        o.is_paid = 1 
+        AND o.status IN ('open', 'pending_dispatch', 'pending', 'in_progress', 
+                         'awaiting_acceptance', 'submitted', 'auto_cancelled',
+                         'pending_acceptance', 'created', 'assigned', 'pending_payment')
       )${platformClause}
     `
 
@@ -685,17 +687,12 @@ export class OrderService {
          SELECT a1.user_id, a1.name, a1.avatar_url
          FROM avatars a1
          INNER JOIN (
-           SELECT x.user_id, MIN(x.id) as picked_id
-           FROM avatars x
-           INNER JOIN (
-             SELECT user_id, MAX(created_at) as max_created_at
-             FROM avatars
-             WHERE status = 'active'
-             GROUP BY user_id
-           ) m ON m.user_id = x.user_id AND m.max_created_at = x.created_at
-           WHERE x.status = 'active'
-           GROUP BY x.user_id
-         ) pick ON pick.picked_id = a1.id
+           SELECT user_id, MAX(created_at) as max_created_at
+           FROM avatars
+           WHERE status = 'active'
+           GROUP BY user_id
+         ) latest ON latest.user_id = a1.user_id 
+                  AND latest.max_created_at = a1.created_at
          WHERE a1.status = 'active'
        ) a_latest ON a_latest.user_id = o.user_id
        LEFT JOIN (
