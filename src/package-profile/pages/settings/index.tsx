@@ -58,6 +58,8 @@ export default function SettingsPage() {
     })
   }
 
+  const SHOW_DEV_FEATURES = false
+
   const accountItems = [
     {
       icon: User,
@@ -90,13 +92,13 @@ export default function SettingsPage() {
       color: '#3B82F6',
       action: () => navigateTo({ url: '/package-profile/pages/notifications/index' })
     },
-    {
+    ...(SHOW_DEV_FEATURES ? [{
       icon: Globe,
       label: '语言',
       desc: '简体中文',
       color: '#6366F1',
       action: () => showToast({ title: '开发中', icon: 'none' })
-    },
+    }] : []),
   ]
 
   const otherItems = [
@@ -168,7 +170,7 @@ export default function SettingsPage() {
 
       <ScrollView className="settings-scroll" scrollY>
         {/* 账号与安全 */}
-        {renderSettingGroup('账号与安全', accountItems)}
+        {SHOW_DEV_FEATURES && renderSettingGroup('账号与安全', accountItems)}
 
         {/* 通用设置 */}
         {renderSettingGroup('通用设置', generalItems)}

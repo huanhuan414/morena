@@ -702,20 +702,23 @@ export default function OrderPublishGuide() {
                 ))}
               </View>
 
-              <View
-                className="publish-btn"
-                style={{ backgroundColor: getValidatedPlatformMeta(currentPlatform)?.color }}
-                onClick={() => handleOpenApp(currentPlatform)}
-              >
-                <Send size={18} color="#FFFFFF" />
-                <Text className="publish-btn-text">
-                  {getPlatformBindingStatus(currentPlatform).required &&
-                    !getPlatformBindingStatus(currentPlatform).bound
-                    ? '去绑定账号'
-                    : '开始发布'}
-                </Text>
-                <ChevronRight size={18} color="#FFFFFF" />
-              </View>
+              {/* 仅微信平台显示发布按钮 */}
+              {['wechat_mp', 'wechat_moments', 'wechat_channel'].includes(currentPlatform) && (
+                <View
+                  className="publish-btn"
+                  style={{ backgroundColor: getValidatedPlatformMeta(currentPlatform)?.color }}
+                  onClick={() => handleOpenApp(currentPlatform)}
+                >
+                  <Send size={18} color="#FFFFFF" />
+                  <Text className="publish-btn-text">
+                    {getPlatformBindingStatus(currentPlatform).required &&
+                      !getPlatformBindingStatus(currentPlatform).bound
+                      ? '去绑定账号'
+                      : '开始发布'}
+                  </Text>
+                  <ChevronRight size={18} color="#FFFFFF" />
+                </View>
+              )}
             </View>
           </View>
         )}
