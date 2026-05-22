@@ -367,7 +367,7 @@ const Index: React.FC = () => {
 
   useDidShow(() => {
     loadUserFromStorage().then(() => {
-      fetchStats()
+      // fetchStats()
       fetchGrowthCampaign()
       fetchAssignedOrders()
       fetchOrders()
