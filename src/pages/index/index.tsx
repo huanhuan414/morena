@@ -89,12 +89,6 @@ const Index: React.FC = () => {
 
   // 获取公开订单列表（订单广场数据）
   const fetchOrders = useCallback(async (page = 1, append = false) => {
-    const storedUserInfo = Taro.getStorageSync('userInfo')
-    if (!storedUserInfo?.id) {
-      console.log('用户未登录，跳过获取订单')
-      return
-    }
-
     if (ordersFetchInFlightRef.current) return
     const now = Date.now()
     if (now - lastOrdersFetchAtRef.current < 800 && page === 1 && !append) return
@@ -164,12 +158,6 @@ const Index: React.FC = () => {
 
   // 获取分配给当前用户的待接订单（仅弹窗通知用）
   const fetchAssignedOrders = useCallback(async () => {
-    const storedUserInfo = Taro.getStorageSync('userInfo')
-    if (!storedUserInfo?.id) {
-      console.log('用户未登录，跳过获取分配订单')
-      return
-    }
-
     try {
       const res = await Network.request({ url: '/api/order-dispatch/pending-requests' })
       if (res.data?.code === 200 && res.data?.data) {
@@ -294,23 +282,23 @@ const Index: React.FC = () => {
   // 获取统计数据
   const fetchStats = async () => {
     try {
-      const storedUserInfo = await Taro.getStorage({ key: 'userInfo' }).catch(() => null)
-      if (!storedUserInfo?.data?.id) {
-        Taro.showModal({
-          title: '提示',
-          content: '您还未登录，是否前往登录？',
-          confirmText: '去登录',
-          cancelText: '取消',
-          success: (res) => {
-            if (res.confirm) {
-              Taro.navigateTo({ url: '/pages/login/index' })
-            } else {
-              setHasCancelledLogin(true)
-            }
-          }
-        })
-        return
-      }
+      // const storedUserInfo = await Taro.getStorage({ key: 'userInfo' }).catch(() => null)
+      // if (!storedUserInfo?.data?.id) {
+      //   Taro.showModal({
+      //     title: '提示',
+      //     content: '您还未登录，是否前往登录？',
+      //     confirmText: '去登录',
+      //     cancelText: '取消',
+      //     success: (res) => {
+      //       if (res.confirm) {
+      //         Taro.navigateTo({ url: '/pages/login/index' })
+      //       } else {
+      //         setHasCancelledLogin(true)
+      //       }
+      //     }
+      //   })
+      //   return
+      // }
 
       const res = await Network.request({ url: '/api/user-stats/overview' })
       console.log('统计数据:', res.data)
@@ -345,12 +333,6 @@ const Index: React.FC = () => {
   }
 
   const fetchGrowthCampaign = async () => {
-    const storedUserInfo = Taro.getStorageSync('userInfo')
-    if (!storedUserInfo?.id) {
-      console.log('用户未登录，跳过获取增长活动')
-      return
-    }
-
     try {
       const res = await Network.request({ url: '/api/activities/campaign/active' })
       const campaign = res.data?.data || null
@@ -367,7 +349,7 @@ const Index: React.FC = () => {
 
   useDidShow(() => {
     loadUserFromStorage().then(() => {
-      // fetchStats()
+      fetchStats()
       fetchGrowthCampaign()
       fetchAssignedOrders()
       fetchOrders()

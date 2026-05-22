@@ -100,18 +100,21 @@ const handleAuthError = (originalUrl: string) => {
   isHandlingAuthError = true
   clearAuthStorage()
 
-  const now = Date.now()
-  if (now - lastAuthToastAt > 1500) {
-    lastAuthToastAt = now
-    Taro.showToast({ title: '需要重新登录', icon: 'none' })
-  }
+  // const now = Date.now()
+  // if (now - lastAuthToastAt > 1500) {
+  //   lastAuthToastAt = now
+  //   Taro.showToast({ title: '需要重新登录', icon: 'none' })
+  // }
 
-  const redirect = currentPath ? `?redirect=${encodeURIComponent(currentPath)}` : ''
+  // const redirect = currentPath ? `?redirect=${encodeURIComponent(currentPath)}` : ''
+  // setTimeout(() => {
+  //   Taro.navigateTo({ url: `${loginPath}${redirect}` }).finally(() => {
+  //     isHandlingAuthError = false
+  //   })
+  // }, 200)
   setTimeout(() => {
-    Taro.navigateTo({ url: `${loginPath}${redirect}` }).finally(() => {
-      isHandlingAuthError = false
-    })
-  }, 200)
+    isHandlingAuthError = false
+  }, 1000)
 }
 
 const detectAuthErrorFromResponse = (res: any) => {
