@@ -300,6 +300,28 @@ export default defineConfig<'vite'>(async (merge, _env) => {
                   generateWeappProjectConfig(outputRoot);
                 },
               },
+              {
+                name: 'fix-wxss-incompatible-selectors',
+                closeBundle() {
+                  // 构建完成后自动清理微信小程序不兼容的 CSS 选择器
+                  const wxssFile = path.resolve(__dirname, '../dist-weapp/app-origin.wxss');
+                  if (fs.existsSync(wxssFile)) {
+                    let content = fs.readFileSync(wxssFile, 'utf8');
+                    const originalLength = content.length;
+                    content = content.replace(/[^{}]*:has\([^)]+\)[^{]*\{[^}]*\}/g, '');
+                    content = content.replace(/[^{}]*:is\([^)]+\)[^{]*\{[^}]*\}/g, '');
+                    content = content.replace(/[^{}]*:where\([^)]+\)[^{]*\{[^}]*\}/g, '');
+                    content = content.replace(/:has\([^)]+\)/g, '');
+                    content = content.replace(/:is\([^)]+\)/g, '');
+                    content = content.replace(/:where\([^)]+\)/g, '');
+                    content = content.replace(/[^\n{}]+\{\s*\}/g, '');
+                    if (content.length !== originalLength) {
+                      fs.writeFileSync(wxssFile, content, 'utf8');
+                      console.log(`[fix-wxss] 已清理不兼容选择器，移除 ${originalLength - content.length} 字节`);
+                    }
+                  }
+                },
+              },
             ]
           : []),
       ],

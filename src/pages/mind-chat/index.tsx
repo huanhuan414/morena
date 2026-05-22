@@ -95,6 +95,9 @@ const MindChat: React.FC = () => {
   const highlightTimerRef = useRef<any>(null)
   const clearScrollTimerRef = useRef<any>(null)
   const activeTabRef = useRef<CloneType>('my')
+  const [squarePage, setSquarePage] = useState(1)
+  const [hasMoreSquare, setHasMoreSquare] = useState(true)
+  const squareLoadingRef = useRef(false)
 
   const loadAvatarSkills = async (avatarId: string): Promise<AvatarSkill[]> => {
     try {
@@ -205,18 +208,29 @@ const MindChat: React.FC = () => {
     }
   }, [isLoggedIn])
 
-  const loadSquareClones = useCallback(async () => {
+  const loadSquareClones = useCallback(async (page = 1, append = false) => {
+    if (squareLoadingRef.current) {
+      console.log('[分身广场] 已有请求进行中，跳过')
+      return
+    }
     try {
-      setLoading(true)
+      squareLoadingRef.current = true
+      if (!append) setLoading(true)
+      const pageSize = 10
+      console.log('[分身广场] 开始加载, page:', page, 'pageSize:', pageSize, 'append:', append)
       const res = await Network.request({
         url: '/api/avatar/list',
-        method: 'GET'
+        method: 'GET',
+        data: { page, pageSize }
       })
-      console.log('加载分身广场:', res.data)
+      console.log('[分身广场] API响应:', res.data)
       
       if (res.data?.code === 200) {
-        const listData = res.data?.data?.data?.list || res.data?.data?.list || []
-        const avatars = listData.slice(0, 6).map((item: any) => {
+        const result = res.data?.data
+        const listData = result?.data?.list || result?.list || []
+        const total = result?.data?.total || result?.total || listData.length
+        console.log('[分身广场] 解析数据: listData.length:', listData.length, 'total:', total)
+        const avatars = listData.map((item: any) => {
           const { tags, abilities } = parsePersonality(item.personality)
           let roleLabel = '通用助手'
           if (tags.length) roleLabel = tags.slice(0, 3).join('·')
@@ -239,15 +253,26 @@ const MindChat: React.FC = () => {
             todayEarnings: 0
           }
         })
-        setSquareClones(avatars)
+        let nextLength = 0
+        setSquareClones(prev => {
+          const next = append ? [...prev, ...avatars] : avatars
+          nextLength = next.length
+          console.log('[分身广场] 更新列表: prev.length:', prev.length, 'avatars.length:', avatars.length, 'nextLength:', nextLength)
+          return next
+        })
+        setSquarePage(page)
+        const hasMore = nextLength < total
+        console.log('[分身广场] 设置hasMore:', hasMore, 'nextLength:', nextLength, 'total:', total)
+        setHasMoreSquare(hasMore)
       } else {
-        setSquareClones([])
+        if (!append) setSquareClones([])
       }
     } catch (error) {
-      console.error('加载分身广场失败:', error)
-      setSquareClones([])
+      console.error('[分身广场] 加载失败:', error)
+      if (!append) setSquareClones([])
     } finally {
       setLoading(false)
+      squareLoadingRef.current = false
     }
   }, [])
 
@@ -258,6 +283,12 @@ const MindChat: React.FC = () => {
     }
     await loadSquareClones()
   }, [loadMyClones, loadSquareClones])
+
+  const onSquareScrollToLower = useCallback(async () => {
+    console.log('[分身广场] onScrollToLower触发, hasMoreSquare:', hasMoreSquare, 'loading:', squareLoadingRef.current, 'squarePage:', squarePage)
+    if (!hasMoreSquare || squareLoadingRef.current) return
+    await loadSquareClones(squarePage + 1, true)
+  }, [hasMoreSquare, squarePage, loadSquareClones])
 
   useEffect(() => {
     activeTabRef.current = activeTab
@@ -471,7 +502,13 @@ const MindChat: React.FC = () => {
       </View>
 
       {/* 内容区域 */}
-      <ScrollView className="content-scroll" scrollY scrollWithAnimation scrollIntoView={scrollIntoView}>
+      <ScrollView 
+        className="content-scroll" 
+        scrollY 
+        scrollWithAnimation 
+        scrollIntoView={scrollIntoView}
+        onScrollToLower={activeTab === 'square' ? onSquareScrollToLower : undefined}
+      >
         {loading ? (
           <View className="loading-state">
             <Loader size={32} className="animate-spin" />
@@ -846,6 +883,18 @@ const MindChat: React.FC = () => {
                     </View>
                   </View>
                 ))}
+              </View>
+            )}
+            {activeTab === 'square' && squareClones.length > 0 && (
+              <View className="load-more-tip">
+                {hasMoreSquare ? (
+                  <>
+                    <Loader size={14} className="animate-spin" />
+                    <Text className="load-more-text">上拉加载更多</Text>
+                  </>
+                ) : (
+                  <Text className="load-more-text">没有更多了</Text>
+                )}
               </View>
             )}
           </View>

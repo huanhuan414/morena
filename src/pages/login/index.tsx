@@ -250,7 +250,7 @@ const Login: React.FC = () => {
     try {
       const loginRes = await Taro.login()
       if (!loginRes.code) {
-        Taro.showToast({ title: '获取微信授权失败', icon: 'none' })
+        Taro.showToast({ title: '获取授权失败', icon: 'none' })
         return
       }
 
@@ -277,10 +277,10 @@ const Login: React.FC = () => {
           navigateAfterLogin(data)
         }
       } else {
-        Taro.showToast({ title: res.data?.message || '微信登录失败', icon: 'none' })
+        Taro.showToast({ title: res.data?.message || '登录失败', icon: 'none' })
       }
     } catch (error) {
-      Taro.showToast({ title: '微信登录失败，请重试', icon: 'none' })
+      Taro.showToast({ title: '登录失败，请重试', icon: 'none' })
     } finally {
       setWechatLoading(false)
     }
@@ -288,7 +288,7 @@ const Login: React.FC = () => {
 
   const renderAgreement = () => (
     <View className="login-agreement">
-      <View className={`login-checkbox ${agreed ? 'checked' : ''}`}  onClick={() => setAgreed(!agreed)}>
+      <View className={`login-checkbox ${agreed ? 'checked' : ''}`} onClick={() => setAgreed(!agreed)}>
         {agreed && <Text className="login-checkbox-tick">✓</Text>}
       </View>
       <Text className="login-agreement-text">我已阅读并同意</Text>
@@ -402,8 +402,8 @@ const Login: React.FC = () => {
 
         {loginTab === 'wechat' && (
           <View className="login-tab-content">
-            <Text className="login-card-title block">微信授权登录</Text>
-            <Text className="login-card-desc block">使用微信绑定手机号快速登录，未注册将自动创建账号</Text>
+            <Text className="login-card-title block">授权登录</Text>
+            <Text className="login-card-desc block">使用绑定手机号快速登录，未注册将自动创建账号</Text>
 
             <View className="login-field">
               <View className="login-referral-label-row">

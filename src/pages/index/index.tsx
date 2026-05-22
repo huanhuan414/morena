@@ -49,6 +49,7 @@ const Index: React.FC = () => {
   const [generatedContents, setGeneratedContents] = useState(0)
   const [growthCampaign, setGrowthCampaign] = useState<any>(null)
   const [trackedCampaignId, setTrackedCampaignId] = useState('')
+  const [hasCancelledLogin, setHasCancelledLogin] = useState(false)
   const { avatarId: currentAvatarId, setAvatarId } = useUserStore(state => state)
 
   const [showOrderModal, setShowOrderModal] = useState(false)
@@ -98,8 +99,8 @@ const Index: React.FC = () => {
       const pageSize = 10
       const res = await Network.request({
         url: '/api/order/open',
-        data: { 
-          page, 
+        data: {
+          page,
           pageSize,
           ...(activePlatform !== 'all' ? { platform: activePlatform } : {})
         }
@@ -281,12 +282,23 @@ const Index: React.FC = () => {
   // 获取统计数据
   const fetchStats = async () => {
     try {
-      const storedUserInfo = await Taro.getStorage({ key: 'userInfo' }).catch(() => null)
-      if (!storedUserInfo?.data?.id) {
-        console.log('用户未登录，静默跳转到登录页')
-        Taro.navigateTo({ url: '/pages/login/index' })
-        return
-      }
+      // const storedUserInfo = await Taro.getStorage({ key: 'userInfo' }).catch(() => null)
+      // if (!storedUserInfo?.data?.id) {
+      //   Taro.showModal({
+      //     title: '提示',
+      //     content: '您还未登录，是否前往登录？',
+      //     confirmText: '去登录',
+      //     cancelText: '取消',
+      //     success: (res) => {
+      //       if (res.confirm) {
+      //         Taro.navigateTo({ url: '/pages/login/index' })
+      //       } else {
+      //         setHasCancelledLogin(true)
+      //       }
+      //     }
+      //   })
+      //   return
+      // }
 
       const res = await Network.request({ url: '/api/user-stats/overview' })
       console.log('统计数据:', res.data)
@@ -382,6 +394,11 @@ const Index: React.FC = () => {
   }
 
   const goToPage = (path: string) => {
+    const storedUserInfo = Taro.getStorageSync('userInfo')
+    if (!storedUserInfo?.id) {
+      Taro.navigateTo({ url: `/pages/login/index?redirect=${encodeURIComponent(path)}` })
+      return
+    }
     if (path === "/pages/mind-chat/index" || path === "/pages/index/index" || path === "/pages/profile/index") {
       Taro.switchTab({ url: path })
       return
@@ -399,7 +416,7 @@ const Index: React.FC = () => {
       setDismissedOrderIds(newDismissed)
       try {
         Taro.setStorageSync('dismissed_order_ids', JSON.stringify([...newDismissed]))
-      } catch {}
+      } catch { }
       Taro.navigateTo({ url: `/package-order/pages/order-content-creation/index?orderId=${orderId}` })
     }
   }
@@ -411,7 +428,7 @@ const Index: React.FC = () => {
       setDismissedOrderIds(newDismissed)
       try {
         Taro.setStorageSync('dismissed_order_ids', JSON.stringify([...newDismissed]))
-      } catch {}
+      } catch { }
     }
     setShowOrderModal(false)
   }
@@ -512,10 +529,10 @@ const Index: React.FC = () => {
       </View>
 
       {/* 主内容区 */}
-      <ScrollView 
-        scrollY 
-        className="content" 
-        enhanced 
+      <ScrollView
+        scrollY
+        className="content"
+        enhanced
         showScrollbar={false}
         refresherEnabled
         refresherTriggered={isRefreshing}

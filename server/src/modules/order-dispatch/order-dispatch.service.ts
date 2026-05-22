@@ -794,9 +794,9 @@ async getExecutionProgress(orderId: string) {
 
       requiredCount = Number(orderRow.required_count || 1) || 1
 
-      const acceptablStatuses = ['pending', 'pending_payment', 'open', 'created', 'assigned', 'pending_acceptance', 'pending_dispatch']
+      const acceptablStatuses = ['pending', 'pending_payment', 'open', 'created', 'assigned', 'pending_acceptance', 'pending_dispatch', 'awaiting_acceptance', 'in_progress']
       if (!acceptablStatuses.includes(orderRow.status)) {
-        throw new Error(`订单已${orderRow.status === 'in_progress' ? '进行中' : orderRow.status === 'completed' ? '完成' : '处理'}, 无法接单`)
+        throw new Error(`订单已${orderRow.status === 'completed' ? '完成' : orderRow.status === 'cancelled' ? '取消' : '关闭'}, 无法接单`)
       }
       if (orderRow.status === 'pending_payment' && Number(orderRow.is_paid || 0) !== 1) {
         throw new Error('订单未支付，无法接单')
@@ -1166,40 +1166,31 @@ async getExecutionProgress(orderId: string) {
   /**
    * 启动内容生成流程（带重试和兜底）
    */
-  async startContentGeneration(orderId: string, avatarId: string, request: any) {
+  async startContentGeneration(orderId: string, avatarId: string, request: any, requestId?: string) {
     const MAX_RETRIES = 3
     let lastError: any = null
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
-        await this._doStartContentGeneration(orderId, avatarId, request)
-        return // 成功，直接返回
+        await this._doStartContentGeneration(orderId, avatarId, request, requestId)
+        return
       } catch (err: any) {
         lastError = err
         console.warn(`[startContentGeneration] 第${attempt}次尝试失败: ${err.message}`)
         if (attempt < MAX_RETRIES) {
-          await new Promise(r => setTimeout(r, 2000 * attempt)) // 递增等待
+          await new Promise(r => setTimeout(r, 2000 * attempt))
         }
       }
     }
 
-    // 所有重试都失败，创建 failed 记录兜底，确保前端能感知到
     console.error(`[startContentGeneration] ${MAX_RETRIES}次重试全部失败，创建兜底 failed 记录: orderId=${orderId}`)
     try {
       const db = getMySQLClient()
-      const requestId = `req_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
-      await db.insert('content_generation_requests', {
-        id: requestId,
-        order_id: orderId,
-        avatar_id: avatarId,
-        content_type: 'image_text',
-        content_quantity: 1,
-        status: 'failed',
-        error_message: `内容生成启动失败(${MAX_RETRIES}次重试): ${lastError?.message || '未知错误'}`,
-        order_title: request?.order_title || '',
-        created_at: new Date(),
-        updated_at: new Date(),
-      })
+      const fallbackRequestId = requestId || `req_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
+      await db.query(
+        'UPDATE content_generation_requests SET status = ?, error = ?, updated_at = NOW() WHERE id = ?',
+        ['failed', `内容生成启动失败(${MAX_RETRIES}次重试): ${lastError?.message || '未知错误'}`, fallbackRequestId]
+      )
     } catch (fallbackErr: any) {
       console.error('[startContentGeneration] 创建兜底记录也失败:', fallbackErr.message)
     }
@@ -1208,7 +1199,7 @@ async getExecutionProgress(orderId: string) {
   /**
    * 实际执行内容生成
    */
-  private async _doStartContentGeneration(orderId: string, avatarId: string, request: any) {
+  private async _doStartContentGeneration(orderId: string, avatarId: string, request: any, requestId?: string) {
     const db = getMySQLClient()
     const order = await this.getOrderById(orderId)
     if (!order) {
@@ -1279,6 +1270,7 @@ async getExecutionProgress(orderId: string) {
       nicheTags,
       preferredStyles,
       industryTags,
+      requestId,
     })
 
     console.log(`[startContentGeneration] 内容生成已启动: orderId=${orderId}, avatarId=${avatarId}, skills=${avatarSkills.join(',')}`)

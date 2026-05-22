@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { getPool } from '../../storage/database/mysql-client';
-import { VolcengineService } from '../upload/volcengine.service';
 import * as crypto from 'crypto';
+import { VolcengineService } from '../upload/volcengine.service';
 
 interface ImageGenParams {
   userId: string;
@@ -22,10 +22,13 @@ interface ImageGenResult {
 
 @Injectable()
 export class ImageGenService {
-  constructor(private readonly volcengineService: VolcengineService) {}
   private readonly baseUrl = process.env.IMAGE_GEN_API_BASE_URL || 'https://api.aaigc.top';
   private readonly apiKey = process.env.IMAGE_GEN_API_KEY || 'sk-z1CFQbVdKI6x7ciJLwQkp1vPJPp8P9lQWW0jJGQWUdkSuQsK';
   private readonly model = process.env.IMAGE_GEN_MODEL || 'gpt-image-2-all';
+
+  constructor(
+    @Inject(VolcengineService) private readonly volcengineService: VolcengineService,
+  ) {}
 
   /**
    * 生成图片 - 直接将用户描述发送给图片生成API
@@ -68,33 +71,20 @@ export class ImageGenService {
     if (result.data && Array.isArray(result.data) && result.data.length > 0) {
       const firstItem = result.data[0];
       if (firstItem.url) {
-        // 下载临时URL并转存到veImageX CDN
-        try {
-          const imgResponse = await fetch(firstItem.url)
-          if (imgResponse.ok) {
-            const imgBuffer = Buffer.from(await imgResponse.arrayBuffer())
-            const fileName = `ai-gen_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.png`
-            const uploadResult = await this.volcengineService.uploadImage({ buffer: imgBuffer, originalname: fileName, mimetype: 'image/png' } as Express.Multer.File)
-            imageUrl = uploadResult.url
-            console.log(`[ImageGenService] 图片转存veImageX成功: ${imageUrl.slice(0, 80)}...`)
-          } else {
-            imageUrl = firstItem.url
-          }
-        } catch (e: any) {
-          console.warn(`[ImageGenService] 转存veImageX失败: ${e.message}，使用原始URL`)
-          imageUrl = firstItem.url
-        }
+        imageUrl = firstItem.url;
       } else if (firstItem.b64_json) {
-        // base64 图片上传到 veImageX CDN，不存 base64 到数据库
+        // base64 图片上传到 veImageX CDN，避免存入数据库
+        console.log('[ImageGenService] API返回base64，上传到veImageX CDN...');
         try {
-          const buffer = Buffer.from(firstItem.b64_json, 'base64')
-          const fileName = `ai-gen_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.png`
-          const uploadResult = await this.volcengineService.uploadImage({ buffer, originalname: fileName, mimetype: 'image/png' } as Express.Multer.File)
-          imageUrl = uploadResult.url
-          console.log(`[ImageGenService] base64上传veImageX成功: ${imageUrl.slice(0, 80)}...`)
+          const base64Data = firstItem.b64_json;
+          const buffer = Buffer.from(base64Data, 'base64');
+          const fileName = `image-gen_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.png`;
+          const uploadResult = await this.volcengineService.uploadImage({ buffer, originalname: fileName, mimetype: 'image/png' } as Express.Multer.File);
+          imageUrl = uploadResult.url;
+          console.log(`[ImageGenService] base64上传veImageX成功: ${imageUrl.slice(0, 80)}...`);
         } catch (uploadErr: any) {
-          console.error(`[ImageGenService] base64上传veImageX失败: ${uploadErr.message}，跳过此图`)
-          imageUrl = ''
+          console.error(`[ImageGenService] base64上传veImageX失败: ${uploadErr.message}`);
+          throw new Error(`图片上传CDN失败: ${uploadErr.message}`);
         }
       }
     }
@@ -109,13 +99,6 @@ export class ImageGenService {
     const recordId = crypto.randomUUID();
     try {
       const pool = getPool();
-      // 确保用户存在于 users 表，避免外键约束报错
-      try {
-        const [userRows] = await pool.query('SELECT id FROM users WHERE id = ?', [userId]) as any;
-        if (userRows.length === 0) {
-          console.warn('[ImageGenService] 用户不存在于users表, userId:', userId);
-        }
-      } catch {}
       await pool.query(
         `INSERT INTO generated_content (id, user_id, avatar_id, task_id, type, order_id, content_type, prompt, result, images, video_url, status, metadata, created_at)
          VALUES (?, ?, NULL, NULL, ?, NULL, ?, ?, ?, ?, NULL, ?, ?, NOW())`,

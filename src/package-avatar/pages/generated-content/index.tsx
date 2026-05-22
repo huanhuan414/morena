@@ -28,6 +28,7 @@ const BACKEND_STATUS_TO_TAB: Record<string, string> = {
   settled: 'completed',
   done: 'completed',
   failed: 'failed',
+  rejected: 'rejected',
 }
 
 // 生成中的子阶段文案映射（用于进度提示）
@@ -48,6 +49,7 @@ const CONTENT_STATUS_MAP: Record<string, { label: string; color: string; bgColor
   awaiting_acceptance: { label: '待验收', color: '#8B5CF6', bgColor: '#EDE9FE' },
   completed: { label: '已完成', color: '#10B981', bgColor: '#D1FAE5' },
   failed: { label: '生成失败', color: '#EF4444', bgColor: '#FEE2E2' },
+  rejected: { label: '已驳回', color: '#EF4444', bgColor: '#FEE2E2' },
 }
 
 // Tab 状态筛选
@@ -58,6 +60,7 @@ const STATUS_TABS = [
   { key: 'published', label: '待反馈' },
   { key: 'awaiting_acceptance', label: '待验收' },
   { key: 'completed', label: '已完成' },
+  { key: 'rejected', label: '已驳回' },
   { key: 'failed', label: '生成失败' },
 ]
 
@@ -213,9 +216,24 @@ export default function GeneratedContentPage() {
     Taro.navigateTo({ url: `/package-order/pages/order-publish-guide/index?contentId=${encodeURIComponent(content.id)}` })
   }
 
-  // 重新生成
-  const handleRegenerate = (content: any) => {
-    Taro.navigateTo({ url: `/package-order/pages/order-content-creation/index?orderId=${content.orderId}` })
+  const handleRegenerate = async (content: any) => {
+    try {
+      Taro.showLoading({ title: '正在重新生成...' })
+      const res = await Network.request({
+        url: `/api/content-generation/retry/${content.id}`,
+        method: 'POST',
+      })
+      Taro.hideLoading()
+      if (res.data?.code === 200) {
+        Taro.showToast({ title: '已开始重新生成', icon: 'success' })
+        loadData()
+      } else {
+        Taro.showToast({ title: res.data?.message || '重试失败', icon: 'none' })
+      }
+    } catch (err) {
+      Taro.hideLoading()
+      Taro.showToast({ title: '重试请求失败', icon: 'none' })
+    }
   }
 
   // 删除
@@ -295,6 +313,10 @@ export default function GeneratedContentPage() {
         return [
           { key: 'delete', label: '删除', icon: Trash2, type: 'danger' },
           { key: 'regenerate', label: '重新生成', icon: RefreshCw, type: 'primary' },
+        ]
+      case 'rejected':
+        return [
+          { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
         ]
       default:
         return [{ key: 'view', label: '查看详情', icon: Eye, type: 'default' }]

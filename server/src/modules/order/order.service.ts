@@ -147,10 +147,6 @@ export class OrderService {
         const params = [...Object.values(payload), orderId]
         await db.query(`UPDATE orders SET ${setClause} WHERE id = ?`, params)
         console.log(`[OrderService] 订单状态同步: ${currentStatus} → ${newStatus}, orderId=${orderId}, 已验收${completedDispatchCount}/${requiredAvatarCount}`)
-
-        if (newStatus === 'completed') {
-          await this.triggerSettlement(orderId)
-        }
       }
     } catch (error: any) {
       console.error(`[OrderService] 同步订单状态失败: orderId=${orderId}, error=${error.message}`)
@@ -282,10 +278,8 @@ export class OrderService {
   }
 
   async getOrderById(orderId: string) {
-    const _t0 = Date.now()
     const db = getMySQLClient()
     
-    console.log(`[getOrderById] ${orderId} 开始查询, ${Date.now()-_t0}ms`)
     const orderRows = await db.query(
       `SELECT id, user_id, avatar_id, title, description, content_type, 
        platforms, requirements, budget, status, result, created_at, updated_at,
@@ -315,7 +309,7 @@ export class OrderService {
 
     let processingRows: any[] = []
     try {
-      const sql = `SELECT id, order_id, avatar_id, status, content_type, video_url, publish_feedback, created_at, updated_at, SUBSTRING(content, 1, 500) as content_preview, CASE WHEN images IS NOT NULL AND images != '' AND images != '[]' AND images NOT LIKE '%base64%' THEN JSON_LENGTH(images) WHEN images LIKE '%base64%' THEN 1 ELSE 0 END as image_count FROM content_generation_requests WHERE order_id = ? ORDER BY updated_at DESC, created_at DESC`
+      const sql = `SELECT id, order_id, avatar_id, status, content_type, content, images, video_url, publish_feedback, created_at, updated_at FROM content_generation_requests WHERE order_id = ? ORDER BY updated_at DESC, created_at DESC`
       processingRows = await db.query(sql, [orderId])
     } catch (err) {
       console.log('[OrderService] processingRows error:', err)
@@ -349,9 +343,8 @@ export class OrderService {
         contentStatus: processing?.status || null,
         rejectReason: row.rejectReason || null,
         contentType: processing?.contentType || order.contentType || 'image_text',
-        content: processing?.contentPreview || null,
-        images: processing?.imageCount || 0,
-        hasImages: (processing?.imageCount || 0) > 0,
+        content: processing?.content || null,
+        images: this.safeParseJson<any[]>(processing?.images, []),
         videoUrl: this.safeParseJson<string[]>(processing?.videoUrl, []),
         contentUpdatedAt: processing?.updatedAt ? new Date(processing.updatedAt).toISOString() : null,
         publishFeedback: this.safeParseJson(processing?.publishFeedback, {}),
@@ -670,69 +663,62 @@ export class OrderService {
 
     const whereClause = `
       WHERE (
-        o.status IN ('open', 'pending_dispatch', 'pending', 'pending_acceptance', 'created', 'assigned')
-        OR (o.status = 'pending_payment' AND IFNULL(o.is_paid, 0) = 1)
+        o.is_paid = 1 
+        AND o.status IN ('open', 'pending_dispatch', 'pending', 'in_progress', 
+                         'awaiting_acceptance', 'submitted', 'auto_cancelled',
+                         'pending_acceptance', 'created', 'assigned', 'pending_payment')
       )${platformClause}
     `
 
-    // 优化：a_latest 用 MAX(id) 替代4层嵌套（id 自增，max_id = 最新记录）
-    // 优化：data 和 total 用并行 Promise.all 同时查询
-    const [rows, totalRows] = await Promise.all([
-      db.query(
-        `SELECT o.id, o.user_id, o.avatar_id, o.title, o.description, o.content_type, o.platforms, o.platform,
-                o.requirements, o.target_audience, o.priority, o.deadline, o.content_deadline_at,
-                o.budget, o.price, o.status, o.expected_quantity, o.avatar_count, o.quantity_per_avatar, o.is_paid,
-                o.created_at, o.updated_at,
-                COALESCE(a_order.name, a_latest.name, u.nickname) as publisher_nickname,
-                COALESCE(a_order.avatar_url, a_latest.avatar_url, u.avatar) as publisher_avatar,
-                COALESCE(odc.accept_count, 0) as accept_count,
-                GREATEST(COALESCE(NULLIF(o.avatar_count, 0), NULLIF(o.expected_quantity, 0), 1), 1) as required_count,
-                COALESCE(odm.is_accepted_by_me, 0) as is_accepted_by_me
-         FROM orders o
-         LEFT JOIN users u ON u.id = o.user_id
-         LEFT JOIN avatars a_order ON a_order.id = o.avatar_id
-         LEFT JOIN (
-           SELECT a1.id, a1.user_id, a1.name, a1.avatar_url
-           FROM avatars a1
-           INNER JOIN (
-             SELECT user_id, MAX(id) as max_id
-             FROM avatars
-             WHERE status = 'active'
-             GROUP BY user_id
-           ) m ON m.max_id = a1.id
-           WHERE a1.status = 'active'
-         ) a_latest ON a_latest.user_id = o.user_id
-         LEFT JOIN (
-           SELECT order_id, COUNT(DISTINCT CASE WHEN status IN ('accepted', 'in_progress', 'completed') THEN avatar_id END) as accept_count
-           FROM order_dispatch_requests
-           GROUP BY order_id
-         ) odc ON odc.order_id = o.id
-         LEFT JOIN (
-           SELECT r.order_id, 1 as is_accepted_by_me
-           FROM order_dispatch_requests r
-           INNER JOIN avatars a ON a.id = r.avatar_id
-           WHERE r.status = 'accepted' AND a.user_id = ?
-           GROUP BY r.order_id
-         ) odm ON odm.order_id = o.id
-         ${whereClause}
-         AND COALESCE(odc.accept_count, 0) < GREATEST(COALESCE(NULLIF(o.avatar_count, 0), NULLIF(o.expected_quantity, 0), 1), 1)
-         ORDER BY o.priority DESC, o.created_at DESC
-         LIMIT ? OFFSET ?`,
-        [userId || null, ...platformParams, safePageSize, offset]
-      ),
-      db.query(
-        `SELECT COUNT(*) as total
-         FROM orders o
-         LEFT JOIN (
-           SELECT order_id, COUNT(DISTINCT CASE WHEN status IN ('accepted', 'in_progress', 'completed') THEN avatar_id END) as accept_count
-           FROM order_dispatch_requests
-           GROUP BY order_id
-         ) odc ON odc.order_id = o.id
-         ${whereClause}
-         AND COALESCE(odc.accept_count, 0) < GREATEST(COALESCE(NULLIF(o.avatar_count, 0), NULLIF(o.expected_quantity, 0), 1), 1)`,
-        [...platformParams]
-      )
-    ])
+    const rows = await db.query(
+      `SELECT o.id, o.user_id, o.avatar_id, o.title, o.description, o.content_type, o.platforms, o.platform,
+              o.requirements, o.target_audience, o.priority, o.deadline, o.content_deadline_at,
+              o.budget, o.price, o.status, o.expected_quantity, o.avatar_count, o.quantity_per_avatar, o.is_paid,
+              o.created_at, o.updated_at,
+              COALESCE(a_order.name, a_latest.name, u.nickname) as publisher_nickname,
+              COALESCE(a_order.avatar_url, a_latest.avatar_url, u.avatar) as publisher_avatar,
+              COALESCE(odc.accept_count, 0) as accept_count,
+              GREATEST(COALESCE(NULLIF(o.avatar_count, 0), NULLIF(o.expected_quantity, 0), 1), 1) as required_count,
+              COALESCE(odm.is_accepted_by_me, 0) as is_accepted_by_me
+       FROM orders o
+       LEFT JOIN users u ON u.id = o.user_id
+       LEFT JOIN avatars a_order ON a_order.id = o.avatar_id
+       LEFT JOIN (
+         SELECT a1.user_id, a1.name, a1.avatar_url
+         FROM avatars a1
+         INNER JOIN (
+           SELECT user_id, MAX(created_at) as max_created_at
+           FROM avatars
+           WHERE status = 'active'
+           GROUP BY user_id
+         ) latest ON latest.user_id = a1.user_id 
+                  AND latest.max_created_at = a1.created_at
+         WHERE a1.status = 'active'
+       ) a_latest ON a_latest.user_id = o.user_id
+       LEFT JOIN (
+         SELECT order_id, COUNT(DISTINCT CASE WHEN status IN ('accepted', 'in_progress', 'completed') THEN avatar_id END) as accept_count
+         FROM order_dispatch_requests
+         GROUP BY order_id
+       ) odc ON odc.order_id = o.id
+       LEFT JOIN (
+         SELECT r.order_id, 1 as is_accepted_by_me
+         FROM order_dispatch_requests r
+         INNER JOIN avatars a ON a.id = r.avatar_id
+         WHERE r.status = 'accepted' AND a.user_id = ?
+         GROUP BY r.order_id
+       ) odm ON odm.order_id = o.id
+       ${whereClause}
+       ORDER BY o.priority DESC, o.created_at DESC
+       LIMIT ? OFFSET ?`,
+      [userId || null, ...platformParams, safePageSize, offset]
+    )
+
+    const totalRows = await db.query(
+      `SELECT COUNT(*) as total
+       FROM orders o
+       ${whereClause}`,
+      [...platformParams]
+    )
     const total = Number(totalRows?.[0]?.total || 0)
 
     // 读取DB返回值 → camelCase
@@ -857,10 +843,6 @@ export class OrderService {
     await db.query(`UPDATE orders SET ${setClause} WHERE id = ?`, params)
 
     await this.notifyStatusChange(orderId, status)
-
-    if (status === 'completed') {
-      await this.triggerSettlement(orderId)
-    }
 
     return this.getOrderById(orderId)
   }

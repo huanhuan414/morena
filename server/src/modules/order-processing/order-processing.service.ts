@@ -294,11 +294,17 @@ export class OrderProcessingService {
     incoming: Record<string, any>
   ): Record<string, any> {
     const base = { ...(existing || {}) }
-    Object.entries(incoming || {}).forEach(([platform, payload]) => {
-      const canonicalPlatform = this.canonicalizePlatform(platform)
-      if (!canonicalPlatform) return
-      const prev = base[canonicalPlatform] || {}
-      base[canonicalPlatform] = { ...prev, ...(payload || {}) }
+    const nonPlatformFields = ['rejectReason', 'reject_reason', 'status', 'rating', 'comment', 'feedback', 'revision_requested']
+    Object.entries(incoming || {}).forEach(([key, value]) => {
+      if (nonPlatformFields.includes(key)) {
+        base[key] = value
+        return
+      }
+      const canonicalPlatform = this.canonicalizePlatform(key)
+      if (canonicalPlatform && !nonPlatformFields.includes(canonicalPlatform)) {
+        const prev = base[canonicalPlatform] || {}
+        base[canonicalPlatform] = { ...prev, ...(typeof value === 'object' ? value : { status: value }) }
+      }
     })
     return base
   }
@@ -698,8 +704,93 @@ export class OrderProcessingService {
       this.logger.log(`[验收] 已更新派单记录状态: orderId=${normalized.orderId}, avatarId=${normalized.avatarId}`)
     }
 
+    let userId = normalized.userId
+    if (!userId && normalized.orderId && normalized.avatarId) {
+      const dispatchRows = await db.query(
+        `SELECT user_id FROM order_dispatch_requests WHERE order_id = ? AND avatar_id = ? LIMIT 1`,
+        [normalized.orderId, normalized.avatarId]
+      )
+      const dispatchRow = Array.isArray(dispatchRows) ? dispatchRows[0] : (dispatchRows as any)?.data?.[0]
+      userId = dispatchRow?.user_id || dispatchRow?.userId
+      if (userId) {
+        this.logger.log(`[验收] 从派单记录获取userId: orderId=${normalized.orderId}, avatarId=${normalized.avatarId}, userId=${userId}`)
+      }
+    }
+
+    if (normalized.orderId && normalized.avatarId && userId) {
+      await this.settleSingleDispatch(normalized.orderId, normalized.avatarId, userId)
+    }
+
     await this.syncOrderStatus(normalized.orderId)
     return normalized
+  }
+
+  private async settleSingleDispatch(orderId: string, avatarId: string, userId: string): Promise<void> {
+    try {
+      const db = getMySQLClient()
+
+      const orderRows = await db.query(
+        `SELECT id, budget, is_paid, expected_quantity, avatar_count FROM orders WHERE id = ? LIMIT 1`,
+        [orderId]
+      )
+      const order = Array.isArray(orderRows) ? orderRows[0] : (orderRows as any)?.data?.[0]
+      if (!order) {
+        this.logger.warn(`[结算] 订单不存在: orderId=${orderId}`)
+        return
+      }
+
+      const isPaid = Number((order as any).isPaid ?? (order as any).is_paid ?? 0)
+      if (isPaid !== 1) {
+        this.logger.log(`[结算] 订单未支付，跳过结算: orderId=${orderId}`)
+        return
+      }
+
+      const [existingEarning] = await db.query(
+        `SELECT id FROM earnings WHERE order_id = ? AND avatar_id = ? AND type = 'order_reward' LIMIT 1`,
+        [orderId, avatarId]
+      ) as any[]
+      if (existingEarning && existingEarning.length > 0) {
+        this.logger.log(`[结算] 该分身已结算，跳过: orderId=${orderId}, avatarId=${avatarId}`)
+        return
+      }
+
+      const requiredCount = (() => {
+        const raw =
+          (order as any).expectedQuantity ??
+          (order as any).expected_quantity ??
+          (order as any).avatarCount ??
+          (order as any).avatar_count ??
+          1
+        const n = Number(raw)
+        return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1
+      })()
+
+      const totalAmount = Number(order.budget || 0)
+      const totalCents = Math.max(0, Math.round(totalAmount * 100))
+      if (totalCents <= 0) {
+        this.logger.warn(`[结算] 订单预算为0，跳过结算: orderId=${orderId}`)
+        return
+      }
+
+      const amountPerSlotCents = Math.floor(totalCents / requiredCount)
+      const amountPerSlot = amountPerSlotCents / 100
+
+      const earningId = randomUUID()
+      await db.query(
+        `INSERT INTO earnings (id, user_id, type, amount, status, description, avatar_id, order_id, created_at)
+         VALUES (?, ?, 'order_reward', ?, 'settled', '订单收益', ?, ?, NOW())`,
+        [earningId, userId, amountPerSlot, avatarId, orderId]
+      )
+
+      await db.query(
+        `UPDATE users SET balance = COALESCE(balance, 0) + ?, total_earnings = COALESCE(total_earnings, 0) + ?, updated_at = NOW() WHERE id = ?`,
+        [amountPerSlot, amountPerSlot, userId]
+      )
+
+      this.logger.log(`[结算] 分身结算成功: orderId=${orderId}, avatarId=${avatarId}, userId=${userId}, amount=${amountPerSlot}`)
+    } catch (error: any) {
+      this.logger.error(`[结算] 分身结算失败: orderId=${orderId}, avatarId=${avatarId}, error=${error.message}`)
+    }
   }
 
   private async syncOrderStatus(orderId?: string): Promise<void> {
@@ -712,7 +803,7 @@ export class OrderProcessingService {
   }
 
   /**
-   * 请求修改（进入修改流程）
+   * 驳回订单（拒绝，不可重新提交）
    */
   async requestRevision(identifier: string, feedback: Record<string, any>): Promise<any> {
     const current = await this.findRecordByIdentifier(identifier)
@@ -725,7 +816,7 @@ export class OrderProcessingService {
     const mergedFeedback = this.mergeFeedback(existingFeedback, feedback || {})
 
     const record = await this.updateRecordByIdentifier(identifier, {
-      status: 'revision_requested',
+      status: 'rejected',
       publish_feedback: JSON.stringify(mergedFeedback)
     })
     if (!record) return null
@@ -733,6 +824,39 @@ export class OrderProcessingService {
     const normalized = this.normalizeRecord(record)
     setCache(normalized.requestId, normalized)
     setCache(normalized.orderId, normalized)
+
+    const db = getMySQLClient()
+    if (normalized.orderId && normalized.avatarId) {
+      await db.query(
+        `UPDATE order_dispatch_requests SET status = 'rejected', reject_reason = ?, updated_at = NOW() WHERE order_id = ? AND avatar_id = ?`,
+        [feedback.rejectReason || '', normalized.orderId, normalized.avatarId]
+      )
+      this.logger.log(`[驳回] 已更新派单记录状态: orderId=${normalized.orderId}, avatarId=${normalized.avatarId}`)
+
+      const [avatarRows] = await db.query(
+        `SELECT a.user_id, o.title FROM avatars a LEFT JOIN orders o ON o.id = ? WHERE a.id = ?`,
+        [normalized.orderId, normalized.avatarId]
+      )
+      const avatarInfo: any = (avatarRows as any[])?.[0]
+      if (avatarInfo?.user_id) {
+        try {
+          const notificationService = new NotificationService()
+          await notificationService.createNotification({
+            user_id: avatarInfo.user_id,
+            type: 'order_rejected',
+            title: '订单已驳回',
+            content: avatarInfo.title 
+              ? `订单「${avatarInfo.title}」已被驳回，原因：${feedback.rejectReason || '无'}`
+              : `订单已被驳回，原因：${feedback.rejectReason || '无'}`,
+            metadata: { orderId: normalized.orderId, requestId: normalized.requestId }
+          })
+          this.logger.log(`[驳回] 已发送通知给用户: ${avatarInfo.user_id}`)
+        } catch (err: any) {
+          this.logger.warn(`[驳回] 发送通知失败: ${err.message}`)
+        }
+      }
+    }
+
     await this.syncOrderStatus(normalized.orderId)
 
     return normalized
