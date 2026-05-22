@@ -9,6 +9,7 @@ export type FulfillmentStatus =
   | 'settled'
   | 'failed'
   | 'partial_failed'
+  | 'rejected'
 
 export type DispatchStatus = 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'completed' | 'settled' | 'done'
 
@@ -77,6 +78,7 @@ export function normalizeFulfillmentStatus(status?: string): FulfillmentStatus {
   if (['settled', 'done'].includes(value)) return 'settled'
   if (value === 'failed') return 'failed'
   if (value === 'partial_failed') return 'partial_failed'
+  if (value === 'rejected') return 'rejected'
   if (fulfillmentStatusSet.has(value as FulfillmentStatus)) return value as FulfillmentStatus
   return 'generating'
 }

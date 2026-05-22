@@ -99,6 +99,7 @@ function getStepIndex(rawStatus: string): number {
     case 'done':
     case 'preview':
     case 'partial_failed':
+    case 'rejected':
       return 3
     default:
       return 0
@@ -149,6 +150,8 @@ function getStepHint(rawStatus: string, contentType?: string, isTimeout?: boolea
       return '部分内容生成失败，可点击重新生成'
     case 'failed':
       return '内容生成失败，可点击重新生成'
+    case 'rejected':
+      return '内容已被驳回，请查看驳回原因'
     default:
       return '处理中...'
   }
@@ -692,7 +695,8 @@ export default function OrderContentCreation() {
                           Taro.setClipboardData({ data: v })
                           Taro.showToast({ title: '视频链接已复制', icon: 'none' })
                         }
-                      }}>
+                      }}
+                      >
                         <View className="cc-play-circle">
                           <View className="cc-play-triangle" />
                         </View>
