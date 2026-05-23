@@ -216,21 +216,22 @@ export class ContentGenerationService implements OnModuleInit {
       const db = getMySQLClient()
       const stuckStatuses = ['generating_text', 'generating_images', 'generating_video', 'pending', 'processing']
       const stuckRecords: any[] = []
-      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000)
+      // 用 createdAt 判断而非 updatedAt，因为重试会不断刷新 updatedAt，导致永远无法触发恢复
+      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000)
       for (const status of stuckStatuses) {
         const records = await db.from('content_generation_requests').findMany({ status })
         for (const r of records) {
-          const updatedAt = new Date(r.updatedAt)
-          if (updatedAt < tenMinutesAgo) {
+          const createdAt = new Date(r.createdAt)
+          if (createdAt < thirtyMinutesAgo) {
             stuckRecords.push(r)
           }
         }
       }
       if (stuckRecords.length === 0) return
 
-      this.logger.warn(`发现 ${stuckRecords.length} 条卡住的生成任务，将自动完成`)
+      this.logger.warn(`发现 ${stuckRecords.length} 条卡住的生成任务（创建超过30分钟仍在处理中），将自动完成`)
       for (const record of stuckRecords) {
-        this.logger.warn(`恢复卡住任务: id=${record.id}, status=${record.status}`)
+        this.logger.warn(`恢复卡住任务: id=${record.id}, status=${record.status}, createdAt=${record.createdAt}`)
         await db.update('content_generation_requests', record.id, { status: 'preview' })
         // 清除缓存
         setCache(record.id, null)
@@ -828,6 +829,11 @@ ${input.orderDescription}
         }
       } catch (err: any) {
         this.logger.warn(`文章第${i + 1}张配图生成失败: ${err.message}`)
+        // 403 insufficient_quota 是永久性错误（额度耗尽），继续重试也必然失败，直接中断
+        if (err.message?.includes('insufficient_quota') || err.message?.includes('403') || err.message?.includes('Quota exceeded')) {
+          this.logger.warn(`图片API额度耗尽(insufficient_quota)，停止后续图片生成，已完成${images.length}/${imageCount}张`)
+          break
+        }
       }
     }
 
