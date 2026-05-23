@@ -89,7 +89,7 @@ cleanup_previous_run() {
 # 2. 安装依赖
 # ---------------------------------------------------------
 echo "📦 Installing dependencies..."
-pnpm install
+PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 PLAYWRIGHT_BROWSERS_PATH=0 pnpm install
 echo "✅ Dependencies installed successfully!"
 
 # ---------------------------------------------------------

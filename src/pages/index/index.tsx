@@ -49,7 +49,6 @@ const Index: React.FC = () => {
   const [generatedContents, setGeneratedContents] = useState(0)
   const [growthCampaign, setGrowthCampaign] = useState<any>(null)
   const [trackedCampaignId, setTrackedCampaignId] = useState('')
-  const [hasCancelledLogin, setHasCancelledLogin] = useState(false)
   const { avatarId: currentAvatarId, setAvatarId } = useUserStore(state => state)
 
   const [showOrderModal, setShowOrderModal] = useState(false)
@@ -417,12 +416,8 @@ const Index: React.FC = () => {
       setDismissedOrderIds(newDismissed)
       try {
         Taro.setStorageSync('dismissed_order_ids', JSON.stringify([...newDismissed]))
-<<<<<<< HEAD
       } catch { }
       Taro.navigateTo({ url: `/package-order/pages/order-content-creation/index?orderId=${orderId}` })
-=======
-      } catch {}
->>>>>>> 8af9a9f0e10919b8e6999a2d1138b8ac7c147180
     }
   }
 

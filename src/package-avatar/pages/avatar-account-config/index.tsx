@@ -5,13 +5,8 @@ import Taro, { useLoad, useDidShow, navigateBack, showToast, getSystemInfoSync }
 import { View, Text, ScrollView, Picker, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-<<<<<<< HEAD
 import { Plus, Pencil, Save, Trash2, ArrowLeft, Search, Loader, RefreshCw, ExternalLink } from 'lucide-react-taro'
-import * as Network from '@/network'
-=======
-import { Plus, Pencil, Save, Trash2, ArrowLeft, Search, Loader, RefreshCw } from 'lucide-react-taro'
 import { Network } from '@/network'
->>>>>>> 8af9a9f0e10919b8e6999a2d1138b8ac7c147180
 import './index.css'
 
 // 获取状态栏高度

@@ -467,10 +467,6 @@ export class ContentGenerationController {
   ) {
     try {
       const pool = await getMySQLClient()
-<<<<<<< HEAD
-      let sql = 'SELECT id, order_id, avatar_id, status, content_type, platform, platforms, video_url, publish_feedback, created_at, updated_at, SUBSTRING(content, 1, 500) as content_preview, CASE WHEN images IS NOT NULL AND images != \'\' AND images != \'[]\' THEN JSON_LENGTH(images) ELSE 0 END as image_count FROM content_generation_requests WHERE avatar_id = ?'
-      const params: string[] = [avatarId]
-=======
       const safePage = Number.isFinite(Number(page)) && Number(page) > 0 ? Math.floor(Number(page)) : 1
       const safePageSize = Number.isFinite(Number(pageSize)) && Number(pageSize) > 0
         ? Math.min(Math.floor(Number(pageSize)), 50)
@@ -485,7 +481,6 @@ export class ContentGenerationController {
         WHERE avatar_id = ?
       `
       const params: any[] = [avatarId]
->>>>>>> 8af9a9f0e10919b8e6999a2d1138b8ac7c147180
       if (orderId) {
         sql += ' AND order_id = ?'
         params.push(orderId)

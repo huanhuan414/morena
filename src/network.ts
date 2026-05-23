@@ -2,7 +2,6 @@
 import Taro from '@tarojs/taro'
 
 let isHandlingAuthError = false
-let lastAuthToastAt = 0
 
 const getUserId = () => {
   try {

@@ -493,15 +493,6 @@ export class OrderProcessingService {
     return this.findByRequestId(record.id)
   }
 
-<<<<<<< HEAD
-  async getProcessingByRequestId(requestId: string): Promise<any> {
-    const db = getMySQLClient()
-    const rows = await db.query(
-      'SELECT id,order_id,avatar_id,content_type,platform,status,created_at,updated_at,video_url FROM content_generation_requests WHERE id = ? LIMIT 1',
-      [requestId]
-    ) as any[]
-    return rows?.[0] ? this.normalizeRecord(rows[0]) : null
-=======
   async getProcessingByRequestId(requestId: string, view?: string): Promise<any> {
     const record = await this.findByRequestId(requestId)
     if (!record) return null
@@ -552,7 +543,6 @@ export class OrderProcessingService {
     } catch {
       return
     }
->>>>>>> 8af9a9f0e10919b8e6999a2d1138b8ac7c147180
   }
 
   async createProcessingOrder(data: {

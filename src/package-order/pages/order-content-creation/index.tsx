@@ -784,17 +784,6 @@ export default function OrderContentCreation() {
                 <View className="cc-video-cover-list">
                   {videos.map((v, i) => (
                     <View className="cc-video-cover" key={i}>
-<<<<<<< HEAD
-                      <View className="cc-video-play" onClick={() => {
-                        const isMiniApp = [Taro.ENV_TYPE.WEAPP as string, Taro.ENV_TYPE.TT as string].includes(Taro.getEnv())
-                        if (isMiniApp) {
-                          Taro.previewMedia({ sources: [{ url: v, type: 'video' }] })
-                        } else {
-                          Taro.setClipboardData({ data: v })
-                          Taro.showToast({ title: '视频链接已复制', icon: 'none' })
-                        }
-                      }}
-=======
                       <View
                         className="cc-video-play"
                         onClick={() => {
@@ -806,7 +795,6 @@ export default function OrderContentCreation() {
                             Taro.showToast({ title: '视频链接已复制', icon: 'none' })
                           }
                         }}
->>>>>>> 8af9a9f0e10919b8e6999a2d1138b8ac7c147180
                       >
                         <View className="cc-play-circle">
                           <View className="cc-play-triangle" />

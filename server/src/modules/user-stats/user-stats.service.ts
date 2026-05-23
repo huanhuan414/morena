@@ -65,7 +65,6 @@ export class UserStatsService {
             `SELECT COUNT(*) as cnt FROM content_generation_requests
              WHERE avatar_id IN (${avatarIdList})
                AND status NOT IN ('pending', 'failed', 'cancelled')`
-<<<<<<< HEAD
           ).catch(() => [{ cnt: 0 }]),
           // 完成内容数（用于计算工作时长）
           db.query(
@@ -99,33 +98,6 @@ export class UserStatsService {
             `SELECT avatar_id, COALESCE(SUM(amount), 0) as total FROM earnings WHERE avatar_id IN (${avatarIdList}) AND status IN ('settled', 'completed') GROUP BY avatar_id`
           ).catch(() => []),
         ])
-=======
-          ) as any[]
-          generatedContents = contentResult?.[0]?.cnt || 0
-        } catch (e) {
-          generatedContents = 0
-        }
-      }
-      
-      // 4. 统计累计收益（只从 earnings 表计算，status='settled' 或 'completed'）
-      userResult = await db.queryOne('users', { id: userId }) as any
-      
-      const earningsResult = await db.queryWhere(
-        'earnings',
-        `user_id = '${userId}' AND status IN ('settled', 'completed')`
-      ) as any[]
-      totalEarnings = earningsResult?.reduce(
-        (sum: number, e: any) => sum + Number(e.amount || 0), 0
-      ) || 0
-      
-      // 5. 获取用户邀请码和邀请人数
-      try {
-        const referralResult = await db.query(
-          `SELECT id FROM referrals WHERE referrer_id = ? AND status = 'completed'`,
-          [userId]
-        ) as any[]
-        invitedCount = referralResult?.length || 0
->>>>>>> 8af9a9f0e10919b8e6999a2d1138b8ac7c147180
 
         pendingOrders = Number(pendingResult?.[0]?.cnt || 0)
         generatedContents = Number(contentResult?.[0]?.cnt || 0)
