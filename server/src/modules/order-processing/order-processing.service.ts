@@ -502,6 +502,11 @@ export class OrderProcessingService {
         }
 
         const normalized = this.normalizeRecord(record)
+        // 合并队列信息（来自 content-generation 服务的限流队列）
+        const cachedData = getCache(record.id)
+        if (cachedData?.queueInfo) {
+          normalized.queueInfo = cachedData.queueInfo
+        }
         setCache(record.id, normalized)
         setCache(normalized.order_id, normalized)
         return normalized

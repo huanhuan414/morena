@@ -157,6 +157,19 @@ export class ContentGenerationController {
   }
 
   /**
+   * 获取 API 限流队列状态（供前端展示排队进度）
+   */
+  @Get('queue-status')
+  async getQueueStatus() {
+    const status = this.contentGenerationService.getQueueStatus()
+    return {
+      code: 200,
+      message: 'success',
+      data: status,
+    }
+  }
+
+  /**
    * 获取内容的图片URL列表（轻量接口，不查询content等大字段）
    * 过滤掉 base64 数据，只返回 URL 格式的图片
    */

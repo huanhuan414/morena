@@ -19,6 +19,54 @@ const ARK_API_KEY = '0a6405d5-b7ae-4afa-88e3-c707ae379a47'
 const ARK_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3'
 const ARK_MODEL = 'doubao-seed-2-0-pro-260215'
 
+/**
+ * 第三方 API 请求队列 + 限流器
+ * 控制同时调第三方 API 的并发数，超出排队的请求等待，避免被 429
+ */
+class ApiRateLimiter {
+  private queue: Array<() => void> = []
+  private activeCount = 0
+  private readonly maxConcurrency: number
+  private readonly label: string
+
+  constructor(label: string, maxConcurrency: number) {
+    this.label = label
+    this.maxConcurrency = maxConcurrency
+  }
+
+  /** 获取当前排队位置（0=正在执行，>0=前面还有几个等待） */
+  getQueuePosition(): number {
+    return this.queue.length
+  }
+
+  /** 当前正在执行的请求数 */
+  getActiveCount(): number {
+    return this.activeCount
+  }
+
+  /** 通过限流器执行一个异步操作 */
+  async run<T>(fn: () => Promise<T>): Promise<T> {
+    // 如果当前并发已满，排队等待
+    if (this.activeCount >= this.maxConcurrency) {
+      await new Promise<void>(resolve => {
+        this.queue.push(resolve)
+      })
+    }
+
+    this.activeCount++
+    try {
+      return await fn()
+    } finally {
+      this.activeCount--
+      // 释放一个排队中的请求
+      if (this.queue.length > 0) {
+        const next = this.queue.shift()!
+        next()
+      }
+    }
+  }
+}
+
 @Injectable()
 export class ContentGenerationService implements OnModuleInit {
   private readonly logger = new Logger(ContentGenerationService.name)
@@ -27,6 +75,10 @@ export class ContentGenerationService implements OnModuleInit {
   // CDN上传重试配置
   private readonly CDN_UPLOAD_RETRIES = 3
   private readonly CDN_UPLOAD_RETRY_DELAY_MS = 2000
+
+  // 第三方 API 限流器：控制并发调用数，避免被 429
+  private readonly textLimiter = new ApiRateLimiter('豆包文案API', 5)
+  private readonly imageLimiter = new ApiRateLimiter('图片生成API', 3)
 
   // 图片生成：直接 HTTP 调用 api.aaigc.top（coze SDK ImageGenerationClient 线上报 Invalid URL）
   private readonly imageGenBaseUrl = process.env.IMAGE_GEN_API_BASE_URL || 'https://api.aaigc.top'
@@ -102,37 +154,40 @@ export class ContentGenerationService implements OnModuleInit {
 
   /**
    * 统一 LLM 调用方法：使用 Chat Completions API（比 Responses API 更快）
+   * 通过限流器控制并发，避免豆包 API 429
    */
   private async invokeLlm(messages: { role: string; content: string }[]): Promise<string> {
-    this.logger.log(`[ARK] 调用 LLM (Chat Completions), messages=${messages.length}条`)
+    return this.textLimiter.run(async () => {
+      this.logger.log(`[ARK] 调用 LLM (Chat Completions), messages=${messages.length}条, 文案队列: 等待${this.textLimiter.getQueuePosition()}, 执行中${this.textLimiter.getActiveCount()}`)
 
-    const response = await fetch(`${ARK_BASE_URL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${ARK_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: ARK_MODEL,
-        messages,
-      }),
+      const response = await fetch(`${ARK_BASE_URL}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${ARK_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: ARK_MODEL,
+          messages,
+        }),
+      })
+
+      if (!response.ok) {
+        const errText = await response.text()
+        this.logger.error(`[ARK] API 请求失败: status=${response.status}, body=${errText.slice(0, 200)}`)
+        throw new Error(`ARK API 请求失败: ${response.status}`)
+      }
+
+      const result = await response.json() as any
+      const content = result?.choices?.[0]?.message?.content
+
+      if (!content) {
+        throw new Error('模型返回内容为空')
+      }
+
+      this.logger.log(`[ARK] LLM 调用成功, 返回内容长度: ${content.length}`)
+      return content
     })
-
-    if (!response.ok) {
-      const errText = await response.text()
-      this.logger.error(`[ARK] API 请求失败: status=${response.status}, body=${errText.slice(0, 200)}`)
-      throw new Error(`ARK API 请求失败: ${response.status}`)
-    }
-
-    const result = await response.json() as any
-    const content = result?.choices?.[0]?.message?.content
-
-    if (!content) {
-      throw new Error('模型返回内容为空')
-    }
-
-    this.logger.log(`[ARK] LLM 调用成功, 返回内容长度: ${content.length}`)
-    return content
   }
 
   /**
@@ -523,6 +578,18 @@ export class ContentGenerationService implements OnModuleInit {
       await this.syncOrderStatus(input.orderId)
     } catch (e: any) {
       this.logger.warn(`同步订单状态失败: ${e.message}`)
+    }
+  }
+
+  /**
+   * 获取当前 API 限流队列状态（供前端轮询展示排队进度）
+   */
+  getQueueStatus(): { textQueue: number; textActive: number; imageQueue: number; imageActive: number } {
+    return {
+      textQueue: this.textLimiter.getQueuePosition(),
+      textActive: this.textLimiter.getActiveCount(),
+      imageQueue: this.imageLimiter.getQueuePosition(),
+      imageActive: this.imageLimiter.getActiveCount(),
     }
   }
 
@@ -1367,6 +1434,15 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
     orderId: string,
     status: string
   ): Promise<void> {
+    // 获取当前队列状态，让前端知道排队情况
+    const queueStatus = this.getQueueStatus()
+    const queueInfo: Record<string, string> = {}
+    if (status === 'generating_text' && queueStatus.textQueue > 0) {
+      queueInfo.queueHint = `文案生成排队中，前方${queueStatus.textQueue}个请求等待`
+    } else if (status === 'generating_images' && queueStatus.imageQueue > 0) {
+      queueInfo.queueHint = `图片生成排队中，前方${queueStatus.imageQueue}个请求等待`
+    }
+
     // 1. 更新缓存
     const cacheData = getCache(requestId) || getCache(orderId) || {}
     const updatedCache = {
@@ -1374,6 +1450,7 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
       requestId,
       order_id: orderId,
       status,
+      queueInfo,
       created_at: cacheData.created_at || new Date().toISOString()
     }
     setCache(requestId, updatedCache)
@@ -1544,134 +1621,139 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
    * 通过 HTTP 直接调用 api.aaigc.top 图片生成（替代 coze SDK ImageGenerationClient）
    */
   private async generateImageViaHttp(prompt: string, size = '1024x1536'): Promise<string> {
-    const apiUrl = `${this.imageGenBaseUrl}/v1/images/generations`
-    this.logger.log(`[ImageHTTP] calling: ${apiUrl}, model: ${this.imageGenModel}, size: ${size}`)
+    return this.imageLimiter.run(async () => {
+      const apiUrl = `${this.imageGenBaseUrl}/v1/images/generations`
+      this.logger.log(`[ImageHTTP] calling: ${apiUrl}, model: ${this.imageGenModel}, size: ${size}, 图片队列: 等待${this.imageLimiter.getQueuePosition()}, 执行中${this.imageLimiter.getActiveCount()}`)
 
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.imageGenApiKey}`,
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify({
-        model: this.imageGenModel,
-        prompt,
-        n: 1,
-        size,
-      }),
-    })
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.imageGenApiKey}`,
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          model: this.imageGenModel,
+          prompt,
+          n: 1,
+          size,
+        }),
+      })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      this.logger.error(`[ImageHTTP] API error: ${response.status} ${errorText.slice(0, 200)}`)
-      throw new Error(`图片生成API错误: ${response.status}`)
-    }
+      if (!response.ok) {
+        const errorText = await response.text()
+        this.logger.error(`[ImageHTTP] API error: ${response.status} ${errorText.slice(0, 200)}`)
+        throw new Error(`图片生成API错误: ${response.status}`)
+      }
 
-    const result = await response.json() as any
-    this.logger.log(`[ImageHTTP] response received`)
+      const result = await response.json() as any
+      this.logger.log(`[ImageHTTP] response received`)
 
-    let imageUrl = ''
-    if (result.data && Array.isArray(result.data) && result.data.length > 0) {
-      const firstItem = result.data[0]
-      if (firstItem.url) {
-        // 下载临时URL并转存到veImageX CDN，避免第三方链接过期
-        // ⚠️ 必须上传CDN成功，否则跳过此图（上层有try-catch处理）
-        try {
-          this.logger.log(`[ImageHTTP] 下载临时图片并转存veImageX CDN: ${firstItem.url.slice(0, 80)}...`)
-          const imgResponse = await fetch(firstItem.url)
-          if (imgResponse.ok) {
-            const imgBuffer = Buffer.from(await imgResponse.arrayBuffer())
+      let imageUrl = ''
+      if (result.data && Array.isArray(result.data) && result.data.length > 0) {
+        const firstItem = result.data[0]
+        if (firstItem.url) {
+          // 下载临时URL并转存到veImageX CDN，避免第三方链接过期
+          // ⚠️ 必须上传CDN成功，否则跳过此图（上层有try-catch处理）
+          try {
+            this.logger.log(`[ImageHTTP] 下载临时图片并转存veImageX CDN: ${firstItem.url.slice(0, 80)}...`)
+            const imgResponse = await fetch(firstItem.url)
+            if (imgResponse.ok) {
+              const imgBuffer = Buffer.from(await imgResponse.arrayBuffer())
+              const fileName = `ai-generated_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.png`
+              
+              // ✅ 带重试的CDN上传，失败则抛出错误（不使用原始URL）
+              const uploadResult = await this.withRetry(
+                () => this.volcengineService.uploadImage({ buffer: imgBuffer, originalname: fileName, mimetype: 'image/png' } as Express.Multer.File),
+                this.CDN_UPLOAD_RETRIES,
+                this.CDN_UPLOAD_RETRY_DELAY_MS,
+                'CDN图片上传'
+              )
+              
+              imageUrl = uploadResult.url
+              this.logger.log(`[ImageHTTP] 图片转存veImageX CDN成功: ${imageUrl.slice(0, 80)}...`)
+            } else {
+              this.logger.error(`[ImageHTTP] 下载临时图片失败: ${imgResponse.status}，跳过此图`)
+              throw new Error(`下载临时图片失败: ${imgResponse.status}`)
+            }
+          } catch (downloadErr: any) {
+            this.logger.error(`[ImageHTTP] 图片转存veImageX CDN失败: ${downloadErr.message}，跳过此图`)
+            throw new Error(`图片转存CDN失败: ${downloadErr.message}`)
+          }
+        } else if (firstItem.b64_json) {
+          // base64 图片上传到 veImageX CDN
+          this.logger.log('[ImageHTTP] API返回base64，上传到veImageX CDN...')
+          try {
+            const base64Data = firstItem.b64_json
+            const buffer = Buffer.from(base64Data, 'base64')
             const fileName = `ai-generated_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.png`
             
-            // ✅ 带重试的CDN上传，失败则抛出错误（不使用原始URL）
+            // ✅ 带重试的CDN上传，失败则抛出错误
             const uploadResult = await this.withRetry(
-              () => this.volcengineService.uploadImage({ buffer: imgBuffer, originalname: fileName, mimetype: 'image/png' } as Express.Multer.File),
+              () => this.volcengineService.uploadImage({ buffer, originalname: fileName, mimetype: 'image/png' } as Express.Multer.File),
               this.CDN_UPLOAD_RETRIES,
               this.CDN_UPLOAD_RETRY_DELAY_MS,
-              'CDN图片上传'
+              'CDN base64图片上传'
             )
             
             imageUrl = uploadResult.url
-            this.logger.log(`[ImageHTTP] 图片转存veImageX CDN成功: ${imageUrl.slice(0, 80)}...`)
-          } else {
-            this.logger.error(`[ImageHTTP] 下载临时图片失败: ${imgResponse.status}，跳过此图`)
-            throw new Error(`下载临时图片失败: ${imgResponse.status}`)
+            this.logger.log(`[ImageHTTP] base64上传veImageX成功: ${imageUrl.slice(0, 80)}...`)
+          } catch (uploadErr: any) {
+            this.logger.error(`[ImageHTTP] base64上传veImageX失败: ${uploadErr.message}，跳过此图`)
+            throw new Error(`base64图片上传CDN失败: ${uploadErr.message}`)
           }
-        } catch (downloadErr: any) {
-          this.logger.error(`[ImageHTTP] 图片转存veImageX CDN失败: ${downloadErr.message}，跳过此图`)
-          throw new Error(`图片转存CDN失败: ${downloadErr.message}`)
-        }
-      } else if (firstItem.b64_json) {
-        // base64 图片上传到 veImageX CDN
-        this.logger.log('[ImageHTTP] API返回base64，上传到veImageX CDN...')
-        try {
-          const base64Data = firstItem.b64_json
-          const buffer = Buffer.from(base64Data, 'base64')
-          const fileName = `ai-generated_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.png`
-          
-          // ✅ 带重试的CDN上传，失败则抛出错误
-          const uploadResult = await this.withRetry(
-            () => this.volcengineService.uploadImage({ buffer, originalname: fileName, mimetype: 'image/png' } as Express.Multer.File),
-            this.CDN_UPLOAD_RETRIES,
-            this.CDN_UPLOAD_RETRY_DELAY_MS,
-            'CDN base64图片上传'
-          )
-          
-          imageUrl = uploadResult.url
-          this.logger.log(`[ImageHTTP] base64上传veImageX成功: ${imageUrl.slice(0, 80)}...`)
-        } catch (uploadErr: any) {
-          this.logger.error(`[ImageHTTP] base64上传veImageX失败: ${uploadErr.message}，跳过此图`)
-          throw new Error(`base64图片上传CDN失败: ${uploadErr.message}`)
         }
       }
-    }
 
-    if (!imageUrl) {
-      throw new Error('图片生成返回数据为空')
-    }
+      if (!imageUrl) {
+        throw new Error('图片生成返回数据为空')
+      }
 
-    this.logger.log(`[ImageHTTP] 图片生成成功, url: ${imageUrl.slice(0, 80)}...`)
-    return imageUrl
+      this.logger.log(`[ImageHTTP] 图片生成成功, url: ${imageUrl.slice(0, 80)}...`)
+      return imageUrl
+    })
   }
 
   /**
    * 创建 Seedance 异步视频生成任务，返回 taskId
+   * 通过限流器控制并发，避免火山引擎 API 429
    */
   private async createSeedanceTask(prompt: string): Promise<string> {
-    const createUrl = `${this.seedanceBaseUrl}/api/v3/contents/generations/tasks`
-    this.logger.log(`[Seedance] creating video task, prompt: ${prompt.slice(0, 80)}...`)
+    return this.textLimiter.run(async () => {
+      const createUrl = `${this.seedanceBaseUrl}/api/v3/contents/generations/tasks`
+      this.logger.log(`[Seedance] creating video task, prompt: ${prompt.slice(0, 80)}...`)
 
-    const createResponse = await fetch(createUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.seedanceApiKey}`,
-      },
-      body: JSON.stringify({
-        model: this.seedanceModel,
-        content: [
-          { type: 'text', text: prompt },
-        ],
-        duration: 15,
-      }),
+      const createResponse = await fetch(createUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.seedanceApiKey}`,
+        },
+        body: JSON.stringify({
+          model: this.seedanceModel,
+          content: [
+            { type: 'text', text: prompt },
+          ],
+          duration: 15,
+        }),
+      })
+
+      if (!createResponse.ok) {
+        const errorText = await createResponse.text()
+        this.logger.error(`[Seedance] create task error: ${createResponse.status} ${errorText.slice(0, 200)}`)
+        throw new Error(`Seedance创建任务失败: ${createResponse.status}`)
+      }
+
+      const createResult = await createResponse.json() as any
+      const taskId = createResult?.id
+      if (!taskId) {
+        this.logger.error(`[Seedance] no task ID in response: ${JSON.stringify(createResult).slice(0, 200)}`)
+        throw new Error('Seedance返回无任务ID')
+      }
+
+      this.logger.log(`[Seedance] task created: ${taskId}, status: ${createResult.status}`)
+      return taskId
     })
-
-    if (!createResponse.ok) {
-      const errorText = await createResponse.text()
-      this.logger.error(`[Seedance] create task error: ${createResponse.status} ${errorText.slice(0, 200)}`)
-      throw new Error(`Seedance创建任务失败: ${createResponse.status}`)
-    }
-
-    const createResult = await createResponse.json() as any
-    const taskId = createResult?.id
-    if (!taskId) {
-      this.logger.error(`[Seedance] no task ID in response: ${JSON.stringify(createResult).slice(0, 200)}`)
-      throw new Error('Seedance返回无任务ID')
-    }
-
-    this.logger.log(`[Seedance] task created: ${taskId}, status: ${createResult.status}`)
-    return taskId
   }
 
   /**

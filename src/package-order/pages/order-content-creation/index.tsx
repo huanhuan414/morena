@@ -42,6 +42,10 @@ interface ProcessingData {
   orderTitle: string
   contentType: string
   generatedContent: GeneratedContent
+  queueInfo?: {
+    queueHint?: string
+    [key: string]: any
+  }
   publishFeedback?: {
     rejectReason?: string
     [key: string]: any
@@ -106,6 +110,7 @@ function normalizeProcessingData(raw: any): ProcessingData | null {
       platforms: parseStringArray(generatedContent.platforms),
     },
     publishFeedback: normalizePublishFeedback(raw.publishFeedback),
+    queueInfo: raw.queueInfo || raw.queue_info || undefined,
   }
 }
 
@@ -185,8 +190,10 @@ function getStepStates(currentStep: number, totalSteps?: number): StepState[] {
 }
 
 // 获取当前步骤描述文案
-function getStepHint(rawStatus: string, contentType?: string, isTimeout?: boolean): string {
+function getStepHint(rawStatus: string, contentType?: string, isTimeout?: boolean, queueHint?: string): string {
   if (isTimeout) return '生成时间较长，可稍后在生成内容页查看结果'
+  // 如果有队列提示，优先展示排队信息
+  if (queueHint) return queueHint
   const isVideo = contentType === 'video' || contentType === 'video_text'
   const isTextOnly = contentType === 'text'
   switch (rawStatus) {
@@ -550,7 +557,7 @@ export default function OrderContentCreation() {
           {isGenerating && (
             <View className="cc-step-hint">
               <Sparkles size={14} color="#8B5CF6" />
-              <Text className="cc-step-hint-text">{getStepHint(rawStatus, contentType, isTimeout)}</Text>
+              <Text className="cc-step-hint-text">{getStepHint(rawStatus, contentType, isTimeout, processingData?.queueInfo?.queueHint)}</Text>
             </View>
           )}
 
