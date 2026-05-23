@@ -254,7 +254,7 @@ export function calculateMatchScore(params: {
  * skills JSON 字段格式: { content_writing: true, video_gen: true, ... }
  */
 export const AVATAR_SKILL_MAP: Record<string, { label: string; icon: string; color: string }> = {
-  content_writing: { label: '图文爆款生成', icon: 'PenTool', color: '#8B5CF6' },
+  content_writing: { label: '微信公众号爆款图文生成', icon: 'PenTool', color: '#8B5CF6' },
   video_gen: { label: '视频生成', icon: 'Film', color: '#EC4899' },
   image_gen: { label: '图片生成', icon: 'Camera', color: '#06B6D4' },
   palm_reading: { label: '看手相', icon: 'Hand', color: '#10B981' },

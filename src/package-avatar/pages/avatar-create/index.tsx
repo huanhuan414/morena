@@ -28,7 +28,7 @@ import './index.css'
 
 // 分身技能列表（来自技能广场）
 const AVATAR_SKILLS = [
-  { key: 'content_writing', name: '图文爆款生成', desc: '小红书/抖音爆款图文', icon: PenTool, color: '#8B5CF6', earning: '可赚2-5元/条' },
+  { key: 'content_writing', name: '微信公众号爆款图文生成', desc: '微信公众号爆款图文', icon: PenTool, color: '#8B5CF6', earning: '可赚2-5元/条' },
   { key: 'image_gen', name: '图片生成', desc: 'AI绘画/海报设计', icon: CameraIcon, color: '#06B6D4', earning: '可赚2-6元/张' },
   { key: 'video_gen', name: '视频生成', desc: '短视频/分镜脚本', icon: Film, color: '#EC4899', earning: '可赚3-8元/条' },
   { key: 'palm_reading', name: '看手相', desc: '手相面相趣味解读', icon: Hand, color: '#10B981', earning: '可赚5-15元/次' },

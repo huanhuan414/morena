@@ -27,15 +27,15 @@ interface EarningsStats {
 
 // 精心设计的示例数据 — 专业感+诱惑力，不用random
 const SAMPLE_RECORDS: EarningsRecord[] = [
-  { avatarId: 'sample-1', avatarName: '小红书种草王', totalEarnings: 12860, completedOrders: 86, rank: 1, platform: '小红书', skill: '图文爆款生成', growth: '+38%', isSample: true },
+  { avatarId: 'sample-1', avatarName: '小红书种草王', totalEarnings: 12860, completedOrders: 86, rank: 1, platform: '小红书', skill: '微信公众号爆款图文生成', growth: '+38%', isSample: true },
   { avatarId: 'sample-2', avatarName: '短视频快枪手', totalEarnings: 9740, completedOrders: 63, rank: 2, platform: '抖音', skill: '视频生成', growth: '+25%', isSample: true },
   { avatarId: 'sample-3', avatarName: '美妆测评官', totalEarnings: 8520, completedOrders: 54, rank: 3, platform: '小红书', skill: '图片生成', growth: '+22%', isSample: true },
   { avatarId: 'sample-4', avatarName: '潮流穿搭师', totalEarnings: 7350, completedOrders: 49, rank: 4, platform: '抖音', skill: '衣品改造', growth: '+19%', isSample: true },
   { avatarId: 'sample-5', avatarName: '手相解读师', totalEarnings: 6280, completedOrders: 89, rank: 5, platform: '微信', skill: '看手相', growth: '+31%', isSample: true },
-  { avatarId: 'sample-6', avatarName: '好物推荐官', totalEarnings: 5430, completedOrders: 37, rank: 6, platform: '微博', skill: '图文爆款生成', growth: '+15%', isSample: true },
+  { avatarId: 'sample-6', avatarName: '好物推荐官', totalEarnings: 5430, completedOrders: 37, rank: 6, platform: '微博', skill: '微信公众号爆款图文生成', growth: '+15%', isSample: true },
   { avatarId: 'sample-7', avatarName: '美食探店主', totalEarnings: 4680, completedOrders: 31, rank: 7, platform: '小红书', skill: '图片生成', growth: '+12%', isSample: true },
   { avatarId: 'sample-8', avatarName: '旅行记录者', totalEarnings: 3950, completedOrders: 27, rank: 8, platform: 'B站', skill: '视频生成', growth: '+18%', isSample: true },
-  { avatarId: 'sample-9', avatarName: '数码测评家', totalEarnings: 3210, completedOrders: 22, rank: 9, platform: 'B站', skill: '图文爆款生成', growth: '+10%', isSample: true },
+  { avatarId: 'sample-9', avatarName: '数码测评家', totalEarnings: 3210, completedOrders: 22, rank: 9, platform: 'B站', skill: '微信公众号爆款图文生成', growth: '+10%', isSample: true },
   { avatarId: 'sample-10', avatarName: '生活分享家', totalEarnings: 2540, completedOrders: 18, rank: 10, platform: '抖音', skill: '衣品改造', growth: '+8%', isSample: true },
 ]
 
@@ -48,7 +48,7 @@ const SAMPLE_STATS: EarningsStats = {
 
 // 技能对应的渐变色
 const SKILL_COLORS: Record<string, { bg: string; text: string }> = {
-  '图文爆款生成': { bg: 'linear-gradient(135deg, #8B5CF6, #6366F1)', text: '#8B5CF6' },
+  '微信公众号爆款图文生成': { bg: 'linear-gradient(135deg, #8B5CF6, #6366F1)', text: '#8B5CF6' },
   '图片生成': { bg: 'linear-gradient(135deg, #EC4899, #F43F5E)', text: '#EC4899' },
   '视频生成': { bg: 'linear-gradient(135deg, #3B82F6, #2563EB)', text: '#3B82F6' },
   '看手相': { bg: 'linear-gradient(135deg, #F59E0B, #D97706)', text: '#F59E0B' },
