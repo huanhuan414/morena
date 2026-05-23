@@ -92,7 +92,7 @@ export class ContentGenerationController {
       const avatarId = record.avatarId || record.avatar_id
 
       await db.query(
-        'UPDATE content_generation_requests SET status = ?, updated_at = NOW() WHERE id = ?',
+        'UPDATE content_generation_requests SET status = ?, error = NULL, updated_at = NOW(), created_at = NOW() WHERE id = ?',
         ['processing', requestId]
       )
 

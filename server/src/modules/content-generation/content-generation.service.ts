@@ -209,30 +209,50 @@ export class ContentGenerationService implements OnModuleInit {
   }
 
   /**
-   * 恢复卡住的生成任务（状态超过10分钟未更新则标记为preview）
+   * 恢复卡住的生成任务（创建超过30分钟仍在处理中的请求）
+   * 智能判断：有文案无图片→partial_failed，无任何内容→failed，有完整内容→preview
    */
   private async recoverStuckGenerations() {
     try {
-      const db = getMySQLClient()
+      const pool = getPool()
       const stuckStatuses = ['generating_text', 'generating_images', 'generating_video', 'pending', 'processing']
-      const stuckRecords: any[] = []
-      // 用 createdAt 判断而非 updatedAt，因为重试会不断刷新 updatedAt，导致永远无法触发恢复
-      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000)
-      for (const status of stuckStatuses) {
-        const records = await db.from('content_generation_requests').findMany({ status })
-        for (const r of records) {
-          const createdAt = new Date(r.createdAt)
-          if (createdAt < thirtyMinutesAgo) {
-            stuckRecords.push(r)
-          }
-        }
-      }
+      // 用 SQL 的 DATE_SUB(NOW(), INTERVAL 30 MINUTE) 做时间比较
+      // 避免因 Node.js toISOString() 写入 UTC 时间而数据库 NOW() 返回本地时间导致时区偏差
+      const [rows]: any = await pool.execute(
+        `SELECT id, status, content, images, video_url FROM content_generation_requests WHERE status IN (${stuckStatuses.map(() => '?').join(',')}) AND created_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)`,
+        stuckStatuses
+      )
+      const stuckRecords: any[] = rows
       if (stuckRecords.length === 0) return
 
-      this.logger.warn(`发现 ${stuckRecords.length} 条卡住的生成任务（创建超过30分钟仍在处理中），将自动完成`)
+      this.logger.warn(`发现 ${stuckRecords.length} 条卡住的生成任务（创建超过30分钟仍在处理中），将智能恢复`)
+      const db = getMySQLClient()
       for (const record of stuckRecords) {
-        this.logger.warn(`恢复卡住任务: id=${record.id}, status=${record.status}, createdAt=${record.createdAt}`)
-        await db.update('content_generation_requests', record.id, { status: 'preview' })
+        // 智能判断恢复状态：检查是否有已生成的内容
+        const hasContent = record.content && record.content.trim().length > 0
+        let images: string[] = []
+        try {
+          images = record.images ? JSON.parse(record.images) : []
+        } catch { images = [] }
+        const hasImages = images.length > 0
+        const hasVideo = record.video_url && record.video_url.trim().length > 0
+
+        let recoverStatus: string
+        if (hasContent && (hasImages || hasVideo)) {
+          // 有文案且有图片或视频 → 可以预览
+          recoverStatus = 'preview'
+        } else if (hasContent) {
+          // 有文案但没图片没视频 → 部分失败
+          recoverStatus = 'partial_failed'
+          this.logger.warn(`恢复卡住任务(部分失败): id=${record.id}, 有文案但无图片/视频`)
+        } else {
+          // 什么都没有 → 完全失败
+          recoverStatus = 'failed'
+          this.logger.warn(`恢复卡住任务(完全失败): id=${record.id}, 无任何内容`)
+        }
+
+        this.logger.warn(`恢复卡住任务: id=${record.id}, status=${record.status}→${recoverStatus}, hasContent=${hasContent}, hasImages=${hasImages}, hasVideo=${hasVideo}`)
+        await db.update('content_generation_requests', record.id, { status: recoverStatus })
         // 清除缓存
         setCache(record.id, null)
       }
@@ -297,7 +317,7 @@ export class ContentGenerationService implements OnModuleInit {
             content: '',
             images: null,
             video_url: null,
-            created_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+            // created_at 和 updated_at 由数据库 DEFAULT CURRENT_TIMESTAMP 自动填充
           })
           this.logger.log(`创建生成记录: ${requestId}, 状态: processing`)
         } catch (dbError: any) {
@@ -331,7 +351,7 @@ export class ContentGenerationService implements OnModuleInit {
         primarySkill,
       }).catch(err => {
         this.logger.error(`后台生成失败: ${err.message}`, err.stack)
-        this.updateStatus(requestId, input.orderId, 'failed', null)
+        this.updateStatus(requestId, input.orderId, 'failed', null, err.message)
       })
     }
 
@@ -564,13 +584,17 @@ export class ContentGenerationService implements OnModuleInit {
       finalStatus = 'preview'
     }
 
+    const statusErrorMessage = failedParts.length > 0
+      ? `生成失败: ${failedParts.join(', ')}`
+      : (finalStatus === 'failed' ? '内容生成失败' : undefined)
+
     await this.updateStatus(requestId, input.orderId, finalStatus, {
       content: textContent,
       images,
       videos,
       platforms: [platform],
       failedParts,
-    })
+    }, statusErrorMessage)
 
     this.logger.log(`内容生成结束: requestId=${requestId}, status=${finalStatus}, failedParts=[${failedParts.join(',')}]`)
 
@@ -1092,12 +1116,13 @@ ${input.orderDescription}
       }
     }
 
+    // 如果所有图片都生成失败，抛出异常而非返回空数组
+    if (images.length === 0 && imagePrompts.length > 0) {
+      throw new Error(`所有${imagePrompts.length}张图片均生成失败`)
+    }
+
     return images
   }
-
-  /**
-   * 构建图片提示词 — 增强版：融合技能图片策略
-   */
   private async buildImagePrompts(platform: string, input: any, textContent: string, quantity: number): Promise<string[]> {
     const title = input.orderTitle || '产品'
     const desc = input.orderDescription || ''
@@ -1516,7 +1541,8 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
     requestId: string,
     orderId: string,
     status: string,
-    generatedContent: any
+    generatedContent: any,
+    errorMessage?: string
   ): Promise<void> {
     const cacheData = {
       requestId,
@@ -1532,7 +1558,7 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
       const db = getMySQLClient()
       if ((status === 'preview' || status === 'completed') && generatedContent) {
         await db.query(
-          'UPDATE content_generation_requests SET status = ?, content = ?, images = ?, video_url = ? WHERE id = ?',
+          'UPDATE content_generation_requests SET status = ?, content = ?, images = ?, video_url = ?, error = NULL WHERE id = ?',
           [
             status,
             generatedContent.content || '',
@@ -1542,12 +1568,18 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
           ]
         )
         this.logger.log(`预览状态已写入数据库: requestId=${requestId}`)
-      } else if (status === 'failed') {
+      } else if (status === 'failed' || status === 'partial_failed') {
         await db.query(
-          'UPDATE content_generation_requests SET status = ? WHERE id = ?',
-          [status, requestId]
+          'UPDATE content_generation_requests SET status = ?, error = ?, content = COALESCE(content, ?), images = COALESCE(images, ?) WHERE id = ?',
+          [
+            status,
+            errorMessage || (status === 'partial_failed' ? '部分内容生成失败' : '内容生成失败'),
+            generatedContent?.content || null,
+            generatedContent?.images?.length > 0 ? JSON.stringify(generatedContent.images) : null,
+            requestId
+          ]
         )
-        this.logger.log(`失败状态已写入数据库: requestId=${requestId}`)
+        this.logger.log(`${status === 'partial_failed' ? '部分失败' : '失败'}状态已写入数据库: requestId=${requestId}`)
       }
     } catch (err: any) {
       this.logger.warn(`更新最终状态失败: ${err.message}`)
