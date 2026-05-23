@@ -3,7 +3,7 @@ import Taro, { useRouter, navigateBack, showToast, useUnload } from '@tarojs/tar
 import { useState, useEffect, useRef } from 'react'
 import { Mic, MicOff, PhoneOff, Send, Volume2, Loader, ArrowLeft } from 'lucide-react-taro'
 import { Input } from '@/components/ui/input'
-import * as Network from '@/network'
+import { Network } from '@/network'
 import './index.css'
 
 interface Message {

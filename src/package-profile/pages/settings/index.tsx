@@ -1,6 +1,6 @@
 import Taro, { navigateBack, navigateTo, showModal, showToast } from '@tarojs/taro'
 import { View, Text, ScrollView } from '@tarojs/components'
-import * as Network from '@/network'
+import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
 import {
   ArrowLeft, Bell, Shield, Lock, Globe, CircleQuestionMark,

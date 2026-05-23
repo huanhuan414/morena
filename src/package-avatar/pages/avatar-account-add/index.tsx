@@ -6,7 +6,7 @@ import { View, Text, ScrollView, Picker, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ArrowLeft, Search, Loader, Save } from 'lucide-react-taro'
-import * as Network from '@/network'
+import { Network } from '@/network'
 import './index.css'
 
 const PLATFORMS = [

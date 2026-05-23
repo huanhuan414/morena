@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { View, Text, Image as TaroImage, ScrollView } from '@tarojs/components'
-import Taro, { useRouter } from '@tarojs/taro'
+import Taro, { useRouter, useDidHide, useDidShow } from '@tarojs/taro'
 import { Network } from '@/network'
+import { subscribeManagedPolling } from '@/utils/polling'
 import { ArrowLeft, FileText, Image as ImageIcon, Video as VideoIcon, Sparkles, CircleCheck, Clock, Zap, Film, Loader, RefreshCw, CircleAlert } from 'lucide-react-taro'
 import { Button } from '@/components/ui/button'
 import { getStatusBarHeight } from '@/utils/safe-area'
@@ -34,13 +35,78 @@ interface GeneratedContent {
 interface ProcessingData {
   status: string
   rawStatus: string
-  requestId?: string
-  orderId?: string
-  avatarId?: string
-  avatarName?: string
-  orderTitle?: string
-  contentType?: string
-  generatedContent?: GeneratedContent
+  requestId: string
+  orderId: string
+  avatarId: string
+  avatarName: string
+  orderTitle: string
+  contentType: string
+  generatedContent: GeneratedContent
+  publishFeedback?: {
+    rejectReason?: string
+    [key: string]: any
+  }
+}
+
+function parseStringArray(val: any): string[] {
+  if (Array.isArray(val)) return val.filter((item): item is string => typeof item === 'string' && item.length > 0)
+  if (typeof val === 'string') {
+    try {
+      const parsed = JSON.parse(val)
+      return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string' && item.length > 0) : (val ? [val] : [])
+    } catch {
+      return val ? [val] : []
+    }
+  }
+  return []
+}
+
+function normalizeOrderInfo(raw: any): OrderInfo | null {
+  if (!raw || typeof raw !== 'object') return null
+  return {
+    id: raw.id || '',
+    title: raw.title || '',
+    description: raw.description || '',
+    platforms: parseStringArray(raw.platforms),
+    platform: raw.platform || '',
+    budget: String(raw.budget || ''),
+    expectedQuantity: Number(raw.expectedQuantity || raw.expected_quantity || 0),
+    quantityPerAvatar: Number(raw.quantityPerAvatar || raw.quantity_per_avatar || 1),
+    targetAudience: raw.targetAudience || raw.target_audience || '',
+    status: raw.status || '',
+    orderType: raw.orderType || raw.order_type || '',
+    contentType: raw.contentType || raw.content_type || 'image_text',
+  }
+}
+
+function normalizePublishFeedback(raw: any): ProcessingData['publishFeedback'] {
+  if (!raw || typeof raw !== 'object') return {}
+  return {
+    ...raw,
+    rejectReason: raw.rejectReason || raw.reject_reason || '',
+  }
+}
+
+function normalizeProcessingData(raw: any): ProcessingData | null {
+  if (!raw || typeof raw !== 'object') return null
+  const generatedContent = raw.generatedContent || {}
+  return {
+    status: raw.status || '',
+    rawStatus: raw.rawStatus || raw.status || 'pending',
+    requestId: raw.requestId || '',
+    orderId: raw.orderId || raw.order_id || '',
+    avatarId: raw.avatarId || raw.avatar_id || '',
+    avatarName: raw.avatarName || '',
+    orderTitle: raw.orderTitle || '',
+    contentType: raw.contentType || raw.content_type || 'image_text',
+    generatedContent: {
+      content: generatedContent.content || '',
+      images: parseStringArray(generatedContent.images),
+      videos: parseStringArray(generatedContent.videos || generatedContent.videoUrls || generatedContent.video_urls),
+      platforms: parseStringArray(generatedContent.platforms),
+    },
+    publishFeedback: normalizePublishFeedback(raw.publishFeedback),
+  }
 }
 
 // 步骤定义
@@ -164,14 +230,28 @@ export default function OrderContentCreation() {
   const [loading, setLoading] = useState(true)
   const [elapsed, setElapsed] = useState(0) // 已用秒数
   const timerRef = useRef<NodeJS.Timeout | null>(null)
-  const pollRef = useRef<NodeJS.Timeout | null>(null)
   const pollCountRef = useRef(0) // 轮询计数
   const [isTimeout, setIsTimeout] = useState(false) // 轮询超时
   const startTimeRef = useRef<number>(Date.now())
+  const retryInFlightRef = useRef<Record<string, true>>({})
+  const fullFetchedRef = useRef(false)
+  const pollCtlRef = useRef<{
+    pause: () => void
+    resume: () => void
+    unsubscribe: () => void
+    cancel: () => void
+  } | null>(null)
 
   const orderId = router.params.orderId || ''
   const requestId = router.params.requestId || ''
   const queryId = requestId || orderId
+
+  useDidHide(() => {
+    pollCtlRef.current?.pause()
+  })
+  useDidShow(() => {
+    pollCtlRef.current?.resume()
+  })
 
   // 计时器
   useEffect(() => {
@@ -196,47 +276,59 @@ export default function OrderContentCreation() {
   useEffect(() => {
     if (!queryId) return
 
-    const fetchStatus = async () => {
-      try {
+    const ctl = subscribeManagedPolling({
+      key: `order-processing-status:${queryId}:lite`,
+      baseIntervalMs: 2000,
+      maxIntervalMs: 30_000,
+      backoffFactor: 2,
+      fetcher: async () => {
         pollCountRef.current += 1
-        // 超过600次（约20分钟）标记超时
         if (pollCountRef.current > 600 && !isTimeout) {
-          // 视频生成可能需要较长时间（10-20分钟），600次 x 2秒 = 20分钟超时
           setIsTimeout(true)
         }
+        const res = await Network.request({
+          url: `/api/order-processing/status/${queryId}?view=lite`,
+          dedupKey: `order-processing-status:${queryId}:lite`,
+        })
+        return res.data
+      },
+      onData: (payload: any) => {
+        const data = normalizeProcessingData(payload?.data)
+        if (!data) return
+        setProcessingData(data)
 
-        const res = await Network.request({ url: `/api/order-processing/status/${queryId}` })
-        console.log('[content-creation] status response:', JSON.stringify(res.data))
-        const data = res.data?.data || res.data
-        if (data) {
-          setProcessingData({
-            status: data.status,
-            rawStatus: data.rawStatus || data.status,
-            requestId: data.requestId,
-            orderId: data.orderId,
-            avatarId: data.avatarId,
-            avatarName: data.avatarName,
-            orderTitle: data.orderTitle,
-            contentType: data.contentType,
-            generatedContent: data.generatedContent,
-            publishFeedback: data.publishFeedback || data.publish_feedback,
-          })
+        const terminalStatuses = ['completed', 'published', 'awaiting_acceptance', 'feedback_submitted', 'settled', 'done', 'preview', 'failed', 'partial_failed', 'rejected']
+        const reachedTerminal = terminalStatuses.includes(data.rawStatus) || terminalStatuses.includes(data.status)
+        if (!reachedTerminal) return
 
-          // 终态：生成完成后停止计时和轮询
-          const terminalStatuses = ['completed', 'published', 'awaiting_acceptance', 'feedback_submitted', 'settled', 'done', 'preview', 'failed', 'partial_failed', 'rejected']
-          if (terminalStatuses.includes(data.rawStatus) || terminalStatuses.includes(data.status)) {
-            if (timerRef.current) clearInterval(timerRef.current)
-            if (pollRef.current) clearInterval(pollRef.current)
-          }
+        if (timerRef.current) clearInterval(timerRef.current)
+
+        if (fullFetchedRef.current) {
+          ctl.unsubscribe()
+          return
         }
-      } catch (err) {
-        console.error('[content-creation] poll error:', err)
-      }
-    }
 
-    fetchStatus()
-    pollRef.current = setInterval(fetchStatus, 2000) // 2秒轮询
-    return () => { if (pollRef.current) clearInterval(pollRef.current) }
+        fullFetchedRef.current = true
+        Network.request({
+          url: `/api/order-processing/status/${queryId}`,
+          dedupKey: `order-processing-status:${queryId}:full`,
+        })
+          .then((res) => {
+            const full = normalizeProcessingData(res.data?.data)
+            if (full) setProcessingData(full)
+            ctl.unsubscribe()
+          })
+          .catch(() => {
+            fullFetchedRef.current = false
+          })
+      },
+    })
+    pollCtlRef.current = ctl
+
+    return () => {
+      ctl.unsubscribe()
+      if (pollCtlRef.current === ctl) pollCtlRef.current = null
+    }
   }, [queryId])
 
   // 获取订单信息
@@ -244,7 +336,7 @@ export default function OrderContentCreation() {
     if (!orderId) return
     Network.request({ url: `/api/order/${orderId}` })
       .then(res => {
-        const data = res.data?.data || res.data
+        const data = normalizeOrderInfo(res.data?.data)
         if (data) setOrderInfo(data)
       })
       .catch(err => console.error('[content-creation] order error:', err))
@@ -263,17 +355,20 @@ export default function OrderContentCreation() {
   const isPartialFailed = rawStatus === 'partial_failed'
   const isGenerating = GENERATING_STATUSES.includes(rawStatus)
   const isRejected = rawStatus === 'rejected'
-  const rejectReason = processingData?.publishFeedback?.rejectReason || processingData?.publishFeedback?.reject_reason
+  const rejectReason = processingData?.publishFeedback?.rejectReason || ''
 
   // 重试生成失败内容
   const handleRetry = useCallback(async () => {
     const retryRequestId = processingData?.requestId
     if (!retryRequestId) return
+    if (retryInFlightRef.current[retryRequestId]) return
+    retryInFlightRef.current[retryRequestId] = true
     try {
       Taro.showLoading({ title: '正在重新生成...' })
       const res = await Network.request({
         url: `/api/content-generation/retry/${retryRequestId}`,
         method: 'POST',
+        dedupKey: `content-generation:retry:${retryRequestId}`,
       })
       console.log('[ContentCreation] retry response:', res.data)
       Taro.hideLoading()
@@ -286,6 +381,8 @@ export default function OrderContentCreation() {
     } catch (err) {
       Taro.hideLoading()
       Taro.showToast({ title: '重试请求失败', icon: 'none' })
+    } finally {
+      delete retryInFlightRef.current[retryRequestId]
     }
   }, [processingData?.requestId])
 
@@ -687,6 +784,7 @@ export default function OrderContentCreation() {
                 <View className="cc-video-cover-list">
                   {videos.map((v, i) => (
                     <View className="cc-video-cover" key={i}>
+<<<<<<< HEAD
                       <View className="cc-video-play" onClick={() => {
                         const isMiniApp = [Taro.ENV_TYPE.WEAPP as string, Taro.ENV_TYPE.TT as string].includes(Taro.getEnv())
                         if (isMiniApp) {
@@ -696,6 +794,19 @@ export default function OrderContentCreation() {
                           Taro.showToast({ title: '视频链接已复制', icon: 'none' })
                         }
                       }}
+=======
+                      <View
+                        className="cc-video-play"
+                        onClick={() => {
+                          const isMiniApp = [Taro.ENV_TYPE.WEAPP as string, Taro.ENV_TYPE.TT as string].includes(Taro.getEnv())
+                          if (isMiniApp) {
+                            Taro.previewMedia({ sources: [{ url: v, type: 'video' }] })
+                          } else {
+                            Taro.setClipboardData({ data: v })
+                            Taro.showToast({ title: '视频链接已复制', icon: 'none' })
+                          }
+                        }}
+>>>>>>> 8af9a9f0e10919b8e6999a2d1138b8ac7c147180
                       >
                         <View className="cc-play-circle">
                           <View className="cc-play-triangle" />

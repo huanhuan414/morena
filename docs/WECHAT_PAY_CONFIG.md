@@ -20,7 +20,7 @@
 | 配置项 | 说明 | 获取位置 | 示例 |
 |--------|------|----------|------|
 | `WECHAT_PAY_MCHID` | 商户号 | 商户平台首页 | 1290305501 |
-| `WECHAT_PAY_APIV3_KEY` | APIv3密钥（32位） | 账户中心 > API安全 > API安全 > APIv3密钥 | luyu1985luyu1985luyu1985luyu1985 |
+| `WECHAT_PAY_APIV3_KEY` | APIv3密钥（32位） | 账户中心 > API安全 > API安全 > APIv3密钥 | <YOUR_WECHAT_PAY_APIV3_KEY_32_CHARS> |
 | `WECHAT_PAY_APPID` | 小程序AppID | 微信公众平台 | wx1234567890abcdef |
 | `WECHAT_PAY_SERIAL_NO` | 证书序列号 | 账户中心 > API安全 > API证书 | 1ABCDEF1234567890 |
 | `WECHAT_PAY_NOTIFY_URL` | 支付结果通知地址 | 您的服务器域名 | https://yourdomain.com/api/payment/wechat/notify |
@@ -58,7 +58,7 @@
 4. 设置APIv3密钥（32位字符，包含大小写字母和数字）
 
 ```
-示例：luyu1985luyu1985luyu1985luyu1985
+示例：<YOUR_WECHAT_PAY_APIV3_KEY_32_CHARS>
 ```
 
 ### 步骤4：下载商户证书
@@ -68,14 +68,9 @@
 3. 下载证书文件（apiclient_key.pem）
 4. 打开文件，复制完整内容（包括 BEGIN 和 END）
 
-```
-证书格式：
------BEGIN PRIVATE KEY-----
-MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQD...
-（中间是完整的私钥内容）
-...EndOfPrivateKey
------END PRIVATE KEY-----
-```
+证书内容为 PEM 文本。为避免敏感信息进入仓库，本文档用占位符表示：
+
+`<YOUR_MERCHANT_PRIVATE_KEY_PEM>`
 
 ### 步骤5：获取证书序列号
 
@@ -92,12 +87,9 @@ MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQD...
 2. 点击"API安全 > 平台证书"
 3. 获取平台公钥内容
 
-```
-格式：
------BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAv...
------END PUBLIC KEY-----
-```
+平台公钥同理，示例以占位符表示：
+
+`<YOUR_WECHAT_PLATFORM_PUBLIC_KEY_PEM>`
 
 ### 步骤7：配置 .env 文件
 
@@ -112,20 +104,14 @@ WECHAT_PAY_SERIAL_NO=您的证书序列号
 WECHAT_PAY_NOTIFY_URL=https://您的域名/api/payment/wechat/notify
 
 # 微信支付证书（必需）
-WECHAT_PAY_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----
-您的商户私钥内容（完整复制）
------END PRIVATE KEY-----
+WECHAT_PAY_PRIVATE_KEY=<YOUR_MERCHANT_PRIVATE_KEY_PEM>
 
 # 微信支付证书（可选但推荐）
-WECHAT_PAY_PUBLIC_KEY=-----BEGIN PUBLIC KEY-----
-您的平台公钥内容（完整复制）
------END PUBLIC KEY-----
+WECHAT_PAY_PUBLIC_KEY=<YOUR_WECHAT_PLATFORM_PUBLIC_KEY_PEM>
 ```
 
 **重要提示**：
-- ✅ 商户私钥必须包含 `-----BEGIN PRIVATE KEY-----` 和 `-----END PRIVATE KEY-----`
-- ✅ 中间的内容不要删除或修改
-- ✅ 可以使用反引号（`）包裹，避免换行符问题
+- ✅ 建议通过 Secret/安全存储注入 PEM 内容，避免明文写入仓库
 
 ### 步骤8：重启服务
 
@@ -152,24 +138,14 @@ WECHAT_PAY_PUBLIC_KEY=-----BEGIN PUBLIC KEY-----
 ```bash
 # 微信支付配置
 WECHAT_PAY_MCHID=1290305501
-WECHAT_PAY_APIV3_KEY=luyu1985luyu1985luyu1985luyu1985
+WECHAT_PAY_APIV3_KEY=<YOUR_WECHAT_PAY_APIV3_KEY_32_CHARS>
 WECHAT_PAY_APPID=wx1234567890abcdef
 WECHAT_PAY_SERIAL_NO=1ABCDEF1234567890
-WECHAT_PAY_NOTIFY_URL=https://morina-ai.com/api/payment/wechat/notify
+WECHAT_PAY_NOTIFY_URL=https://yourdomain.com/api/payment/wechat/notify
 
 # 微信支付证书
-WECHAT_PAY_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----
-MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDExampleKeyContent
-ExampleKeyContentExampleKeyContentExampleKeyContentExampleKeyContent
-ExampleKeyContentExampleKeyContentExampleKeyContentExampleKeyContent
-ExampleKeyContentExampleKeyContentExampleKeyContentExampleKeyContent
------END PRIVATE KEY-----
-
-WECHAT_PAY_PUBLIC_KEY=-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvExampleKeyContent
-ExampleKeyContentExampleKeyContentExampleKeyContentExampleKeyContent
-ExampleKeyContentExampleKeyContentExampleKeyContentExampleKeyContent
------END PUBLIC KEY-----
+WECHAT_PAY_PRIVATE_KEY=<YOUR_MERCHANT_PRIVATE_KEY_PEM>
+WECHAT_PAY_PUBLIC_KEY=<YOUR_WECHAT_PLATFORM_PUBLIC_KEY_PEM>
 ```
 
 ---

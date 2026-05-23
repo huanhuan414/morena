@@ -5,14 +5,27 @@ let pool: Pool | null = null;
 
 export function getPool(): Pool {
   if (!pool) {
+    const mysqlPassword = process.env.MYSQL_PASSWORD;
+    if (!mysqlPassword) {
+      throw new Error(
+        'Missing required env MYSQL_PASSWORD. Please set MYSQL_PASSWORD before starting the server.'
+      );
+    }
+
+    const defaultConnectionLimit = 10;
+    const envValue = process.env.MYSQL_CONNECTION_LIMIT;
+    const parsed = envValue ? Number(envValue) : NaN;
+    const connectionLimit =
+      Number.isInteger(parsed) && parsed > 0 ? parsed : defaultConnectionLimit;
+
     pool = createPool({
       host: process.env.MYSQL_HOST || '127.0.0.1',
       port: parseInt(process.env.MYSQL_PORT || '3306'),
       user: process.env.MYSQL_USER || 'mrl',
-      password: process.env.MYSQL_PASSWORD || 'SYDPHJB8aGBn83Eh',
+      password: mysqlPassword,
       database: process.env.MYSQL_DATABASE || 'mrl',
       waitForConnections: true,
-      connectionLimit: 1500,
+      connectionLimit,
       queueLimit: 0,
       decimalNumbers: true,
     });

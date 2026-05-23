@@ -41,4 +41,7 @@ pnpm-debug.log*
 .DS_Store
 
 # Key
-# key/
+key/
+server/cert/*.pem
+server/cert/*.key
+.trae/skills/**/local/*

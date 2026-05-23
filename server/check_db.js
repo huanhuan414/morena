@@ -2,11 +2,11 @@ const mysql = require('mysql2/promise');
 
 async function checkDatabase() {
   const connection = await mysql.createConnection({
-    host: '127.0.0.1',
-    port: 16033,
-    user: 'mrl',
-    password: 'SYDPHJB8aGBn83Eh',
-    database: 'mrl'
+    host: process.env.MYSQL_HOST || '127.0.0.1',
+    port: parseInt(process.env.MYSQL_PORT || '16033', 10),
+    user: process.env.MYSQL_USER || 'mrl',
+    password: process.env.MYSQL_PASSWORD || 'YOUR_MYSQL_PASSWORD',
+    database: process.env.MYSQL_DATABASE || 'mrl'
   });
 
   const tables = ['orders', 'order_dispatch_requests', 'content_generation_requests', 'avatars', 'users'];

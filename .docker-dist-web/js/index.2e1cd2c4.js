@@ -1,0 +1,1 @@
+import{j as e,V as s,o as t}from"./vendors.5443dd0e.js";function n(){return e.jsx(s,{className:"min-h-screen bg-gray-50 p-4",children:e.jsxs(s,{className:"bg-white rounded-lg p-4",children:[e.jsx(t,{className:"block text-lg font-semibold text-center",children:"消息中心"}),e.jsx(t,{className:"block text-gray-500 text-sm text-center mt-2",children:"暂无消息"})]})})}export{n as default};

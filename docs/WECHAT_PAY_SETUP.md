@@ -31,7 +31,7 @@
 ```bash
 # 微信支付配置
 WECHAT_PAY_MCHID=1290305501                                    # 商户号
-WECHAT_PAY_APIV3_KEY=luyu1985luyu1985luyu1985luyu1985        # APIv3密钥（32位）
+WECHAT_PAY_APIV3_KEY=<YOUR_WECHAT_PAY_APIV3_KEY_32_CHARS>    # APIv3密钥（32位）
 WECHAT_PAY_APPID=wx1234567890abcdef                            # 小程序AppID
 WECHAT_PAY_SERIAL_NO=YOUR_SERIAL_NUMBER                        # 证书序列号
 WECHAT_PAY_NOTIFY_URL=https://yourdomain.com/api/payment/wechat/notify  # 支付结果通知地址
@@ -39,17 +39,12 @@ WECHAT_PAY_NOTIFY_URL=https://yourdomain.com/api/payment/wechat/notify  # 支付
 # 微信支付证书（二选一）
 
 ## 方式1：直接配置证书内容（推荐）
-# 商户私钥（从商户平台下载的 apiclient_key.pem 文件内容，完整包含 BEGIN 和 END）
-WECHAT_PAY_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----
-MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQD...
-...
------END PRIVATE KEY-----
+# 商户私钥（从商户平台下载的 apiclient_key.pem 文件内容）
+# 建议使用多行环境变量或 Secret 注入，避免把 PEM 明文写入仓库
+WECHAT_PAY_PRIVATE_KEY=<YOUR_MERCHANT_PRIVATE_KEY_PEM>
 
 # 微信平台公钥（从商户平台获取的平台公钥文件内容，可选，用于验证签名）
-WECHAT_PAY_PUBLIC_KEY=-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAv...
-...
------END PUBLIC KEY-----
+WECHAT_PAY_PUBLIC_KEY=<YOUR_WECHAT_PLATFORM_PUBLIC_KEY_PEM>
 
 ## 方式2：配置证书文件路径（不推荐）
 # WECHAT_PAY_PRIVATE_KEY_PATH=/path/to/apiclient_key.pem
@@ -60,28 +55,20 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAv...
 
 ### 商户私钥格式
 
-```
------BEGIN PRIVATE KEY-----
-MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDExampleContent...
-（中间是完整的私钥内容，不要删除或修改）
-ExampleContent...EndOfPrivateKey
------END PRIVATE KEY-----
-```
+建议以 Secret/安全存储注入完整 PEM 内容，示例以占位符表示：
+
+`<YOUR_MERCHANT_PRIVATE_KEY_PEM>`
 
 **重要**：
-- 必须包含 `-----BEGIN PRIVATE KEY-----` 和 `-----END PRIVATE KEY-----`
+- PEM 内容应包含正确的头尾标记（不建议在文档中展示）
 - 中间的内容不要删除或修改
 - 可以使用反引号（`）包裹，避免换行符问题
 
 ### 微信平台公钥格式
 
-```
------BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvExampleContent...
-（中间是完整的公钥内容）
-ExampleContent...EndOfPublicKey
------END PUBLIC KEY-----
-```
+示例以占位符表示：
+
+`<YOUR_WECHAT_PLATFORM_PUBLIC_KEY_PEM>`
 
 ## 测试支付功能
 

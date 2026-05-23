@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import Taro, { useLoad, useRouter, navigateBack } from '@tarojs/taro'
-import * as Network from '@/network'
+import { Network } from '@/network'
 import { Card, CardContent } from '@/components/ui/card'
 import { ArrowLeft, CircleCheck, Wallet, Clock, ExternalLink, Play } from 'lucide-react-taro'
 import './index.css'
@@ -22,7 +22,8 @@ export default function OrderCompletedPage() {
     try {
       console.log('[OrderCompleted] 开始加载数据')
       const response = await Network.request({
-        url: `/api/order-processing/status/${requestId}`
+        url: `/api/order-processing/status/${requestId}`,
+        dedupKey: `order-processing-status:${requestId}:full`,
       })
 
       console.log('[OrderCompleted] 数据响应:', response.data)

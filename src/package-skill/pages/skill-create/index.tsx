@@ -1,6 +1,6 @@
 import { View, Text, ScrollView } from '@tarojs/components'
 import { useState } from 'react'
-import * as Network from '@/network'
+import { Network } from '@/network'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'

@@ -1,3 +1,5 @@
+import { regressionEndpoints } from './suites/regression'
+
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
 export type AssertType =
@@ -36,6 +38,15 @@ export type EndpointDef = {
   query?: Record<string, string | number | boolean | undefined>
   headers?: Record<string, string | undefined>
   body?: unknown
+  formData?: Record<
+    string,
+    | string
+    | {
+        filename: string
+        contentType?: string
+        base64: string
+      }
+  >
   auth?: boolean
   asserts?: AssertType[]
   save?: SaveVarRule[]
@@ -63,6 +74,23 @@ export type AuthConfig =
       prefix?: string
       timeoutMs?: number
     }
+  | {
+      type: 'loginFlow'
+      localOnly?: boolean
+      localOnlyMessage?: string
+      steps: {
+        method: HttpMethod
+        path: string
+        body?: unknown
+        headers?: Record<string, string | undefined>
+        extractVars?: SaveVarRule[]
+        timeoutMs?: number
+      }[]
+      extractTokenPath: string
+      headerName?: string
+      prefix?: string
+      timeoutMs?: number
+    }
 
 export type ApiTestConfig = {
   baseUrl: string
@@ -79,8 +107,11 @@ const makeEndpoint = (method: HttpMethod, path: string): EndpointDef => {
   return { id: `${method} ${path}`, group, method, path }
 }
 
+const resolvedBaseUrl = process.env.API_BASE_URL ?? 'https://mrlweb.51webjs.com'
+const resolvedIsLocal = /^(https?:\/\/)?(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?/i.test(resolvedBaseUrl)
+
 export const config: ApiTestConfig = {
-  baseUrl: process.env.API_BASE_URL ?? 'https://mrlweb.51webjs.com',
+  baseUrl: resolvedBaseUrl,
   timeoutMs: Number(process.env.API_TIMEOUT_MS ?? 15_000),
   concurrency: Number(process.env.API_CONCURRENCY ?? 6),
   defaultHeaders: {
@@ -95,10 +126,37 @@ export const config: ApiTestConfig = {
           headerName: 'Authorization',
           prefix: 'Bearer '
         }
+      : resolvedIsLocal || process.env.API_ENABLE_DEV_LOGIN === '1'
+        ? {
+            type: 'loginFlow',
+            steps: [
+              {
+                method: 'POST',
+                path: '/api/auth/send-code',
+                body: { phone: process.env.API_TEST_PHONE ?? '18800000000' },
+                extractVars: [{ fromJsonPath: 'data.code', toVar: 'loginCode' }]
+              },
+              {
+                method: 'POST',
+                path: '/api/auth/phone-login',
+                body: {
+                  phone: process.env.API_TEST_PHONE ?? '18800000000',
+                  code: '{{loginCode}}',
+                  nickname: 'api-tests'
+                },
+                extractVars: [{ fromJsonPath: 'data.token', toVar: 'token' }]
+              }
+            ],
+            extractTokenPath: 'data.token',
+            localOnly: true,
+            localOnlyMessage: 'loginFlow 默认仅允许本地执行；如需在非本地环境使用，请先评估短信/账号风险并调整开关'
+          }
       : {
           type: 'none'
         },
   endpoints: [
+    ...regressionEndpoints,
+
     makeEndpoint('GET', '/api/hello'),
     makeEndpoint('GET', '/api/health'),
 

@@ -161,11 +161,11 @@ export class ActivitiesService {
     try {
       const db = getMySQLClient()
       const contents = await db.query(
-        `SELECT cg.id, cg.order_id, cg.status, cg.created_at, o.title as order_title
-         FROM content_generation cg
-         LEFT JOIN orders o ON cg.order_id = o.id
+        `SELECT cgr.id, cgr.order_id, cgr.status, cgr.created_at, o.title as order_title
+         FROM content_generation_requests cgr
+         LEFT JOIN orders o ON cgr.order_id = o.id
          WHERE o.user_id = ?
-         ORDER BY cg.created_at DESC LIMIT 5`,
+         ORDER BY cgr.created_at DESC LIMIT 5`,
         [userId]
       )
       for (const content of contents) {

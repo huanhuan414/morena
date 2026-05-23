@@ -5,8 +5,10 @@
  */
 
 import { Injectable, Inject, forwardRef } from '@nestjs/common'
+import { Cron } from '@nestjs/schedule'
 import { LLMClient, Config } from 'coze-coding-dev-sdk'
 import { getMySQLClient } from '../../storage/database/mysql-client'
+import { withMysqlNamedLock } from '../../common/mysql-named-lock'
 import {
   AgentContext,
   AgentExecutionResult,
@@ -680,6 +682,135 @@ export class AgentService {
    * 用于解决 HTTP 请求超时问题
    * 任务在后台执行，结果通过缓存获取
    */
+  async enqueueTask(
+    userId: string,
+    taskId: string,
+    input: {
+      avatarId: string
+      taskDescription: string
+      conversationId?: string
+      conversationHistory?: ConversationMessage[]
+      uploadedImages?: string[]
+      uploadedVideos?: string[]
+    }
+  ) {
+    const db = getMySQLClient()
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
+    await db.query(
+      `INSERT INTO agent_tasks
+        (task_id, user_id, avatar_id, task_description, conversation_id, conversation_history, attachments, status, created_at, updated_at, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', NOW(), NOW(), ?)
+       ON DUPLICATE KEY UPDATE
+         avatar_id = VALUES(avatar_id),
+         task_description = VALUES(task_description),
+         conversation_id = VALUES(conversation_id),
+         conversation_history = VALUES(conversation_history),
+         attachments = VALUES(attachments),
+         expires_at = VALUES(expires_at),
+         updated_at = NOW()`,
+      [
+        taskId,
+        userId,
+        input.avatarId,
+        input.taskDescription,
+        input.conversationId || null,
+        input.conversationHistory ? JSON.stringify(input.conversationHistory) : null,
+        JSON.stringify({ images: input.uploadedImages || [], videos: input.uploadedVideos || [] }),
+        expiresAt,
+      ]
+    )
+  }
+
+  async tryStartTask(userId: string, taskId: string) {
+    const db = getMySQLClient()
+    const rows = await db.query(
+      `SELECT task_id, user_id, avatar_id, task_description, conversation_id, conversation_history, attachments, status
+       FROM agent_tasks
+       WHERE task_id = ? AND user_id = ?
+         AND (expires_at IS NULL OR expires_at > NOW())
+       LIMIT 1`,
+      [taskId, userId]
+    )
+    const task: any = rows?.[0]
+    if (!task) {
+      throw new Error('任务不存在或已过期')
+    }
+    const status = String(task.status || '').trim().toLowerCase()
+    if (status !== 'pending') {
+      return { started: false, status }
+    }
+    const updateResult: any = await db.query(
+      `UPDATE agent_tasks
+       SET status = 'running', updated_at = NOW()
+       WHERE task_id = ? AND user_id = ? AND status = 'pending'`,
+      [taskId, userId]
+    )
+    const affected = Number(updateResult?.affectedRows ?? updateResult?.data?.affectedRows ?? 0)
+    if (affected !== 1) {
+      return { started: false, status: 'race_lost' }
+    }
+    let conversationHistory: ConversationMessage[] | undefined
+    if (task.conversationHistory || task.conversation_history) {
+      try {
+        conversationHistory = JSON.parse(task.conversationHistory || task.conversation_history)
+      } catch {}
+    }
+    let attachments: any = {}
+    if (task.attachments) {
+      try {
+        attachments = JSON.parse(task.attachments)
+      } catch {}
+    }
+    this.executeTaskAsync(
+      userId,
+      task.avatarId || task.avatar_id,
+      task.taskDescription || task.task_description,
+      {
+        conversationId: task.conversationId || task.conversation_id,
+        taskId,
+        conversationHistory,
+        uploadedImages: Array.isArray(attachments.images) ? attachments.images : [],
+        uploadedVideos: Array.isArray(attachments.videos) ? attachments.videos : [],
+      }
+    ).catch((err: any) => {
+      this.progressCache.updateTaskStatus(userId, taskId, 'failed', null, err?.message || String(err))
+    })
+    return { started: true, status: 'running' }
+  }
+
+  @Cron('*/5 * * * * *')
+  async runPendingTasksCron() {
+    await withMysqlNamedLock(
+      'agent:task_runner',
+      async () => {
+        const db = getMySQLClient()
+        const runningRows = await db.query(
+          `SELECT COUNT(*) as running
+           FROM agent_tasks
+           WHERE status = 'running'
+             AND (expires_at IS NULL OR expires_at > NOW())`
+        )
+        const running = Number(runningRows?.[0]?.running || 0)
+        if (running > 0) return
+
+        const rows = await db.query(
+          `SELECT task_id, user_id
+           FROM agent_tasks
+           WHERE status = 'pending'
+             AND (expires_at IS NULL OR expires_at > NOW())
+           ORDER BY created_at ASC
+           LIMIT 1`
+        )
+        const row: any = rows?.[0]
+        if (!row) return
+        const taskId = row.taskId || row.task_id
+        const userId = row.userId || row.user_id
+        this.tryStartTask(userId, taskId).catch(() => {})
+      },
+      { waitSeconds: 0 }
+    )
+  }
+
   async executeTaskAsync(
     userId: string,
     avatarId: string,
@@ -857,7 +988,7 @@ export class AgentService {
       const db = getMySQLClient()
 
       // 获取当前的进度历史
-      const progressHistory = this.progressCache.getProgress(userId, taskId)
+      const progressHistory = await this.progressCache.getProgress(userId, taskId)
 
       // 获取最新的 assistant 消息
       const messagesResult = await db.query('messages', { conversation_id: conversationId, role: 'assistant' })
@@ -1119,7 +1250,7 @@ export class AgentService {
     const taskContext = this.currentTaskMap.get(userId)
 
     // 获取进度缓存的所有进度历史（用于恢复任务进度）
-    const progressHistory = this.progressCache.getProgress(userId, taskId)
+    const progressHistory = await this.progressCache.getProgress(userId, taskId)
 
     // 🔴 新增：从 progressHistory 中提取图片（特别是 generate_image 工具返回的图片）
     if (progressHistory && Array.isArray(progressHistory)) {
@@ -3371,4 +3502,3 @@ ${req.suggestion}
     return taskTypes.some(regex => regex.test(task))
   }
 }
-

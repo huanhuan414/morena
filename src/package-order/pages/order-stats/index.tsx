@@ -5,7 +5,7 @@ import {
   ArrowLeft, Users, Eye, Heart, MessageCircle, Share2,
   ChevronDown, ChevronUp, TrendingUp, ChartBar
 } from 'lucide-react-taro'
-import * as Network from '@/network'
+import { Network } from '@/network'
 import { Avatar } from '@/components/ui/avatar'
 import './index.css'
 

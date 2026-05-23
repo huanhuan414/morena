@@ -1,0 +1,32 @@
+config:
+  target: "{{ $processEnvironment.API_BASE_URL }}"
+  phases:
+    - name: warmup
+      duration: 20
+      arrivalRate: 2
+      rampTo: 10
+    - name: baseline
+      duration: 60
+      arrivalRate: 10
+      rampTo: 30
+  plugins:
+    expect: {}
+  ensure:
+    thresholds:
+      - "http.response_time.p95": 800
+      - "http.errors.rate": 0.005
+scenarios:
+  - name: anon-mixed
+    flow:
+      - get:
+          url: "/api/health"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/api/hello"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/api/payment/plans"
+          expect:
+            - statusCode: 200

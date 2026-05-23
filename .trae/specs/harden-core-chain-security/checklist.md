@@ -1,0 +1,9 @@
+- [x] 管理端：伪造 token 无法访问任一 `/api/admin/*`（除 login）
+- [x] 管理端：正常登录 token 可访问 dashboard/users 且 controller 不再重复 verifyToken
+- [x] 用户端：缺少密钥时 fail-fast（禁止默认 secret 回退）
+- [x] 用户端：过期 token 访问核心接口统一返回 401 + 统一 envelope
+- [x] 收益：不存在 SQL where 拼接（至少收益模块相关查询）
+- [x] leaderboard：响应不包含 phone（或仅脱敏且需鉴权）
+- [x] 收益 overview：前后端字段口径一致，收益中心展示与提现门槛判断正确
+- [x] 工程化：新增 `*.test.ts/*.spec.ts` 不会导致 `pnpm validate` 失败
+- [x] 全量：`pnpm validate` 通过

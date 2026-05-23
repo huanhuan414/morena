@@ -1,8 +1,10 @@
 import type { UserConfigExport } from "@tarojs/cli"
 
+const projectDomain = process.env.PROJECT_DOMAIN?.trim() ?? ''
+
 export default {
   defineConstants: {
-    PROJECT_DOMAIN: JSON.stringify('https://mrlweb.51webjs.com'), // 直连服务器
+    PROJECT_DOMAIN: JSON.stringify(projectDomain),
   },
   mini: {
     debugReact: true,

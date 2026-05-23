@@ -1,0 +1,35 @@
+config:
+  target: "{{ $processEnvironment.API_BASE_URL }}"
+  phases:
+    - name: warmup
+      duration: 20
+      arrivalRate: 2
+      rampTo: 10
+    - name: baseline
+      duration: 60
+      arrivalRate: 10
+      rampTo: 30
+  plugins:
+    expect: {}
+  defaults:
+    headers:
+      Authorization: "Bearer {{ $processEnvironment.API_TOKEN }}"
+  ensure:
+    thresholds:
+      - "http.response_time.p95": 1200
+      - "http.errors.rate": 0.01
+scenarios:
+  - name: user-read-heavy
+    flow:
+      - get:
+          url: "/api/order/stats"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/api/order/list"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/api/avatar/search?q=test&page=1&pageSize=10"
+          expect:
+            - statusCode: 200

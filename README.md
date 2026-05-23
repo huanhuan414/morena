@@ -55,6 +55,14 @@
 pnpm install
 ```
 
+### 环境变量
+
+复制示例文件并按需调整：
+
+```bash
+cp .env.example .env
+```
+
 ### 本地开发
 
 同时启动 H5 前端和 NestJS 后端：
@@ -72,6 +80,98 @@ pnpm dev
 pnpm dev:web      # 仅 H5 前端
 pnpm dev:weapp    # 仅微信小程序
 pnpm dev:server   # 仅后端服务
+pnpm dev:docker   # 使用 Docker Compose 启动 db + server-dev（热更新）
+```
+
+### Docker 本地联调
+
+项目已补齐两条本地 Docker 链路：
+
+- 开发链路：`db + server-dev + web-dev`
+- 测试链路：`db + server + api-tests`
+
+开发链路：
+
+```bash
+pnpm docker:dev
+```
+
+测试链路：
+
+```bash
+pnpm docker:test
+```
+
+默认服务说明：
+
+- `db`: MySQL 8.4
+- `server-dev`: NestJS 开发服务，运行 `pnpm --filter server dev`
+- `web-dev`: H5 开发服务，运行 `pnpm dev:web`
+- `server`: NestJS 运行时服务，供测试链路与 CI 冒烟使用
+- `api-tests`: 基于容器执行 `pnpm test`
+
+开发链路访问地址：
+
+- H5: `http://localhost:5000`
+- API: H5 通过 `/api` 代理到容器内 `server-dev:3000`
+
+常用命令：
+
+```bash
+docker compose up -d db server
+docker compose --profile dev up --build db server-dev web-dev
+docker compose --profile test up --build --abort-on-container-exit --exit-code-from api-tests api-tests
+docker compose logs -f db server server-dev web-dev
+docker compose config
+pnpm docker:down
+```
+
+说明：
+
+- MySQL 初始化脚本来自 `server/init_database.sql`
+- 后端容器通过 `server/Dockerfile` 构建
+- 前端开发容器通过 `Dockerfile.web-dev` 构建
+- 上传目录通过 Compose volume 挂载到 `/app/uploads`
+- `server-dev` 通过 bind mount 挂载 `server/` 源码，便于本地热更新开发
+- `web-dev` 通过 bind mount 挂载 `src/`、`config/`、`public/` 和根配置，便于 H5 热更新开发
+- 本地开发建议保持 `PROJECT_DOMAIN` 为空，让 H5 走 `/api` 代理而不是直连远端域名
+- `api-tests` 通过容器内 `pnpm test` 对 `server` 执行冒烟测试
+- 最小排障命令：`docker compose logs -f web-dev server-dev db`
+
+#### 网络受限/不拉镜像（兜底运行）
+
+当本机 Docker 无法稳定访问 `docker.io` / `registry.npmjs.org`（导致 `pnpm docker:dev` 里构建阶段拉基础镜像或装依赖失败）时，可使用 `compose.local.yaml` 直接用本地已有镜像 + 本地构建产物挂载启动。
+
+前置条件：
+
+- 本机已存在镜像：`mysql:8.4`、`morena-server:latest`
+- 本机已安装依赖（已存在 `server/node_modules`）
+
+启动步骤：
+
+```bash
+# 1) 构建后端产物（生成 server/dist）
+pnpm build:server
+
+# 2) 准备 H5 静态产物（任选其一）
+# 2.1 使用仓库内已有 dist-web.tar.gz（推荐离线场景）
+rm -rf .docker-dist-web && mkdir -p .docker-dist-web && tar -xzf dist-web.tar.gz -C .docker-dist-web
+# 2.2 或者本机重新构建 H5 后，把 dist-web 拷贝到 .docker-dist-web
+
+# 3) 启动（db + server + web）
+pnpm docker:local
+```
+
+访问地址：
+
+- H5: `http://localhost:5001`
+- API: `http://localhost:3000`（H5 通过 `/api` 反代到后端）
+
+排障与清理：
+
+```bash
+pnpm docker:local:logs
+pnpm docker:local:down
 ```
 
 ### 构建
@@ -79,9 +179,59 @@ pnpm dev:server   # 仅后端服务
 ```bash
 pnpm build        # 构建所有（H5 + 小程序 + 后端）
 pnpm build:web    # 仅构建 H5，输出到 dist-web
-pnpm build:weapp  # 仅构建微信小程序，输出到 dist
+pnpm build:weapp  # 仅构建微信小程序，输出到 dist-weapp
 pnpm build:server # 仅构建后端
+pnpm build:ci     # CI 使用：仅构建 H5 + 后端
 ```
+
+### 校验与测试
+
+统一工程化入口：
+
+```bash
+pnpm validate      # 前端 lint/tsc + 后端 typecheck/build
+pnpm test          # Docker / 本地服务启动后的 API 冒烟
+pnpm test:unit     # 单元测试 + 覆盖率（后端 Jest + 前端 Vitest，控制台摘要）
+pnpm test:api      # 执行完整 API 测试集
+pnpm test:api:regression # 稳定回归集（smoke + 关键负例）
+pnpm test:server   # 仅后端单元测试（Jest）
+pnpm test:server:cov # 仅后端单元测试 + 覆盖率摘要
+pnpm test:front    # 仅前端单元测试（Vitest）
+pnpm test:front:cov  # 仅前端单元测试 + 覆盖率摘要
+pnpm test:docker   # 通过 Docker Compose 启动 server + api-tests 做本地容器冒烟
+pnpm test:full:local # 本地全量：validate + unit + docker:local + api regression
+pnpm ci            # 本地模拟 CI：validate + test + build:ci
+```
+
+`pnpm test` 默认执行：
+
+- `GET /api/hello`
+- `GET /api/health`
+
+如果要改用其他环境，可覆盖：
+
+```bash
+API_BASE_URL=http://127.0.0.1:3000 pnpm test
+```
+
+覆盖率说明：
+
+- 当前 CI 仅输出覆盖率摘要，不设阈值门禁（先保证体系可跑通，后续再逐步抬升覆盖面与阈值）。
+
+### CI
+
+仓库已新增 GitHub Actions 工作流：`.github/workflows/ci.yml`
+
+默认能力：
+
+- 安装 pnpm 依赖
+- 执行 `pnpm validate`
+- 执行 `pnpm test:unit`（单元测试 + 覆盖率摘要）
+- 执行 `pnpm build:ci`
+- 校验 `docker compose config`
+- 构建 `web-dev` 与 `server-dev` 开发镜像
+- 通过 Docker Compose 拉起 `db + server`
+- 执行 `pnpm test` 冒烟
 
 ### 预览小程序
 

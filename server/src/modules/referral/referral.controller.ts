@@ -1,6 +1,7 @@
 // @ts-nocheck
-import { Controller, Get, Post, Body, Headers, Query, Inject } from '@nestjs/common'
+import { Controller, Get, Post, Body, Headers, Query, Inject, InternalServerErrorException } from '@nestjs/common'
 import { ReferralService } from './referral.service'
+import { requireAuthenticatedUserId } from '../../common/auth-user.util'
 
 @Controller('referral')
 export class ReferralController {
@@ -11,7 +12,8 @@ export class ReferralController {
   }
 
   @Get('code')
-  async getReferralCode(@Headers('x-user-id') userId: string) {
+  async getReferralCode(@Headers() headers: Record<string, string | string[] | undefined>) {
+    const userId = requireAuthenticatedUserId(headers)
     try {
       if (this.referralService) {
         const code = await this.referralService.generateReferralCode(userId)
@@ -24,7 +26,8 @@ export class ReferralController {
   }
 
   @Post('code')
-  async postReferralCode(@Headers('x-user-id') userId: string) {
+  async postReferralCode(@Headers() headers: Record<string, string | string[] | undefined>) {
+    const userId = requireAuthenticatedUserId(headers)
     try {
       if (this.referralService) {
         const code = await this.referralService.generateReferralCode(userId)
@@ -38,9 +41,10 @@ export class ReferralController {
 
   @Post('use')
   async useReferralCode(
-    @Headers('x-user-id') userId: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Body('code') code: string
   ) {
+    const userId = requireAuthenticatedUserId(headers)
     try {
       if (this.referralService) {
         const result = await this.referralService.useReferralCode(userId, code)
@@ -49,11 +53,12 @@ export class ReferralController {
     } catch (e) {
       console.error('[ReferralController] useReferralCode error:', e.message)
     }
-    return { code: 500, data: null, message: '服务暂不可用' }
+    throw new InternalServerErrorException({ msg: '服务暂不可用', data: null })
   }
 
   @Get('stats')
-  async getStats(@Headers('x-user-id') userId: string) {
+  async getStats(@Headers() headers: Record<string, string | string[] | undefined>) {
+    const userId = requireAuthenticatedUserId(headers)
     try {
       if (this.referralService) {
         const stats = await this.referralService.getReferralStats(userId)
@@ -67,10 +72,11 @@ export class ReferralController {
 
   @Get('list')
   async getList(
-    @Headers('x-user-id') userId: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string
   ) {
+    const userId = requireAuthenticatedUserId(headers)
     try {
       if (this.referralService) {
         const result = await this.referralService.getReferralList(

@@ -3,17 +3,17 @@
 ## Server Configuration
 
 ### Remote Server
-- **IP**: 180.184.205.74
+- **IP**: <REMOTE_IP>
 - **SSH Port**: 22
-- **Username**: root
-- **Password**: ,OlvQF*U~P,=dS$G^*
+- **Username**: <REMOTE_USER>
+- **Password**: <REMOTE_SSH_PASSWORD>
 
 ### Database (MySQL on Remote Server)
-- **Host**: 180.184.205.74 (or localhost when on server)
+- **Host**: <MYSQL_HOST> (or localhost when on server)
 - **Port**: 16033
 - **Database Name**: mrl
-- **User**: mrl
-- **Password**: SYDPHJB8aGBn83Eh
+- **User**: <MYSQL_USER>
+- **Password**: <MYSQL_PASSWORD>
 
 ### Database Tables
 #### `referrals` table structure:
@@ -38,19 +38,19 @@
 ### Deploy Backend
 ```bash
 # Upload modified files
-scp server/src/modules/auth/auth.service.ts root@180.184.205.74:/home/morena-ai/server/src/modules/auth/
-scp server/src/modules/referral/referral.service.ts root@180.184.205.74:/home/morena-ai/server/src/modules/referral/
+scp server/src/modules/auth/auth.service.ts <REMOTE_USER>@<REMOTE_IP>:/home/morena-ai/server/src/modules/auth/
+scp server/src/modules/referral/referral.service.ts <REMOTE_USER>@<REMOTE_IP>:/home/morena-ai/server/src/modules/referral/
 
 # Restart service
-ssh root@180.184.205.74 "pm2 restart morena-api"
+ssh <REMOTE_USER>@<REMOTE_IP> "pm2 restart morena-api"
 ```
 
 ### Check Logs
 ```bash
-ssh root@180.184.205.74 "pm2 logs morena-api --lines 50 --nostream"
+ssh <REMOTE_USER>@<REMOTE_IP> "pm2 logs morena-api --lines 50 --nostream"
 ```
 
 ### Database Queries
 ```bash
-ssh root@180.184.205.74 "mysql -h 127.0.0.1 -P 16033 -u mrl -p'SYDPHJB8aGBn83Eh' mrl -e 'QUERY'"
+ssh root@<REMOTE_IP> "mysql -h 127.0.0.1 -P <MYSQL_PORT> -u <MYSQL_USER> -p'<MYSQL_PASSWORD>' <MYSQL_DATABASE> -e 'QUERY'"
 ```

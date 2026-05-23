@@ -1,5 +1,6 @@
-import { Controller, Get, Query, HttpCode, HttpStatus, Req, Inject, Post, Body } from '@nestjs/common'
+import { Controller, Get, Query, HttpCode, HttpStatus, Inject, Post, Body, Headers } from '@nestjs/common'
 import { ActivitiesService } from './activities.service'
+import { requireAuthenticatedUserId } from '../../common/auth-user.util'
 
 @Controller('activities')
 export class ActivitiesController {
@@ -12,10 +13,10 @@ export class ActivitiesController {
   @Get('recent')
   @HttpCode(HttpStatus.OK)
   async getRecentActivities(
-    @Req() req: any,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Query('limit') limit?: string
   ) {
-    const userId = req.headers['x-user-id'] || req.query.userId || 'dev_user'
+    const userId = requireAuthenticatedUserId(headers)
     const limitNum = limit ? parseInt(limit, 10) : 10
     try {
       if (this.activitiesService) {
@@ -42,8 +43,11 @@ export class ActivitiesController {
 
   @Post('campaign/track')
   @HttpCode(HttpStatus.OK)
-  async trackCampaign(@Req() req: any, @Body('eventType') eventType: string) {
-    const userId = req.headers['x-user-id'] || req.body?.userId || req.query?.userId
+  async trackCampaign(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Body('eventType') eventType: string
+  ) {
+    const userId = requireAuthenticatedUserId(headers)
     const normalizedEventType = String(eventType || '').trim()
     if (!normalizedEventType) {
       return { code: 200, msg: 'success', data: { skipped: true } }

@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>单元测试与覆盖率报告（CI 口径）</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #0b1220;
+        --panel: #101a2d;
+        --text: #e6edf6;
+        --muted: #a7b4c7;
+        --border: rgba(255, 255, 255, 0.12);
+        --accent: #6aa9ff;
+        --good: #37d67a;
+        --warn: #ffcc66;
+      }
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #f6f8fc;
+          --panel: #ffffff;
+          --text: #0f172a;
+          --muted: #475569;
+          --border: rgba(15, 23, 42, 0.12);
+          --accent: #2563eb;
+        }
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
+          "Segoe UI Emoji";
+        line-height: 1.5;
+      }
+      .wrap {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 28px 18px 64px;
+      }
+      header {
+        border: 1px solid var(--border);
+        background: var(--panel);
+        border-radius: 14px;
+        padding: 18px 18px 14px;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 22px;
+        letter-spacing: 0.2px;
+      }
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 16px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .meta strong {
+        color: var(--text);
+        font-weight: 600;
+      }
+      nav {
+        margin-top: 14px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      nav a {
+        text-decoration: none;
+        color: var(--accent);
+        border: 1px solid var(--border);
+        padding: 6px 10px;
+        border-radius: 10px;
+        background: transparent;
+        font-size: 13px;
+      }
+      section {
+        margin-top: 16px;
+        border: 1px solid var(--border);
+        background: var(--panel);
+        border-radius: 14px;
+        padding: 16px 18px;
+      }
+      h2 {
+        margin: 0 0 10px;
+        font-size: 16px;
+      }
+      h3 {
+        margin: 14px 0 8px;
+        font-size: 14px;
+      }
+      p {
+        margin: 8px 0;
+        color: var(--text);
+      }
+      ul {
+        margin: 8px 0 8px 18px;
+        padding: 0;
+      }
+      li {
+        margin: 4px 0;
+        color: var(--text);
+      }
+      a {
+        color: var(--accent);
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 12.5px;
+      }
+      pre {
+        margin: 10px 0;
+        padding: 12px 12px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: auto;
+        background: rgba(255, 255, 255, 0.04);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      th,
+      td {
+        padding: 10px 10px;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+        text-align: left;
+      }
+      th {
+        color: var(--muted);
+        font-weight: 600;
+        background: rgba(255, 255, 255, 0.04);
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 6px 10px;
+        font-size: 13px;
+        color: var(--text);
+      }
+      .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 999px;
+        background: var(--good);
+      }
+      .dot.warn {
+        background: var(--warn);
+      }
+      .muted {
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>单元测试与覆盖率报告（CI 口径）</h1>
+        <div class="meta">
+          <div><strong>更新时间：</strong>2026-05-22</div>
+          <div><strong>口径：</strong>GitHub Actions <code>quality</code> job（Node 20 + pnpm 9）</div>
+          <div class="badge"><span class="dot"></span><span>单测可运行</span></div>
+          <div class="badge"><span class="dot warn"></span><span>覆盖率未设阈值门禁</span></div>
+        </div>
+        <nav>
+          <a href="#summary">一句话结论</a>
+          <a href="#entry">执行入口</a>
+          <a href="#results">本次运行结果</a>
+          <a href="#ci">CI 执行点</a>
+          <a href="#next">限制与建议</a>
+        </nav>
+      </header>
+
+      <section id="summary">
+        <h2>一句话结论</h2>
+        <p>仓库已接入后端 Jest 与前端 Vitest 的单元测试与覆盖率统计；CI 会输出覆盖率摘要与明细（text/lcov），并已启用低阈值覆盖率门禁以防止回退（阈值会逐步抬升）。</p>
+      </section>
+
+      <section id="entry">
+        <h2>1. 执行入口</h2>
+        <ul>
+          <li>本地/CI 推荐入口：<code>pnpm test:unit</code></li>
+          <li>仅后端：<code>pnpm test:server:cov</code></li>
+          <li>仅前端：<code>pnpm test:front:cov</code></li>
+        </ul>
+        <p class="muted">
+          脚本定义见：
+          <a href="file:///Users/aiden/Projects/morena/package.json">package.json</a>、
+          <a href="file:///Users/aiden/Projects/morena/server/package.json">server/package.json</a>
+        </p>
+      </section>
+
+      <section id="results">
+        <h2>2. 本次运行结果（最新一次本地复现）</h2>
+        <p>执行命令：</p>
+        <pre><code>pnpm test:unit</code></pre>
+
+        <h3>2.1 后端（Jest + ts-jest）</h3>
+        <p class="muted">覆盖率统计范围（已收敛）：<code>server/src/modules/order/**</code>、<code>server/src/modules/order-processing/**</code></p>
+        <p>测试文件：</p>
+        <ul>
+          <li>
+            <a href="file:///Users/aiden/Projects/morena/server/src/modules/order/order-status.spec.ts">order-status.spec.ts</a>
+          </li>
+        </ul>
+        <p>运行结果：</p>
+        <ul>
+          <li>Test Suites：1 passed</li>
+          <li>Tests：5 passed</li>
+        </ul>
+        <p>覆盖率摘要（Jest text-summary）：</p>
+        <table>
+          <thead>
+            <tr>
+              <th>指标</th>
+              <th>覆盖率</th>
+              <th>命中/总数</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Statements</td>
+              <td>5.8%</td>
+              <td>80/1378</td>
+            </tr>
+            <tr>
+              <td>Branches</td>
+              <td>3.56%</td>
+              <td>44/1233</td>
+            </tr>
+            <tr>
+              <td>Functions</td>
+              <td>8.37%</td>
+              <td>15/179</td>
+            </tr>
+            <tr>
+              <td>Lines</td>
+              <td>5.39%</td>
+              <td>71/1316</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="muted">
+          配置：
+          <a href="file:///Users/aiden/Projects/morena/server/jest.config.cjs">server/jest.config.cjs</a>
+        </p>
+
+        <h3>2.2 前端（Vitest + coverage-v8）</h3>
+        <p class="muted">覆盖率统计范围（已收敛）：<code>src/constants/**</code>、<code>src/utils/**</code></p>
+        <p>测试文件：</p>
+        <ul>
+          <li>
+            <a href="file:///Users/aiden/Projects/morena/src/constants/publish-platform.test.ts">publish-platform.test.ts</a>
+          </li>
+          <li>
+            <a href="file:///Users/aiden/Projects/morena/src/constants/referral-rewards.test.ts">referral-rewards.test.ts</a>
+          </li>
+          <li>
+            <a href="file:///Users/aiden/Projects/morena/src/utils/avatar-style.test.ts">avatar-style.test.ts</a>
+          </li>
+          <li>
+            <a href="file:///Users/aiden/Projects/morena/src/utils/format.test.ts">format.test.ts</a>
+          </li>
+        </ul>
+        <p>运行结果：</p>
+        <ul>
+          <li>Test Files：4 passed</li>
+          <li>Tests：14 passed</li>
+        </ul>
+        <p>覆盖率摘要（v8 text-summary）：</p>
+        <table>
+          <thead>
+            <tr>
+              <th>指标</th>
+              <th>覆盖率</th>
+              <th>命中/总数</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Statements</td>
+              <td>29.35%</td>
+              <td>246/838</td>
+            </tr>
+            <tr>
+              <td>Branches</td>
+              <td>77.77%</td>
+              <td>21/27</td>
+            </tr>
+            <tr>
+              <td>Functions</td>
+              <td>88.88%</td>
+              <td>16/18</td>
+            </tr>
+            <tr>
+              <td>Lines</td>
+              <td>29.35%</td>
+              <td>246/838</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="muted">
+          配置：
+          <a href="file:///Users/aiden/Projects/morena/vitest.config.ts">vitest.config.ts</a>
+        </p>
+      </section>
+
+      <section id="ci">
+        <h2>3. CI 实际执行点（线上门禁口径）</h2>
+        <p>
+          CI 工作流：
+          <a href="file:///Users/aiden/Projects/morena/.github/workflows/ci.yml">.github/workflows/ci.yml</a>
+        </p>
+        <p>关键步骤（quality job）：</p>
+        <ul>
+          <li><code>pnpm install --frozen-lockfile</code></li>
+          <li><code>pnpm validate</code></li>
+          <li><code>pnpm test:unit</code></li>
+          <li><code>upload-artifact: coverage</code></li>
+          <li><code>pnpm build:ci</code></li>
+        </ul>
+        <p class="muted">
+          说明：冒烟与黑盒回归由 <code>docker-smoke</code> job 负责（<code>pnpm docker:test</code>，内部跑 <code>pnpm test</code> 的 API smoke）。
+        </p>
+      </section>
+
+      <section id="next">
+        <h2>4. 已知限制与下一步建议</h2>
+        <ul>
+          <li>当前覆盖率已收敛到核心目录，但用例数量仍偏少，需要继续围绕主链路补齐边界/负向用例。</li>
+          <li>建议后续对“收敛域”引入渐进阈值（先低阈值、后逐步抬升），保证覆盖率持续增长。</li>
+        </ul>
+      </section>
+    </div>
+  </body>
+</html>

@@ -1,10 +1,12 @@
 import { Injectable, Logger, Inject, forwardRef, OnModuleInit } from '@nestjs/common'
 import { Cron } from '@nestjs/schedule'
+import { randomUUID } from 'crypto'
 import { getMySQLClient, getPool } from '../../storage/database/mysql-client'
 import { setCache, getCache } from '../../common/shared-cache'
 import { OrderService } from '../order/order.service'
 import { StorageService } from '../storage/storage.service'
 import { VolcengineService } from '../upload/volcengine.service'
+import { withMysqlNamedLock } from '../../common/mysql-named-lock'
 import {
   SKILL_STRATEGIES,
   getSkillStrategy,
@@ -14,11 +16,6 @@ import {
   detectSkillFromOrder,
 } from './content-strategy'
 
-// 火山引擎豆包 ARK API 直连配置（与 AiService 一致）
-const ARK_API_KEY = '0a6405d5-b7ae-4afa-88e3-c707ae379a47'
-const ARK_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3'
-const ARK_MODEL = 'doubao-seed-2-0-pro-260215'
-
 @Injectable()
 export class ContentGenerationService implements OnModuleInit {
   private readonly logger = new Logger(ContentGenerationService.name)
@@ -27,14 +24,20 @@ export class ContentGenerationService implements OnModuleInit {
   // CDN上传重试配置
   private readonly CDN_UPLOAD_RETRIES = 3
   private readonly CDN_UPLOAD_RETRY_DELAY_MS = 2000
+  private readonly VIDEO_DOWNLOAD_TIMEOUT_MS = Number(process.env.VIDEO_DOWNLOAD_TIMEOUT_MS ?? 60_000)
+  private readonly VIDEO_MAX_BYTES = Number(process.env.VIDEO_MAX_BYTES ?? 50 * 1024 * 1024)
+
+  private readonly arkApiKey = process.env.ARK_API_KEY || ''
+  private readonly arkBaseUrl = process.env.ARK_BASE_URL || 'https://ark.cn-beijing.volces.com/api/v3'
+  private readonly arkModel = process.env.ARK_MODEL || 'doubao-seed-2-0-pro-260215'
 
   // 图片生成：直接 HTTP 调用 api.aaigc.top（coze SDK ImageGenerationClient 线上报 Invalid URL）
   private readonly imageGenBaseUrl = process.env.IMAGE_GEN_API_BASE_URL || 'https://api.aaigc.top'
-  private readonly imageGenApiKey = process.env.IMAGE_GEN_API_KEY || 'sk-z1CFQbVdKI6x7ciJLwQkp1vPJPp8P9lQWW0jJGQWUdkSuQsK'
+  private readonly imageGenApiKey = process.env.IMAGE_GEN_API_KEY || ''
   private readonly imageGenModel = process.env.IMAGE_GEN_MODEL || 'gpt-image-2-all'
 
   // 视频生成：直接 HTTP 调用火山引擎 Seedance API（coze SDK VideoGenerationClient 线上报 Invalid URL）
-  private readonly seedanceApiKey = process.env.SEEDANCE_API_KEY || '0a6405d5-b7ae-4afa-88e3-c707ae379a47'
+  private readonly seedanceApiKey = process.env.SEEDANCE_API_KEY || ''
   private readonly seedanceBaseUrl = process.env.SEEDANCE_BASE_URL || 'https://ark.cn-beijing.volces.com'
   private readonly seedanceModel = process.env.SEEDANCE_MODEL || 'doubao-seedance-2-0-260128'
 
@@ -105,15 +108,18 @@ export class ContentGenerationService implements OnModuleInit {
    */
   private async invokeLlm(messages: { role: string; content: string }[]): Promise<string> {
     this.logger.log(`[ARK] 调用 LLM (Chat Completions), messages=${messages.length}条`)
+    if (!this.arkApiKey) {
+      throw new Error('ARK_API_KEY 未配置')
+    }
 
-    const response = await fetch(`${ARK_BASE_URL}/chat/completions`, {
+    const response = await fetch(`${this.arkBaseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${ARK_API_KEY}`,
+        'Authorization': `Bearer ${this.arkApiKey}`,
       },
       body: JSON.stringify({
-        model: ARK_MODEL,
+        model: this.arkModel,
         messages,
       }),
     })
@@ -158,28 +164,40 @@ export class ContentGenerationService implements OnModuleInit {
    */
   private async recoverStuckGenerations() {
     try {
-      const db = getMySQLClient()
-      const stuckStatuses = ['generating_text', 'generating_images', 'generating_video', 'pending', 'processing']
-      const stuckRecords: any[] = []
-      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000)
-      for (const status of stuckStatuses) {
-        const records = await db.from('content_generation_requests').findMany({ status })
-        for (const r of records) {
-          const updatedAt = new Date(r.updatedAt)
-          if (updatedAt < tenMinutesAgo) {
-            stuckRecords.push(r)
-          }
-        }
-      }
-      if (stuckRecords.length === 0) return
+      const { acquired } = await withMysqlNamedLock(
+        'content_generation:recover_stuck',
+        async () => {
+          const db = getMySQLClient()
+          const stuckStatuses = ['pending']
+          const limit = 50
+          const stuckRecords = await db.query(
+            `SELECT id, status FROM content_generation_requests
+             WHERE status IN (${stuckStatuses.map(() => '?').join(', ')})
+             AND updated_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE)
+             ORDER BY updated_at ASC
+             LIMIT ?`,
+            [...stuckStatuses, limit]
+          )
+          if (stuckRecords.length === 0) return
 
-      this.logger.warn(`发现 ${stuckRecords.length} 条卡住的生成任务，将自动完成`)
-      for (const record of stuckRecords) {
-        this.logger.warn(`恢复卡住任务: id=${record.id}, status=${record.status}`)
-        await db.update('content_generation_requests', record.id, { status: 'preview' })
-        // 清除缓存
-        setCache(record.id, null)
-      }
+          this.logger.warn(`发现 ${stuckRecords.length} 条卡住的生成任务，将自动完成`)
+          const ids = (stuckRecords || []).map((r: any) => r.id).filter(Boolean)
+          await db.query(
+            `UPDATE content_generation_requests
+             SET status = 'failed',
+                 error = '生成超时',
+                 updated_at = NOW()
+             WHERE id IN (?) AND status IN (?)`,
+            [ids, stuckStatuses]
+          )
+          for (const record of stuckRecords) {
+            this.logger.warn(`恢复卡住任务: id=${record.id}, status=${record.status}`)
+            setCache(record.id, null)
+          }
+        },
+        { logger: this.logger }
+      )
+      if (!acquired) return
     } catch (err: any) {
       this.logger.warn(`恢复卡住任务失败: ${err.message}`)
     }
@@ -207,6 +225,14 @@ export class ContentGenerationService implements OnModuleInit {
     requestId?: string
   }): Promise<any[]> {
     const results: any[] = []
+    const db = getMySQLClient()
+    let orderUserId: string | null = null
+    try {
+      const orderRows = await db.query('SELECT user_id FROM orders WHERE id = ? LIMIT 1', [input.orderId])
+      orderUserId = orderRows?.[0]?.userId || null
+    } catch (err: any) {
+      this.logger.warn(`查询订单user_id失败: ${err.message}`)
+    }
 
     const primarySkill = this.detectPrimarySkill(input.avatarSkills || [], input.contentType)
     const effectiveContentType = this.resolveContentType(primarySkill, input.contentType)
@@ -214,39 +240,170 @@ export class ContentGenerationService implements OnModuleInit {
     this.logger.log(`内容生成: orderId=${input.orderId}, avatarId=${input.avatarId}, primarySkill=${primarySkill}, contentType=${input.contentType}->${effectiveContentType}, skills=${input.avatarSkills?.join(',')}, requestId=${input.requestId || 'new'}`)
 
     for (const platform of input.platforms) {
-      const requestId = input.requestId || `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      let requestId: string | null = null
+      let shouldExecuteGeneration = false
+      let resolvedStatus = 'processing'
 
-      const db = getMySQLClient()
-      
-      if (input.requestId) {
+      const lockName = `content_generation:generate:${input.orderId}:${input.avatarId}:${platform}`
+      const { acquired } = await withMysqlNamedLock(
+        lockName,
+        async () => {
+          if (input.requestId) {
+            requestId = input.requestId
+            try {
+              const updateResult: any = await db.query(
+                `UPDATE content_generation_requests
+                 SET status = 'processing',
+                     user_id = COALESCE(user_id, ?),
+                     content = '',
+                     images = NULL,
+                     video_url = NULL,
+                     updated_at = NOW()
+                 WHERE id = ?`,
+                [orderUserId, requestId]
+              )
+              const affectedRows = Number(updateResult?.affectedRows ?? updateResult?.data?.affectedRows ?? 0)
+              if (affectedRows === 0) {
+                await db.query(
+                  `INSERT INTO content_generation_requests
+                   (id, user_id, avatar_id, order_id, platform, status, content_type, content_quantity, content, images, video_url, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, 'processing', ?, ?, '', NULL, NULL, NOW(), NOW())`,
+                  [
+                    requestId,
+                    orderUserId,
+                    input.avatarId,
+                    input.orderId,
+                    platform,
+                    effectiveContentType,
+                    input.contentQuantity || 1,
+                  ]
+                )
+              }
+              resolvedStatus = 'processing'
+              shouldExecuteGeneration = true
+              this.logger.log(`复用指定生成记录: ${requestId}, 状态: processing`)
+            } catch (dbError: any) {
+              this.logger.warn(`更新指定记录失败: ${dbError.message}`)
+              resolvedStatus = 'processing'
+              shouldExecuteGeneration = true
+            }
+            return
+          }
+
+          try {
+            const existingRows = await db.query(
+              `SELECT id, status, updated_at, created_at
+                     , seedance_task_id
+               FROM content_generation_requests
+               WHERE order_id = ? AND avatar_id = ? AND platform = ?
+               ORDER BY updated_at DESC, created_at DESC
+               LIMIT 1`,
+              [input.orderId, input.avatarId, platform]
+            )
+            const existing: any = existingRows?.[0]
+            if (existing?.id) {
+              const existingStatus = String(existing.status || '').trim().toLowerCase()
+              const terminalStatuses = ['published', 'awaiting_acceptance', 'settled', 'done', 'completed', 'preview']
+              const failedStatuses = ['failed', 'partial_failed']
+              const updatedAt = new Date(existing.updated_at || existing.created_at || 0)
+              const updatedAtTime = Number.isFinite(updatedAt.getTime()) ? updatedAt.getTime() : 0
+              const isVideoGenerating = existingStatus === 'generating_video' && Boolean(existing.seedance_task_id)
+              const timeoutMs = isVideoGenerating ? 30 * 60 * 1000 : this.GENERATION_TIMEOUT_MS
+              const isStale = updatedAtTime > 0 ? (Date.now() - updatedAtTime > timeoutMs) : true
+
+              requestId = existing.id
+              if (orderUserId) {
+                try {
+                  await db.query(
+                    `UPDATE content_generation_requests
+                     SET user_id = COALESCE(user_id, ?)
+                     WHERE id = ?`,
+                    [orderUserId, requestId]
+                  )
+                } catch (e: any) {
+                  this.logger.warn(`补齐user_id失败: ${e.message}`)
+                }
+              }
+
+              if (terminalStatuses.includes(existingStatus)) {
+                resolvedStatus = existingStatus
+                shouldExecuteGeneration = false
+                return
+              }
+
+              if (failedStatuses.includes(existingStatus) || isStale) {
+                await db.query(
+                  `UPDATE content_generation_requests
+                   SET status = 'processing',
+                       user_id = COALESCE(user_id, ?),
+                       content = '',
+                       images = NULL,
+                       video_url = NULL,
+                       updated_at = NOW()
+                   WHERE id = ?`,
+                  [orderUserId, requestId]
+                )
+                resolvedStatus = 'processing'
+                shouldExecuteGeneration = true
+                return
+              }
+
+              resolvedStatus = existingStatus || 'processing'
+              shouldExecuteGeneration = false
+              return
+            }
+          } catch (err: any) {
+            this.logger.warn(`检查生成记录失败: ${err.message}`)
+          }
+
+          requestId = `req_${randomUUID()}`
+          try {
+            await db.insert('content_generation_requests', {
+              id: requestId,
+              user_id: orderUserId,
+              avatar_id: input.avatarId,
+              order_id: input.orderId,
+              platform,
+              status: 'processing',
+              content_type: effectiveContentType,
+              content_quantity: input.contentQuantity || 1,
+              content: '',
+              images: null,
+              video_url: null,
+              created_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
+              updated_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+            })
+            this.logger.log(`创建生成记录: ${requestId}, 状态: processing`)
+          } catch (dbError: any) {
+            this.logger.warn(`数据库创建记录失败: ${dbError.message}`)
+          }
+          resolvedStatus = 'processing'
+          shouldExecuteGeneration = true
+        },
+        { logger: this.logger, waitSeconds: 2 }
+      )
+
+      if (!acquired) {
         try {
-          await db.query(
-            'UPDATE content_generation_requests SET status = ?, updated_at = NOW() WHERE id = ?',
-            ['processing', requestId]
+          const existingRows = await db.query(
+            `SELECT id, status
+             FROM content_generation_requests
+             WHERE order_id = ? AND avatar_id = ? AND platform = ?
+             ORDER BY updated_at DESC, created_at DESC
+             LIMIT 1`,
+            [input.orderId, input.avatarId, platform]
           )
-          this.logger.log(`复用生成记录: ${requestId}, 状态: processing`)
-        } catch (dbError: any) {
-          this.logger.warn(`更新记录失败: ${dbError.message}`)
-        }
-      } else {
-        try {
-          await db.insert('content_generation_requests', {
-            id: requestId,
-            avatar_id: input.avatarId,
-            order_id: input.orderId,
-            platform,
-            status: 'processing',
-            content_type: effectiveContentType,
-            content_quantity: input.contentQuantity || 1,
-            content: '',
-            images: null,
-            video_url: null,
-            created_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
-          })
-          this.logger.log(`创建生成记录: ${requestId}, 状态: processing`)
-        } catch (dbError: any) {
-          this.logger.warn(`数据库创建记录失败: ${dbError.message}`)
-        }
+          const existing: any = existingRows?.[0]
+          if (existing?.id) {
+            requestId = existing.id
+            resolvedStatus = String(existing.status || '').trim().toLowerCase() || 'processing'
+          }
+        } catch {}
+      }
+
+      if (!requestId) {
+        requestId = `req_${randomUUID()}`
+        resolvedStatus = 'processing'
       }
 
       // 2. 写入缓存（processing 状态）
@@ -255,28 +412,26 @@ export class ContentGenerationService implements OnModuleInit {
         order_id: input.orderId,
         avatar_id: input.avatarId,
         platform,
-        status: 'processing',
+        status: resolvedStatus,
         generatedContent: null,
         created_at: new Date().toISOString()
       }
       setCache(requestId, cacheData)
       setCache(input.orderId, cacheData)
 
-      results.push({
-        platform,
-        requestId,
-        status: 'processing'
-      })
+      results.push({ platform, requestId, status: resolvedStatus })
 
       // 3. 后台异步执行生成（不 await，让接口立即返回）
-      this.executeGeneration(requestId, platform, {
-        ...input,
-        contentType: effectiveContentType,
-        primarySkill,
-      }).catch(err => {
-        this.logger.error(`后台生成失败: ${err.message}`, err.stack)
-        this.updateStatus(requestId, input.orderId, 'failed', null)
-      })
+      if (shouldExecuteGeneration) {
+        this.executeGeneration(requestId, platform, {
+          ...input,
+          contentType: effectiveContentType,
+          primarySkill,
+        }).catch(err => {
+          this.logger.error(`后台生成失败: ${err.message}`, err.stack)
+          this.updateStatus(requestId, input.orderId, 'failed', null)
+        })
+      }
     }
 
     return results
@@ -1064,11 +1219,11 @@ ${input.orderDescription}
         const llmPrompts = await this.generateContextAwareImageDescs(textContent, quantity, title)
         if (llmPrompts && llmPrompts.length === quantity) {
           this.logger.log(`使用LLM差异化提示词生成${quantity}张图片`)
-          return llmPrompts.map((desc, i) => {
+          return llmPrompts.map((imgDesc, i) => {
             if (i === 0) {
-              return `${title}的封面主图，视觉描述：${desc}，${platformStyle}${skillHint}，居中构图，高端品质，极强吸引力，面向${audience}，4K商业摄影级别，${chineseTextRule}。产品关键词参考：${productKeywords}`
+              return `${title}的封面主图，视觉描述：${imgDesc}，${platformStyle}${skillHint}，居中构图，高端品质，极强吸引力，面向${audience}，4K商业摄影级别，${chineseTextRule}。产品关键词参考：${productKeywords}`
             }
-            return `${title}的${desc}，${platformStyle}${skillHint}，面向${audience}，4K，${chineseTextRule}。产品关键词参考：${productKeywords}`
+            return `${title}的${imgDesc}，${platformStyle}${skillHint}，面向${audience}，4K，${chineseTextRule}。产品关键词参考：${productKeywords}`
           })
         }
       } catch (err: any) {
@@ -1378,8 +1533,6 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
     }
     setCache(requestId, updatedCache)
     setCache(orderId, updatedCache)
-
-    // 2. 同时更新数据库（修复进度倒回问题）
     try {
       const db = getMySQLClient()
       await db.query(
@@ -1387,9 +1540,8 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
         [status, requestId]
       )
     } catch (err: any) {
-      this.logger.warn(`更新详细状态到数据库失败: ${err.message}`)
+      this.logger.warn(`更新细化状态失败: ${err.message}`)
     }
-
     this.logger.log(`状态更新: requestId=${requestId}, status=${status}`)
   }
 
@@ -1418,7 +1570,7 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
     try {
       const db = getMySQLClient()
       await db.query(
-        'UPDATE content_generation_requests SET content = ?, images = ?, status = ? WHERE id = ?',
+        'UPDATE content_generation_requests SET content = ?, images = ?, status = ?, updated_at = NOW() WHERE id = ?',
         [content, images.length > 0 ? JSON.stringify(images) : null, status, requestId]
       )
     } catch (err: any) {
@@ -1449,7 +1601,7 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
       const db = getMySQLClient()
       if ((status === 'preview' || status === 'completed') && generatedContent) {
         await db.query(
-          'UPDATE content_generation_requests SET status = ?, content = ?, images = ?, video_url = ? WHERE id = ?',
+          'UPDATE content_generation_requests SET status = ?, content = ?, images = ?, video_url = ?, updated_at = NOW() WHERE id = ?',
           [
             status,
             generatedContent.content || '',
@@ -1461,7 +1613,7 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
         this.logger.log(`预览状态已写入数据库: requestId=${requestId}`)
       } else if (status === 'failed') {
         await db.query(
-          'UPDATE content_generation_requests SET status = ? WHERE id = ?',
+          'UPDATE content_generation_requests SET status = ?, updated_at = NOW() WHERE id = ?',
           [status, requestId]
         )
         this.logger.log(`失败状态已写入数据库: requestId=${requestId}`)
@@ -1546,6 +1698,9 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
   private async generateImageViaHttp(prompt: string, size = '1024x1536'): Promise<string> {
     const apiUrl = `${this.imageGenBaseUrl}/v1/images/generations`
     this.logger.log(`[ImageHTTP] calling: ${apiUrl}, model: ${this.imageGenModel}, size: ${size}`)
+    if (!this.imageGenApiKey) {
+      throw new Error('IMAGE_GEN_API_KEY 未配置')
+    }
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -1621,7 +1776,7 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
           imageUrl = uploadResult.url
           this.logger.log(`[ImageHTTP] base64上传veImageX成功: ${imageUrl.slice(0, 80)}...`)
         } catch (uploadErr: any) {
-          this.logger.error(`[ImageHTTP] base64上传veImageX失败: ${uploadErr.message}，跳过此图`)
+          this.logger.error(`[ImageHTTP] base64上传veImageX失败: ${uploadErr.message}`)
           throw new Error(`base64图片上传CDN失败: ${uploadErr.message}`)
         }
       }
@@ -1641,6 +1796,9 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
   private async createSeedanceTask(prompt: string): Promise<string> {
     const createUrl = `${this.seedanceBaseUrl}/api/v3/contents/generations/tasks`
     this.logger.log(`[Seedance] creating video task, prompt: ${prompt.slice(0, 80)}...`)
+    if (!this.seedanceApiKey) {
+      throw new Error('SEEDANCE_API_KEY 未配置')
+    }
 
     const createResponse = await fetch(createUrl, {
       method: 'POST',
@@ -1679,6 +1837,9 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
    */
   private async pollSeedanceTask(taskId: string): Promise<string | null> {
     const pollUrl = `${this.seedanceBaseUrl}/api/v3/contents/generations/tasks/${taskId}`
+    if (!this.seedanceApiKey) {
+      throw new Error('SEEDANCE_API_KEY 未配置')
+    }
     const pollResponse = await fetch(pollUrl, {
       method: 'GET',
       headers: {
@@ -1754,111 +1915,158 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
   @Cron('*/30 * * * * *')
   async pollPendingVideoTasks() {
     try {
-      const pool = getPool()
+      const { acquired } = await withMysqlNamedLock(
+        'content_generation:video_poll',
+        async () => {
+          const pool = getPool()
 
-      // 1. 超时保护：generating_video 超过 30 分钟自动标记失败
-      const [timeoutRows]: any = await pool.execute(
-        `SELECT id, order_id FROM content_generation_requests
-         WHERE status = 'generating_video' AND seedance_task_id IS NOT NULL
-         AND updated_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)`
-      )
-      if (timeoutRows && timeoutRows.length > 0) {
-        for (const row of timeoutRows) {
-          this.logger.warn(`[VideoPoll] 视频生成超时(>30min): requestId=${row.id}`)
-          await pool.execute(
-            'UPDATE content_generation_requests SET status = ?, error = ?, seedance_task_id = NULL, updated_at = NOW() WHERE id = ?',
-            ['partial_failed', '视频生成超时（30分钟）', row.id]
+          const [timeoutRows]: any = await pool.execute(
+            `SELECT id, order_id FROM content_generation_requests
+             WHERE status = 'generating_video' AND seedance_task_id IS NOT NULL
+             AND updated_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)`
           )
-          try { await this.syncOrderStatus(row.order_id) } catch (e: any) { /* ignore */ }
-        }
-      }
+          if (timeoutRows && timeoutRows.length > 0) {
+            for (const row of timeoutRows) {
+              this.logger.warn(`[VideoPoll] 视频生成超时(>30min): requestId=${row.id}`)
+              await pool.execute(
+                'UPDATE content_generation_requests SET status = ?, error = ?, seedance_task_id = NULL, updated_at = NOW() WHERE id = ?',
+                ['partial_failed', '视频生成超时（30分钟）', row.id]
+              )
+              try {
+                await this.syncOrderStatus(row.order_id)
+              } catch {}
+            }
+          }
 
-      // 2. 正常轮询：未超时的记录
-      const [rows]: any = await pool.execute(
-        `SELECT id, order_id, seedance_task_id, content, images, platform
-         FROM content_generation_requests
-         WHERE status = 'generating_video' AND seedance_task_id IS NOT NULL
-         ORDER BY created_at ASC LIMIT 10`
-      )
+          const [rows]: any = await pool.execute(
+            `SELECT id, order_id, seedance_task_id, content, images
+             FROM content_generation_requests
+             WHERE status = 'generating_video' AND seedance_task_id IS NOT NULL
+             ORDER BY created_at ASC LIMIT 10`
+          )
 
-      if (!rows || rows.length === 0) return
+          if (!rows || rows.length === 0) return
 
-      for (const record of rows) {
-        const { id, order_id, seedance_task_id, content, images, platform } = record
-        try {
-          this.logger.log(`[VideoPoll] 轮询任务: requestId=${id}, taskId=${seedance_task_id}`)
-          const videoUrl = await this.pollSeedanceTask(seedance_task_id)
-
-          if (videoUrl) {
-            // 视频生成成功，下载并转存到自己的CDN
-            let finalVideoUrl = videoUrl
+          for (const record of rows) {
+            const { id, order_id, seedance_task_id, content, images } = record
             try {
-              this.logger.log(`[VideoPoll] 下载临时视频并转存veImageX CDN: ${videoUrl.slice(0, 80)}...`)
-              const videoResponse = await fetch(videoUrl)
-              if (videoResponse.ok) {
-                const videoBuffer = Buffer.from(await videoResponse.arrayBuffer())
-                const fileName = `content-video/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.mp4`
-                const uploadResult = await this.volcengineService.uploadVideo(videoBuffer, fileName)
-                finalVideoUrl = uploadResult.url
-                this.logger.log(`[VideoPoll] 视频转存veImageX CDN成功: ${finalVideoUrl.slice(0, 80)}...`)
-              } else {
-                this.logger.warn(`[VideoPoll] 下载临时视频失败: ${videoResponse.status}，使用原始URL`)
+              this.logger.log(`[VideoPoll] 轮询任务: requestId=${id}, taskId=${seedance_task_id}`)
+              const videoUrl = await this.pollSeedanceTask(seedance_task_id)
+
+              if (videoUrl) {
+                let finalVideoUrl = videoUrl
+                try {
+                  this.logger.log(
+                    `[VideoPoll] 下载临时视频并转存veImageX CDN: ${videoUrl.slice(0, 80)}...`
+                  )
+                  const videoBuffer = await this.downloadVideoToBuffer(videoUrl)
+                  if (videoBuffer) {
+                    const fileName = `content-video/${Date.now()}_${Math.random()
+                      .toString(36)
+                      .substring(2, 8)}.mp4`
+                    const uploadResult = await this.volcengineService.uploadVideo(videoBuffer, fileName)
+                    finalVideoUrl = uploadResult.url
+                    this.logger.log(
+                      `[VideoPoll] 视频转存veImageX CDN成功: ${finalVideoUrl.slice(0, 80)}...`
+                    )
+                  } else {
+                    this.logger.warn('[VideoPoll] 视频下载被限制或失败，使用原始URL')
+                  }
+                } catch (downloadErr: any) {
+                  this.logger.warn(`[VideoPoll] 视频转存CDN失败: ${downloadErr.message}，使用原始URL`)
+                }
+
+                this.logger.log(
+                  `[VideoPoll] 视频生成成功: requestId=${id}, url=${finalVideoUrl.slice(0, 80)}...`
+                )
+                await pool.execute(
+                  'UPDATE content_generation_requests SET status = ?, video_url = ?, seedance_task_id = NULL, updated_at = NOW() WHERE id = ?',
+                  ['preview', finalVideoUrl, id]
+                )
+                try {
+                  await this.syncOrderStatus(order_id)
+                } catch (e: any) {
+                  this.logger.warn(`[VideoPoll] 同步订单状态失败: ${e.message}`)
+                }
               }
-            } catch (downloadErr: any) {
-              this.logger.warn(`[VideoPoll] 视频转存CDN失败: ${downloadErr.message}，使用原始URL`)
-            }
-            // 更新记录
-            this.logger.log(`[VideoPoll] 视频生成成功: requestId=${id}, url=${finalVideoUrl.slice(0, 80)}...`)
-            await pool.execute(
-              'UPDATE content_generation_requests SET status = ?, video_url = ?, seedance_task_id = NULL, updated_at = NOW() WHERE id = ?',
-              ['preview', finalVideoUrl, id]
-            )
-            // 同步订单状态
-            try {
-              await this.syncOrderStatus(order_id)
-            } catch (e: any) {
-              this.logger.warn(`[VideoPoll] 同步订单状态失败: ${e.message}`)
+            } catch (err: any) {
+              this.logger.warn(`[VideoPoll] 视频任务失败: requestId=${id}, error=${err.message}`)
+              const hasImages = images && images !== '[]' && images !== ''
+              const finalStatus = hasImages ? 'partial_failed' : content ? 'partial_failed' : 'failed'
+              await pool.execute(
+                'UPDATE content_generation_requests SET status = ?, error = ?, seedance_task_id = NULL, updated_at = NOW() WHERE id = ?',
+                [finalStatus, `视频生成失败: ${err.message}`, id]
+              )
+              try {
+                await this.syncOrderStatus(order_id)
+              } catch (e: any) {
+                this.logger.warn(`[VideoPoll] 同步订单状态失败: ${e.message}`)
+              }
             }
           }
-          // null 表示还在生成中，下次再轮询
-        } catch (err: any) {
-          // Seedance 任务失败
-          this.logger.warn(`[VideoPoll] 视频任务失败: requestId=${id}, error=${err.message}`)
-          const hasImages = images && images !== '[]' && images !== ''
-          const finalStatus = hasImages ? 'partial_failed' : (content ? 'partial_failed' : 'failed')
-          await pool.execute(
-            'UPDATE content_generation_requests SET status = ?, error = ?, seedance_task_id = NULL, updated_at = NOW() WHERE id = ?',
-            [finalStatus, `视频生成失败: ${err.message}`, id]
-          )
-          try {
-            await this.syncOrderStatus(order_id)
-          } catch (e: any) {
-            this.logger.warn(`[VideoPoll] 同步订单状态失败: ${e.message}`)
-          }
-        }
-      }
 
-      // 3. 兜底：处理无 seedance_task_id 但卡在 generating_video 的旧记录
-      const [stuckRows]: any = await pool.execute(
-        `SELECT id, order_id, content, images FROM content_generation_requests
-         WHERE status = 'generating_video' AND seedance_task_id IS NULL
-         AND updated_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE)`
-      )
-      if (stuckRows && stuckRows.length > 0) {
-        for (const row of stuckRows) {
-          this.logger.warn(`[VideoPoll] 无taskId的卡住记录: requestId=${row.id}, 标记为partial_failed`)
-          const hasImages = row.images && row.images !== '[]' && row.images !== ''
-          const hasContent = row.content && row.content.length > 0
-          const finalStatus = (hasImages || hasContent) ? 'partial_failed' : 'failed'
-          await pool.execute(
-            'UPDATE content_generation_requests SET status = ?, error = ?, updated_at = NOW() WHERE id = ?',
-            [finalStatus, '视频生成异常（无后台任务）', row.id]
+          const [stuckRows]: any = await pool.execute(
+            `SELECT id, order_id, content, images FROM content_generation_requests
+             WHERE status = 'generating_video' AND seedance_task_id IS NULL
+             AND updated_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE)`
           )
-          try { await this.syncOrderStatus(row.order_id) } catch (e: any) { /* ignore */ }
-        }
-      }
+          if (stuckRows && stuckRows.length > 0) {
+            for (const row of stuckRows) {
+              this.logger.warn(`[VideoPoll] 无taskId的卡住记录: requestId=${row.id}, 标记为partial_failed`)
+              const hasImages = row.images && row.images !== '[]' && row.images !== ''
+              const hasContent = row.content && row.content.length > 0
+              const finalStatus = hasImages || hasContent ? 'partial_failed' : 'failed'
+              await pool.execute(
+                'UPDATE content_generation_requests SET status = ?, error = ?, updated_at = NOW() WHERE id = ?',
+                [finalStatus, '视频生成异常（无后台任务）', row.id]
+              )
+              try {
+                await this.syncOrderStatus(row.order_id)
+              } catch {}
+            }
+          }
+        },
+        { logger: this.logger }
+      )
+      if (!acquired) return
     } catch (err: any) {
       this.logger.error(`[VideoPoll] 定时任务执行失败: ${err.message}`)
+    }
+  }
+
+  private async downloadVideoToBuffer(url: string): Promise<Buffer | null> {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), this.VIDEO_DOWNLOAD_TIMEOUT_MS)
+    try {
+      const res = await fetch(url, { signal: controller.signal })
+      if (!res.ok || !res.body) return null
+
+      const reader = (res.body as any).getReader?.()
+      if (!reader) {
+        const buf = Buffer.from(await res.arrayBuffer())
+        if (buf.byteLength > this.VIDEO_MAX_BYTES) return null
+        return buf
+      }
+
+      const chunks: Buffer[] = []
+      let total = 0
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        if (value) {
+          total += value.byteLength
+          if (total > this.VIDEO_MAX_BYTES) {
+            controller.abort()
+            return null
+          }
+          chunks.push(Buffer.from(value))
+        }
+      }
+      return Buffer.concat(chunks, total)
+    } catch {
+      return null
+    } finally {
+      clearTimeout(timeout)
     }
   }
 

@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { View, Text, ScrollView, Image, Picker } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
-import * as Network from '@/network'
+import { Network } from '@/network'
 import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap, Users, ChevronRight, X, Check, Crown, ArrowLeft, Trash2, Phone, Bell } from 'lucide-react-taro'
 import { getSafeArea } from '@/utils/safe-area'
 import * as Taro from '@tarojs/taro'
@@ -339,11 +339,12 @@ export default function AvatarManagePage() {
       `planName=${encodeURIComponent(String(planName))}`,
     ].join('&')
 
-    navigateTo({ url: `/pages/avatar/avatar-create/index?${query}` })
+    navigateTo({ url: `/package-avatar/pages/avatar-create/index?${query}` })
   }
 
   const goToSettings = (avatarId: string) => {
-    navigateTo({ url: `/pages/avatar/avatar-settings/index?avatarId=${avatarId}` })
+    Taro.setStorageSync('mind_chat_focus_avatar', avatarId)
+    Taro.switchTab({ url: '/pages/mind-chat/index' })
   }
 
   const closeOnboarding = () => {
@@ -364,13 +365,15 @@ export default function AvatarManagePage() {
 
     if (action === 'voice') {
       closeOnboarding()
-      navigateTo({ url: `/pages/avatar/avatar-settings/index?avatarId=${avatar.id}` })
+      Taro.setStorageSync('mind_chat_focus_avatar', avatar.id)
+      Taro.switchTab({ url: '/pages/mind-chat/index' })
       return
     }
 
     if (action === 'friends') {
       closeOnboarding()
-      navigateTo({ url: `/pages/avatar/avatar-friends/index?avatarId=${avatar.id}` })
+      Taro.setStorageSync('mind_chat_focus_avatar', avatar.id)
+      Taro.switchTab({ url: '/pages/mind-chat/index' })
       return
     }
 
@@ -780,7 +783,10 @@ export default function AvatarManagePage() {
                         <View className="quick-entries">
                           <View
                             className="quick-entry-btn"
-                            onClick={() => navigateTo({ url: `/pages/avatar/avatar-friends/index?avatarId=${avatar.id}` })}
+                            onClick={() => {
+                              Taro.setStorageSync('mind_chat_focus_avatar', avatar.id)
+                              Taro.switchTab({ url: '/pages/mind-chat/index' })
+                            }}
                           >
                             <View className="quick-entry-icon">
                               <Users size={24} color="#06b6d4" />

@@ -54,6 +54,7 @@ const Index: React.FC = () => {
 
   const [showOrderModal, setShowOrderModal] = useState(false)
   const [orderModalData, setOrderModalData] = useState<any>(null)
+  const [trustAllLoading, setTrustAllLoading] = useState(false)
   const [dismissedOrderIds, setDismissedOrderIds] = useState<Set<string>>(() => {
     try {
       const stored = Taro.getStorageSync('dismissed_order_ids')
@@ -416,8 +417,12 @@ const Index: React.FC = () => {
       setDismissedOrderIds(newDismissed)
       try {
         Taro.setStorageSync('dismissed_order_ids', JSON.stringify([...newDismissed]))
+<<<<<<< HEAD
       } catch { }
       Taro.navigateTo({ url: `/package-order/pages/order-content-creation/index?orderId=${orderId}` })
+=======
+      } catch {}
+>>>>>>> 8af9a9f0e10919b8e6999a2d1138b8ac7c147180
     }
   }
 
@@ -434,11 +439,14 @@ const Index: React.FC = () => {
   }
 
   const enableAllTrust = async () => {
+    if (trustAllLoading) return
+    setTrustAllLoading(true)
     try {
       const res = await Network.request({
         url: '/api/avatar/trust/all',
         method: 'PUT',
-        data: { trust_enabled: true }
+        data: { trust_enabled: true },
+        dedupKey: 'avatar:trust:all:on',
       })
       if (res.data?.code === 200) {
         Taro.showToast({ title: '已开启所有分身托管', icon: 'success' })
@@ -449,6 +457,8 @@ const Index: React.FC = () => {
     } catch (err) {
       console.error('开启托管失败:', err)
       Taro.showToast({ title: '开启失败', icon: 'none' })
+    } finally {
+      setTrustAllLoading(false)
     }
   }
 

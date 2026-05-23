@@ -1,7 +1,7 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import Taro, { useLoad, useRouter, navigateBack, navigateTo, showToast } from '@tarojs/taro'
 import { useState } from 'react'
-import * as Network from '@/network'
+import { Network } from '@/network'
 import { Button } from '@/components/ui/button'
 import {
   Sparkles, ArrowLeft, UserPlus, Heart, Phone,

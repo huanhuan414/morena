@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
-import * as Network from '@/network'
+import { Network } from '@/network'
 import {
   ChevronRight, Sparkles, Settings, Trash2,
   Volume2, Bell, Moon, Zap, Shield, MapPin

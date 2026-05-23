@@ -1,9 +1,10 @@
-import { useState } from 'react'
-import Taro, { useDidShow } from '@tarojs/taro'
+import { useState, useRef } from 'react'
+import Taro, { useDidHide, useDidShow } from '@tarojs/taro'
 import { View, Text, Image, ScrollView, Textarea } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Network } from '@/network'
+import { subscribeManagedPolling } from '@/utils/polling'
 import {
   ArrowLeft, Sparkles, History, Trash2,
   Link, ImagePlus, Send, FileText, Loader, X
@@ -43,8 +44,13 @@ export default function WechatMpArticle() {
   const [publishing, setPublishing] = useState(false)
   const [history, setHistory] = useState<HistoryRecord[]>([])
   const [wechatAccounts, setWechatAccounts] = useState<any[]>([])
-  const [pollTimer, setPollTimer] = useState<ReturnType<typeof setInterval> | null>(null)
   const [usageInfo, setUsageInfo] = useState<{ used: number; limit: number; remaining: number }>({ used: 0, limit: 1, remaining: 1 })
+  const pollCtlRef = useRef<{
+    pause: () => void
+    resume: () => void
+    unsubscribe: () => void
+    cancel: () => void
+  } | null>(null)
 
   useDidShow(() => {
     fetchHistory()
@@ -52,6 +58,11 @@ export default function WechatMpArticle() {
     fetchUsageLimit()
     // 恢复进行中的生成状态
     recoverGeneratingStatus()
+    pollCtlRef.current?.resume()
+  })
+
+  useDidHide(() => {
+    pollCtlRef.current?.pause()
   })
 
   const fetchUsageLimit = async () => {
@@ -67,11 +78,6 @@ export default function WechatMpArticle() {
       console.error('获取使用限制失败', e)
     }
   }
-
-  // 页面隐藏时不断开轮询（后台继续轮询）
-  // useDidHide 中不清理 pollTimer，让轮询继续
-  // 但组件卸载时需要清理
-  // 注意：Taro 页面不会被卸载，只是隐藏
 
   const recoverGeneratingStatus = async () => {
     try {
@@ -287,6 +293,7 @@ export default function WechatMpArticle() {
   }
 
   const handleGenerate = async () => {
+    if (generating) return
     if (!inputText.trim()) {
       Taro.showToast({ title: '请输入文章描述', icon: 'none' })
       return
@@ -319,6 +326,7 @@ export default function WechatMpArticle() {
           inputText: inputText.trim(),
           inputImageUrls: uploadedImages.length > 0 ? uploadedImages : undefined,
         },
+        dedupKey: `ai-skill:generate:wechat_mp_article:${inputText.trim()}`,
       })
       console.log('[公众号爆款] 生成请求:', res.data)
 
@@ -339,36 +347,33 @@ export default function WechatMpArticle() {
   }
 
   const startPolling = (id: string) => {
-    // 清理之前的轮询
-    if (pollTimer) {
-      clearInterval(pollTimer)
-    }
-
     let attempts = 0
     const maxAttempts = 300 // 最多轮询10分钟（3张图可能需要较长时间）
+    pollCtlRef.current?.cancel()
 
-    const timer = setInterval(async () => {
-      attempts++
-      if (attempts > maxAttempts) {
-        clearInterval(timer)
-        setPollTimer(null)
-        setGenerating(false)
-        setGenStatus('timeout')
-        setGenProgress('生成超时，请稍后在历史记录中查看')
-        return
-      }
-
-      try {
+    const ctl = subscribeManagedPolling({
+      key: `ai-skill:record:${id}:lite`,
+      baseIntervalMs: 2000,
+      maxIntervalMs: 30_000,
+      backoffFactor: 2,
+      fetcher: async () => {
+        attempts += 1
+        if (attempts > maxAttempts) {
+          throw new Error('timeout')
+        }
         const res = await Network.request({
-          url: `/api/ai-skill/record/${id}`,
+          url: `/api/ai-skill/record/${id}?view=lite`,
+          dedupKey: `ai-skill:record:${id}:lite`,
         })
-        const record = res.data?.data
+        return res.data
+      },
+      onData: (payload: any) => {
+        const record = payload?.data
         if (!record) return
 
         const status = record.status
         const meta = record.metadata || {}
 
-        // 更新状态和进度
         if (status === 'generating_text') {
           setGenStatus('generating_text')
           setGenProgress('正在生成爆款文章...')
@@ -380,8 +385,8 @@ export default function WechatMpArticle() {
           const total = meta.totalImages || 3
           setGenProgress(`正在生成配图 (${current}/${total})...`)
         } else if (status === 'completed') {
-          clearInterval(timer)
-          setPollTimer(null)
+          ctl.cancel()
+          if (pollCtlRef.current === ctl) pollCtlRef.current = null
           setGenerating(false)
           setGenStatus('completed')
           setGenProgress('生成完成！')
@@ -396,20 +401,26 @@ export default function WechatMpArticle() {
           }
           fetchHistory()
         } else if (status === 'failed') {
-          clearInterval(timer)
-          setPollTimer(null)
+          ctl.cancel()
+          if (pollCtlRef.current === ctl) pollCtlRef.current = null
           setGenerating(false)
           setGenStatus('failed')
           setGenProgress(record.errorMessage || '生成失败')
           Taro.showToast({ title: record.errorMessage || '生成失败', icon: 'none' })
         }
-      } catch (err) {
-        // 继续轮询
-        console.error('[公众号爆款] 轮询异常:', err)
-      }
-    }, 2000)
+      },
+      onError: (err: unknown) => {
+        if ((err as any)?.message === 'timeout') {
+          ctl.cancel()
+          if (pollCtlRef.current === ctl) pollCtlRef.current = null
+          setGenerating(false)
+          setGenStatus('timeout')
+          setGenProgress('生成超时，请稍后在历史记录中查看')
+        }
+      },
+    })
 
-    setPollTimer(timer)
+    pollCtlRef.current = ctl
   }
 
   const handlePublish = async () => {

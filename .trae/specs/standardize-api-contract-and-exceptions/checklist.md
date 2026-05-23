@@ -1,0 +1,6 @@
+- [x] 所有成功响应统一输出 `{ code: 200, message, msg(兼容), data, traceId, timestamp(number) }`
+- [x] 所有异常响应统一输出 `{ code: <httpStatus>, message, msg(兼容), data, traceId, timestamp(number) }`
+- [x] 不存在 “HTTP 200 + body.code!=200” 的错误返回（至少覆盖 payment 模块）
+- [x] `X-Trace-Id` 在响应 Header 与响应体中一致，且异常/成功均可获得
+- [x] POST 成功不再返回 201（仍统一为 200）
+- [x] `pnpm validate` 通过（根目录）

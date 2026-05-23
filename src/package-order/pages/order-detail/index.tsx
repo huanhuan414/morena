@@ -8,6 +8,12 @@ import {
   FileText, CircleDot, Camera, Video, Eye, Image as ImageIcon,
   ExternalLink, ThumbsUp, MessageCircle, Calendar
 } from 'lucide-react-taro'
+import {
+  normalizeOrderDetail,
+  normalizeTimelineEvents,
+  type OrderDetailDto,
+  type TimelineEventDto,
+} from '@/adapters/core-chain-dto'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
@@ -131,8 +137,8 @@ function formatTime(dateStr: string): string {
 }
 
 export default function OrderDetailPage() {
-  const [order, setOrder] = useState<any>(null)
-  const [events, setEvents] = useState<any[]>([])
+  const [order, setOrder] = useState<OrderDetailDto | null>(null)
+  const [events, setEvents] = useState<TimelineEventDto[]>([])
   const [loading, setLoading] = useState(true)
   const [paying, setPaying] = useState(false)
   const [selectedAvatar, setSelectedAvatar] = useState<any>(null)
@@ -154,13 +160,11 @@ export default function OrderDetailPage() {
         Network.request({ url: `/api/order-dispatch/${orderId}/timeline` }).catch(() => ({ data: { data: [] } })),
       ])
       console.log('[OrderDetail] order:', JSON.stringify(orderRes.data)?.substring(0, 200))
-      const orderData = orderRes.data?.data || orderRes.data
+      const orderData = normalizeOrderDetail(orderRes.data?.data)
       setOrder(orderData)
 
-      // 事件时间线 - 后端返回的是数组
-      const evtData = eventRes.data?.data
-      const evts = Array.isArray(evtData) ? evtData : (evtData?.events || [])
-      setEvents(evts)
+      const eventData = normalizeTimelineEvents(eventRes.data?.data)
+      setEvents(eventData)
     } catch (err) {
       console.error('[OrderDetail] fetch error:', err)
     } finally {
@@ -176,8 +180,8 @@ export default function OrderDetailPage() {
       pollingRef.current = setInterval(async () => {
         try {
           const res = await Network.request({ url: `/api/order/${orderId}` })
-          const data = res.data?.data || res.data
-          if (data?.isPaid || data?.is_paid || (data?.status && data.status !== 'pending_payment')) {
+          const data = normalizeOrderDetail(res.data?.data)
+          if (data && (data.isPaid || (data.status && data.status !== 'pending_payment'))) {
             setOrder(data)
             clearInterval(pollingRef.current)
           }
@@ -205,6 +209,7 @@ export default function OrderDetailPage() {
         url: `/api/order/${orderId}/repay`,
         method: 'POST',
         data: { openid },
+        dedupKey: `order:repay:${orderId}`,
       })
       const payment = payRes.data?.data?.payment
       if (!payment) {
@@ -306,10 +311,10 @@ export default function OrderDetailPage() {
   console.log('[OrderDetail] avatarStats:', JSON.stringify(avatarStats))
   console.log('[OrderDetail] hasVerifiableAvatars:', hasVerifiableAvatars, 'hasAwaitingAcceptance:', hasAwaitingAcceptance, 'isAllVerified:', isAllVerified, 'order.status:', order.status)
 
-  const effectiveStatus = order?.summary_stats?.effectiveStatus || order.status
+  const effectiveStatus = order.status
   const statusCfg = STATUS_CONFIG[effectiveStatus] || { label: effectiveStatus, color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1, desc: '' }
   const currentPhase = getPhaseIndex(effectiveStatus)
-  const orderUserId = order.userId || order.user_id
+  const orderUserId = order.userId
   const isOrderOwner = orderUserId && currentUserId && orderUserId === currentUserId
   const isPayable = order.status === 'pending_payment' && isOrderOwner
   const isCancellable = ['pending_payment', 'pending'].includes(order.status) && isOrderOwner
@@ -319,13 +324,11 @@ export default function OrderDetailPage() {
   const ctConfig = CONTENT_TYPE_MAP[order.contentType] || CONTENT_TYPE_MAP.text
 
   // 分身统计 — 使用 normalizedStatus（avatarStats.status），不使用 raw dispatchStatus
-  const totalAvatars = order?.summary_stats?.totalAvatars ?? order.avatarCount ?? 0
-  const acceptedCount = order?.summary_stats?.acceptedAvatars ?? avatarStats.filter((a: any) =>
-    ['accepted', 'generating', 'preview', 'publishing', 'published', 'awaiting_acceptance', 'feedback_submitted', 'completed'].includes(a.status)
-  ).length
-  const completedCount = order?.summary_stats?.completedAvatars ?? avatarStats.filter((a: any) => a.status === 'completed').length
-  const pendingCount = order?.summary_stats?.pendingAvatars ?? avatarStats.filter((a: any) => a.status === 'pending').length
-  const rejectedCount = order?.summary_stats?.rejectedAvatars ?? avatarStats.filter((a: any) => a.status === 'rejected').length
+  const totalAvatars = order.summaryStats.totalAvatars
+  const acceptedCount = order.summaryStats.acceptedAvatars
+  const completedCount = order.summaryStats.completedAvatars
+  const pendingCount = order.summaryStats.pendingAvatars
+  const rejectedCount = order.summaryStats.rejectedAvatars
 
   // 去匹配：已支付但还没有分配分身
   const isNeedMatching = order.status === 'pending' && totalAvatars === 0
@@ -424,7 +427,7 @@ export default function OrderDetailPage() {
         <View className="od-card">
           <View className="od-stats-row">
             <View className="od-stat-item">
-              <Text className="block od-stat-value od-stat-budget">¥{order.budget || order.totalPrice || 0}</Text>
+              <Text className="block od-stat-value od-stat-budget">¥{order.budget || 0}</Text>
               <Text className="block od-stat-label">订单金额</Text>
             </View>
             <View className="od-stat-divider" />
@@ -434,7 +437,7 @@ export default function OrderDetailPage() {
             </View>
             <View className="od-stat-divider" />
             <View className="od-stat-item">
-              <Text className="block od-stat-value">{formatTime(order.createdAt || order.created_at)}</Text>
+              <Text className="block od-stat-value">{formatTime(order.createdAt)}</Text>
               <Text className="block od-stat-label">创建时间</Text>
             </View>
           </View>
@@ -515,7 +518,7 @@ export default function OrderDetailPage() {
               const avatarStatus = av.status || 'pending'
               const hasContent = ['preview', 'publishing', 'published', 'awaiting_acceptance', 'feedback_submitted', 'completed'].includes(avatarStatus)
               const avatarImages: string[] = Array.isArray(av.images) ? av.images : []
-              const avatarVideoUrls: string[] = Array.isArray(av.videoUrl) ? av.videoUrl : []
+              const avatarVideoUrls = av.videoUrls
               const publishFeedback = av.publishFeedback || {}
               const hasFeedback = publishFeedback && Object.keys(publishFeedback).length > 0
               const contentTypeLabel = av.contentType === 'image_text' || av.contentType === 'image' ? '图文' : av.contentType === 'video' ? '视频' : av.contentType === 'text' ? '纯文案' : av.contentType || '内容'
@@ -688,7 +691,7 @@ export default function OrderDetailPage() {
                                       <Text className="block od-dialog-card-title">{pName}</Text>
                                     </View>
                                     <View className="od-dialog-feedback-data">
-                                      {(pf.link || pf.publishUrl) && (
+                                      {pf.publishUrl && (
                                         <View className="od-dialog-feedback-item">
                                           <ExternalLink size={13} color="#6366F1" />
                                           <Text className="block od-dialog-feedback-key">发布链接</Text>
@@ -697,11 +700,11 @@ export default function OrderDetailPage() {
                                             onClick={() => {
                                               const isMiniApp = ([Taro.ENV_TYPE.WEAPP, Taro.ENV_TYPE.TT] as string[]).includes(Taro.getEnv())
                                               if (isMiniApp) {
-                                                Taro.setClipboardData({ data: pf.link || pf.publishUrl })
+                                                Taro.setClipboardData({ data: pf.publishUrl })
                                               }
                                             }}
                                           >
-                                            {pf.link || pf.publishUrl}
+                                            {pf.publishUrl}
                                           </Text>
                                         </View>
                                       )}
@@ -841,7 +844,7 @@ export default function OrderDetailPage() {
             <Text className="block od-section-title">动态记录</Text>
             <View className="od-timeline">
               {events.map((evt: any, idx: number) => {
-                const evtType = evt.eventType || evt.event_type || ''
+                const evtType = evt.eventType || ''
                 const EventIcon = EVENT_ICONS[evtType] || CircleDot
                 const eventColor = EVENT_COLORS[evtType] || '#9CA3AF'
                 const eventLabel = evt.title || EVENT_LABELS[evtType] || evtType
@@ -856,7 +859,7 @@ export default function OrderDetailPage() {
                     <View className="od-timeline-right">
                       <View className="od-timeline-header">
                         <Text className="block od-timeline-title">{eventLabel}</Text>
-                        <Text className="block od-timeline-time">{formatTime(evt.createdAt || evt.created_at)}</Text>
+                        <Text className="block od-timeline-time">{formatTime(evt.createdAt)}</Text>
                       </View>
                     </View>
                   </View>
@@ -873,7 +876,7 @@ export default function OrderDetailPage() {
               <View className="od-action-btn od-action-primary" onClick={handlePay}>
                 <CreditCard size={16} color="#fff" />
                 <Text className="block od-action-text" style={{ color: '#fff' }}>
-                  {paying ? '支付中...' : `立即支付 ¥${order.budget || order.totalPrice || 0}`}
+                  {paying ? '支付中...' : `立即支付 ¥${order.budget || 0}`}
                 </Text>
               </View>
             )}

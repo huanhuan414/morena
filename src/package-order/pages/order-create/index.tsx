@@ -17,6 +17,7 @@ import {
 } from '@/constants/publish-platform'
 import { CONTENT_STYLES, NICHE_TAGS } from '@/constants/avatar-tags'
 import { getStatusBarHeight } from '@/utils/safe-area'
+import { subscribePolling } from '@/utils/polling'
 import './index.css'
 
 const CONTENT_TYPES = [
@@ -45,9 +46,15 @@ export default function OrderCreate() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPlatformReq, setShowPlatformReq] = useState(false)
   const aiPollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const aiPollUnsubRef = useRef<null | (() => void)>(null)
+  const repayInFlightRef = useRef(false)
   const statusBarHeight = getStatusBarHeight()
 
   const stopAiPolling = () => {
+    if (aiPollUnsubRef.current) {
+      aiPollUnsubRef.current()
+      aiPollUnsubRef.current = null
+    }
     if (aiPollTimerRef.current) {
       clearInterval(aiPollTimerRef.current)
       aiPollTimerRef.current = null
@@ -146,24 +153,32 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         Taro.showToast({ title: 'AI帮写成功', icon: 'success' })
       } else if (payload?.code === 200 && data?.requestId) {
         stopAiPolling()
+        const requestId = data.requestId
         let attempts = 0
-        aiPollTimerRef.current = setInterval(async () => {
-          attempts += 1
-          if (attempts > 240) {
-            stopAiPolling()
-            setAiLoading(false)
-            Taro.showToast({ title: 'AI生成超时，请稍后重试', icon: 'none' })
-            return
-          }
-          try {
+        const unsubscribe = subscribePolling({
+          key: `ai-status:${requestId}`,
+          intervalMs: 500,
+          fetcher: async () => {
+            attempts += 1
+            if (attempts > 240) {
+              return { __timeout: true } as any
+            }
             const statusRes = await Network.request({
-              url: `/api/ai/status/${data.requestId}`,
+              url: `/api/ai/status/${requestId}`,
               method: 'GET',
+              dedupKey: `ai-status:${requestId}`,
             })
-            const statusPayload: any = statusRes.data
+            return statusRes.data
+          },
+          onData: (statusPayload: any) => {
+            if (statusPayload?.__timeout) {
+              stopAiPolling()
+              setAiLoading(false)
+              Taro.showToast({ title: 'AI生成超时，请稍后重试', icon: 'none' })
+              return
+            }
             const task = statusPayload?.data
             if (statusPayload?.code === 200) {
-              // 渐进式显示：processing 状态下如果有部分内容就实时更新
               if (task?.content) {
                 setForm(prev => ({ ...prev, description: task.content }))
               }
@@ -179,18 +194,18 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                 Taro.showToast({ title: task?.error || 'AI帮写失败，请手动输入', icon: 'none' })
                 return
               }
+              return
             }
             if (statusPayload?.code === 404) {
               stopAiPolling()
               setAiLoading(false)
               Taro.showToast({ title: 'AI任务不存在，请重试', icon: 'none' })
             }
-          } catch {
-            return
-          }
-        }, 500)
+          },
+        })
+        aiPollUnsubRef.current = unsubscribe
       } else {
-        const msg = payload?.message || payload?.msg || 'AI帮写失败，请手动输入'
+        const msg = Network.getMsg(payload, 'AI帮写失败，请手动输入')
         Taro.showToast({ title: msg, icon: 'none' })
       }
     } catch (error) {
@@ -364,7 +379,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           Taro.navigateTo({ url: `/package-order/pages/order-matching/index?orderId=${orderId}` })
         }
       } else {
-        const msg = payloadObj?.msg || payloadObj?.message || '创建订单失败'
+        const msg = Network.getMsg(payloadObj, '创建订单失败')
         Taro.showToast({ title: msg, icon: 'none' })
       }
     } catch (err: any) {
@@ -380,12 +395,15 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
       Taro.showToast({ title: '请重新进入页面再试', icon: 'none' })
       return
     }
+    if (repayInFlightRef.current) return
+    repayInFlightRef.current = true
     try {
       Taro.showLoading({ title: '创建支付...' })
       const res = await Network.request({
         url: `/api/order/${orderId}/repay`,
         method: 'POST',
         data: { openid },
+        dedupKey: `order:repay:${orderId}`,
       })
       Taro.hideLoading()
       const payload = res?.data
@@ -411,6 +429,8 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
       if (!errMsg.includes('cancel')) {
         Taro.showToast({ title: '支付失败，请稍后重试', icon: 'none' })
       }
+    } finally {
+      repayInFlightRef.current = false
     }
   }
 

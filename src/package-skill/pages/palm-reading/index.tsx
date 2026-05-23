@@ -1,9 +1,10 @@
 import { useState, useRef } from 'react'
-import Taro, { useDidShow } from '@tarojs/taro'
+import Taro, { useDidHide, useDidShow } from '@tarojs/taro'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Network } from '@/network'
+import { subscribeManagedPolling } from '@/utils/polling'
 import { Upload, Sparkles, History, Hand, ArrowLeft, Image as ImageIcon, Save, Expand, Trash2 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 
@@ -32,10 +33,20 @@ export default function PalmReadingPage() {
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set())
   const [errorMessage, setErrorMessage] = useState('')
   const [history, setHistory] = useState<HistoryRecord[]>([])
-  const pollingRef = useRef(false)
+  const pollCtlRef = useRef<{
+    pause: () => void
+    resume: () => void
+    unsubscribe: () => void
+    cancel: () => void
+  } | null>(null)
 
   useDidShow(() => {
     loadHistory()
+    pollCtlRef.current?.resume()
+  })
+
+  useDidHide(() => {
+    pollCtlRef.current?.pause()
   })
 
   const loadHistory = async () => {
@@ -87,6 +98,7 @@ export default function PalmReadingPage() {
   }
 
   const handleGenerate = async () => {
+    if (generating) return
     if (!inputImageUrl) {
       Taro.showToast({ title: '请先上传手掌照片', icon: 'none' })
       return
@@ -102,7 +114,8 @@ export default function PalmReadingPage() {
         data: {
           skillType: 'palm_reading',
           inputImageUrl,
-        }
+        },
+        dedupKey: `ai-skill:generate:palm_reading:${inputImageUrl}`,
       })
       console.log('[掌相阅读] 生成响应:', res.data)
       const data = res.data?.data
@@ -131,53 +144,62 @@ export default function PalmReadingPage() {
 
   /** 开始轮询生成状态 */
   const startPolling = (recordId: string) => {
-    if (pollingRef.current) return
-    pollingRef.current = true
     let attempts = 0
     const maxAttempts = 60 // 最多轮询 60 次，约 3 分钟
 
-    const poll = async () => {
-      if (attempts >= maxAttempts || !pollingRef.current) {
-        pollingRef.current = false
-        setGenerating(false)
-        if (attempts >= maxAttempts) {
-          setErrorMessage('生成超时，请稍后在历史记录中查看')
-          Taro.showToast({ title: '生成超时', icon: 'none' })
+    pollCtlRef.current?.cancel()
+
+    const ctl = subscribeManagedPolling({
+      key: `ai-skill:record:${recordId}:lite`,
+      baseIntervalMs: 3000,
+      maxIntervalMs: 30_000,
+      backoffFactor: 2,
+      fetcher: async () => {
+        attempts += 1
+        if (attempts > maxAttempts) {
+          throw new Error('timeout')
         }
-        return
-      }
-      attempts++
-      await new Promise(r => setTimeout(r, 3000))
-      try {
         const res = await Network.request({
-          url: `/api/ai-skill/record/${recordId}`
+          url: `/api/ai-skill/record/${recordId}?view=lite`,
+          dedupKey: `ai-skill:record:${recordId}:lite`,
         })
-        const data = res.data?.data
-        console.log(`[掌相阅读] 轮询 #${attempts}: status=${data?.status}`)
+        return res.data
+      },
+      onData: (payload: any) => {
+        const data = payload?.data
+        if (!data) return
+
         if (data?.status === 'completed' && data?.resultImageUrl) {
+          ctl.cancel()
+          if (pollCtlRef.current === ctl) pollCtlRef.current = null
           setResultImageUrl(data.resultImageUrl)
           setGenerating(false)
-          pollingRef.current = false
           Taro.showToast({ title: '生成成功', icon: 'success' })
           loadHistory()
           return
-        } else if (data?.status === 'failed') {
+        }
+
+        if (data?.status === 'failed') {
+          ctl.cancel()
+          if (pollCtlRef.current === ctl) pollCtlRef.current = null
           setGenerating(false)
-          pollingRef.current = false
           const msg = data?.errorMessage || '生成失败'
           setErrorMessage(msg)
           Taro.showToast({ title: msg, icon: 'none' })
-          return
         }
-        // 继续轮询
-        poll()
-      } catch (e) {
-        console.error(`[掌相阅读] 轮询异常 #${attempts}:`, e)
-        // 网络抖动，继续轮询
-        poll()
-      }
-    }
-    poll()
+      },
+      onError: (err: unknown) => {
+        if ((err as any)?.message === 'timeout') {
+          ctl.cancel()
+          if (pollCtlRef.current === ctl) pollCtlRef.current = null
+          setGenerating(false)
+          setErrorMessage('生成超时，请稍后在历史记录中查看')
+          Taro.showToast({ title: '生成超时', icon: 'none' })
+        }
+      },
+    })
+
+    pollCtlRef.current = ctl
   }
 
   const handlePreviewImage = (url: string) => {

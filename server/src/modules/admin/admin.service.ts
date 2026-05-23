@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { getMySQLClient } from '../../storage/database/mysql-client';
 import { ensureGrowthCampaignTables } from '../activities/growth-campaign.tables';
+import * as crypto from 'crypto'
 
 @Injectable()
 export class AdminService {
@@ -120,11 +121,21 @@ export class AdminService {
   }
 
   private generateToken(admin: any): string {
-    return Buffer.from(JSON.stringify({
+    const now = Date.now()
+    const payload = {
       id: admin.id,
       username: admin.username,
-      exp: Date.now() + 7 * 24 * 60 * 60 * 1000
-    })).toString('base64');
+      role: admin.role,
+      iat: now,
+      exp: now + 7 * 24 * 60 * 60 * 1000
+    }
+    const encoded = Buffer.from(JSON.stringify(payload)).toString('base64')
+    const secret = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET
+    if (!secret) {
+      throw new Error('JWT secret is not configured')
+    }
+    const signature = crypto.createHmac('sha256', secret).update(encoded).digest('hex')
+    return `${encoded}.${signature}`
   }
 
   async verifyAdmin(username: string, password: string): Promise<any> {
@@ -816,11 +827,39 @@ export class AdminService {
         return null
       }
 
-      const tokenData = Buffer.from(tokenValue, 'base64').toString();
-      const parsed = JSON.parse(tokenData);
-      
-      if (parsed.exp && Date.now() > parsed.exp) {
-        return null;
+      const [encoded, signature] = tokenValue.split('.')
+      if (!encoded || !signature) {
+        return null
+      }
+
+      const secret = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET
+      if (!secret) {
+        return null
+      }
+      const expectedSignature = crypto.createHmac('sha256', secret).update(encoded).digest('hex')
+      const signatureBuffer = Buffer.from(signature)
+      const expectedBuffer = Buffer.from(expectedSignature)
+      if (signatureBuffer.length !== expectedBuffer.length) {
+        return null
+      }
+      if (!crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) {
+        return null
+      }
+
+      const parsed = JSON.parse(Buffer.from(encoded, 'base64').toString())
+      if (!parsed?.id || !parsed?.username || !parsed?.iat || !parsed?.exp) {
+        return null
+      }
+
+      const now = Date.now()
+      if (now > Number(parsed.exp)) {
+        return null
+      }
+      if (Number(parsed.iat) > now + 5 * 60 * 1000) {
+        return null
+      }
+      if (Number(parsed.exp) - Number(parsed.iat) > 7 * 24 * 60 * 60 * 1000 + 5 * 60 * 1000) {
+        return null
       }
       
       const db = getMySQLClient();

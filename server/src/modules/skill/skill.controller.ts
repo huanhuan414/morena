@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Query, Body, Param, Req, HttpCode, HttpStatus, Inject } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Query, Body, Param, Req, HttpCode, HttpStatus, Inject, InternalServerErrorException, NotFoundException, HttpException } from '@nestjs/common';
 import { SkillService } from './skill.service';
 import { AiService } from '../ai/ai.service';
 
@@ -57,7 +57,7 @@ export class SkillController {
     } catch (e) {
       console.error('[SkillController] addSkillToAvatar error:', e.message)
     }
-    return { code: 500, msg: '服务暂不可用', data: null };
+    throw new InternalServerErrorException({ msg: '服务暂不可用', data: null })
   }
 
   @Delete('avatar/:avatarId/:skillId')
@@ -73,7 +73,7 @@ export class SkillController {
     } catch (e) {
       console.error('[SkillController] removeSkillFromAvatar error:', e.message)
     }
-    return { code: 500, msg: '服务暂不可用', data: null };
+    throw new InternalServerErrorException({ msg: '服务暂不可用', data: null })
   }
 
   @Post('avatar/:avatarId/batch')
@@ -89,7 +89,7 @@ export class SkillController {
     } catch (e) {
       console.error('[SkillController] batchAddSkills error:', e.message)
     }
-    return { code: 500, msg: '服务暂不可用', data: null };
+    throw new InternalServerErrorException({ msg: '服务暂不可用', data: null })
   }
 
   @Post(':id/try')
@@ -100,10 +100,10 @@ export class SkillController {
   ) {
     try {
       if (!this.skillService || !this.aiService) {
-        return { code: 500, msg: '服务暂不可用', data: null };
+        throw new InternalServerErrorException({ msg: '服务暂不可用', data: null })
       }
       const skill = await this.skillService.getSkillById(skillId);
-      if (!skill) return { code: 404, msg: '技能不存在', data: null };
+      if (!skill) throw new NotFoundException({ msg: '技能不存在', data: null })
 
       const userInput = body.input || '';
       const category = skill.category;
@@ -144,7 +144,8 @@ export class SkillController {
 
       return { code: 200, msg: 'success', data: { skillId, skillName, category, contentType, content: result.content } };
     } catch (error) {
-      return { code: 500, msg: error.message || '体验失败', data: null };
+      if (error instanceof HttpException) throw error
+      throw new InternalServerErrorException({ msg: (error as any)?.message || '体验失败', data: null })
     }
   }
 

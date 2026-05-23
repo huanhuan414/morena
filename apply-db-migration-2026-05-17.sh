@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SQL_FILE="${ROOT_DIR}/server/src/storage/database/schema/migrations/2026-05-17_hotfix_content_notification.sql"
 
-REMOTE_HOST="${REMOTE_HOST:-180.184.205.74}"
+REMOTE_HOST="${REMOTE_HOST:-YOUR_REMOTE_HOST}"
 REMOTE_USER="${REMOTE_USER:-root}"
 SSH_PORT="${SSH_PORT:-22}"
 SSH_KEY_PATH="${SSH_KEY_PATH:-}"

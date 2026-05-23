@@ -1,15 +1,27 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { View, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import * as Network from '@/network'
+import { adminRequest } from '@/package-admin/utils/request'
+import { ADMIN_LOGIN_PATH, hasAdminSession, setAdminSession } from '@/package-admin/utils/session'
 import './index.css'
 
 export default function AdminLogin() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+
+  const redirect = decodeURIComponent(Taro.getCurrentInstance().router?.params?.redirect || '')
+  const targetPath = redirect && redirect !== ADMIN_LOGIN_PATH
+    ? redirect
+    : '/package-admin/pages/dashboard/index'
+
+  useEffect(() => {
+    if (hasAdminSession()) {
+      Taro.redirectTo({ url: targetPath })
+    }
+  }, [targetPath])
 
   const handleLogin = async () => {
     if (!username || !password) {
@@ -19,22 +31,22 @@ export default function AdminLogin() {
 
     setLoading(true)
     try {
-      const res = await Network.request({
-        url: '/api/admin/login',
+      const res = await adminRequest({
+        url: '/login',
         method: 'POST',
         data: { username, password }
       })
 
       if (res.data.code === 200) {
-        // 保存token
-        Taro.setStorageSync('admin_token', res.data.data.token)
-        Taro.setStorageSync('admin_info', res.data.data.admin)
+        setAdminSession({
+          token: res.data.data.token,
+          admin: res.data.data.admin,
+        })
         
         Taro.showToast({ title: '登录成功', icon: 'success' })
         
-        // 跳转到管理后台首页
         setTimeout(() => {
-          Taro.redirectTo({ url: '/package-admin/pages/dashboard/index' })
+          Taro.redirectTo({ url: targetPath })
         }, 1000)
       } else {
         Taro.showToast({ title: res.data.message || '登录失败', icon: 'none' })

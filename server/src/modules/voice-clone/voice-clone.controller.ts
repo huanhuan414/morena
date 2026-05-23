@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Inject, Controller, Post, Get, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common'
+import { Inject, Controller, Post, Get, Body, Param, Query, HttpCode, HttpStatus, BadRequestException, InternalServerErrorException } from '@nestjs/common'
 import { VoiceCloneService } from './voice-clone.service'
 
 @Controller('voice-clone')
@@ -26,7 +26,7 @@ export class VoiceCloneController {
     console.log('[VoiceCloneController] 开始声音复刻:', body)
     
     if (!body.audio_url) {
-      return { code: 400, msg: '音频文件不能为空', data: null }
+      throw new BadRequestException({ msg: '音频文件不能为空', data: null })
     }
 
     const result = await this.voiceCloneService.startVoiceClone(
@@ -37,7 +37,7 @@ export class VoiceCloneController {
     if (result.success) {
       return { code: 200, msg: 'success', data: result.data }
     } else {
-      return { code: 500, msg: result.error || '声音复刻失败', data: null }
+      throw new InternalServerErrorException({ msg: result.error || '声音复刻失败', data: null })
     }
   }
 
@@ -55,7 +55,7 @@ export class VoiceCloneController {
     if (result.success) {
       return { code: 200, msg: 'success', data: result.data }
     } else {
-      return { code: 500, msg: result.error || '查询失败', data: null }
+      throw new InternalServerErrorException({ msg: result.error || '查询失败', data: null })
     }
   }
 
@@ -69,7 +69,7 @@ export class VoiceCloneController {
     console.log('[VoiceCloneController] TTS合成:', body)
     
     if (!body.voice_id || !body.text) {
-      return { code: 400, msg: 'voice_id 和 text 不能为空', data: null }
+      throw new BadRequestException({ msg: 'voice_id 和 text 不能为空', data: null })
     }
 
     const result = await this.voiceCloneService.synthesizeSpeech(body.voice_id, body.text)
@@ -77,7 +77,7 @@ export class VoiceCloneController {
     if (result.success) {
       return { code: 200, msg: 'success', data: result.data }
     } else {
-      return { code: 500, msg: result.error || 'TTS合成失败', data: null }
+      throw new InternalServerErrorException({ msg: result.error || 'TTS合成失败', data: null })
     }
   }
 }

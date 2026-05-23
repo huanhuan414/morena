@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
-import { View, Text, ScrollView, Image } from '@tarojs/components'
+import { View, Text, Image } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import { ArrowLeft, Bot, ShoppingCart, Wallet, MessageCircle } from 'lucide-react-taro'
-import * as Network from '@/network'
+import { Bot, ShoppingCart, Wallet, MessageCircle } from 'lucide-react-taro'
+import AdminLayout from '@/components/admin/Layout'
+import { adminRequest } from '@/package-admin/utils/request'
 import './index.css'
 
 interface UserDetail {
@@ -42,8 +43,8 @@ export default function UserDetail() {
 
   const fetchUserDetail = async (userId: string) => {
     try {
-      const res = await Network.request({
-        url: `/api/admin/users/${userId}`
+      const res = await adminRequest({
+        url: `/users/${userId}`
       })
       if (res.data.code === 200) {
         setUser(res.data.data)
@@ -55,8 +56,8 @@ export default function UserDetail() {
 
   const fetchUserStats = async (userId: string) => {
     try {
-      const res = await Network.request({
-        url: `/api/admin/users/${userId}/stats`
+      const res = await adminRequest({
+        url: `/users/${userId}/stats`
       })
       if (res.data.code === 200) {
         setStats(res.data.data)
@@ -66,31 +67,19 @@ export default function UserDetail() {
     }
   }
 
-  const handleGoBack = () => {
-    Taro.navigateBack()
-  }
-
   if (!user) {
     return (
-      <View className="user-detail-page">
-        <Text className="loading-text">加载中...</Text>
-      </View>
+      <AdminLayout title="用户详情">
+        <View className="user-detail-page">
+          <Text className="loading-text">加载中...</Text>
+        </View>
+      </AdminLayout>
     )
   }
 
   return (
-    <View className="user-detail-page">
-      {/* 顶部栏 */}
-      <View className="detail-header">
-        <View className="back-btn" onClick={handleGoBack}>
-          <ArrowLeft size={24} color="#374151" />
-        </View>
-        <Text className="detail-title">用户详情</Text>
-        <View className="header-placeholder" />
-      </View>
-
-      <ScrollView className="detail-content" scrollY>
-        {/* 用户信息卡片 */}
+    <AdminLayout title="用户详情">
+      <View className="user-detail-page">
         <View className="user-info-card">
           <View className="user-basic">
             {user.avatar ? (
@@ -190,7 +179,7 @@ export default function UserDetail() {
             </View>
           </View>
         </View>
-      </ScrollView>
-    </View>
+      </View>
+    </AdminLayout>
   )
 }

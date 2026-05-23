@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Controller, Get, Headers, Query, Inject } from '@nestjs/common'
+import { Controller, Get, Headers, Query, Inject, UnauthorizedException } from '@nestjs/common'
 import { UserStatsService } from './user-stats.service'
 
 @Controller('user-stats')
@@ -12,7 +12,7 @@ export class UserStatsController {
 
   @Get('overview')
   async getOverview(@Headers('x-user-id') userId: string) {
-    if (!userId) return { code: 401, data: null, message: '未登录' }
+    if (!userId) throw new UnauthorizedException({ msg: '未登录', data: null })
     try {
       if (this.userStatsService) {
         const stats = await this.userStatsService.getUserStatsOverview(userId)
@@ -29,7 +29,7 @@ export class UserStatsController {
     @Headers('x-user-id') userId: string,
     @Query('avatarId') avatarId?: string
   ) {
-    if (!userId) return { code: 401, data: null, message: '未登录' }
+    if (!userId) throw new UnauthorizedException({ msg: '未登录', data: null })
     try {
       if (this.userStatsService) {
         const result = await this.userStatsService.getAvatarOrders(userId, avatarId)
@@ -46,7 +46,7 @@ export class UserStatsController {
     @Headers('x-user-id') userId: string,
     @Query('avatarId') avatarId?: string
   ) {
-    if (!userId) return { code: 401, data: null, message: '未登录' }
+    if (!userId) throw new UnauthorizedException({ msg: '未登录', data: null })
     try {
       if (this.userStatsService) {
         const result = await this.userStatsService.getAvatarContents(userId, avatarId)

@@ -13,6 +13,10 @@ export class WechatPayService {
   private notifyUrl: string;
   private privateKey: Buffer;
 
+  private isMockEnabled(): boolean {
+    return process.env.NODE_ENV !== 'production' && process.env.WECHAT_PAY_MOCK === '1'
+  }
+
   constructor(
     @Inject(forwardRef(() => 'ORDER_SERVICE')) private readonly orderService: any,
   ) {
@@ -114,40 +118,44 @@ export class WechatPayService {
 
     let prepayId: string;
     try {
-      const axios = require('axios');
-      const response = await axios.post(
-        'https://api.mch.weixin.qq.com/pay/unifiedorder',
-        xmlBody,
-        {
-          headers: { 'Content-Type': 'application/xml' },
-          timeout: 15000,
-        },
-      );
-
-      // 解析XML响应
-      const result = this.parseXml(response.data);
-      const returnCode = result.return_code;
-      const resultCode = result.result_code;
-
-      this.logger.log(`微信V2统一下单返回: return_code=${returnCode}, result_code=${resultCode}`);
-
-      if (returnCode !== 'SUCCESS' || resultCode !== 'SUCCESS') {
-        const errMsg = result.err_code_des || result.return_msg || '下单失败';
-        const errCode = result.err_code || '';
-        this.logger.error(`微信统一下单失败: err_code=${errCode}, err_msg=${errMsg}`);
-
-        // 更新本地订单状态
-        const db2 = getMySQLClient();
-        await db2.query(
-          `UPDATE payment_orders SET status = 'failed', metadata = JSON_SET(COALESCE(metadata, '{}'), '$.error', ?) WHERE id = ?`,
-          [`${errCode}: ${errMsg}`, orderId],
+      if (this.isMockEnabled()) {
+        prepayId = `mock_prepay_${Date.now()}`
+      } else {
+        const axios = require('axios');
+        const response = await axios.post(
+          'https://api.mch.weixin.qq.com/pay/unifiedorder',
+          xmlBody,
+          {
+            headers: { 'Content-Type': 'application/xml' },
+            timeout: 15000,
+          },
         );
 
-        throw new Error(`微信下单失败: ${errMsg}(${errCode})`);
-      }
+        // 解析XML响应
+        const result = this.parseXml(response.data);
+        const returnCode = result.return_code;
+        const resultCode = result.result_code;
 
-      prepayId = result.prepay_id;
-      this.logger.log(`✅ 微信统一下单成功: prepay_id=${prepayId}`);
+        this.logger.log(`微信V2统一下单返回: return_code=${returnCode}, result_code=${resultCode}`);
+
+        if (returnCode !== 'SUCCESS' || resultCode !== 'SUCCESS') {
+          const errMsg = result.err_code_des || result.return_msg || '下单失败';
+          const errCode = result.err_code || '';
+          this.logger.error(`微信统一下单失败: err_code=${errCode}, err_msg=${errMsg}`);
+
+          // 更新本地订单状态
+          const db2 = getMySQLClient();
+          await db2.query(
+            `UPDATE payment_orders SET status = 'failed', metadata = JSON_SET(COALESCE(metadata, '{}'), '$.error', ?) WHERE id = ?`,
+            [`${errCode}: ${errMsg}`, orderId],
+          );
+
+          throw new Error(`微信下单失败: ${errMsg}(${errCode})`);
+        }
+
+        prepayId = result.prepay_id;
+        this.logger.log(`✅ 微信统一下单成功: prepay_id=${prepayId}`);
+      }
     } catch (error) {
       if (error.message.startsWith('微信下单失败:')) {
         throw error;
@@ -172,6 +180,52 @@ export class WechatPayService {
       prepayId,
       ...payParams,
     };
+  }
+
+  async mockPaySuccess(outTradeNo: string, userId?: string) {
+    if (!this.isMockEnabled()) {
+      throw new Error('mockPaySuccess 仅允许在非生产且 WECHAT_PAY_MOCK=1 的环境使用')
+    }
+
+    const db = getMySQLClient()
+    const orders = await db.query(
+      `SELECT * FROM payment_orders WHERE out_trade_no = ? LIMIT 1`,
+      [outTradeNo],
+    )
+    if (!orders || orders.length === 0) {
+      throw new Error('支付订单不存在')
+    }
+
+    const order = orders[0] as any
+    const ownerId = order.userId || order.user_id
+    if (userId && ownerId && userId !== ownerId) {
+      throw new Error('无权操作该支付订单')
+    }
+
+    if (order.status === 'paid') {
+      return { outTradeNo, transactionId: order.transactionId || order.transaction_id, status: 'paid' }
+    }
+
+    const transactionId = `MOCK${Date.now()}`
+    const updateResult = await db.query(
+      `UPDATE payment_orders 
+       SET status = 'paid', transaction_id = ?, paid_at = NOW(), 
+           metadata = JSON_SET(COALESCE(metadata, '{}'), '$.wechatTransactionId', ?, '$.paidAmount', ?) 
+       WHERE out_trade_no = ? AND status <> 'paid'`,
+      [transactionId, transactionId, Number(order.amount || 0), outTradeNo],
+    )
+    const affectedRows = (updateResult as any)?.affectedRows || 0
+    if (affectedRows === 0) {
+      return { outTradeNo, transactionId, status: 'paid' }
+    }
+
+    if (order.orderType === 'order' || order.order_type === 'order') {
+      await this.activateOrder(order, transactionId)
+    } else {
+      await this.activateSubscription(order)
+    }
+
+    return { outTradeNo, transactionId, status: 'paid' }
   }
 
   /**
@@ -266,6 +320,11 @@ export class WechatPayService {
     this.logger.log(`收到支付回调通知`);
 
     try {
+      if (!body || typeof body !== 'string') {
+        this.logger.error('回调通知 body 为空或非字符串');
+        return { code: 'FAIL', message: '空回调体' };
+      }
+
       // V2回调通知是XML格式
       const result = this.parseXml(body);
 
@@ -307,10 +366,19 @@ export class WechatPayService {
       // 获取支付金额（分）
       const totalFee = Number(result.total_fee || 0);
 
-      await db.query(
-        `UPDATE payment_orders SET status = 'paid', transaction_id = ?, paid_at = NOW(), metadata = JSON_SET(COALESCE(metadata, '{}'), '$.wechatTransactionId', ?, '$.paidAmount', ?) WHERE out_trade_no = ?`,
+      // 幂等：用条件 UPDATE 抢占“处理权”，避免重复回调导致重复激活/重复发货上报
+      const updateResult = await db.query(
+        `UPDATE payment_orders 
+         SET status = 'paid', transaction_id = ?, paid_at = NOW(), 
+             metadata = JSON_SET(COALESCE(metadata, '{}'), '$.wechatTransactionId', ?, '$.paidAmount', ?) 
+         WHERE out_trade_no = ? AND status <> 'paid'`,
         [transactionId, transactionId, totalFee / 100, outTradeNo],
       );
+      const affectedRows = (updateResult as any)?.affectedRows || 0;
+      if (affectedRows === 0) {
+        this.logger.log(`订单回调幂等命中(已被处理): outTradeNo=${outTradeNo}`);
+        return this.buildNotifySuccessXml();
+      }
 
       this.logger.log(`订单支付成功: outTradeNo=${outTradeNo}, transactionId=${transactionId}`);
 

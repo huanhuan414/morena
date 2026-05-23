@@ -1,7 +1,7 @@
 import { useLoad, useRouter, navigateBack, navigateTo, showToast } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
-import * as Network from '@/network'
+import { Network } from '@/network'
 import { ChevronLeft, FileText, Sparkles, CircleCheck, CircleAlert, CircleX, Clock, Upload, Eye, ChevronRight, ListFilter, Hourglass, ShoppingBag, TrendingUp } from 'lucide-react-taro'
 import './index.css'
 
@@ -61,6 +61,14 @@ const ORDER_STATUS_CONFIG: Record<string, {
     bgColor: '#fce7f3',
     icon: Hourglass,
     description: '等待发单者验收'
+  },
+  revision_requested: {
+    label: '待修改',
+    shortLabel: '修改',
+    color: '#f97316',
+    bgColor: '#ffedd5',
+    icon: CircleAlert,
+    description: '发单者要求修改'
   },
   completed: {
     label: '已完成',
@@ -152,6 +160,11 @@ export default function AvatarOrdersPage() {
   }
 
   const handleOrderClick = (order: any) => {
+    const requestId = order.requestId || order.request_id || ''
+    if (!requestId && order.status !== 'pending') {
+      showToast({ title: '数据异常，请刷新', icon: 'none' })
+      return
+    }
     switch (order.status) {
       case 'pending':
         handleViewPendingOrder(order)
@@ -159,21 +172,26 @@ export default function AvatarOrdersPage() {
       case 'accepted':
       case 'generating':
       case 'preview':
-        // 制作中/预览中状态跳转到内容创作页面
+      case 'revision_requested':
+        // 制作中/预览中状态跳转到“处理中桥页”，由桥页统一仲裁后续页面
         navigateTo({
-          url: `/package-order/pages/order-content-creation/index?requestId=${order.id}&avatarId=${order.avatar_id}&orderId=${order.order_id}`
+          url: [
+            `/package-order/pages/order-processing/index?orderId=${encodeURIComponent(order.order_id)}`,
+            order.avatar_id ? `avatarId=${encodeURIComponent(order.avatar_id)}` : '',
+            requestId ? `requestId=${encodeURIComponent(requestId)}` : '',
+          ].filter(Boolean).join('&')
         })
         break
       case 'published':
         // 待反馈的订单跳转到反馈提交页面
         navigateTo({
-          url: `/package-order/pages/order-publish-feedback/index?requestId=${order.id}&orderId=${order.order_id}`
+          url: `/package-order/pages/order-publish-feedback/index?requestId=${requestId}&orderId=${order.order_id}`
         })
         break
       case 'awaiting_acceptance':
         // 待验收的订单跳转到待验收反馈页面，带上 role=avatar 表示分身视角
         navigateTo({
-          url: `/package-order/pages/order-acceptance-feedback/index?requestId=${order.id}&orderId=${order.order_id}&role=avatar`
+          url: `/package-order/pages/order-acceptance-feedback/index?requestId=${requestId}&orderId=${order.order_id}&role=avatar`
         })
         break
       case 'cancelled':
@@ -185,13 +203,17 @@ export default function AvatarOrdersPage() {
       case 'completed':
         // 已完成的订单跳转到商单完成页面
         navigateTo({
-          url: `/package-order/pages/order-completed/index?requestId=${order.id}&orderId=${order.order_id}`
+          url: `/package-order/pages/order-completed/index?requestId=${requestId}&orderId=${order.order_id}`
         })
         break
       default:
-        // 其他状态默认跳转到内容创作页面
+        // 其他状态默认跳转到“处理中桥页”
         navigateTo({
-          url: `/package-order/pages/order-content-creation/index?requestId=${order.id}&avatarId=${order.avatar_id}&orderId=${order.order_id}`
+          url: [
+            `/package-order/pages/order-processing/index?orderId=${encodeURIComponent(order.order_id)}`,
+            order.avatar_id ? `avatarId=${encodeURIComponent(order.avatar_id)}` : '',
+            requestId ? `requestId=${encodeURIComponent(requestId)}` : '',
+          ].filter(Boolean).join('&')
         })
     }
   }
