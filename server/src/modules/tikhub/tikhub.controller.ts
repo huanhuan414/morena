@@ -1,4 +1,4 @@
-import { Inject, Controller, Post, Body, Get, Query } from '@nestjs/common'
+import { Inject, Controller, Post, Body, Get, Query, BadRequestException } from '@nestjs/common'
 import { TikHubService } from './tikhub.service'
 
 @Controller('tikhub')
@@ -16,16 +16,20 @@ export class TikHubController {
     const { platform, postUrl, keywords } = body
 
     if (!platform) {
-      return { code: 400, message: '请指定平台', data: null }
+      throw new BadRequestException({ msg: '请指定平台', data: null })
     }
     if (!postUrl) {
-      return { code: 400, message: '请输入发布链接', data: null }
+      throw new BadRequestException({ msg: '请输入发布链接', data: null })
     }
 
     const result = await this.tikhubService.verifyPost(platform, postUrl, keywords || [])
 
+    if (!result.success) {
+      throw new BadRequestException({ msg: result.message, data: result.data || null })
+    }
+
     return {
-      code: result.success ? 200 : 400,
+      code: 200,
       message: result.message,
       data: result.data || null,
     }
@@ -39,11 +43,7 @@ export class TikHubController {
     const { douyinId } = body
 
     if (!douyinId) {
-      return {
-        code: 400,
-        message: '请输入抖音号',
-        data: null,
-      }
+      throw new BadRequestException({ msg: '请输入抖音号', data: null })
     }
 
     const result = await this.tikhubService.getDouyinUserInfo(douyinId)
@@ -55,11 +55,7 @@ export class TikHubController {
         data: result.data,
       }
     } else {
-      return {
-        code: 400,
-        message: result.message,
-        data: null,
-      }
+      throw new BadRequestException({ msg: result.message, data: null })
     }
   }
 
@@ -71,11 +67,7 @@ export class TikHubController {
     const { shareUrl } = body
 
     if (!shareUrl) {
-      return {
-        code: 400,
-        message: '请输入小红书分享链接',
-        data: null,
-      }
+      throw new BadRequestException({ msg: '请输入小红书分享链接', data: null })
     }
 
     const result = await this.tikhubService.getXiaohongshuUserInfo(shareUrl)
@@ -87,11 +79,7 @@ export class TikHubController {
         data: result.data,
       }
     } else {
-      return {
-        code: 400,
-        message: result.message,
-        data: null,
-      }
+      throw new BadRequestException({ msg: result.message, data: null })
     }
   }
 }

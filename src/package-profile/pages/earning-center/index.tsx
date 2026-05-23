@@ -2,28 +2,16 @@ import Taro, { useDidShow, showToast, useLoad, navigateBack } from '@tarojs/taro
 import { useState } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
-import * as Network from '@/network'
+import {
+  normalizeEarningOverview,
+  normalizeEarningRecords,
+  type EarningOverview,
+  type EarningRecord,
+} from '@/adapters/core-chain-dto'
+import { Network } from '@/network'
 import { formatNum, toNumber } from '@/utils/format'
 import { ArrowDownToLine, Sparkles, ArrowLeft } from 'lucide-react-taro'
 import './index.css'
-
-interface EarningOverview {
-  balance: number | string
-  totalEarnings: number | string
-  pendingAmount: number | string
-  monthlyAmount: number | string
-  totalOrders: number | string
-  totalReferrals: number | string
-}
-
-interface EarningRecord {
-  id: string
-  amount: number | string
-  type: string
-  status: string
-  created_at: string
-  description: string
-}
 
 export default function EarningCenterPage() {
   const [overview, setOverview] = useState<EarningOverview>({
@@ -54,7 +42,7 @@ export default function EarningCenterPage() {
       const res = await Network.request({ url: '/api/earnings/overview' })
       console.log('收益概览返回:', res.data)
       if (res.data?.code === 200) {
-        setOverview(res.data.data)
+        setOverview(normalizeEarningOverview(res.data?.data))
       }
     } catch (error) {
       console.error('获取收益概览失败:', error)
@@ -67,8 +55,7 @@ export default function EarningCenterPage() {
       const res = await Network.request({ url: '/api/earnings' })
       console.log('收益记录返回:', res.data)
       if (res.data?.code === 200) {
-        const data = res.data.data
-        setRecords(data?.list || data || [])
+        setRecords(normalizeEarningRecords(res.data?.data))
       }
     } catch (error) {
       console.error('获取收益记录失败:', error)
@@ -109,6 +96,7 @@ export default function EarningCenterPage() {
     const typeMap: Record<string, { label: string; icon: string; color: string }> = {
       order_reward: { label: '订单收益', icon: '💰', color: '#00ff88' },
       order_income: { label: '订单收益', icon: '💰', color: '#00ff88' },
+      referral_bonus: { label: '邀请奖励', icon: '🎁', color: '#a78bfa' },
       withdrawal: { label: '提现', icon: '💸', color: '#ff6b6b' }
     }
     return typeMap[type] || { label: type, icon: '💵', color: '#fff' }
@@ -216,7 +204,7 @@ export default function EarningCenterPage() {
             </View>
           ) : (
             <View className="records-list">
-              {records.filter(record => record.type !== 'referral_bonus').map(record => {
+              {records.map(record => {
                 const typeInfo = getTypeInfo(record.type)
                 const statusInfo = getStatusInfo(record.status)
                 return (
@@ -227,7 +215,7 @@ export default function EarningCenterPage() {
                       </View>
                       <View className="record-info">
                         <Text className="record-desc">{record.description || typeInfo.label}</Text>
-                        <Text className="record-time">{formatTime(record.created_at)}</Text>
+                        <Text className="record-time">{formatTime(record.createdAt)}</Text>
                       </View>
                     </View>
                     <View className="record-right">

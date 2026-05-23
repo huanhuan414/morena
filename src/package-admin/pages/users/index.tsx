@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input'
 import Taro from '@tarojs/taro'
 import { Search, Eye, Ban } from 'lucide-react-taro'
 import AdminLayout from '@/components/admin/Layout'
-import * as Network from '@/network'
+import { Network } from '@/network'
 import './index.css'
 
 interface User {
@@ -21,6 +21,7 @@ interface User {
 
 export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([])
+  const [searchInput, setSearchInput] = useState('')
   const [searchKeyword, setSearchKeyword] = useState('')
   const [page] = useState(1)
   const [total, setTotal] = useState(0)
@@ -29,11 +30,22 @@ export default function UserManagement() {
     fetchUsers()
   }, [page, searchKeyword])
 
-  const fetchUsers = async () => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchKeyword((prev) => (prev === searchInput ? prev : searchInput))
+    }, 300)
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [searchInput])
+
+  const fetchUsers = async (keyword?: string) => {
     try {
+      const kw = keyword ?? searchKeyword
       const res = await Network.request({
         url: '/api/admin/users',
-        data: { page, limit: 20, keyword: searchKeyword }
+        data: { page, limit: 20, keyword: kw },
+        dedupKey: `admin/users?page=${page}&limit=20&keyword=${kw}`,
       })
       
       if (res.data.code === 200) {
@@ -76,7 +88,7 @@ export default function UserManagement() {
   }
 
   const handleViewDetail = (userId: string) => {
-    Taro.navigateTo({ url: `/package-admin/pages/detail/index?id=${userId}` })
+    Taro.navigateTo({ url: `/package-admin/pages/users/detail/index?id=${userId}` })
   }
 
   const handlePageChange = (newPage: number) => {
@@ -94,9 +106,12 @@ export default function UserManagement() {
             <Input
               className="search-input"
               placeholder="搜索用户手机号/昵称"
-              value={searchKeyword}
-              onInput={(e) => setSearchKeyword(e.detail.value)}
-              onConfirm={fetchUsers}
+              value={searchInput}
+              onInput={(e) => setSearchInput(e.detail.value)}
+              onConfirm={() => {
+                setSearchKeyword(searchInput)
+                fetchUsers(searchInput)
+              }}
             />
           </View>
           <View className="header-stats">

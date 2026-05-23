@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 
 // 火山引擎豆包 API 直连配置
-const ARK_API_KEY = '0a6405d5-b7ae-4afa-88e3-c707ae379a47'
+const ARK_API_KEY = process.env.ARK_API_KEY || ''
 const ARK_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3'
 const ARK_MODEL = 'doubao-seed-2-0-pro-260215'
 

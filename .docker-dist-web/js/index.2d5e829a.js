@@ -1,0 +1,1 @@
+import{x as r,l as n,m as c,j as s,V as l,aS as m}from"./vendors.5443dd0e.js";function x(){var t=r.useRouter(),o=n.useState(""),e=c(o,2),u=e[0],i=e[1];return r.useLoad(function(){var a=t.params;a.url&&i(decodeURIComponent(a.url))}),s.jsx(l,{className:"webview-page",children:s.jsx(m,{src:u})})}export{x as default};

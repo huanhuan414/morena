@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { Network } from '@/network'
@@ -111,6 +111,7 @@ export default function OrderListPage() {
   const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('all')
+  const inflightRef = useRef<Promise<void> | null>(null)
   const statusBarHeight = getStatusBarHeight()
   const [showBackToTop, setShowBackToTop] = useState(false)
   const [scrollTop, setScrollTop] = useState(0)
@@ -127,18 +128,27 @@ export default function OrderListPage() {
   }
 
   const fetchOrders = useCallback(async () => {
-    try {
-      const res = await Network.request({ url: '/api/order/list' })
+    if (inflightRef.current) return inflightRef.current
+
+    const promise = (async () => {
+      try {
+        const res = await Network.request({ url: '/api/order/list', dedupKey: 'order:list' })
       console.log('[OrderList] response:', JSON.stringify(res.data)?.substring(0, 300))
       const raw = res.data?.data
       const list = Array.isArray(raw) ? raw : []
       console.log('[OrderList] parsed list length:', list.length)
       setOrders(list)
-    } catch (err) {
-      console.error('[OrderList] fetch error:', err)
-    } finally {
-      setLoading(false)
-    }
+      } catch (err) {
+        console.error('[OrderList] fetch error:', err)
+      } finally {
+        setLoading(false)
+      }
+    })().finally(() => {
+      inflightRef.current = null
+    })
+
+    inflightRef.current = promise
+    return promise
   }, [])
 
   useDidShow(() => { fetchOrders() })

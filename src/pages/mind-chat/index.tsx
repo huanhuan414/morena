@@ -42,6 +42,22 @@ function getAvatarLevel(totalPosts: number, totalEarnings: number): { level: num
   return { level: 1, title: '新手分身', color: '#94a3b8', nextTitle: '进阶分身', progress: Math.min(100, score / 50 * 100) }
 }
 
+const asyncPool = async (limit: number, items: any[], worker: (item: any, index: number) => Promise<any>) => {
+  const results: any[] = new Array(items.length)
+  let nextIndex = 0
+
+  const runners = new Array(Math.min(Math.max(limit, 1), items.length)).fill(0).map(async () => {
+    while (true) {
+      const current = nextIndex++
+      if (current >= items.length) return
+      results[current] = await worker(items[current], current)
+    }
+  })
+
+  await Promise.all(runners)
+  return results
+}
+
 interface AvatarSkill {
   id: number
   skillName: string
@@ -147,6 +163,7 @@ const MindChat: React.FC = () => {
       const res = await Network.request({
         url: '/api/avatar',
         method: 'GET',
+        dedupKey: 'avatar:my-list',
       })
       console.log('加载分身列表:', res.data)
       
@@ -154,8 +171,7 @@ const MindChat: React.FC = () => {
         const rawData = res.data.data
         const data = Array.isArray(rawData) ? rawData : []
         // 并行加载所有分身的技能
-        const skillsPromises = data.map((item: any) => loadAvatarSkills(item.id))
-        const skillsResults = await Promise.all(skillsPromises)
+        const skillsResults = await asyncPool(4, data, (item: any) => loadAvatarSkills(item.id))
 
         const avatars = data.map((item: any, idx: number) => {
           const { tags, abilities } = parsePersonality(item.personality)

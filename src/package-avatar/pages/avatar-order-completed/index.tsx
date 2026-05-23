@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import Taro, { useLoad, navigateBack } from '@tarojs/taro'
-import * as Network from '@/network'
+import { Network } from '@/network'
 import { ArrowLeft, Check, Star, Sparkles, Download, Share } from 'lucide-react-taro'
 import { getSafeArea } from '@/utils/safe-area'
 import './index.css'

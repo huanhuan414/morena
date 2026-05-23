@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Query, Body, Param, Req, HttpCode, HttpStatus, Inject } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Query, Body, Param, Req, HttpCode, HttpStatus, Inject, UnauthorizedException, BadRequestException, NotFoundException, InternalServerErrorException, HttpException } from '@nestjs/common';
 import { ImageGenService } from './image-gen.service';
 
 @Controller('image-gen')
@@ -23,10 +23,10 @@ export class ImageGenController {
   ) {
     const userId = req.headers['x-user-id'];
     if (!userId) {
-      return { code: 401, msg: '请先登录', data: null };
+      throw new UnauthorizedException({ msg: '请先登录', data: null })
     }
     if (!body.prompt || body.prompt.trim().length === 0) {
-      return { code: 400, msg: '请输入图片描述', data: null };
+      throw new BadRequestException({ msg: '请输入图片描述', data: null })
     }
 
     console.log(`[ImageGenController] generate: userId=${userId}, prompt="${body.prompt.slice(0, 50)}"`);
@@ -40,8 +40,9 @@ export class ImageGenController {
       });
       return { code: 200, msg: '生成成功', data: result };
     } catch (error: any) {
+      if (error instanceof HttpException) throw error
       console.error('[ImageGenController] generate error:', error.message);
-      return { code: 500, msg: error.message || '图片生成失败', data: null };
+      throw new InternalServerErrorException({ msg: error.message || '图片生成失败', data: null })
     }
   }
 
@@ -57,7 +58,7 @@ export class ImageGenController {
   ) {
     const userId = req.headers['x-user-id'];
     if (!userId) {
-      return { code: 401, msg: '请先登录', data: null };
+      throw new UnauthorizedException({ msg: '请先登录', data: null })
     }
 
     try {
@@ -68,8 +69,9 @@ export class ImageGenController {
       );
       return { code: 200, msg: 'success', data: result };
     } catch (error: any) {
+      if (error instanceof HttpException) throw error
       console.error('[ImageGenController] getHistory error:', error.message);
-      return { code: 500, msg: error.message || '获取历史失败', data: null };
+      throw new InternalServerErrorException({ msg: error.message || '获取历史失败', data: null })
     }
   }
 
@@ -84,18 +86,19 @@ export class ImageGenController {
   ) {
     const userId = req.headers['x-user-id'];
     if (!userId) {
-      return { code: 401, msg: '请先登录', data: null };
+      throw new UnauthorizedException({ msg: '请先登录', data: null })
     }
 
     try {
       const result = await this.imageGenService.getById(id, userId);
       if (!result) {
-        return { code: 404, msg: '记录不存在', data: null };
+        throw new NotFoundException({ msg: '记录不存在', data: null })
       }
       return { code: 200, msg: 'success', data: result };
     } catch (error: any) {
+      if (error instanceof HttpException) throw error
       console.error('[ImageGenController] getById error:', error.message);
-      return { code: 500, msg: error.message || '获取详情失败', data: null };
+      throw new InternalServerErrorException({ msg: error.message || '获取详情失败', data: null })
     }
   }
 
@@ -110,15 +113,16 @@ export class ImageGenController {
   ) {
     const userId = req.headers['x-user-id'];
     if (!userId) {
-      return { code: 401, msg: '请先登录', data: null };
+      throw new UnauthorizedException({ msg: '请先登录', data: null })
     }
 
     try {
       await this.imageGenService.delete(id, userId);
       return { code: 200, msg: '删除成功', data: null };
     } catch (error: any) {
+      if (error instanceof HttpException) throw error
       console.error('[ImageGenController] delete error:', error.message);
-      return { code: 500, msg: error.message || '删除失败', data: null };
+      throw new InternalServerErrorException({ msg: error.message || '删除失败', data: null })
     }
   }
 }

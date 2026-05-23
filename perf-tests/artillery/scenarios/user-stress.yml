@@ -1,0 +1,29 @@
+config:
+  target: "{{ $processEnvironment.API_BASE_URL }}"
+  phases:
+    - name: ramp
+      duration: 60
+      arrivalRate: 10
+      rampTo: 80
+    - name: peak
+      duration: 120
+      arrivalRate: 80
+  plugins:
+    expect: {}
+  defaults:
+    headers:
+      Authorization: "Bearer {{ $processEnvironment.API_TOKEN }}"
+  ensure:
+    thresholds:
+      - "http.errors.rate": 0.03
+scenarios:
+  - name: user-stress
+    flow:
+      - get:
+          url: "/api/order/list"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/api/order/stats"
+          expect:
+            - statusCode: 200

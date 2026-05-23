@@ -117,6 +117,41 @@ IMPORTANT：
 - 是否新增了与目标无关的“顺手重构”？
 - `pnpm validate` 是否通过？
 
+### VibeCoding Playbook（Morena 版本）
+
+把本仓库现有规范“产品化”为一套可复制的 VibeCoding 主线与闸口清单，适用于 Issue/PR/AI 协作与上线前验收。
+
+#### 主线（从价值到交付）
+
+- 业务价值 → 事件模型 → 服务边界 → 可靠性 → 增量落地 → 指标验收 → 复盘迭代
+
+#### 8 闸口（Gate 0–7）
+
+将下面清单复制到 Issue/PR 的描述中逐项勾选，未过闸口禁止合并/上线。
+
+- [ ] Gate 0：变更收敛（只做一个目标；写清 Premise/Constraints/Boundaries/Endgame；改动范围 1–3 文件）
+- [ ] Gate 1：安全与合规（禁止提交密钥/证书/口令；敏感信息只进环境变量；不在日志/前端暴露）
+- [ ] Gate 2：依赖与工程（只用 pnpm；不随意引入新依赖；保持既有风格与目录结构）
+- [ ] Gate 3：资源与包体（图片/视频走 TOS；TabBar 图标除外；禁止占位符域名与虚构路径）
+- [ ] Gate 4：前端一致性（通用 UI 优先用 `@/components/ui`；样式优先 Tailwind；跨端规则必须遵守）
+- [ ] Gate 5：接口与契约（路由不手写 `api` 前缀；请求只用 `Network`；URL 不硬编码域名；注意双层 data 解包）
+- [ ] Gate 6：数据与状态源（涉及 DB/schema 必须基于基线与迁移；避免多状态源/字段漂移；关键状态有单一判定口径）
+- [ ] Gate 7：可验证交付（本地可复现；有回滚点；通过 validate + 冒烟/回归；必要时跑 docker 冒烟）
+
+#### 验收命令（优先级从高到低）
+
+- `pnpm validate`
+- `pnpm test:smoke`（最小冒烟）
+- `pnpm test:api` / `pnpm test:api:regression`（接口组回归）
+- `pnpm test:docker`（compose 级联冒烟）
+- `pnpm release:check`（上线前全量门禁）
+
+#### 接口与数据验收资产（仓库内事实源）
+
+- API 测试入口：`api-tests/run.ts`（支持按 id / group 跑用例、并发与报告）
+- DB schema 基线：`server/src/storage/database/schema/schema.sql`
+- 增量迁移：`server/src/storage/database/schema/migrations/0001_patch_core.sql`
+
 ## 命名规范
 
 **命名规范**：

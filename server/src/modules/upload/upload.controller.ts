@@ -1,11 +1,27 @@
-import { Inject, Controller, Post, UseInterceptors, UploadedFile, Body } from '@nestjs/common'
+import { Inject, Controller, Post, UseInterceptors, UploadedFile, Body, BadRequestException, InternalServerErrorException } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { UploadService } from './upload.service'
+import { memoryStorage, diskStorage } from 'multer'
+import * as crypto from 'crypto'
+import * as os from 'os'
 
-// 🔴 修复：Multer 配置，支持大文件上传（视频）
-const multerOptions = {
+const multerImageOptions = {
+  storage: memoryStorage(),
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB 限制
+    fileSize: 10 * 1024 * 1024,
+  },
+}
+
+const multerBigFileOptions = {
+  storage: diskStorage({
+    destination: os.tmpdir(),
+    filename: (req, file, cb) => {
+      const nonce = crypto.randomBytes(8).toString('hex')
+      cb(null, `${Date.now()}-${nonce}-${file.originalname}`)
+    },
+  }),
+  limits: {
+    fileSize: 100 * 1024 * 1024,
   },
 }
 
@@ -17,7 +33,7 @@ export class UploadController {
    * 上传订单截图
    */
   @Post('order-screenshot')
-  @UseInterceptors(FileInterceptor('file', multerOptions))
+  @UseInterceptors(FileInterceptor('file', multerImageOptions))
   async uploadOrderScreenshot(@UploadedFile() file: Express.Multer.File) {
     try {
       const result = await this.uploadService.uploadOrderScreenshot(file)
@@ -27,11 +43,7 @@ export class UploadController {
         data: result
       }
     } catch (error) {
-      return {
-        code: 500,
-        message: error.message || '上传失败',
-        error: error.message
-      }
+      throw new InternalServerErrorException({ msg: error.message || '上传失败', data: null })
     }
   }
 
@@ -39,7 +51,7 @@ export class UploadController {
    * 上传分身头像
    */
   @Post('avatar-image')
-  @UseInterceptors(FileInterceptor('file', multerOptions))
+  @UseInterceptors(FileInterceptor('file', multerImageOptions))
   async uploadAvatarImage(@UploadedFile() file: Express.Multer.File) {
     try {
       const result = await this.uploadService.uploadAvatarImage(file)
@@ -49,11 +61,7 @@ export class UploadController {
         data: result
       }
     } catch (error) {
-      return {
-        code: 500,
-        message: error.message || '上传失败',
-        error: error.message
-      }
+      throw new InternalServerErrorException({ msg: error.message || '上传失败', data: null })
     }
   }
 
@@ -61,7 +69,7 @@ export class UploadController {
    * 上传通用图片
    */
   @Post('image')
-  @UseInterceptors(FileInterceptor('file', multerOptions))
+  @UseInterceptors(FileInterceptor('file', multerImageOptions))
   async uploadImage(@UploadedFile() file: Express.Multer.File) {
     try {
       const result = await this.uploadService.uploadImage(file)
@@ -71,11 +79,7 @@ export class UploadController {
         data: result
       }
     } catch (error) {
-      return {
-        code: 500,
-        message: error.message || '上传失败',
-        error: error.message
-      }
+      throw new InternalServerErrorException({ msg: error.message || '上传失败', data: null })
     }
   }
 
@@ -83,7 +87,7 @@ export class UploadController {
    * 🔴 上传音频（用于语音识别）
    */
   @Post('audio')
-  @UseInterceptors(FileInterceptor('file', multerOptions))
+  @UseInterceptors(FileInterceptor('file', multerBigFileOptions))
   async uploadAudio(@UploadedFile() file: Express.Multer.File) {
     console.log('[UploadController] 接收到音频上传请求')
     console.log('[UploadController] 文件信息:', {
@@ -94,10 +98,7 @@ export class UploadController {
     })
 
     if (!file) {
-      return {
-        code: 400,
-        message: '未接收到文件'
-      }
+      throw new BadRequestException({ msg: '未接收到文件', data: null })
     }
 
     try {
@@ -109,11 +110,7 @@ export class UploadController {
       }
     } catch (error) {
       console.error('[UploadController] 音频上传失败:', error)
-      return {
-        code: 500,
-        message: error.message || '上传失败',
-        error: error.message
-      }
+      throw new InternalServerErrorException({ msg: error.message || '上传失败', data: null })
     }
   }
 
@@ -121,7 +118,7 @@ export class UploadController {
    * 🔴 上传视频
    */
   @Post('video')
-  @UseInterceptors(FileInterceptor('file', multerOptions))
+  @UseInterceptors(FileInterceptor('file', multerBigFileOptions))
   async uploadVideo(@UploadedFile() file: Express.Multer.File) {
     console.log('[UploadController] 接收到视频上传请求')
     console.log('[UploadController] 文件信息:', {
@@ -133,11 +130,7 @@ export class UploadController {
 
     if (!file) {
       console.error('[UploadController] 未接收到文件')
-      return {
-        code: 400,
-        message: '未接收到文件',
-        error: 'File not found'
-      }
+      throw new BadRequestException({ msg: '未接收到文件', data: null })
     }
 
     try {
@@ -149,11 +142,7 @@ export class UploadController {
       }
     } catch (error) {
       console.error('[UploadController] 视频上传失败:', error)
-      return {
-        code: 500,
-        message: error.message || '上传失败',
-        error: error.message
-      }
+      throw new InternalServerErrorException({ msg: error.message || '上传失败', data: null })
     }
   }
 
@@ -162,7 +151,7 @@ export class UploadController {
    * 根据文件类型自动选择上传服务
    */
   @Post()
-  @UseInterceptors(FileInterceptor('file', multerOptions))
+  @UseInterceptors(FileInterceptor('file', multerImageOptions))
   async uploadFile(@UploadedFile() file: Express.Multer.File) {
     console.log('[UploadController] 接收到通用文件上传请求')
     console.log('[UploadController] 文件信息:', {
@@ -173,11 +162,7 @@ export class UploadController {
     })
 
     if (!file) {
-      return {
-        code: 400,
-        message: '未接收到文件',
-        error: 'File not found'
-      }
+      throw new BadRequestException({ msg: '未接收到文件', data: null })
     }
 
     try {
@@ -203,11 +188,7 @@ export class UploadController {
       }
     } catch (error) {
       console.error('[UploadController] 文件上传失败:', error)
-      return {
-        code: 500,
-        message: error.message || '上传失败',
-        error: error.message
-      }
+      throw new InternalServerErrorException({ msg: error.message || '上传失败', data: null })
     }
   }
 }

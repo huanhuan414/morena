@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input'
 import Taro from '@tarojs/taro'
 import { Search, Eye, Ban, MessageSquare } from 'lucide-react-taro'
 import AdminLayout from '@/components/admin/Layout'
-import * as Network from '@/network'
+import { Network } from '@/network'
 import './index.css'
 
 interface Avatar {

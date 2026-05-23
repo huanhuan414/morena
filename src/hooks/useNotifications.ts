@@ -46,7 +46,8 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
   const fetchNotifications = useCallback(async () => {
     try {
       const res = await Network.request({
-        url: '/api/notifications'
+        url: '/api/notifications',
+        dedupKey: 'notifications:list',
       })
       console.log('[useNotifications] 获取通知:', res.data)
       
@@ -55,9 +56,12 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         setNotifications(list)
         setUnreadCount(res.data.data.total || list.filter((n: any) => !n.isRead).length)
         lastFetchTime.current = Date.now()
+        return list
       }
+      return []
     } catch (err) {
       console.error('[useNotifications] 获取通知失败:', err)
+      return []
     }
   }, [normalizeNotification])
 
@@ -65,7 +69,8 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
   const fetchUnreadCount = useCallback(async () => {
     try {
       const res = await Network.request({
-        url: '/api/notifications/unread-count'
+        url: '/api/notifications/unread-count',
+        dedupKey: 'notifications:unread-count',
       })
       console.log('[useNotifications] 未读数量:', res.data)
       
@@ -75,27 +80,20 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         
         // 如果有新的未读通知且距离上次获取超过 5 秒，弹窗显示
         if (count > 0 && Date.now() - lastFetchTime.current > 5000) {
-          // 获取最新的一条未读通知
-          const notifRes = await Network.request({
-            url: '/api/notifications'
-          })
-          if (notifRes.data?.data?.list?.length > 0) {
-            const unreadNotifications = notifRes.data.data.list
-              .map(normalizeNotification)
-              .filter((n: any) => !n.isRead)
-            if (unreadNotifications.length > 0) {
-              const latest = unreadNotifications[0]
-              setCurrentNotification(latest)
-              setShowModal(true)
-              onNewNotification?.(latest)
-            }
+          const list = await fetchNotifications()
+          const unreadNotifications = (list || []).filter((n: any) => !n.isRead)
+          if (unreadNotifications.length > 0) {
+            const latest = unreadNotifications[0]
+            setCurrentNotification(latest)
+            setShowModal(true)
+            onNewNotification?.(latest)
           }
         }
       }
     } catch (err) {
       console.error('[useNotifications] 获取未读数量失败:', err)
     }
-  }, [onNewNotification, normalizeNotification])
+  }, [fetchNotifications, onNewNotification])
 
   // 标记单条为已读
   const markAsRead = useCallback(async (notificationId: string) => {

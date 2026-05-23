@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ImageXClient } from '@volcengine/imagex-openapi';
+import * as fs from 'fs'
+import * as path from 'path'
 
 /**
  * Volcengine veImageX 图片上传服务
@@ -14,7 +16,7 @@ import { ImageXClient } from '@volcengine/imagex-openapi';
 @Injectable()
 export class VolcengineService {
   private readonly logger = new Logger(VolcengineService.name);
-  private client: ImageXClient;
+  private client: ImageXClient | null;
 
   // 图片服务
   private readonly FULL_SERVICE_ID = 'tos-cn-i-699z2ac540';
@@ -25,18 +27,33 @@ export class VolcengineService {
   private readonly VIDEO_SHORT_ID = '4rj1sb5o2t';
 
   constructor() {
+    const accessKey = process.env.VOLC_ACCESS_KEY || ''
+    const secretKey = process.env.VOLC_SECRET_KEY || ''
+    if (!accessKey || !secretKey) {
+      this.client = null
+      this.logger.warn('VOLC_ACCESS_KEY / VOLC_SECRET_KEY 未配置，Volcengine 上传能力将不可用')
+      return
+    }
+
     this.client = new ImageXClient({
-      accessKey: process.env.VOLC_ACCESS_KEY || '',
-      secretKey: process.env.VOLC_SECRET_KEY || '',
+      accessKey,
+      secretKey,
       region: 'cn-north-1',
       host: 'imagex.volcengineapi.com',
-    });
+    })
   }
 
   async uploadImage(file: Express.Multer.File): Promise<{ url: string }> {
     this.logger.log(`[VolcengineService] 开始上传图片: ${file.originalname}, MIME: ${file.mimetype}`);
 
     try {
+      if (!this.client) {
+        if (process.env.NODE_ENV !== 'production' && process.env.STORAGE_MOCK === '1') {
+          return { url: this.saveLocalFile(file, 'images') }
+        }
+        throw new Error('Volcengine client 未初始化（缺少 VOLC_ACCESS_KEY / VOLC_SECRET_KEY）')
+      }
+
       // 🔴 修复：强制所有文件都使用PNG格式
       // 因为火山引擎CDN可能只支持PNG格式访问
       // 根据原始文件名生成新的文件名，但强制使用PNG扩展名
@@ -139,6 +156,22 @@ export class VolcengineService {
     }
   }
 
+  private saveLocalFile(file: Express.Multer.File, subDir: string): string {
+    const projectRoot = process.cwd().includes('server') ? path.join(process.cwd(), '..') : process.cwd()
+    const uploadsRoot = path.join(projectRoot, 'uploads', subDir)
+    fs.mkdirSync(uploadsRoot, { recursive: true })
+
+    const original = file.originalname || `file_${Date.now()}`
+    const ext = path.extname(original) || '.png'
+    const nonce = Math.random().toString(36).slice(2, 10)
+    const name = `${Date.now()}_${nonce}${ext}`
+    const filePath = path.join(uploadsRoot, name)
+    fs.writeFileSync(filePath, file.buffer)
+
+    const base = process.env.LOCAL_UPLOAD_BASE_URL || 'http://127.0.0.1:3000'
+    return `${base}/uploads/${subDir}/${name}`
+  }
+
   private generateStoreKey(originalName: string): string {
     // 🔴 修复：生成纯随机的32位16进制字符（不使用padEnd填充0）
     // 用户提供的文件名示例：84b63fbc53ab40e6acf2584fdb8c3026（32位16进制字符）
@@ -172,6 +205,10 @@ export class VolcengineService {
     this.logger.log(`[VolcengineService] 开始上传视频，大小: ${videoBuffer.length} bytes`);
 
     try {
+      if (!this.client) {
+        throw new Error('Volcengine client 未初始化（缺少 VOLC_ACCESS_KEY / VOLC_SECRET_KEY）')
+      }
+
       const name = fileName || `video_${Date.now()}.mp4`;
       const storeKey = this.generateVideoStoreKey(name);
       this.logger.log(`[VolcengineService] Video StoreKey: ${storeKey}`);

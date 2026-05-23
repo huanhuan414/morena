@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 
-REMOTE_HOST="180.184.205.74"
-REMOTE_USER="root"
-SSH_PORT="22"
+REMOTE_HOST="${REMOTE_HOST:-YOUR_REMOTE_HOST}"
+REMOTE_USER="${REMOTE_USER:-YOUR_REMOTE_USER}"
+SSH_PORT="${SSH_PORT:-22}"
 
-DB_HOST="127.0.0.1"
-DB_PORT="16033"
-DB_NAME="mrl"
-DB_USER="mrl"
-DB_PASS="SYDPHJB8aGBn83Eh"
+DB_HOST="${DB_HOST:-127.0.0.1}"
+DB_PORT="${DB_PORT:-16033}"
+DB_NAME="${DB_NAME:-mrl}"
+DB_USER="${DB_USER:-mrl}"
+DB_PASS="${DB_PASS:-YOUR_MYSQL_PASSWORD}"
 
 echo "查询手机号 18708510957 的用户信息和收益数据..."
 echo "=================================================="

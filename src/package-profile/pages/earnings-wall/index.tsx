@@ -2,7 +2,7 @@ import Taro, { useLoad, useDidShow, navigateBack } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text } from '@tarojs/components'
 import { ArrowLeft, Trophy, TrendingUp, Sparkles, Medal, Crown, Zap, Flame, Star } from 'lucide-react-taro'
-import * as Network from '@/network'
+import { Network } from '@/network'
 import { formatLocal } from '@/utils/format'
 import './index.css'
 

@@ -5,7 +5,7 @@
 
 import { useState, useCallback } from 'react'
 import Taro from '@tarojs/taro'
-import * as Network from '@/network'
+import { Network } from '@/network'
 import { PlatformType } from '@/components/agent/PlatformConfigDialog'
 import type { AgentResult, ReActStep } from '@/components/agent/AgentMessageView'
 
@@ -64,11 +64,40 @@ export function useAgent() {
         }
       })
 
-      console.log('Agent 执行结果:', res)
+      const taskId = String(res.data?.data?.taskId || '')
+      if (!taskId) {
+        throw new Error(res.data?.message || '任务提交失败')
+      }
 
-      const result = res.data?.data as AgentResult
+      const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+      for (let i = 0; i < 120; i++) {
+        await sleep(1000)
+        const resultRes = await Network.request({
+          url: `/api/agent/result/${encodeURIComponent(taskId)}`,
+          method: 'GET',
+        })
+        if (resultRes.data?.code === 404) {
+          continue
+        }
+        if (resultRes.data?.code !== 200) {
+          continue
+        }
 
-      if (result) {
+        const task = resultRes.data?.data
+        const status = String(task?.status || '').toLowerCase()
+        if (status === 'pending' || status === 'running') {
+          continue
+        }
+
+        if (status === 'failed') {
+          throw new Error(task?.error || '执行失败')
+        }
+
+        const result = task?.result as AgentResult
+        if (!result) {
+          throw new Error('任务结果为空')
+        }
+
         setState(prev => ({
           ...prev,
           loading: false,
@@ -78,7 +107,6 @@ export function useAgent() {
           configPlatform: result.configPlatform || null
         }))
 
-        // 如果需要配置，打开配置弹窗
         if (result.requiresConfig && result.configPlatform) {
           setPendingPlatform(result.configPlatform)
           setConfigDialogOpen(true)
@@ -87,7 +115,7 @@ export function useAgent() {
         return result
       }
 
-      return null
+      throw new Error('任务执行超时')
     } catch (err: any) {
       console.error('Agent 执行失败:', err)
       setState(prev => ({

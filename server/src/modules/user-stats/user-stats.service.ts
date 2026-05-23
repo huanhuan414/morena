@@ -106,7 +106,10 @@ export class UserStatsService {
       
       // 5. 获取用户邀请码和邀请人数
       try {
-        const referralResult = await db.queryWhere('referrals', `referrer_id = '${userId}' AND status = 'completed'`) as any[]
+        const referralResult = await db.query(
+          `SELECT id FROM referrals WHERE referrer_id = ? AND status = 'completed'`,
+          [userId]
+        ) as any[]
         invitedCount = referralResult?.length || 0
 
         if (userResult?.referral_code || userResult?.referralCode) {

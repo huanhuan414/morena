@@ -2,21 +2,9 @@ import { useLoad, useRouter, redirectTo, navigateBack, showToast } from '@tarojs
 import { useState } from 'react'
 import { View, Text } from '@tarojs/components'
 import { Network } from '@/network'
+import { normalizeOrderProcessingStatus } from '@/adapters/core-chain-dto'
 import { Loader, ArrowLeft } from 'lucide-react-taro'
 import './index.css'
-
-interface OrderProcessingData {
-  requestId?: string
-  orderId?: string
-  avatarId?: string
-  status?: string
-  generatedContent?: {
-    content?: string
-    images?: string[]
-    videos?: string[]
-    platforms?: string[]
-  } | null
-}
 
 export default function OrderProcessingPage() {
   const router = useRouter()
@@ -41,13 +29,19 @@ export default function OrderProcessingPage() {
       }
 
       const res = await Network.request({
-        url: `/api/order-processing/status/${identifier}`
+        url: `/api/order-processing/status/${identifier}`,
+        dedupKey: `order-processing-status:${identifier}:full`,
       })
 
-      const data = res.data?.data as OrderProcessingData | undefined
+      const data = normalizeOrderProcessingStatus(res.data?.data)
       const normalizedRequestId = data?.requestId || requestId || ''
       const normalizedAvatarId = data?.avatarId || avatarId || ''
       const normalizedOrderId = data?.orderId || orderId || ''
+
+      if (!normalizedOrderId) {
+        throw new Error('缺少订单ID')
+      }
+
       const query = [
         `orderId=${encodeURIComponent(normalizedOrderId)}`,
         normalizedAvatarId ? `avatarId=${encodeURIComponent(normalizedAvatarId)}` : '',
@@ -56,20 +50,34 @@ export default function OrderProcessingPage() {
 
       if (!data) {
         await redirectTo({
-          url: `/package-order/pages/order-content-creation/index?orderId=${encodeURIComponent(orderId || '')}`
+          url: `/package-order/pages/order-content-creation/index?${query}`
         })
         return
       }
 
-      if (['published', 'awaiting_acceptance'].includes(data.status || '')) {
+      if ((data.status || '') === 'published') {
         await redirectTo({
           url: `/package-order/pages/order-publish-feedback/index?${query}`
         })
         return
       }
 
+      if ((data.status || '') === 'awaiting_acceptance') {
+        await redirectTo({
+          url: `/package-order/pages/order-acceptance-feedback/index?${query}`
+        })
+        return
+      }
+
+      if ((data.status || '') === 'completed') {
+        await redirectTo({
+          url: `/package-order/pages/order-completed/index?${query}`
+        })
+        return
+      }
+
       await redirectTo({
-        url: `/package-order/pages/order-content-creation/index?orderId=${encodeURIComponent(normalizedOrderId)}`
+        url: `/package-order/pages/order-content-creation/index?${query}`
       })
     } catch (error) {
       console.error('[OrderProcessingBridge] 跳转失败:', error)

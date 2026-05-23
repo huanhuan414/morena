@@ -245,7 +245,7 @@ export class GenerateVideoTool implements AvatarTool {
       }
 
       const apiUrl = 'https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks'
-      const apiKey = process.env.VOLC_VIDEO_API_KEY || '0a6405d5-b7ae-4afa-88e3-c707ae379a47'
+      const apiKey = process.env.VOLC_VIDEO_API_KEY || ''
 
       const response = await axios.post(apiUrl, {
         model: 'doubao-seedance-2-0-260128',

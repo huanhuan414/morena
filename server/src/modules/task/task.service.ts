@@ -35,12 +35,12 @@ export class TaskService {
     return await db.query('tasks', filters) as any[]
   }
 
-  async getTask(taskId: string) {
+  async getTask(userId: string, taskId: string) {
     const db = getMySQLClient()
-    return await db.queryOne('tasks', { id: taskId }) as any
+    return await db.queryOne('tasks', { id: taskId, user_id: userId }) as any
   }
 
-  async updateTaskStatus(taskId: string, status: string, result?: Record<string, any>) {
+  async updateTaskStatus(userId: string, taskId: string, status: string, result?: Record<string, any>) {
     const db = getMySQLClient()
     
     const updateData: any = {
@@ -52,7 +52,10 @@ export class TaskService {
       updateData.result = JSON.stringify(result)
     }
     
-    await db.updateWhere('tasks', { id: taskId }, updateData)
+    const updateResult = await db.updateWhere('tasks', { id: taskId, user_id: userId }, updateData)
+    if (Number(updateResult?.data?.affectedRows || 0) !== 1) {
+      throw new Error('任务不存在或无权操作')
+    }
     
     return { success: true }
   }

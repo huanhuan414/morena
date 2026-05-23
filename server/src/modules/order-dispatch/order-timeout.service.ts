@@ -2,6 +2,7 @@ import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { v4 as uuidv4 } from 'uuid';
 import { getMySQLClient } from '../../storage/database/mysql-client';
+import { withMysqlNamedLock } from '../../common/mysql-named-lock';
 import { NotificationService } from '../notification/notification.service';
 
 /**
@@ -25,6 +26,7 @@ export class OrderTimeoutService {
   private readonly lastAcceptanceRemindAt = new Map<string, number>();
 
   private eventService: any = null;
+  private dispatchAvatarColumn: 'avatar_id' | 'target_avatar_id' | null = null;
 
   private async getEventService() {
     if (!this.eventService) {
@@ -46,15 +48,38 @@ export class OrderTimeoutService {
   async handleTimeoutOrders() {
     const result = { dispatch: 0, content: 0, publish: 0, acceptance: 0, total: 0 }
     try {
-      result.dispatch = await this.checkDispatchTimeouts();
-      result.content = await this.checkContentTimeouts();
-      result.publish = await this.checkPublishTimeouts();
-      result.acceptance = await this.checkAcceptanceTimeouts();
-      result.total = result.dispatch + result.content + result.publish + result.acceptance
+      const { acquired } = await withMysqlNamedLock(
+        'order_dispatch:handle_timeout',
+        async () => {
+          result.dispatch = await this.checkDispatchTimeouts();
+          result.content = await this.checkContentTimeouts();
+          result.publish = await this.checkPublishTimeouts();
+          result.acceptance = await this.checkAcceptanceTimeouts();
+          result.total = result.dispatch + result.content + result.publish + result.acceptance
+        },
+        { logger: this.logger }
+      )
+      if (!acquired) return result
     } catch (error) {
       this.logger.error(`定时任务执行失败: ${error.message}`);
     }
     return result
+  }
+
+  private async getDispatchAvatarColumn(): Promise<'avatar_id' | 'target_avatar_id'> {
+    if (this.dispatchAvatarColumn) return this.dispatchAvatarColumn
+
+    const client = getMySQLClient()
+    const rows = await client.query(
+      `SELECT COLUMN_NAME AS name
+       FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'order_dispatch_requests'
+         AND COLUMN_NAME IN ('avatar_id', 'target_avatar_id')`
+    )
+    const names = new Set((rows || []).map((r: any) => String(r.name || r.COLUMN_NAME || '').toLowerCase()))
+    this.dispatchAvatarColumn = names.has('avatar_id') ? 'avatar_id' : 'target_avatar_id'
+    return this.dispatchAvatarColumn
   }
 
   private async checkAcceptanceTimeouts() {
@@ -108,14 +133,15 @@ export class OrderTimeoutService {
   private async checkDispatchTimeouts() {
     const client = await getMySQLClient();
     const timeoutTime = new Date(Date.now() - this.DISPATCH_TIMEOUT * 1000);
+    const avatarCol = await this.getDispatchAvatarColumn()
 
     // 查找超时的pending派单（跳过target_avatar_id为NULL的无效派单）
     const dispatches = await client.query(
-      `SELECT od.id, od.order_id, od.target_avatar_id as avatar_id, o.status as order_status
+      `SELECT od.id, od.order_id, od.${avatarCol} as avatar_id, o.status as order_status
        FROM order_dispatch_requests od
        JOIN orders o ON od.order_id = o.id
        WHERE od.status = 'pending' 
-       AND od.target_avatar_id IS NOT NULL
+       AND od.${avatarCol} IS NOT NULL
        AND od.created_at < ?
        AND o.status IN ('pending_acceptance', 'awaiting_acceptance')`,
       [timeoutTime]
@@ -308,13 +334,14 @@ export class OrderTimeoutService {
     // 查找内容生成超时的订单
     const orders = await client.query(
       `SELECT o.id, o.status, o.assigned_to, o.retry_count, o.max_retries,
-              (SELECT COUNT(*) FROM generated_content gc WHERE gc.order_id = o.id AND gc.status = 'completed') as completed_content
+              (SELECT COUNT(*) FROM content_generation_requests cgr
+                WHERE cgr.order_id = o.id AND cgr.status IN ('preview','published','settled')) as completed_content
        FROM orders o
        WHERE o.status = 'in_progress'
        AND o.updated_at < ?
        AND NOT EXISTS (
-         SELECT 1 FROM generated_content gc 
-         WHERE gc.order_id = o.id AND gc.status = 'completed'
+         SELECT 1 FROM content_generation_requests cgr
+         WHERE cgr.order_id = o.id AND cgr.status IN ('preview','published','settled')
        )`,
       [timeoutTime]
     );
@@ -342,7 +369,10 @@ export class OrderTimeoutService {
 
       // 检查是否有正在进行的生成任务
       const processing = await client.query(
-        `SELECT COUNT(*) as cnt FROM generated_content WHERE order_id = ? AND status = 'processing'`,
+        `SELECT COUNT(*) as cnt
+         FROM content_generation_requests
+         WHERE order_id = ?
+           AND status IN ('processing','generating_text','generating_images','generating_video')`,
         [order.id]
       );
 
@@ -545,18 +575,26 @@ export class OrderTimeoutService {
     try {
       await client.query('START TRANSACTION');
 
-      // 更新订单的发布凭证
-      await client.query(
-        `UPDATE orders SET publish_proof_url = ?, publish_verified = 1, status = 'completed' WHERE id = ?`,
-        [proofUrl, orderId]
-      );
+      await client.query(`UPDATE orders SET status = 'completed', completed_at = NOW(), updated_at = NOW() WHERE id = ?`, [
+        orderId,
+      ])
 
-      // 更新生成内容的发布URL和验证状态
+      const publishProof = JSON.stringify({
+        proofUrl,
+        publishUrl: publishUrl || '',
+        verifiedAt: new Date().toISOString(),
+      })
+      const publishStatus = JSON.stringify({
+        verified: true,
+        publishUrl: publishUrl || '',
+        proofUrl,
+      })
       await client.query(
-        `UPDATE generated_content SET publish_url = ?, verification_status = 'verified', verified_at = NOW()
+        `UPDATE content_generation_requests
+         SET publish_proof = ?, publish_status = ?, updated_at = NOW()
          WHERE order_id = ?`,
-        [publishUrl || '', orderId]
-      );
+        [publishProof, publishStatus, orderId]
+      )
 
       await client.query('COMMIT');
       return true;
@@ -589,6 +627,7 @@ export class OrderTimeoutService {
    */
   async getAvatarPerformance(avatarId: string): Promise<any> {
     const client = await getMySQLClient();
+    const avatarCol = await this.getDispatchAvatarColumn()
 
     const dispatchStats = await client.query(
       `SELECT 
@@ -600,7 +639,7 @@ export class OrderTimeoutService {
          ROUND(AVG(CASE WHEN status = 'accepted' AND responded_at IS NOT NULL 
            THEN TIMESTAMPDIFF(SECOND, created_at, responded_at) ELSE NULL END)) as avg_response_seconds
        FROM order_dispatch_requests 
-       WHERE target_avatar_id = ?`,
+       WHERE ${avatarCol} = ?`,
       [avatarId]
     );
 

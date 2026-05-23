@@ -6,7 +6,7 @@ import { View, Text, ScrollView, Picker, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Plus, Pencil, Save, Trash2, ArrowLeft, Search, Loader, RefreshCw } from 'lucide-react-taro'
-import * as Network from '@/network'
+import { Network } from '@/network'
 import './index.css'
 
 // 获取状态栏高度
@@ -205,7 +205,7 @@ export default function AvatarAccountConfigPage() {
           showToast({ title: '获取成功', icon: 'success' })
         } else {
           // 显示后端返回的具体错误信息
-          const errorMsg = res.data?.message || res.data?.msg || '获取失败，请检查分享链接是否正确'
+          const errorMsg = Network.getMsg(res.data, '获取失败，请检查分享链接是否正确')
           showToast({ title: errorMsg, icon: 'none', duration: 3000 })
         }
       } catch (error: any) {

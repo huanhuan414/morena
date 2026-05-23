@@ -10,6 +10,7 @@ import { AvatarMemoryService } from './avatar-memory.service'
 import { AvatarLearningService } from './avatar-learning.service'
 import { ConversationMessage } from './avatar-agent.types'
 import { getMySQLClient } from '../../storage/database/mysql-client'
+import { requireAuthenticatedUserId } from '../../common/auth-user.util'
 
 @Controller('avatar-agent')
 export class AvatarAgentController {
@@ -19,19 +20,36 @@ export class AvatarAgentController {
     @Inject(AvatarLearningService) private readonly learningService: AvatarLearningService
   ) {}
 
+  private getAuthenticatedUserId(headers: Record<string, string | string[] | undefined>) {
+    return requireAuthenticatedUserId(headers)
+  }
+
+  private async ensureAvatarOwnership(avatarId: string, userId: string) {
+    const db = getMySQLClient()
+    const avatar = await db.queryOne('avatars', { id: avatarId })
+    if (!avatar) {
+      throw new Error('分身不存在')
+    }
+    if (avatar.userId !== userId) {
+      throw new Error('无权访问该分身')
+    }
+    return avatar
+  }
+
   /**
    * 对话接口
    */
   @Post(':avatarId/chat')
   async chat(
     @Param('avatarId') avatarId: string,
-    @Headers('x-user-id') userId: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Body() body: {
       message: string
       conversationHistory?: ConversationMessage[]
     }
   ) {
     try {
+      const userId = this.getAuthenticatedUserId(headers)
       const response = await this.agentService.chat(
         avatarId,
         userId,
@@ -59,16 +77,17 @@ export class AvatarAgentController {
   @Post(':avatarId/think')
   async think(
     @Param('avatarId') avatarId: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Body() body: {
       message: string
-      userId: string
       conversationId?: string
       conversationHistory?: ConversationMessage[]
     }
   ) {
     try {
+      const userId = this.getAuthenticatedUserId(headers)
       const thought = await this.agentService.think(avatarId, body.message, {
-        userId: body.userId,
+        userId,
         conversationId: body.conversationId,
         history: body.conversationHistory
       })
@@ -91,8 +110,13 @@ export class AvatarAgentController {
    * 获取分身配置
    */
   @Get(':avatarId/config')
-  async getConfig(@Param('avatarId') avatarId: string) {
+  async getConfig(
+    @Param('avatarId') avatarId: string,
+    @Headers() headers: Record<string, string | string[] | undefined>
+  ) {
     try {
+      const userId = this.getAuthenticatedUserId(headers)
+      await this.ensureAvatarOwnership(avatarId, userId)
       const config = await this.agentService['loadAvatarConfig'](avatarId)
 
       return {
@@ -115,6 +139,7 @@ export class AvatarAgentController {
   @Put(':avatarId/config')
   async updateConfig(
     @Param('avatarId') avatarId: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Body() body: {
       systemPrompt?: string
       rolePrompt?: string
@@ -127,6 +152,8 @@ export class AvatarAgentController {
     }
   ) {
     try {
+      const userId = this.getAuthenticatedUserId(headers)
+      await this.ensureAvatarOwnership(avatarId, userId)
       await this.agentService.updateAvatarConfig(avatarId, body)
 
       return {
@@ -149,6 +176,7 @@ export class AvatarAgentController {
   @Post(':avatarId/initialize')
   async initializeConfig(
     @Param('avatarId') avatarId: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Body() body: {
       systemPrompt?: string
       rolePrompt?: string
@@ -156,6 +184,8 @@ export class AvatarAgentController {
     }
   ) {
     try {
+      const userId = this.getAuthenticatedUserId(headers)
+      await this.ensureAvatarOwnership(avatarId, userId)
       await this.agentService.initializeAvatarConfig(avatarId, body)
 
       return {

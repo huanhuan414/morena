@@ -1,8 +1,8 @@
 import Taro, { useDidShow, navigateBack, navigateTo, showToast } from '@tarojs/taro'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
-import * as Network from '@/network'
+import { Network } from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import { PLATFORM_UI_ORDER, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
 import {
@@ -135,6 +135,7 @@ interface OrderItem {
   estimatedEarning: number
   deliveryDays: number
   requirements: string[]
+  pendingAvatarIds?: string[]
   publisher: {
     nickname: string
     avatar: string
@@ -158,6 +159,8 @@ export default function OrderSquarePage() {
   const [orderPage, setOrderPage] = useState(1)
   const [hasMoreOrders, setHasMoreOrders] = useState(true)
   const [acceptingOrderIds, setAcceptingOrderIds] = useState<Record<string, true>>({})
+  const fetchSeqRef = useRef(0)
+  const pendingFetchRef = useRef<{ platform?: string; page: number; append: boolean } | null>(null)
 
 
   useDidShow(() => {
@@ -177,12 +180,17 @@ export default function OrderSquarePage() {
 
   const fetchOrders = async (platform?: string, page = 1, append = false) => {
     const currentPlatform = platform ?? selectedPlatform
-    if (ordersLoading) return
+    const requestSeq = ++fetchSeqRef.current
+    if (ordersLoading) {
+      pendingFetchRef.current = { platform: currentPlatform, page, append }
+      return
+    }
     setOrdersLoading(true)
     if (page === 1) setRefresherTriggered(true)
     try {
       const res = await Network.request({
         url: '/api/order/open',
+        dedupKey: `order:open:${currentPlatform}:${page}`,
         data: {
           page,
           pageSize: 20,
@@ -191,6 +199,7 @@ export default function OrderSquarePage() {
       })
 
       if (res.data?.code === 200) {
+        if (requestSeq !== fetchSeqRef.current) return
         const data = res.data?.data
         const items = Array.isArray(data) ? data : (data?.items || data?.list || [])
         const total = Number(data?.total || items.length || 0)
@@ -206,16 +215,16 @@ export default function OrderSquarePage() {
             estimatedEarning: Number(item.expectedEarnings || item.expected_earnings || 0) || (Number(item.budget || 0) / Math.max(Number(item.avatarCount || item.expected_quantity || 1), 1)),
             deliveryDays: item.deliveryDays || item.delivery_days || 3,
             requirements: Array.isArray(item.requirements?.requiredSkills) ? item.requirements.requiredSkills : (Array.isArray(item.requiredSkills) ? item.requiredSkills : []),
+            pendingAvatarIds: Array.isArray(item.pendingAvatarIds || item.pending_avatar_ids) ? (item.pendingAvatarIds || item.pending_avatar_ids) : [],
             publisher: { nickname: item.publisherNickname || item.publisher_nickname || '发布方', avatar: item.publisherAvatar || item.publisher_avatar || '', rating: item.publisherRating || 5 },
             createdAt: formatCreatedAt(item.createdAt || item.created_at),
             acceptCount: Number(item.acceptCount || item.accept_count || 0),
             isAcceptedByMe: Boolean(item.isAcceptedByMe || item.is_accepted_by_me)
           })) as OrderItem[]
 
-          const filtered = currentPlatform === 'all' ? mapped : mapped.filter((item) => item.platform === currentPlatform)
           let nextLength = 0
           setOrders(prev => {
-            const next = append ? [...prev, ...filtered] : filtered
+            const next = append ? [...prev, ...mapped] : mapped
             nextLength = next.length
             return next
           })
@@ -224,8 +233,8 @@ export default function OrderSquarePage() {
           setHasMoreOrders(nextLength < total)
         } else {
           if (page === 1) {
-            setOrders(getDemoOrdersForPlatform(currentPlatform))
-            setIsDemo(true)
+            setOrders([])
+            setIsDemo(false)
             setHasMoreOrders(false)
             setOrderPage(1)
           } else {
@@ -233,6 +242,7 @@ export default function OrderSquarePage() {
           }
         }
       } else {
+        if (requestSeq !== fetchSeqRef.current) return
         if (page === 1) {
           setOrders(getDemoOrdersForPlatform(currentPlatform))
           setIsDemo(true)
@@ -242,6 +252,7 @@ export default function OrderSquarePage() {
       }
     } catch (error) {
       console.error('获取订单失败:', error)
+      if (requestSeq !== fetchSeqRef.current) return
       if (page === 1) {
         setOrders(getDemoOrdersForPlatform(currentPlatform))
         setIsDemo(true)
@@ -251,6 +262,11 @@ export default function OrderSquarePage() {
     } finally {
       if (page === 1) setRefresherTriggered(false)
       setOrdersLoading(false)
+      const pending = pendingFetchRef.current
+      if (pending) {
+        pendingFetchRef.current = null
+        fetchOrders(pending.platform, pending.page, pending.append)
+      }
     }
   }
 
@@ -276,8 +292,8 @@ export default function OrderSquarePage() {
     fetchOrders(undefined, orderPage + 1, true)
   }
 
-  const handleAcceptOrder = async (orderId: string) => {
-    if (orderId.startsWith('demo_')) {
+  const handleAcceptOrder = async (order: OrderItem) => {
+    if (order.id.startsWith('demo_')) {
       showToast({ title: '创建分身即可接单赚钱', icon: 'none' })
       return
     }
@@ -300,17 +316,26 @@ export default function OrderSquarePage() {
         showToast({ title: '请先创建分身', icon: 'none' })
         return
       }
+      const pendingAvatarIds = Array.isArray(order.pendingAvatarIds) ? order.pendingAvatarIds : []
+      const selectableAvatars = pendingAvatarIds.length > 0
+        ? activeAvatars.filter((a: any) => pendingAvatarIds.includes(a.id))
+        : []
+      if (!Array.isArray(selectableAvatars) || selectableAvatars.length === 0) {
+        showToast({ title: '暂无可接派单记录', icon: 'none' })
+        fetchOrders()
+        return
+      }
       // 如果只有一个分身，直接接单
-      if (activeAvatars.length === 1) {
-        doAcceptOrder(activeAvatars[0].id, orderId)
+      if (selectableAvatars.length === 1) {
+        doAcceptOrder(selectableAvatars[0].id, order.id)
         return
       }
       // 多个分身时弹出选择
-      const avatarNames = activeAvatars.map((a: any) => a.name || a.nickname || '未命名分身')
+      const avatarNames = selectableAvatars.map((a: any) => a.name || a.nickname || '未命名分身')
       Taro.showActionSheet({
         itemList: avatarNames,
         success: (res) => {
-          doAcceptOrder(activeAvatars[res.tapIndex].id, orderId)
+          doAcceptOrder(selectableAvatars[res.tapIndex].id, order.id)
         }
       })
     } catch (error) {
@@ -333,6 +358,16 @@ export default function OrderSquarePage() {
           return rest
         })
         fetchOrders()
+        const data = res.data?.data || {}
+        const nextRequestId = String(data?.requestId || '')
+        const query = [
+          `orderId=${encodeURIComponent(orderId)}`,
+          `avatarId=${encodeURIComponent(avatarId)}`,
+          nextRequestId ? `requestId=${encodeURIComponent(nextRequestId)}` : '',
+        ].filter(Boolean).join('&')
+        setTimeout(() => {
+          navigateTo({ url: `/package-order/pages/order-processing/index?${query}` })
+        }, 300)
       } else {
         showToast({ title: res.data?.message || '接单失败', icon: 'none' })
         setAcceptingOrderIds((prev) => {
@@ -550,7 +585,7 @@ export default function OrderSquarePage() {
                       size="sm"
                       className="accept-btn"
                       disabled={Boolean(acceptingOrderIds[order.id] || order.isAcceptedByMe)}
-                      onClick={() => handleAcceptOrder(order.id)}
+                      onClick={() => handleAcceptOrder(order)}
                     >
                       <Zap size={14} color="#fff" />
                       <Text className="accept-btn-text">

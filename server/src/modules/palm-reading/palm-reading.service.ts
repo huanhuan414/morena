@@ -18,7 +18,7 @@ export interface PalmReadingRecord {
 @Injectable()
 export class PalmReadingService {
   private readonly imageApiUrl = 'https://api.aaigc.top/v1/images/edits'
-  private readonly imageApiKey = 'sk-z1CFQbVdKI6x7ciJLwQkp1vPJPp8P9lQWW0jJGQWUdkSuQsK'
+  private readonly imageApiKey = process.env.IMAGE_API_KEY || ''
 
   /**
    * 创建任务并异步执行

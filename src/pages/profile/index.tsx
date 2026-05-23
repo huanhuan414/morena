@@ -1,7 +1,7 @@
 import Taro, { useLoad, useDidShow, navigateTo, reLaunch, showModal } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
-import * as Network from '@/network'
+import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
 import {
   Settings, ChevronRight, LogOut, Bell, Info,

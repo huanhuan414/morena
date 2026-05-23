@@ -104,7 +104,8 @@ export default function OrderPublishFeedback() {
       if (reqId) {
         console.log('[OrderPublishFeedback] 通过 requestId 获取状态:', reqId)
         const response = await Network.request({
-          url: `/api/order-processing/status/${reqId}`
+          url: `/api/order-processing/status/${reqId}`,
+          dedupKey: `order-processing-status:${reqId}:full`,
         })
 
         if (response.data?.code === 200) {
@@ -380,7 +381,14 @@ export default function OrderPublishFeedback() {
 
       if (response.data?.code === 200) {
         Taro.showToast({ title: '反馈成功', icon: 'success', duration: 2000 })
-        setTimeout(() => navigateBack(), 2000)
+        const nextReqId = actualRequestId || requestId || contentId || ''
+        const query = [
+          orderId ? `orderId=${encodeURIComponent(String(orderId))}` : '',
+          nextReqId ? `requestId=${encodeURIComponent(String(nextReqId))}` : '',
+        ].filter(Boolean).join('&')
+        setTimeout(() => {
+          Taro.redirectTo({ url: `/package-order/pages/order-processing/index?${query}` })
+        }, 200)
       } else {
         Taro.showToast({ title: response.data?.message || '提交失败', icon: 'none' })
       }

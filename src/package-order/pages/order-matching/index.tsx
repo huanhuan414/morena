@@ -2,7 +2,7 @@ import Taro, { useLoad, useDidShow, useRouter, showToast, showLoading, hideLoadi
 import { useState, useEffect, useRef } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
-import * as Network from '@/network'
+import { Network } from '@/network'
 import { 
   ArrowLeft, Sparkles, Check, Star, Trophy, TrendingUp,
   Users, Loader, Crown, ThumbsUp, Send
@@ -276,7 +276,8 @@ export default function OrderMatchingPage() {
         // 没有手动选择，使用 dispatch-all
         const res = await Network.request({
           url: `/api/order-dispatch/${orderId}/dispatch-all`,
-          method: 'POST'
+          method: 'POST',
+          dedupKey: `order-dispatch:dispatch-all:${orderId}`,
         })
         if (res.data?.code === 200) {
           const result = res.data.data || {}

@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import Taro, { useLoad, useRouter, navigateBack } from '@tarojs/taro'
-import * as Network from '@/network'
+import { Network } from '@/network'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { normalizeOrderProcessingStatus } from '@/adapters/core-chain-dto'
+import { getPlatformLabel } from '@/constants/publish-platform'
 import { ArrowLeft, Bell, ExternalLink, CircleCheck, Play } from 'lucide-react-taro'
 import './index.css'
 
@@ -25,14 +27,20 @@ export default function OrderAcceptanceFeedback() {
   const loadData = async () => {
     try {
       console.log('[OrderAcceptanceFeedback] 开始加载数据')
+      const identifier = requestId || orderId
+      if (!identifier) {
+        Taro.showToast({ title: '缺少参数', icon: 'none' })
+        return
+      }
       const response = await Network.request({
-        url: `/api/order-processing/status/${requestId}`
+        url: `/api/order-processing/status/${identifier}`,
+        dedupKey: `order-processing-status:${identifier}:full`,
       })
 
       console.log('[OrderAcceptanceFeedback] 数据响应:', response.data)
 
       if (response.data?.code === 200) {
-        setData(response.data.data)
+        setData(normalizeOrderProcessingStatus(response.data.data))
       } else {
         Taro.showToast({
           title: response.data?.message || '加载失败',
@@ -94,7 +102,13 @@ export default function OrderAcceptanceFeedback() {
           title: `已验收「${name}」`,
           icon: 'success'
         })
-        setTimeout(() => navigateBack(), 1500)
+        const query = [
+          data?.orderId ? `orderId=${encodeURIComponent(String(data.orderId))}` : '',
+          requestId ? `requestId=${encodeURIComponent(String(requestId))}` : '',
+        ].filter(Boolean).join('&')
+        setTimeout(() => {
+          Taro.redirectTo({ url: `/package-order/pages/order-processing/index?${query}` })
+        }, 200)
       } else {
         Taro.showToast({
           title: response.data?.message || '验收失败',
@@ -131,9 +145,8 @@ export default function OrderAcceptanceFeedback() {
   }
 
   const generatedContent = data.generatedContent || {}
-  const publishFeedback = data.publishFeedback || {}
-  const screenshotUrls = publishFeedback.screenshot_urls || []
-  const link = publishFeedback.link || ''
+  const publishFeedback = (data.publishFeedback || {}) as Record<string, any>
+  const feedbackEntries = Object.entries(publishFeedback)
 
   // 获取内容类型
   const contentType = data.contentType || generatedContent.type || 'image'
@@ -360,50 +373,48 @@ export default function OrderAcceptanceFeedback() {
           <Text className="section-title">已提交反馈</Text>
           <Card>
             <CardContent className="p-4">
-              {/* 截图 */}
-              {screenshotUrls.length > 0 && (
-                <View className="feedback-item">
-                  <Text className="block feedback-label">发布截图</Text>
-                  <View className="screenshot-list">
-                    {screenshotUrls.map((url: string, idx: number) => (
-                      <Image
-                        key={idx}
-                        src={url}
-                        className="screenshot-img"
-                        mode="aspectFill"
-                        onClick={() => Taro.previewImage({ urls: screenshotUrls, current: url })}
-                      />
-                    ))}
+              {feedbackEntries.map(([platform, item]) => {
+                const images = Array.isArray(item?.images) ? item.images : []
+                const publishUrl = String(item?.publishUrl || item?.link || '')
+                const note = String(item?.note || item?.remark || '')
+                const title = getPlatformLabel(platform) || platform
+                return (
+                  <View key={platform} className="feedback-item">
+                    <Text className="block feedback-label">{title}</Text>
+
+                    {images.length > 0 && (
+                      <View className="screenshot-list">
+                        {images.map((url: string, idx: number) => (
+                          <Image
+                            key={`${platform}-${idx}`}
+                            src={url}
+                            className="screenshot-img"
+                            mode="aspectFill"
+                            onClick={() => Taro.previewImage({ urls: images, current: url })}
+                          />
+                        ))}
+                      </View>
+                    )}
+
+                    {publishUrl && (
+                      <View className="link-box">
+                        <ExternalLink size={16} color="#07c160" />
+                        <Text
+                          className="block link-text"
+                          onClick={() => {
+                            Taro.setClipboardData({ data: publishUrl })
+                            Taro.showToast({ title: '链接已复制', icon: 'success' })
+                          }}
+                        >{publishUrl}</Text>
+                      </View>
+                    )}
+
+                    {note && <Text className="block note-text">{note}</Text>}
                   </View>
-                </View>
-              )}
+                )
+              })}
 
-              {/* 链接 */}
-              {link && (
-                <View className="feedback-item">
-                  <Text className="block feedback-label">发布链接</Text>
-                  <View className="link-box">
-                    <ExternalLink size={16} color="#07c160" />
-                    <Text
-                      className="block link-text"
-                      onClick={() => {
-                        Taro.setClipboardData({ data: link })
-                        Taro.showToast({ title: '链接已复制', icon: 'success' })
-                      }}
-                    >{link}</Text>
-                  </View>
-                </View>
-              )}
-
-              {/* 备注 */}
-              {publishFeedback.note && (
-                <View className="feedback-item">
-                  <Text className="block feedback-label">备注说明</Text>
-                  <Text className="block note-text">{publishFeedback.note}</Text>
-                </View>
-              )}
-
-              {!screenshotUrls.length && !link && !publishFeedback.note && (
+              {feedbackEntries.length === 0 && (
                 <View className="empty-feedback">
                   <Text className="block empty-text">暂无反馈信息</Text>
                 </View>

@@ -1,7 +1,7 @@
 import { View, Text, Image } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useState, useRef, useCallback } from 'react'
-import * as Network from '@/network'
+import { Network } from '@/network'
 import { ArrowLeft, Upload, RefreshCw, Download, Eye } from 'lucide-react-taro'
 import { Button } from '@/components/ui/button'
 import './index.css'

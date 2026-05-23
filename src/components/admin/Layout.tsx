@@ -5,6 +5,7 @@ import {
   LayoutDashboard, Users, Bot, Wrench, ShoppingCart, 
   FileText, Wallet, Share2, Settings, LogOut, Menu, X
 } from 'lucide-react-taro'
+import { clearAdminSession, getAdminInfo, hasAdminSession, redirectToAdminLogin } from '@/package-admin/utils/session'
 import './Layout.css'
 import './Layout.pc.css'
 
@@ -32,11 +33,10 @@ export default function AdminLayout({ children, title = '管理后台' }: Layout
 
   useEffect(() => {
     // 检查登录状态
-    const token = Taro.getStorageSync('admin_token')
-    const info = Taro.getStorageSync('admin_info')
+    const info = getAdminInfo()
     
-    if (!token) {
-      Taro.redirectTo({ url: '/package-admin/pages/login/index' })
+    if (!hasAdminSession()) {
+      redirectToAdminLogin()
       return
     }
     
@@ -69,9 +69,8 @@ export default function AdminLayout({ children, title = '管理后台' }: Layout
       content: '确定要退出管理后台吗？',
       success: (res) => {
         if (res.confirm) {
-          Taro.removeStorageSync('admin_token')
-          Taro.removeStorageSync('admin_info')
-          Taro.redirectTo({ url: '/package-admin/pages/login/index' })
+          clearAdminSession()
+          redirectToAdminLogin()
         }
       }
     })

@@ -208,7 +208,7 @@ export class AvatarService {
           console.error('[AvatarService] settleReferralOnFirstAvatar failed:', (e as any)?.message || e)
         }
 
-        return { success: true, id: (result as any)?.data?.insertId, data: newAvatar }
+        return { success: true, id, data: newAvatar }
       }
       
       return { success: false, error: '创建分身失败' }
@@ -1113,7 +1113,7 @@ export class AvatarService {
   private async generateDefaultThumb(accessToken: string, title: string): Promise<string> {
     // 方案1: 使用图片生成API创建封面
     try {
-      const imageApiKey = process.env.IMAGE_API_KEY || 'sk-z1CFQbVdKI6x7ciJLwQkp1vPJPp8P9lQWW0jJGQWUdkSuQsK'
+      const imageApiKey = process.env.IMAGE_API_KEY || ''
       const imageApiUrl = process.env.IMAGE_API_URL || 'https://api.aaigc.top/v1/images/generations'
       const imageModel = process.env.IMAGE_MODEL || 'gpt-image-2-all'
 

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { setStorageSync, getStorageSync, removeStorageSync } from '@tarojs/taro'
-import * as Network from '@/network'
+import { Network } from '@/network'
 
 // 判断是否为 H5 环境
 const isH5 = typeof window !== 'undefined' && typeof document !== 'undefined'

@@ -1,0 +1,6 @@
+- [x] content_generation_requests 在新建与复用时写入/补齐 user_id，且来源为 orders.user_id
+- [x] order-processing/status 的 owner 校验不会因 record.user_id 为空而被绕过
+- [x] acceptOrder 返回的 requestId 非空且可用于查询 status（首个平台口径）
+- [x] recoverStuckGenerations 不会把 generating_video（带 seedance_task_id）提前置 preview
+- [x] recoverStuckGenerations 不再按 status 全表拉取后在 Node 过滤（避免数据量上来后性能退化）
+- [x] pnpm validate 通过

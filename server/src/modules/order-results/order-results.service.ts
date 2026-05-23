@@ -3,6 +3,21 @@ import { Injectable } from '@nestjs/common'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import * as crypto from 'crypto'
 
+export interface CreateResultDto {
+  orderId?: string
+  order_id?: string
+  avatarId?: string
+  avatar_id?: string
+  exposure?: number
+  likes?: number
+  comments?: number
+  shares?: number
+  linkUrl?: string
+  link_url?: string
+  description?: string
+  screenshots?: string | string[]
+}
+
 @Injectable()
 export class OrderResultsService {
   async createOrderResult(data: {
@@ -49,11 +64,35 @@ export class OrderResultsService {
 
   async getOrderResultsByOrder(orderId: string) {
     const db = getMySQLClient()
-    const pool = (db as any)._pool || (db as any).pool
-    if (pool) {
-      const [rows] = await pool.query('SELECT * FROM order_results WHERE order_id = ? ORDER BY created_at DESC', [orderId])
-      return rows
-    }
-    return []
+    return await db.query(
+      'SELECT * FROM order_results WHERE order_id = ? ORDER BY created_at DESC',
+      [orderId]
+    )
+  }
+
+  async createResult(dto: CreateResultDto) {
+    return this.createOrderResult({
+      order_id: dto.orderId || dto.order_id || '',
+      avatar_id: dto.avatarId || dto.avatar_id || '',
+      exposure: dto.exposure,
+      likes: dto.likes,
+      comments: dto.comments,
+      shares: dto.shares,
+      link_url: dto.linkUrl || dto.link_url,
+      description: dto.description,
+      screenshots: dto.screenshots,
+    })
+  }
+
+  async getOrderResults(orderId: string) {
+    return this.getOrderResultsByOrder(orderId)
+  }
+
+  async getAvatarResults(avatarId: string) {
+    const db = getMySQLClient()
+    return await db.query(
+      'SELECT * FROM order_results WHERE avatar_id = ? ORDER BY created_at DESC',
+      [avatarId]
+    )
   }
 }

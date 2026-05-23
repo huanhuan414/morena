@@ -4,6 +4,7 @@
  */
 
 import { Controller, Get, Post, Delete, Body, Param, Headers, Query, Sse, Req, Inject } from '@nestjs/common'
+import { randomUUID } from 'crypto'
 import { Request } from 'express'
 import { Observable, from, of } from 'rxjs'
 import { map, catchError } from 'rxjs/operators'
@@ -39,15 +40,15 @@ export class AgentController {
     @Headers('x-user-id') userId: string,
     @Query('taskId') taskId?: string
   ) {
-    const progress = this.progressCache.getProgress(userId, taskId)
-    const latestProgress = this.progressCache.getLatestProgress(userId, taskId)
+    const progress = await this.progressCache.getProgress(userId, taskId)
+    const latestProgress = await this.progressCache.getLatestProgress(userId, taskId)
     
     return {
       code: 200,
       data: {
         progress,
         latest: latestProgress,
-        count: progress.length
+        count: Array.isArray(progress) ? progress.length : 0
       },
       message: '获取成功'
     }
@@ -61,7 +62,7 @@ export class AgentController {
     @Headers('x-user-id') userId: string,
     @Param('taskId') taskId: string
   ) {
-    const result = this.progressCache.getTaskResult(userId, taskId)
+    const result = await this.progressCache.getTaskResult(userId, taskId)
     
     if (!result) {
       return {
@@ -98,7 +99,7 @@ export class AgentController {
     }
   ) {
     // 生成任务ID
-    const taskId = body.task_id || `task-${Date.now()}`
+    const taskId = body.task_id || `task-${randomUUID()}`
 
     // 创建任务记录
     this.progressCache.createTask(userId, taskId)
@@ -112,10 +113,10 @@ export class AgentController {
         conversationId: body.conversation_id,
         taskId,
         conversationHistory: body.conversation_history as any,
-        uploadedImages: body.attachments?.images || [], // 新增：上传的图片
-        uploadedVideos: body.attachments?.videos || []  // 新增：上传的视频
+        uploadedImages: body.attachments?.images || [],
+        uploadedVideos: body.attachments?.videos || [],
       }
-    ).catch(err => {
+    ).catch((err: any) => {
       console.error(`[AgentController] 任务执行失败: ${taskId}`, err)
       this.progressCache.updateTaskStatus(userId, taskId, 'failed', null, err.message)
     })
@@ -296,7 +297,7 @@ export class AgentController {
     try {
       const axios = require('axios')
       const apiUrl = 'https://ark.cn-beijing.volces.com/api/v3/images/generations'
-      const apiKey = process.env.VOLC_VIDEO_API_KEY || '0a6405d5-b7ae-4afa-88e3-c707ae379a47'
+      const apiKey = process.env.VOLC_VIDEO_API_KEY || ''
 
       console.log('[AgentController] 生成图片:', {
         prompt_length: body.prompt?.length,

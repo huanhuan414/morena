@@ -3,7 +3,9 @@
  * 用于存储和查询任务执行进度和结果
  */
 
-import { Injectable } from '@nestjs/common'
+import { Injectable, Logger } from '@nestjs/common'
+import { Cron } from '@nestjs/schedule'
+import { getMySQLClient } from '../../storage/database/mysql-client'
 
 // 导出任务进度接口
 export interface TaskProgress {
@@ -29,31 +31,35 @@ export interface TaskResult {
 
 @Injectable()
 export class ProgressCacheService {
-  // 存储任务进度：key = userId:taskId
-  private progressMap: Map<string, TaskProgress[]> = new Map()
-  
-  // 存储任务结果：key = userId:taskId
-  private resultMap: Map<string, TaskResult> = new Map()
-  
+  private readonly logger = new Logger(ProgressCacheService.name)
+
   // 最大保存的进度条数
   private readonly MAX_PROGRESS_ITEMS = 50
   
   // 进度过期时间（毫秒）
-  private readonly EXPIRE_TIME = 10 * 60 * 1000 // 10分钟
+  private readonly EXPIRE_TIME = 24 * 60 * 60 * 1000
 
   /**
    * 创建任务记录
    */
   createTask(userId: string, taskId: string): TaskResult {
+    const db = getMySQLClient()
+    const now = Date.now()
+    const expiresAt = new Date(now + this.EXPIRE_TIME)
     const result: TaskResult = {
       taskId,
       userId,
       status: 'pending',
-      createdAt: Date.now()
+      createdAt: now
     }
-    const key = `${userId}:${taskId}`
-    this.resultMap.set(key, result)
-    console.log(`[ProgressCache] 创建任务: ${key}`)
+    db.query(
+      `INSERT INTO agent_tasks (task_id, user_id, status, created_at, updated_at, expires_at)
+       VALUES (?, ?, 'pending', NOW(), NOW(), ?)
+       ON DUPLICATE KEY UPDATE updated_at = NOW(), expires_at = VALUES(expires_at)`,
+      [taskId, userId, expiresAt]
+    ).catch((err: any) => {
+      this.logger.error(`[ProgressCache] 创建任务失败: ${taskId}`, err?.message || err)
+    })
     return result
   }
 
@@ -61,42 +67,104 @@ export class ProgressCacheService {
    * 更新任务状态
    */
   updateTaskStatus(userId: string, taskId: string, status: TaskResult['status'], result?: any, error?: string) {
-    const key = `${userId}:${taskId}`
-    const taskResult = this.resultMap.get(key)
-    if (taskResult) {
-      taskResult.status = status
-      if (result !== undefined) {
-        taskResult.result = result
-      }
-      if (error) {
-        taskResult.error = error
-      }
-      if (status === 'completed' || status === 'failed') {
-        taskResult.completedAt = Date.now()
-      }
-      console.log(`[ProgressCache] 更新任务状态: ${key} -> ${status}`)
-    }
+    const db = getMySQLClient()
+    const now = Date.now()
+    const expiresAt = new Date(now + this.EXPIRE_TIME)
+    const shouldSetCompletedAt = status === 'completed' || status === 'failed'
+    db.query(
+      `UPDATE agent_tasks
+       SET status = ?,
+           result = ?,
+           error = ?,
+           completed_at = IF(?, NOW(), completed_at),
+           expires_at = ?,
+           updated_at = NOW()
+       WHERE task_id = ? AND user_id = ?`,
+      [
+        status,
+        result === undefined ? null : JSON.stringify(result),
+        error || null,
+        shouldSetCompletedAt ? 1 : 0,
+        expiresAt,
+        taskId,
+        userId,
+      ]
+    ).catch((err: any) => {
+      this.logger.error(`[ProgressCache] 更新任务状态失败: ${taskId}`, err?.message || err)
+    })
   }
 
   /**
    * 获取任务结果
    */
-  getTaskResult(userId: string, taskId: string): TaskResult | null {
-    const key = `${userId}:${taskId}`
-    return this.resultMap.get(key) || null
+  async getTaskResult(userId: string, taskId: string): Promise<TaskResult | null> {
+    const db = getMySQLClient()
+    const rows = await db.query(
+      `SELECT task_id, user_id, status, result, error,
+              UNIX_TIMESTAMP(created_at) * 1000 as created_at_ms,
+              UNIX_TIMESTAMP(completed_at) * 1000 as completed_at_ms
+       FROM agent_tasks
+       WHERE task_id = ? AND user_id = ?
+         AND (expires_at IS NULL OR expires_at > NOW())
+       LIMIT 1`,
+      [taskId, userId]
+    )
+    const row = (rows as any[])?.[0]
+    if (!row) return null
+    let parsedResult: any
+    if (row.result !== null && row.result !== undefined && row.result !== '') {
+      try {
+        parsedResult = typeof row.result === 'string' ? JSON.parse(row.result) : row.result
+      } catch {
+        parsedResult = row.result
+      }
+    }
+    return {
+      taskId: row.taskId || row.task_id,
+      userId: row.userId || row.user_id,
+      status: row.status,
+      result: parsedResult,
+      error: row.error || undefined,
+      createdAt: Number(row.createdAtMs || row.created_at_ms || Date.now()),
+      completedAt: row.completedAtMs || row.completed_at_ms || undefined,
+    } as any
   }
 
   /**
    * 获取用户所有任务
    */
-  getUserTasks(userId: string): TaskResult[] {
-    const tasks: TaskResult[] = []
-    this.resultMap.forEach((result, key) => {
-      if (key.startsWith(`${userId}:`)) {
-        tasks.push(result)
+  async getUserTasks(userId: string): Promise<TaskResult[]> {
+    const db = getMySQLClient()
+    const rows = await db.query(
+      `SELECT task_id, user_id, status, result, error,
+              UNIX_TIMESTAMP(created_at) * 1000 as created_at_ms,
+              UNIX_TIMESTAMP(completed_at) * 1000 as completed_at_ms
+       FROM agent_tasks
+       WHERE user_id = ?
+         AND (expires_at IS NULL OR expires_at > NOW())
+       ORDER BY created_at DESC
+       LIMIT 50`,
+      [userId]
+    )
+    return (rows || []).map((row: any) => {
+      let parsedResult: any
+      if (row.result !== null && row.result !== undefined && row.result !== '') {
+        try {
+          parsedResult = typeof row.result === 'string' ? JSON.parse(row.result) : row.result
+        } catch {
+          parsedResult = row.result
+        }
       }
-    })
-    return tasks.sort((a, b) => b.createdAt - a.createdAt)
+      return ({
+        taskId: row.taskId || row.task_id,
+        userId: row.userId || row.user_id,
+        status: row.status,
+        result: parsedResult,
+        error: row.error || undefined,
+        createdAt: Number(row.createdAtMs || row.created_at_ms || Date.now()),
+        completedAt: row.completedAtMs || row.completed_at_ms || undefined,
+      })
+    }) as any[]
   }
 
   /**
@@ -104,95 +172,173 @@ export class ProgressCacheService {
    * 用于在工具执行过程中实时更新进度信息
    */
   updateProgress(userId: string, progress: TaskProgress) {
-    const key = `${userId}:${progress.taskId || 'default'}`
-
-    if (!this.progressMap.has(key)) {
-      this.progressMap.set(key, [])
-    }
-
-    const progressList = this.progressMap.get(key)!
-    progressList.push(progress)
-
-    // 限制最大条数
-    if (progressList.length > this.MAX_PROGRESS_ITEMS) {
-      progressList.shift()
-    }
-
-    console.log(`[ProgressCache] 更新进度: ${key}`, progress.type, progress.message)
-
-    // 通过 WebSocket 推送进度更新（如果有 gateway 引用）
-    // 注意：这里需要注入 AgentGateway，但由于循环依赖问题，暂时只更新缓存
-    // 前端可以通过轮询接口获取最新进度
+    this.addProgress(userId, progress)
   }
 
   /**
    * 添加进度
    */
   addProgress(userId: string, progress: TaskProgress) {
-    const key = `${userId}:${progress.taskId || 'default'}`
-    
-    if (!this.progressMap.has(key)) {
-      this.progressMap.set(key, [])
+    const db = getMySQLClient()
+    const taskId = progress.taskId || 'default'
+    const now = Date.now()
+    const payload = {
+      task_id: taskId,
+      user_id: userId,
+      type: progress.type || 'info',
+      message: progress.message || '',
+      data: progress.data === undefined ? null : JSON.stringify(progress.data),
+      timestamp_ms: Number(progress.timestamp || now),
+      status: progress.status || null,
     }
-    
-    const progressList = this.progressMap.get(key)!
-    progressList.push(progress)
-    
-    // 限制最大条数
-    if (progressList.length > this.MAX_PROGRESS_ITEMS) {
-      progressList.shift()
-    }
-    
-    console.log(`[ProgressCache] 添加进度: ${key}`, progress.type, progress.message)
+    db.query(
+      `INSERT INTO agent_task_progress (task_id, user_id, type, message, data, timestamp_ms, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [
+        payload.task_id,
+        payload.user_id,
+        payload.type,
+        payload.message,
+        payload.data,
+        payload.timestamp_ms,
+        payload.status,
+      ]
+    ).catch((err: any) => {
+      this.logger.error(`[ProgressCache] 添加进度失败: ${taskId}`, err?.message || err)
+    })
+    db.query(
+      `UPDATE agent_tasks SET updated_at = NOW() WHERE task_id = ? AND user_id = ?`,
+      [taskId, userId]
+    ).catch(() => {})
   }
 
   /**
    * 获取进度列表
    * 如果不传 taskId，返回该用户所有任务的进度
    */
-  getProgress(userId: string, taskId?: string): TaskProgress[] {
+  async getProgress(userId: string, taskId?: string): Promise<TaskProgress[]> {
+    const db = getMySQLClient()
     if (taskId) {
-      // 指定了 taskId，直接返回对应的进度
-      const key = `${userId}:${taskId}`
-      return this.progressMap.get(key) || []
+      const rows = await db.query(
+        `SELECT task_id, user_id, type, message, data, timestamp_ms, status
+         FROM agent_task_progress
+         WHERE user_id = ? AND task_id = ?
+         ORDER BY timestamp_ms DESC
+         LIMIT ?`,
+        [userId, taskId, this.MAX_PROGRESS_ITEMS]
+      )
+      const list = (rows || []).map((row: any) => {
+        let parsedData: any
+        if (row.data !== null && row.data !== undefined && row.data !== '') {
+          try {
+            parsedData = typeof row.data === 'string' ? JSON.parse(row.data) : row.data
+          } catch {
+            parsedData = row.data
+          }
+        }
+        return ({
+          taskId: row.taskId || row.task_id,
+          userId: row.userId || row.user_id,
+          type: row.type,
+          message: row.message,
+          data: parsedData,
+          timestamp: Number(row.timestampMs || row.timestamp_ms || 0),
+          status: row.status || undefined,
+        })
+      })
+      return list.reverse()
     }
-    
-    // 没有指定 taskId，返回该用户所有任务的进度（按时间排序）
-    const allProgress: TaskProgress[] = []
-    this.progressMap.forEach((progressList, key) => {
-      if (key.startsWith(`${userId}:`)) {
-        allProgress.push(...progressList)
+    const rows = await db.query(
+      `SELECT task_id, user_id, type, message, data, timestamp_ms, status
+       FROM agent_task_progress
+       WHERE user_id = ?
+       ORDER BY timestamp_ms DESC
+       LIMIT ?`,
+      [userId, this.MAX_PROGRESS_ITEMS]
+    )
+    const list = (rows || []).map((row: any) => {
+      let parsedData: any
+      if (row.data !== null && row.data !== undefined && row.data !== '') {
+        try {
+          parsedData = typeof row.data === 'string' ? JSON.parse(row.data) : row.data
+        } catch {
+          parsedData = row.data
+        }
       }
+      return ({
+        taskId: row.taskId || row.task_id,
+        userId: row.userId || row.user_id,
+        type: row.type,
+        message: row.message,
+        data: parsedData,
+        timestamp: Number(row.timestampMs || row.timestamp_ms || 0),
+        status: row.status || undefined,
+      })
     })
-    
-    // 按时间戳排序
-    return allProgress.sort((a, b) => a.timestamp - b.timestamp)
+    return list.reverse()
   }
 
   /**
    * 获取最新进度
    */
-  getLatestProgress(userId: string, taskId?: string): TaskProgress | null {
+  async getLatestProgress(userId: string, taskId?: string): Promise<TaskProgress | null> {
+    const db = getMySQLClient()
     if (taskId) {
-      const key = `${userId}:${taskId}`
-      const progressList = this.progressMap.get(key)
-      if (!progressList || progressList.length === 0) {
-        return null
-      }
-      return progressList[progressList.length - 1]
-    }
-    
-    // 没有指定 taskId，返回该用户所有任务中最新的进度
-    let latest: TaskProgress | null = null
-    this.progressMap.forEach((progressList, key) => {
-      if (key.startsWith(`${userId}:`) && progressList.length > 0) {
-        const last = progressList[progressList.length - 1]
-        if (!latest || last.timestamp > latest.timestamp) {
-          latest = last
+      const rows = await db.query(
+        `SELECT task_id, user_id, type, message, data, timestamp_ms, status
+         FROM agent_task_progress
+         WHERE user_id = ? AND task_id = ?
+         ORDER BY timestamp_ms DESC
+         LIMIT 1`,
+        [userId, taskId]
+      )
+      const row = (rows as any[])?.[0]
+      if (!row) return null
+      let parsedData: any
+      if (row.data !== null && row.data !== undefined && row.data !== '') {
+        try {
+          parsedData = typeof row.data === 'string' ? JSON.parse(row.data) : row.data
+        } catch {
+          parsedData = row.data
         }
       }
-    })
-    return latest
+      return {
+        taskId: row.taskId || row.task_id,
+        userId: row.userId || row.user_id,
+        type: row.type,
+        message: row.message,
+        data: parsedData,
+        timestamp: Number(row.timestampMs || row.timestamp_ms || 0),
+        status: row.status || undefined,
+      }
+    }
+    const rows = await db.query(
+      `SELECT task_id, user_id, type, message, data, timestamp_ms, status
+       FROM agent_task_progress
+       WHERE user_id = ?
+       ORDER BY timestamp_ms DESC
+       LIMIT 1`,
+      [userId]
+    )
+    const row = (rows as any[])?.[0]
+    if (!row) return null
+    let parsedData: any
+    if (row.data !== null && row.data !== undefined && row.data !== '') {
+      try {
+        parsedData = typeof row.data === 'string' ? JSON.parse(row.data) : row.data
+      } catch {
+        parsedData = row.data
+      }
+    }
+    return {
+      taskId: row.taskId || row.task_id,
+      userId: row.userId || row.user_id,
+      type: row.type,
+      message: row.message,
+      data: parsedData,
+      timestamp: Number(row.timestampMs || row.timestamp_ms || 0),
+      status: row.status || undefined,
+    }
   }
 
   /**
@@ -200,39 +346,34 @@ export class ProgressCacheService {
    * 如果不传 taskId，清除该用户所有任务的进度
    */
   clearProgress(userId: string, taskId?: string) {
+    const db = getMySQLClient()
     if (taskId) {
-      const key = `${userId}:${taskId}`
-      this.progressMap.delete(key)
-      this.resultMap.delete(key)
-    } else {
-      // 清除该用户所有任务的进度
-      const keysToDelete: string[] = []
-      this.progressMap.forEach((_, key) => {
-        if (key.startsWith(`${userId}:`)) {
-          keysToDelete.push(key)
-        }
-      })
-      keysToDelete.forEach(key => {
-        this.progressMap.delete(key)
-        this.resultMap.delete(key)
-      })
-      console.log(`[ProgressCache] 清除用户 ${userId} 的所有进度，共 ${keysToDelete.length} 个任务`)
+      db.query(`DELETE FROM agent_task_progress WHERE user_id = ? AND task_id = ?`, [userId, taskId]).catch(() => {})
+      db.query(`DELETE FROM agent_tasks WHERE user_id = ? AND task_id = ?`, [userId, taskId]).catch(() => {})
+      return
     }
+    db.query(`DELETE FROM agent_task_progress WHERE user_id = ?`, [userId]).catch(() => {})
+    db.query(`DELETE FROM agent_tasks WHERE user_id = ?`, [userId]).catch(() => {})
   }
 
   /**
    * 清理过期进度
    */
   cleanupExpired() {
-    const now = Date.now()
-    
-    this.progressMap.forEach((progressList, key) => {
-      const latestProgress = progressList[progressList.length - 1]
-      if (latestProgress && now - latestProgress.timestamp > this.EXPIRE_TIME) {
-        this.progressMap.delete(key)
-        this.resultMap.delete(key)
-        console.log(`[ProgressCache] 清理过期进度: ${key}`)
-      }
-    })
+    const db = getMySQLClient()
+    db.query(
+      `DELETE p
+       FROM agent_task_progress p
+       INNER JOIN agent_tasks t ON t.task_id = p.task_id
+       WHERE t.expires_at IS NOT NULL AND t.expires_at < NOW()`
+    ).catch(() => {})
+    db.query(
+      `DELETE FROM agent_tasks WHERE expires_at IS NOT NULL AND expires_at < NOW()`
+    ).catch(() => {})
+  }
+
+  @Cron('*/60 * * * * *')
+  cleanupExpiredCron() {
+    this.cleanupExpired()
   }
 }

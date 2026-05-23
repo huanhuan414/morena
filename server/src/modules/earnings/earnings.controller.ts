@@ -1,6 +1,7 @@
 // @ts-nocheck
-import { Controller, Get, Post, Query, Headers, Body, Inject } from '@nestjs/common'
+import { Controller, Get, Post, Query, Headers, Body, Inject, BadRequestException, HttpException } from '@nestjs/common'
 import { EarningsService } from './earnings.service'
+import { requireAuthenticatedUserId } from '../../common/auth-user.util'
 
 @Controller('earnings')
 export class EarningsController {
@@ -8,6 +9,7 @@ export class EarningsController {
 
   /**
    * GET /api/earnings/leaderboard - 收益排行榜
+   * 匿名边界：该接口保留匿名只读访问，仅返回排行榜公开统计结果，不返回用户提现账户、联系方式或其它私有字段。
    */
   @Get('leaderboard')
   async getLeaderboard(@Query('limit') limit?: string) {
@@ -25,14 +27,8 @@ export class EarningsController {
    * GET /api/earnings/overview - 收益概览
    */
   @Get('overview')
-  async getOverview(@Headers('x-user-id') userId?: string) {
-    if (!userId) {
-      return {
-        code: 401,
-        msg: '未登录',
-        data: { total_earnings: 0, pending_earnings: 0, available_earnings: 0 }
-      }
-    }
+  async getOverview(@Headers() headers: Record<string, string | string[] | undefined>) {
+    const userId = requireAuthenticatedUserId(headers)
     const result = await this.earningsService.getEarningStats(userId)
 
     return {
@@ -47,13 +43,11 @@ export class EarningsController {
    */
   @Get()
   async getEarnings(
-    @Headers('x-user-id') userId: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string
   ) {
-    if (!userId) {
-      return { code: 401, msg: '未登录', data: { list: [], total: 0, page: 1, pageSize: 20 } }
-    }
+    const userId = requireAuthenticatedUserId(headers)
     const result = await this.earningsService.getEarnings(userId, parseInt(page) || 1, parseInt(pageSize) || 20)
     return { code: 200, msg: 'success', data: result }
   }
@@ -63,12 +57,10 @@ export class EarningsController {
    */
   @Post('withdraw')
   async requestWithdrawal(
-    @Headers('x-user-id') userId: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Body() body: { amount: number; paymentMethod?: string; paymentAccount?: string }
   ) {
-    if (!userId) {
-      return { code: 401, msg: '未登录', data: null }
-    }
+    const userId = requireAuthenticatedUserId(headers)
     try {
       const result = await this.earningsService.requestWithdrawal(
         userId,
@@ -78,7 +70,8 @@ export class EarningsController {
       )
       return { code: 200, msg: '提现申请已提交', data: result }
     } catch (e) {
-      return { code: 400, msg: e.message, data: null }
+      if (e instanceof HttpException) throw e
+      throw new BadRequestException({ msg: e.message, data: null })
     }
   }
 }

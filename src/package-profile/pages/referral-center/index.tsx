@@ -17,7 +17,6 @@ export default function ReferralCenter() {
     return {
       title: '邀请你加入Morena AI',
       path: `/pages/login/index?inviteCode=${stats.referralCode}`,
-      imageUrl: '/assets/images/share-invite.png'
     }
   })
 
@@ -203,9 +202,28 @@ export default function ReferralCenter() {
                   </View>
                 </View>
                 <View className="ref-list-right">
-                  <Text className="ref-list-status" style={{ color: '#10B981' }}>
-                    已邀请
-                  </Text>
+                  {(() => {
+                    const status = String(item.status || '')
+                    if (status === 'pending') {
+                      return (
+                        <Text className="ref-list-status" style={{ color: '#F59E0B' }}>
+                          待结算
+                        </Text>
+                      )
+                    }
+                    if (status === 'completed') {
+                      return (
+                        <Text className="ref-list-status" style={{ color: '#10B981' }}>
+                          已到账
+                        </Text>
+                      )
+                    }
+                    return (
+                      <Text className="ref-list-status" style={{ color: '#6B7280' }}>
+                        {status || '已邀请'}
+                      </Text>
+                    )
+                  })()}
                 </View>
               </View>
             ))}

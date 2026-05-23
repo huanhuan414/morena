@@ -326,12 +326,12 @@ export default defineConfig<'vite'>(async (merge, _env) => {
         mode: 'hash',
       },
       devServer: {
-        port: 5000,
+        port: Number(process.env.WEB_PORT || 5000),
         host: '0.0.0.0',
         open: false,
         proxy: {
           '/api': {
-            target: 'http://localhost:3000',
+            target: process.env.H5_API_PROXY_TARGET || 'http://localhost:3000',
             changeOrigin: true,
           },
         },

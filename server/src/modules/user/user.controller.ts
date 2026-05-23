@@ -1,13 +1,19 @@
 // @ts-nocheck
-import { Inject, Controller, Get, Put, Post, Body, Headers, Query } from '@nestjs/common'
+import { Inject, Controller, Get, Put, Post, Body, Headers, Query, BadRequestException, InternalServerErrorException, HttpException } from '@nestjs/common'
 import { UserService } from './user.service'
+import { requireAuthenticatedUserId } from '../../common/auth-user.util'
 
 @Controller('user')
 export class UserController {
   constructor(@Inject(UserService) private readonly userService: UserService) {}
 
+  private getAuthenticatedUserId(headers: Record<string, string | string[] | undefined>) {
+    return requireAuthenticatedUserId(headers)
+  }
+
   @Get('profile')
-  async getProfile(@Headers('x-user-id') userId: string) {
+  async getProfile(@Headers() headers: Record<string, string | string[] | undefined>) {
+    const userId = this.getAuthenticatedUserId(headers)
     const profile = await this.userService.getUserProfile(userId)
     return {
       code: 200,
@@ -18,9 +24,10 @@ export class UserController {
 
   @Put('profile')
   async updateProfile(
-    @Headers('x-user-id') userId: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Body() updates: Record<string, any>
   ) {
+    const userId = this.getAuthenticatedUserId(headers)
     console.log('[UserController] updateProfile called, userId:', userId, 'updates:', JSON.stringify(updates))
     const profile = await this.userService.updateUserProfile(userId, updates)
     console.log('[UserController] updateProfile result:', JSON.stringify(profile))
@@ -34,17 +41,18 @@ export class UserController {
   /**
    * 通过微信登录code获取openid（用于支付）
    * GET /api/user/openid?code=xxx
+   * 匿名边界：该接口仅用于小程序支付前置换取 openid，允许未登录访问，不返回用户资料或会话态。
    */
   @Get('openid')
   async getOpenid(@Query('code') code: string) {
     if (!code) {
-      return { code: 400, data: null, message: '缺少code参数' }
+      throw new BadRequestException({ msg: '缺少code参数', data: null })
     }
     try {
       const appId = process.env.WECHAT_PAY_APPID || process.env.WX_APP_ID || ''
       const appSecret = process.env.WX_APP_SECRET || ''
       if (!appId || !appSecret) {
-        return { code: 500, data: null, message: '微信配置缺失' }
+        throw new InternalServerErrorException({ msg: '微信配置缺失', data: null })
       }
       const axios = require('axios')
       const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${appSecret}&js_code=${code}&grant_type=authorization_code`
@@ -52,17 +60,19 @@ export class UserController {
       const openid = res.data?.openid
       if (!openid) {
         console.error('[UserController] 获取openid失败:', res.data)
-        return { code: 500, data: null, message: '获取openid失败' }
+        throw new InternalServerErrorException({ msg: '获取openid失败', data: null })
       }
       return { code: 200, data: { openid }, message: '获取成功' }
     } catch (err) {
       console.error('[UserController] 获取openid异常:', err.message)
-      return { code: 500, data: null, message: '获取openid异常' }
+      if (err instanceof HttpException) throw err
+      throw new InternalServerErrorException({ msg: '获取openid异常', data: null })
     }
   }
 
   @Get('stats')
-  async getStats(@Headers('x-user-id') userId: string) {
+  async getStats(@Headers() headers: Record<string, string | string[] | undefined>) {
+    const userId = this.getAuthenticatedUserId(headers)
     const stats = await this.userService.getUserStats(userId)
     return {
       code: 200,
@@ -72,7 +82,8 @@ export class UserController {
   }
 
   @Get('learning-progress')
-  async getLearningProgress(@Headers('x-user-id') userId: string) {
+  async getLearningProgress(@Headers() headers: Record<string, string | string[] | undefined>) {
+    const userId = this.getAuthenticatedUserId(headers)
     const progress = await this.userService.getLearningProgress(userId)
     return {
       code: 200,
@@ -82,7 +93,8 @@ export class UserController {
   }
 
   @Get('security-status')
-  async getSecurityStatus(@Headers('x-user-id') userId: string) {
+  async getSecurityStatus(@Headers() headers: Record<string, string | string[] | undefined>) {
+    const userId = this.getAuthenticatedUserId(headers)
     const status = await this.userService.getSecurityStatus(userId)
     return {
       code: 200,
@@ -93,9 +105,10 @@ export class UserController {
 
   @Post('change-password')
   async changePassword(
-    @Headers('x-user-id') userId: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Body() body: { oldPassword: string; newPassword: string }
   ) {
+    const userId = this.getAuthenticatedUserId(headers)
     await this.userService.changePassword(userId, body.oldPassword, body.newPassword)
     return {
       code: 200,

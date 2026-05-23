@@ -7,7 +7,7 @@ import {
 import AdminLayout from '@/components/admin/Layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import * as Network from '@/network'
+import { Network } from '@/network'
 import './index.css'
 
 interface DashboardStats {

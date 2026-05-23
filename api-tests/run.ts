@@ -2,10 +2,11 @@ import fs from 'node:fs'
 
 import dotenv from 'dotenv'
 
-dotenv.config({ path: fs.existsSync('.env.local') ? '.env.local' : '.env' })
-
 import { config } from './config'
 import type { ApiTestConfig, AssertType, EndpointDef } from './config'
+import { renderHtml, writeHtmlReport, writeJsonReport, type ApiTestReport } from './report/render'
+
+dotenv.config({ path: fs.existsSync('.env.local') ? '.env.local' : '.env' })
 
 type RunOptions = {
   groups?: string[]
@@ -13,6 +14,9 @@ type RunOptions = {
   concurrency?: number
   timeoutMs?: number
   failFast?: boolean
+  reportJson?: string
+  reportHtml?: string
+  reportTitle?: string
 }
 
 type Ctx = {
@@ -44,6 +48,9 @@ function parseArgs(argv: string[]): RunOptions {
     else if (a === '--concurrency' || a === '-c') opt.concurrency = Number(argv[++i])
     else if (a === '--timeout') opt.timeoutMs = Number(argv[++i])
     else if (a === '--fail-fast') opt.failFast = true
+    else if (a === '--report-json') opt.reportJson = argv[++i]
+    else if (a === '--report-html') opt.reportHtml = argv[++i]
+    else if (a === '--report-title') opt.reportTitle = argv[++i]
   }
   return opt
 }
@@ -80,6 +87,24 @@ function deepTemplate(value: unknown, vars: Record<string, string>): unknown {
   return value
 }
 
+function buildFormData(
+  data: NonNullable<EndpointDef['formData']>,
+  vars: Record<string, string>
+): FormData {
+  const fd = new FormData()
+  for (const [k, v] of Object.entries(data)) {
+    if (typeof v === 'string') {
+      fd.append(k, templateStr(v, vars))
+      continue
+    }
+    const raw = templateStr(v.base64, vars)
+    const buf = Buffer.from(raw, 'base64')
+    const blob = new Blob([buf], { type: v.contentType || 'application/octet-stream' })
+    fd.append(k, blob, v.filename)
+  }
+  return fd
+}
+
 function templateStr(input: string, vars: Record<string, string>): string {
   return input.replace(/\{\{([a-zA-Z0-9_.$-]+)\}\}/g, (_, rawKey: string) => {
     const key = rawKey.trim()
@@ -106,7 +131,7 @@ function buildUrl(baseUrl: string, ep: EndpointDef, vars: Record<string, string>
   if (ep.query) {
     for (const [k, v] of Object.entries(ep.query)) {
       if (v === undefined) continue
-      url.searchParams.set(k, String(v))
+      url.searchParams.set(k, typeof v === 'string' ? templateStr(v, vars) : String(v))
     }
   }
   return url.toString()
@@ -131,14 +156,19 @@ async function requestJson(args: {
   const started = Date.now()
   const timer = setTimeout(() => controller.abort(new Error('timeout')), args.timeoutMs)
   try {
+    const body = args.body === undefined
+      ? undefined
+      : args.body instanceof FormData || typeof args.body === 'string'
+        ? (args.body as any)
+        : JSON.stringify(args.body)
     const res = await fetch(args.url, {
       method: args.method,
       headers: args.headers,
-      body: args.body === undefined ? undefined : JSON.stringify(args.body),
+      body,
       signal: controller.signal
     })
     const text = await res.text()
-    let json: unknown = undefined
+    let json: unknown
     try {
       json = text.length > 0 ? JSON.parse(text) : undefined
     } catch {
@@ -191,6 +221,57 @@ async function resolveAuth(cfg: ApiTestConfig, ctx: Ctx): Promise<void> {
     const raw = process.env[cfg.auth.tokenEnv] ?? ''
     if (!raw) throw new Error(`缺少环境变量 ${cfg.auth.tokenEnv}，无法鉴权`)
     ctx.token = raw
+    return
+  }
+
+  if (cfg.auth.type === 'loginFlow') {
+    const isLocal = /^(https?:\/\/)?(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$/i.test(cfg.baseUrl)
+    if (cfg.auth.localOnly && !isLocal) {
+      throw new Error(cfg.auth.localOnlyMessage || 'loginFlow 仅允许在本地环境执行')
+    }
+
+    let lastJson: unknown
+    for (const step of cfg.auth.steps) {
+      const url = buildUrl(
+        cfg.baseUrl,
+        { id: 'auth-step', group: 'auth', method: step.method, path: step.path },
+        ctx.vars
+      )
+      const headers: Record<string, string> = {
+        ...ctx.defaultHeaders,
+        ...toRecord(cfg.defaultHeaders),
+        ...toRecord(step.headers)
+      }
+      const body = step.body === undefined ? undefined : deepTemplate(step.body, ctx.vars)
+      const res = await requestJson({
+        method: step.method,
+        url,
+        headers,
+        body,
+        timeoutMs: step.timeoutMs ?? cfg.auth.timeoutMs ?? ctx.timeoutMs
+      })
+      lastJson = res.json
+      if (step.extractVars?.length) {
+        for (const s of step.extractVars) {
+          const v = jsonGet(res.json, s.fromJsonPath)
+          if (v !== undefined && v !== null) ctx.vars[s.toVar] = String(v)
+        }
+      }
+    }
+
+    const tokenFromVars = ctx.vars[cfg.auth.extractTokenPath]
+    const tokenFromJson = typeof cfg.auth.extractTokenPath === 'string'
+      ? jsonGet(lastJson, cfg.auth.extractTokenPath)
+      : undefined
+    const token = typeof tokenFromVars === 'string' && tokenFromVars.length > 0
+      ? tokenFromVars
+      : typeof tokenFromJson === 'string' && tokenFromJson.length > 0
+        ? tokenFromJson
+        : ''
+    if (!token) {
+      throw new Error(`登录未获取到 token：extractTokenPath=${cfg.auth.extractTokenPath}`)
+    }
+    ctx.token = token
     return
   }
 
@@ -261,6 +342,69 @@ async function runPool<T>(items: T[], concurrency: number, fn: (item: T) => Prom
   await Promise.all(workers)
 }
 
+async function runWithDeps(args: {
+  endpoints: EndpointDef[]
+  concurrency: number
+  ctx: Ctx
+  cfg: ApiTestConfig
+  failFast?: boolean
+  onResult: (r: CaseResult) => void
+}): Promise<{ results: CaseResult[]; failed: number }> {
+  const byId = new Map(args.endpoints.map((e) => [e.id, e]))
+  const pending = new Set(args.endpoints.map((e) => e.id))
+  const results: CaseResult[] = []
+  const resultById = new Map<string, CaseResult>()
+  let failed = 0
+
+  const getDeps = (id: string) => byId.get(id)?.dependsOn ?? []
+
+  while (pending.size > 0) {
+    const ready: string[] = []
+    for (const id of pending) {
+      const deps = getDeps(id)
+      if (deps.every((d) => resultById.has(d))) ready.push(id)
+    }
+
+    if (ready.length === 0) {
+      const sample = [...pending].slice(0, 5).join(', ')
+      throw new Error(`无法调度用例（可能存在循环依赖或依赖缺失）：pending=${sample}`)
+    }
+
+    const batch = ready.slice(0, Math.max(1, args.concurrency))
+    const batchResults = await Promise.all(
+      batch.map(async (id) => {
+        const ep = byId.get(id)!
+        const deps = ep.dependsOn ?? []
+        const failedDep = deps.find((d) => (resultById.get(d)?.ok ?? true) === false)
+        if (failedDep) {
+          return {
+            id: ep.id,
+            group: ep.group,
+            name: ep.name,
+            method: ep.method,
+            url: buildUrl(args.cfg.baseUrl, ep, args.ctx.vars),
+            ok: false,
+            ms: 0,
+            error: `依赖用例失败: ${failedDep}`
+          } satisfies CaseResult
+        }
+        return await runOneCase(args.cfg, args.ctx, ep)
+      })
+    )
+
+    for (const r of batchResults) {
+      results.push(r)
+      resultById.set(r.id, r)
+      pending.delete(r.id)
+      if (!r.ok) failed++
+      args.onResult(r)
+      if (!r.ok && args.failFast) throw new Error(`fail-fast: ${r.id}`)
+    }
+  }
+
+  return { results, failed }
+}
+
 async function runOneCase(cfg: ApiTestConfig, ctx: Ctx, ep: EndpointDef): Promise<CaseResult> {
   const url = buildUrl(cfg.baseUrl, ep, ctx.vars)
   const headers: Record<string, string> = {
@@ -272,7 +416,16 @@ async function runOneCase(cfg: ApiTestConfig, ctx: Ctx, ep: EndpointDef): Promis
   const shouldAuth = ep.auth !== false
   if (shouldAuth) applyAuthHeader(cfg, ctx, headers)
 
-  const body = ep.body === undefined ? undefined : deepTemplate(ep.body, ctx.vars)
+  const body =
+    ep.formData
+      ? buildFormData(ep.formData, ctx.vars)
+      : ep.body === undefined
+        ? undefined
+        : deepTemplate(ep.body, ctx.vars)
+  if (ep.formData) {
+    delete headers['Content-Type']
+    delete headers['content-type']
+  }
   const started = Date.now()
   try {
     const res = await requestJson({
@@ -336,6 +489,7 @@ function formatLine(r: CaseResult): string {
 
 async function main(): Promise<void> {
   const opt = parseArgs(process.argv.slice(2))
+  const startedAt = new Date().toISOString()
 
   const cfg: ApiTestConfig = {
     ...config,
@@ -367,19 +521,19 @@ async function main(): Promise<void> {
 
   endpoints = topoSort(endpoints)
 
-  const results: CaseResult[] = []
-  let failed = 0
-
   console.log(`API 测试开始：baseUrl=${cfg.baseUrl}  用例数=${endpoints.length}  并发=${cfg.concurrency}  超时=${cfg.timeoutMs}ms`)
-
-  await runPool(endpoints, cfg.concurrency, async (ep) => {
-    const r = await runOneCase(cfg, ctx, ep)
-    results.push(r)
-    if (!r.ok) failed++
-    console.log(formatLine(r))
-    if (!r.ok && opt.failFast) throw new Error(`fail-fast: ${ep.id}`)
+  const { results, failed } = await runWithDeps({
+    endpoints,
+    concurrency: cfg.concurrency,
+    ctx,
+    cfg,
+    failFast: opt.failFast,
+    onResult: (r) => {
+      console.log(formatLine(r))
+    }
   }).catch((e) => {
     if (opt.failFast) console.error(String(e?.message ?? e))
+    return { results: [] as CaseResult[], failed: 1 }
   })
 
   const okCount = results.filter((r) => r.ok).length
@@ -408,6 +562,43 @@ async function main(): Promise<void> {
     console.log('失败详情（前 20 条）：')
     for (const r of results.filter((x) => !x.ok).slice(0, 20)) {
       console.log(`- ${r.id}: ${r.error}`)
+    }
+  }
+
+  const finishedAt = new Date().toISOString()
+  if (opt.reportHtml || opt.reportJson) {
+    const groups = [...byGroup.entries()]
+      .map(([group, s]) => ({ group, pass: s.pass, fail: s.fail }))
+      .sort((a, b) => a.group.localeCompare(b.group))
+
+    const report: ApiTestReport = {
+      meta: {
+        title: opt.reportTitle ?? '后端 API 测试报告',
+        baseUrl: cfg.baseUrl,
+        startedAt,
+        finishedAt,
+        total: results.length,
+        pass: okCount,
+        fail: failed,
+        p50,
+        p90,
+        p95,
+        p99,
+        groups
+      },
+      results
+    }
+
+    if (opt.reportJson) writeJsonReport(opt.reportJson, report)
+    if (opt.reportHtml) writeHtmlReport(opt.reportHtml, report)
+
+    if (opt.reportHtml) {
+      const html = renderHtml(report)
+      console.log('')
+      console.log(`HTML 报告已生成：${opt.reportHtml}（${html.length} bytes）`)
+    }
+    if (opt.reportJson) {
+      console.log(`JSON 报告已生成：${opt.reportJson}`)
     }
   }
 

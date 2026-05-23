@@ -3,6 +3,8 @@ import { AppModule } from '@/app.module';
 import * as express from 'express';
 import { HttpStatusInterceptor } from '@/interceptors/http-status.interceptor';
 import { HttpExceptionFilter } from '@/common/filters/http-exception.filter';
+import { SuccessResponseInterceptor } from '@/interceptors/success-response.interceptor'
+import { traceIdMiddleware } from '@/common/middlewares/trace-id.middleware'
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
@@ -55,10 +57,20 @@ async function bootstrap() {
     credentials: true,
   });
   app.setGlobalPrefix('api');
+  app.use(traceIdMiddleware)
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
   // 微信支付V2回调使用XML格式，需要text/xml解析
-  app.use('/api/payment/wechat/notify', express.text({ type: 'text/xml', limit: '1mb' }));
+  app.use(
+    '/api/payment/wechat/notify',
+    express.text({
+      type: ['text/xml', 'application/xml', '*/xml'],
+      limit: '1mb',
+      verify: (req: any, _res: any, buf: Buffer) => {
+        req.rawBody = buf;
+      },
+    }),
+  );
 
   // 🔴 添加静态文件服务，用于本地存储的文件访问
   // 🔴 修复：确保路径指向项目根目录的 uploads 文件夹
@@ -67,7 +79,7 @@ async function bootstrap() {
 
   // 全局拦截器：统一将 POST 请求的 201 状态码改为 200
   app.useGlobalFilters(new HttpExceptionFilter());
-  app.useGlobalInterceptors(new HttpStatusInterceptor());
+  app.useGlobalInterceptors(new HttpStatusInterceptor(), new SuccessResponseInterceptor());
   // 1. 开启优雅关闭 Hooks (关键!)
   app.enableShutdownHooks();
 

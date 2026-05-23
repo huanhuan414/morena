@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Controller, Get, Put, Post, Body, Param, Headers, Inject } from '@nestjs/common'
+import { Controller, Get, Put, Post, Body, Param, Headers, Inject, UnauthorizedException, NotFoundException, InternalServerErrorException, HttpException } from '@nestjs/common'
 import { NotificationService } from './notification.service'
 
 @Controller('notifications')
@@ -12,13 +12,14 @@ export class NotificationController {
 
   @Get()
   async getNotifications(@Headers('x-user-id') userId: string) {
-    if (!userId) return { code: 401, data: null, message: '未登录' }
+    if (!userId) throw new UnauthorizedException({ msg: '未登录', data: null })
     try {
       if (this.notificationService) {
         const notifications = await this.notificationService.getNotifications(userId)
         return { code: 200, data: notifications, message: '获取成功' }
       }
     } catch (e) {
+      if (e instanceof HttpException) throw e
       console.error('[NotificationController] getNotifications error:', e.message)
     }
     return { code: 200, data: { list: [], total: 0, page: 1, pageSize: 20 }, message: '获取成功' }
@@ -40,13 +41,14 @@ export class NotificationController {
 
   @Get('settings')
   async getSettings(@Headers('x-user-id') userId: string) {
-    if (!userId) return { code: 401, data: null, message: '未登录' }
+    if (!userId) throw new UnauthorizedException({ msg: '未登录', data: null })
     try {
       if (this.notificationService) {
         const settings = await this.notificationService.getNotificationSettings(userId)
         return { code: 200, data: settings, message: '获取成功' }
       }
     } catch (e) {
+      if (e instanceof HttpException) throw e
       console.error('[NotificationController] getSettings error:', e.message)
     }
     return { code: 200, data: { message: true, like: true, follow: true, system: true }, message: '获取成功' }
@@ -57,13 +59,14 @@ export class NotificationController {
     @Headers('x-user-id') userId: string,
     @Body() settings: Record<string, boolean>
   ) {
-    if (!userId) return { code: 401, data: null, message: '未登录' }
+    if (!userId) throw new UnauthorizedException({ msg: '未登录', data: null })
     try {
       if (this.notificationService) {
         const result = await this.notificationService.updateNotificationSettings(userId, settings)
         return { code: 200, data: result, message: '设置已更新' }
       }
     } catch (e) {
+      if (e instanceof HttpException) throw e
       console.error('[NotificationController] updateSettings error:', e.message)
     }
     return { code: 200, data: { success: true, ...settings }, message: '设置已更新' }
@@ -108,7 +111,7 @@ export class NotificationController {
 
         if (!orderUserId) {
           console.log('[urgeReview] 订单不存在或user_id为空:', { order, orders })
-          return { code: 404, data: null, message: '订单不存在' }
+          throw new NotFoundException({ msg: '订单不存在', data: null })
         }
 
         await this.notificationService.createNotification({
@@ -121,8 +124,9 @@ export class NotificationController {
       }
       return { code: 200, data: null, message: '催验收提醒已发送' }
     } catch (error) {
+      if (error instanceof HttpException) throw error
       console.error('[urgeReview] 错误:', error)
-      return { code: 500, data: null, message: '发送失败：' + (error as Error).message }
+      throw new InternalServerErrorException({ msg: '发送失败：' + (error as Error).message, data: null })
     }
   }
 
@@ -149,8 +153,9 @@ export class NotificationController {
         return { code: 200, data: notification, message: '创建成功' }
       }
     } catch (e) {
+      if (e instanceof HttpException) throw e
       console.error('[NotificationController] createNotification error:', e.message)
     }
-    return { code: 500, data: null, message: '服务暂不可用' }
+    throw new InternalServerErrorException({ msg: '服务暂不可用', data: null })
   }
 }

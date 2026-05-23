@@ -1,0 +1,26 @@
+config:
+  target: "{{ $processEnvironment.API_BASE_URL }}"
+  phases:
+    - name: ramp
+      duration: 60
+      arrivalRate: 20
+      rampTo: 120
+    - name: peak
+      duration: 120
+      arrivalRate: 120
+  plugins:
+    expect: {}
+  ensure:
+    thresholds:
+      - "http.errors.rate": 0.02
+scenarios:
+  - name: anon-stress
+    flow:
+      - get:
+          url: "/api/health"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/api/payment/plans"
+          expect:
+            - statusCode: 200

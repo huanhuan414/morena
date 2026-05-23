@@ -1,0 +1,21 @@
+# Gitleaks configuration for this repo.
+# Scope: CI uses `--no-git` to scan only the working tree.
+#
+# Keep this file minimal and focused on reducing false positives from generated artifacts.
+
+title = "morena gitleaks config"
+
+[allowlist]
+description = "Ignore generated artifacts and large vendor outputs"
+paths = [
+  # Build outputs / generated artifacts
+  '''^\.docker-dist-web/''',
+  '''^dist(-.*)?/''',
+  '''^coverage/''',
+  '''^\.pnpm-store/''',
+  # Archives / packaged artifacts
+  '''\.tar\.gz$''',
+  '''\.zip$''',
+  # Lockfiles can contain strings that look like tokens
+  '''^pnpm-lock\.yaml$''',
+]

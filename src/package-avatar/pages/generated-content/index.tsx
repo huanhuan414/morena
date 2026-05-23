@@ -90,6 +90,7 @@ export default function GeneratedContentPage() {
   const [activeTab, setActiveTab] = useState('all')
   const [selectedAvatarId, setSelectedAvatarId] = useState<string | null>(null)
   const [avatarDropdownOpen, setAvatarDropdownOpen] = useState(false)
+  const [regeneratingIds, setRegeneratingIds] = useState<Record<string, true>>({})
 
   useDidShow(() => {
     loadData()
@@ -149,14 +150,34 @@ export default function GeneratedContentPage() {
 
   // 异步加载图片：逐条请求，避免一次性传输大量数据
   const loadImagesForContents = async (contentList: any[]) => {
-    for (const item of contentList) {
-      if (!item.id) continue
+    const ids = contentList.map((c: any) => String(c?.id || '')).filter(Boolean)
+    if (ids.length === 0) return
+
+    const chunkSize = 20
+    for (let i = 0; i < ids.length; i += chunkSize) {
+      const batch = ids.slice(i, i + chunkSize)
       try {
-        const res = await Network.request({ url: `/api/content-generation/content-images/${item.id}` })
-        const images = res?.data?.data?.images
-        if (Array.isArray(images) && images.length > 0) {
-          setContents(prev => prev.map(c => c.id === item.id ? { ...c, images } : c))
+        const res = await Network.request({
+          url: '/api/content-generation/content-images/batch',
+          method: 'POST',
+          data: { ids: batch },
+          dedupKey: `content-generation:content-images:batch:${batch.join(',')}`,
+        })
+        const items = res?.data?.data?.items
+        if (!Array.isArray(items) || items.length === 0) continue
+        const idToImages = new Map<string, string[]>()
+        for (const it of items) {
+          const id = String(it?.id || '')
+          const images = Array.isArray(it?.images) ? it.images : []
+          if (id) idToImages.set(id, images)
         }
+        setContents((prev) =>
+          prev.map((c) => {
+            const imgs = idToImages.get(String(c.id || ''))
+            if (imgs && imgs.length > 0) return { ...c, images: imgs }
+            return c
+          })
+        )
       } catch {
         // 图片加载失败不影响页面
       }
@@ -189,8 +210,12 @@ export default function GeneratedContentPage() {
 
   // 查看内容详情
   const handleView = (content: any) => {
-    const query = `orderId=${encodeURIComponent(content.orderId || '')}&requestId=${encodeURIComponent(content.id || '')}`
-    Taro.navigateTo({ url: `/package-order/pages/order-content-creation/index?${query}` })
+    const query = [
+      `orderId=${encodeURIComponent(content.orderId || '')}`,
+      content.avatarId ? `avatarId=${encodeURIComponent(content.avatarId)}` : '',
+      `requestId=${encodeURIComponent(content.id || '')}`,
+    ].filter(Boolean).join('&')
+    Taro.navigateTo({ url: `/package-order/pages/order-processing/index?${query}` })
 
     // if (normalizedStatus === 'generating') {
     //   const query = `orderId=${encodeURIComponent(content.orderId || '')}&requestId=${encodeURIComponent(content.id || '')}`
@@ -217,11 +242,16 @@ export default function GeneratedContentPage() {
   }
 
   const handleRegenerate = async (content: any) => {
+    const id = String(content?.id || '')
+    if (!id) return
+    if (regeneratingIds[id]) return
+    setRegeneratingIds((prev) => ({ ...prev, [id]: true }))
     try {
       Taro.showLoading({ title: '正在重新生成...' })
       const res = await Network.request({
-        url: `/api/content-generation/retry/${content.id}`,
+        url: `/api/content-generation/retry/${id}`,
         method: 'POST',
+        dedupKey: `content-generation:retry:${id}`,
       })
       Taro.hideLoading()
       if (res.data?.code === 200) {
@@ -233,6 +263,12 @@ export default function GeneratedContentPage() {
     } catch (err) {
       Taro.hideLoading()
       Taro.showToast({ title: '重试请求失败', icon: 'none' })
+    } finally {
+      setRegeneratingIds((prev) => {
+        const next = { ...prev }
+        delete next[id]
+        return next
+      })
     }
   }
 
