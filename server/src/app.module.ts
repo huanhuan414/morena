@@ -39,10 +39,12 @@ import { SkillModule } from './modules/skill/skill.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { ImageGenModule } from './modules/image-gen/image-gen.module';
 import { AiSkillModule } from './modules/ai-skill/ai-skill.module';
+import { RedisModule } from './modules/redis/redis.module';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
+    RedisModule,
     StorageModule,
     OrderModule,
     ChatModule,

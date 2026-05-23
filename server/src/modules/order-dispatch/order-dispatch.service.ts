@@ -7,6 +7,7 @@ import { OrderService } from '../order/order.service'
 import { normalizeDispatchStatus as normalizeDispatchStatusV2, normalizeFulfillmentStatus } from '../order/order-status'
 import { ContentGenerationService } from '../content-generation/content-generation.service'
 import { OrderEventService } from './order-event.service'
+import { RedisService } from '../redis/redis.service'
 
 @Injectable()
 export class OrderDispatchService {
@@ -19,6 +20,7 @@ export class OrderDispatchService {
     @Inject(forwardRef(() => ContentGenerationService)) private readonly contentGenerationService: ContentGenerationService,
     @Inject(forwardRef(() => OrderService)) private readonly orderService: OrderService,
     @Inject(forwardRef(() => OrderEventService)) private readonly eventService: OrderEventService,
+    private readonly redisService: RedisService,
   ) {}
 
   private normalizeDispatchStatus(status?: string): string {
@@ -105,7 +107,7 @@ export class OrderDispatchService {
     if (order.status === 'pending_payment' && Number(order.is_paid || 0) !== 1) {
       throw new Error('订单未支付，无法派单')
     }
-    const requiredCount = Number(order.required_count || 1) || 1
+    const requiredCount = Number(order?.requiredCount || order?.required_count || 1) || 1
     const acceptedRows = await db.query(
       `SELECT COUNT(DISTINCT avatar_id) as count
        FROM order_dispatch_requests
@@ -498,7 +500,7 @@ async getExecutionProgress(orderId: string) {
     if (order.status === 'pending_payment' && Number(order.is_paid || 0) !== 1) {
       throw new Error('订单未支付，无法派单')
     }
-    const requiredCount = Number(order.required_count || 1) || 1
+    const requiredCount = Number(order?.requiredCount || order?.required_count || 1) || 1
     const acceptedRows = await db.query(
       `SELECT COUNT(DISTINCT avatar_id) as count
        FROM order_dispatch_requests
@@ -767,40 +769,89 @@ async getExecutionProgress(orderId: string) {
   /**
    * 分身接受订单
    */
+  /**
+   * Redis原子计数器的key前缀（仅用于接单计数，不影响其他Redis数据）
+   */
+  private static readonly REDIS_KEY_ACCEPTED = 'order:accept:count:'    // 已接单计数 order:accept:count:{orderId}
+  private static readonly REDIS_KEY_REQUIRED = 'order:accept:required:' // 名额上限   order:accept:required:{orderId}
+  private static readonly REDIS_KEY_LOCK = 'order:accept:lock:'         // 分布式锁   order:accept:lock:{orderId}
+  private static readonly REDIS_TTL_SECONDS = 86400 * 7 // 7天自动过期
+
   async acceptOrder(avatarId: string, orderId: string) {
     const db = getMySQLClient()
     const pool = getPool()
-    const conn = await pool.getConnection()
     let request: any = null
     let actualAvatarId: string | undefined = avatarId
     let requiredCount = 1
     let wasAlreadyAccepted = false
 
-    try {
-      await conn.beginTransaction()
+    // =====================================================
+    // 第一阶段：Redis快速检查（毫秒级，快速拒绝已满订单）
+    // =====================================================
 
-      const [orderRows] = await conn.query(
-        `SELECT id, status, is_paid,
-                GREATEST(COALESCE(NULLIF(avatar_count, 0), NULLIF(expected_quantity, 0), 1), 1) as required_count
-         FROM orders
-         WHERE id = ?
-         FOR UPDATE`,
+    // 1.1 快速校验订单状态（不加锁，读最新数据即可）
+    const orderRows = await db.query(
+      `SELECT id, status, is_paid,
+              GREATEST(COALESCE(NULLIF(avatar_count, 0), NULLIF(expected_quantity, 0), 1), 1) as required_count
+       FROM orders
+       WHERE id = ?`,
+      [orderId]
+    )
+    const orderRow: any = (orderRows as any[])?.[0]
+    // db.query 内部会 convertKeysToCamel，所以 required_count → requiredCount
+    requiredCount = Number(orderRow?.requiredCount || orderRow?.required_count || 1) || 1
+
+    if (!orderRow) {
+      throw new Error('订单不存在')
+    }
+
+    const acceptablStatuses = ['pending', 'pending_payment', 'open', 'created', 'assigned', 'pending_acceptance', 'pending_dispatch', 'awaiting_acceptance', 'in_progress']
+    if (!acceptablStatuses.includes(orderRow.status)) {
+      throw new Error(`订单已${orderRow.status === 'completed' ? '完成' : orderRow.status === 'cancelled' ? '取消' : '关闭'}, 无法接单`)
+    }
+    if (orderRow.status === 'pending_payment' && Number(orderRow.is_paid || 0) !== 1) {
+      throw new Error('订单未支付，无法接单')
+    }
+
+    // 1.2 初始化Redis计数器（首次访问时从数据库同步）
+    const redisKeyAccepted = `${OrderDispatchService.REDIS_KEY_ACCEPTED}${orderId}`
+    const redisKeyRequired = `${OrderDispatchService.REDIS_KEY_REQUIRED}${orderId}`
+
+    // 用SET NX确保只初始化一次
+    const requiredSet = await this.redisService.setNX(redisKeyRequired, String(requiredCount), OrderDispatchService.REDIS_TTL_SECONDS * 1000)
+    if (requiredSet) {
+      // 首次初始化：从数据库读取当前已接单数并同步到Redis
+      const currentAcceptedRows = await db.query(
+        `SELECT COUNT(DISTINCT avatar_id) as count
+         FROM order_dispatch_requests
+         WHERE order_id = ? AND status IN ('accepted', 'completed')`,
         [orderId]
       )
-      const orderRow: any = (orderRows as any[])?.[0]
-      if (!orderRow) {
-        throw new Error('订单不存在')
-      }
+      const currentAccepted = Number((currentAcceptedRows as any[])?.[0]?.count || 0)
+      await this.redisService.getClient().set(redisKeyAccepted, String(currentAccepted), 'EX', OrderDispatchService.REDIS_TTL_SECONDS)
+      console.log(`[acceptOrder] Redis计数器初始化: orderId=${orderId}, required=${requiredCount}, currentAccepted=${currentAccepted}`)
+    }
 
-      requiredCount = Number(orderRow.required_count || 1) || 1
+    // 1.3 原子占位：INCR递增已接单计数
+    // INCR是原子操作，返回递增后的值。如果超过名额，立即DECR回滚并拒绝
+    // 这确保了即使100个请求同时到达，也只有requiredCount个能通过
+    const redisRequiredCount = await this.redisService.getCounter(redisKeyRequired)
+    const slotNumber = await this.redisService.getClient().incr(redisKeyAccepted)
+    if (slotNumber > redisRequiredCount && redisRequiredCount > 0) {
+      // 超出名额，回滚占位
+      await this.redisService.getClient().decr(redisKeyAccepted)
+      console.log(`[acceptOrder] Redis占位失败: orderId=${orderId}, slot=${slotNumber}/${redisRequiredCount}`)
+      throw new Error('订单名额已满')
+    }
 
-      const acceptablStatuses = ['pending', 'pending_payment', 'open', 'created', 'assigned', 'pending_acceptance', 'pending_dispatch', 'awaiting_acceptance', 'in_progress']
-      if (!acceptablStatuses.includes(orderRow.status)) {
-        throw new Error(`订单已${orderRow.status === 'completed' ? '完成' : orderRow.status === 'cancelled' ? '取消' : '关闭'}, 无法接单`)
-      }
-      if (orderRow.status === 'pending_payment' && Number(orderRow.is_paid || 0) !== 1) {
-        throw new Error('订单未支付，无法接单')
-      }
+    console.log(`[acceptOrder] Redis占位成功: orderId=${orderId}, slot=${slotNumber}/${redisRequiredCount}`)
+
+    // =====================================================
+    // 第二阶段：数据库短事务（不锁orders行，仅操作dispatch_requests）
+    // =====================================================
+    const conn = await pool.getConnection()
+    try {
+      await conn.beginTransaction()
 
       if (!avatarId || avatarId === 'undefined') {
         const [acceptRows1] = await conn.query(
@@ -808,8 +859,7 @@ async getExecutionProgress(orderId: string) {
            FROM order_dispatch_requests r
            LEFT JOIN orders o ON r.order_id = o.id
            WHERE r.order_id = ? AND r.status = 'pending'
-           LIMIT 1
-           FOR UPDATE`,
+           LIMIT 1`,
           [orderId]
         )
         request = (acceptRows1 as any[])?.[0]
@@ -822,8 +872,7 @@ async getExecutionProgress(orderId: string) {
            FROM order_dispatch_requests r
            LEFT JOIN orders o ON r.order_id = o.id
            WHERE r.avatar_id = ? AND r.order_id = ? AND r.status = 'pending'
-           LIMIT 1
-           FOR UPDATE`,
+           LIMIT 1`,
           [avatarId, orderId]
         )
         request = (acceptRows2 as any[])?.[0]
@@ -835,8 +884,7 @@ async getExecutionProgress(orderId: string) {
           `SELECT COUNT(*) as count
            FROM order_dispatch_requests
            WHERE order_id = ? AND avatar_id = ?
-             AND status IN ('pending', 'accepted', 'completed')
-           FOR UPDATE`,
+             AND status IN ('pending', 'accepted', 'completed')`,
           [orderId, avatarId]
         )
         const existingCount = Number((existingDispatchRows as any[])?.[0]?.count || 0)
@@ -849,7 +897,7 @@ async getExecutionProgress(orderId: string) {
         console.log(`[acceptOrder] 无分派记录，尝试直接从 orders 查找: orderId=${orderId}, avatarId=${avatarId}`)
         const [acceptOrderRows] = await conn.query(
           `SELECT id, title, user_id as owner_user_id, description, platforms, budget, expected_quantity, quantity_per_avatar, target_audience, status
-           FROM orders WHERE id = ? FOR UPDATE`,
+           FROM orders WHERE id = ?`,
           [orderId]
         )
         const order: any = (acceptOrderRows as any[])?.[0]
@@ -865,8 +913,7 @@ async getExecutionProgress(orderId: string) {
           `SELECT id, user_id, status
            FROM avatars
            WHERE id = ?
-           LIMIT 1
-           FOR UPDATE`,
+           LIMIT 1`,
           [avatarId]
         )
         const avatarOwner: any = (avatarOwnerRows as any[])?.[0]
@@ -915,23 +962,11 @@ async getExecutionProgress(orderId: string) {
       actualAvatarId = request.avatarId || request.avatar_id || avatarId
 
       if (actualAvatarId) {
-        const [avatarCheckRows] = await conn.query('SELECT id, status FROM avatars WHERE id = ? FOR UPDATE', [actualAvatarId])
+        const [avatarCheckRows] = await conn.query('SELECT id, status FROM avatars WHERE id = ?', [actualAvatarId])
         const avatarCheck: any = (avatarCheckRows as any[])?.[0]
         if (!avatarCheck || avatarCheck.status !== 'active') {
           throw new Error('分身不存在或已失效，无法接单')
         }
-      }
-
-      const [acceptedDistinctRows] = await conn.query(
-        `SELECT COUNT(DISTINCT avatar_id) as count
-         FROM order_dispatch_requests
-         WHERE order_id = ? AND status IN ('accepted', 'completed')
-         FOR UPDATE`,
-        [orderId]
-      )
-      const acceptedDistinctCount = Number((acceptedDistinctRows as any[])?.[0]?.count || 0)
-      if (acceptedDistinctCount >= requiredCount) {
-        throw new Error('订单名额已满')
       }
 
       const [updateResult] = await conn.query(
@@ -948,8 +983,7 @@ async getExecutionProgress(orderId: string) {
           `SELECT avatar_id, status
            FROM order_dispatch_requests
            WHERE id = ?
-           LIMIT 1
-           FOR UPDATE`,
+           LIMIT 1`,
           [request.id]
         )
         const currentRow: any = (rowCheck as any[])?.[0]
@@ -963,11 +997,11 @@ async getExecutionProgress(orderId: string) {
       }
 
       if (!wasAlreadyAccepted) {
+        // 从数据库查询当前已接单数（事务内，数据一致性保证）
         const [acceptedCountRows] = await conn.query(
           `SELECT COUNT(DISTINCT avatar_id) as count
            FROM order_dispatch_requests
-           WHERE order_id = ? AND status IN ('accepted', 'completed')
-           FOR UPDATE`,
+           WHERE order_id = ? AND status IN ('accepted', 'completed')`,
           [orderId]
         )
         const acceptedCount = Number((acceptedCountRows as any[])?.[0]?.count || 0)
@@ -976,8 +1010,7 @@ async getExecutionProgress(orderId: string) {
         const [matchedPendingRows] = await conn.query(
           `SELECT COUNT(*) as count
            FROM order_dispatch_requests
-           WHERE order_id = ? AND status = 'pending'
-           FOR UPDATE`,
+           WHERE order_id = ? AND status = 'pending'`,
           [orderId]
         )
         const matchedPendingCount = Number((matchedPendingRows as any[])?.[0]?.count || 0)
@@ -989,8 +1022,7 @@ async getExecutionProgress(orderId: string) {
              FROM order_dispatch_requests d
              WHERE d.order_id = ? AND d.status = 'pending'
              ORDER BY d.created_at ASC
-             LIMIT 1
-             FOR UPDATE`,
+             LIMIT 1`,
             [orderId]
           )
           const kickedDispatch: any = (pendingDispatches as any[])?.[0]
@@ -1027,13 +1059,45 @@ async getExecutionProgress(orderId: string) {
       }
 
       await conn.commit()
+
+      // INCR已在事务前完成，无需再次更新Redis
+      console.log(`[acceptOrder] 接单事务提交成功: orderId=${orderId}`)
     } catch (error) {
       try {
         await conn.rollback()
       } catch {}
+      // 事务失败，回滚Redis占位
+      if (!wasAlreadyAccepted) {
+        await this.redisService.getClient().decr(redisKeyAccepted)
+        console.log(`[acceptOrder] 事务失败，Redis占位回滚: orderId=${orderId}`)
+      }
       throw error
     } finally {
       conn.release()
+    }
+
+    // =====================================================
+    // 第四阶段：名额满时更新订单状态（Redis原子判断，不依赖事务隔离级别）
+    // =====================================================
+    if (slotNumber === redisRequiredCount) {
+      // 我是最后一个占位成功的请求，负责更新订单状态和踢人
+      try {
+        // 更新订单为 in_progress
+        await db.query(
+          `UPDATE orders SET status = 'in_progress', updated_at = NOW() WHERE id = ? AND status NOT IN ('completed', 'cancelled')`,
+          [orderId]
+        )
+        // 踢掉剩余的pending派单
+        await db.query(
+          `UPDATE order_dispatch_requests
+           SET status = 'expired', reject_reason = '订单名额已满', updated_at = NOW()
+           WHERE order_id = ? AND status = 'pending'`,
+          [orderId]
+        )
+        console.log(`[acceptOrder] 名额已满(${slotNumber}/${redisRequiredCount})，订单更新为in_progress，踢掉剩余pending`)
+      } catch (err) {
+        console.error(`[acceptOrder] 名额满后更新失败:`, err)
+      }
     }
 
     if (!actualAvatarId) {
