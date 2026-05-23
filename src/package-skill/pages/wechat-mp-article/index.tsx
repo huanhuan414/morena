@@ -123,8 +123,18 @@ export default function WechatMpArticle() {
   const renderArticleContent = (content: string, images: string[]) => {
     if (!content) return null
 
+    // 预处理：将 <img src="..."> 标签转为 [IMG_N] 占位符 + 合并到 images 数组
+    const allImages = [...(images || [])]
+    let processedContent = content
+    // 匹配 <img src="..." /> 或 <img src="...">
+    processedContent = processedContent.replace(/<img[^>]*src=["']([^"']+)["'][^>]*\/?>/gi, (_match, src) => {
+      const imgIdx = allImages.length + 1
+      allImages.push(src)
+      return `[IMG_${imgIdx}]`
+    })
+
     // 将 [IMG_N] 占位符替换为特殊标记，然后按段落拆分渲染
-    const paragraphs = content.split(/\n+/).filter(p => p.trim())
+    const paragraphs = processedContent.split(/\n+/).filter(p => p.trim())
     
     return (
       <View>
@@ -173,7 +183,7 @@ export default function WechatMpArticle() {
                 const imgMatch = part.match(/\[IMG_(\d+)\]/)
                 if (imgMatch) {
                   const imgIdx = parseInt(imgMatch[1]) - 1
-                  const imgUrl = images[imgIdx]
+                  const imgUrl = allImages[imgIdx]
                   if (imgUrl) {
                     return (
                       <View key={partIdx} style={{ margin: '10px 0' }}>
@@ -181,7 +191,7 @@ export default function WechatMpArticle() {
                           src={imgUrl}
                           style={{ width: '100%', height: '200px', borderRadius: '8px' }}
                           mode="aspectFill"
-                          onClick={() => Taro.previewImage({ urls: images, current: imgUrl })}
+                          onClick={() => Taro.previewImage({ urls: allImages, current: imgUrl })}
                         />
                       </View>
                     )
