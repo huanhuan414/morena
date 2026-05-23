@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Injectable, Inject, Logger, forwardRef } from '@nestjs/common'
+import { Injectable, Inject, Logger, forwardRef, HttpException, HttpStatus, ConflictException, BadRequestException, NotFoundException } from '@nestjs/common'
 import { getMySQLClient, getPool } from '../../storage/database/mysql-client'
 import { SmsService } from '../sms/sms.service'
 import { NotificationService } from '../notification/notification.service'
@@ -102,10 +102,10 @@ export class OrderDispatchService {
     )
     const order: any = orderRows?.[0]
     if (!order) {
-      throw new Error('订单不存在')
+      throw new NotFoundException('订单不存在')
     }
     if (order.status === 'pending_payment' && Number(order.is_paid || 0) !== 1) {
-      throw new Error('订单未支付，无法派单')
+      throw new BadRequestException('订单未支付，无法派单')
     }
     const requiredCount = Number(order?.requiredCount || order?.required_count || 1) || 1
     const acceptedRows = await db.query(
@@ -116,7 +116,7 @@ export class OrderDispatchService {
     )
     const acceptedCount = Number(acceptedRows?.[0]?.count || 0)
     if (acceptedCount >= requiredCount) {
-      throw new Error('订单名额已满')
+      throw new ConflictException('名额已满，请抢其他订单')
     }
 
     const existingRows = await db.query(
@@ -484,7 +484,7 @@ async getExecutionProgress(orderId: string) {
     // 查询分身（必须是活跃状态）
     const avatars = await db.query('SELECT * FROM avatars WHERE id = ? AND status = \'active\'', [avatarId]) as any[]
     if (avatars.length === 0) {
-      throw new Error('分身不存在或已失效')
+      throw new NotFoundException('分身不存在或已失效')
     }
     
     const orderRows = await db.query(
@@ -495,10 +495,10 @@ async getExecutionProgress(orderId: string) {
     )
     const order: any = orderRows?.[0]
     if (!order) {
-      throw new Error('订单不存在')
+      throw new NotFoundException('订单不存在')
     }
     if (order.status === 'pending_payment' && Number(order.is_paid || 0) !== 1) {
-      throw new Error('订单未支付，无法派单')
+      throw new BadRequestException('订单未支付，无法派单')
     }
     const requiredCount = Number(order?.requiredCount || order?.required_count || 1) || 1
     const acceptedRows = await db.query(
@@ -509,7 +509,7 @@ async getExecutionProgress(orderId: string) {
     )
     const acceptedCount = Number(acceptedRows?.[0]?.count || 0)
     if (acceptedCount >= requiredCount) {
-      throw new Error('订单名额已满')
+      throw new ConflictException('名额已满，请抢其他订单')
     }
 
     const avatar = avatars[0]
@@ -553,7 +553,7 @@ async getExecutionProgress(orderId: string) {
   async confirmDispatch(requestId: string, avatarId: string) {
     const request = await this.getRequestById(requestId)
     if (!request) {
-      throw new Error('派单记录不存在')
+      throw new NotFoundException('派单记录不存在')
     }
     const actualAvatarId = avatarId || request.avatarId || request.avatar_id
     const orderId = request.orderId || request.order_id
@@ -802,15 +802,15 @@ async getExecutionProgress(orderId: string) {
     requiredCount = Number(orderRow?.requiredCount || orderRow?.required_count || 1) || 1
 
     if (!orderRow) {
-      throw new Error('订单不存在')
+      throw new NotFoundException('订单不存在')
     }
 
     const acceptablStatuses = ['pending', 'pending_payment', 'open', 'created', 'assigned', 'pending_acceptance', 'pending_dispatch', 'awaiting_acceptance', 'in_progress']
     if (!acceptablStatuses.includes(orderRow.status)) {
-      throw new Error(`订单已${orderRow.status === 'completed' ? '完成' : orderRow.status === 'cancelled' ? '取消' : '关闭'}, 无法接单`)
+      throw new ConflictException(`订单已${orderRow.status === 'completed' ? '完成' : orderRow.status === 'cancelled' ? '取消' : '关闭'}, 无法接单`)
     }
     if (orderRow.status === 'pending_payment' && Number(orderRow.is_paid || 0) !== 1) {
-      throw new Error('订单未支付，无法接单')
+      throw new BadRequestException('订单未支付，无法接单')
     }
 
     // 1.2 初始化Redis计数器（首次访问时从数据库同步）
@@ -841,7 +841,7 @@ async getExecutionProgress(orderId: string) {
       // 超出名额，回滚占位
       await this.redisService.getClient().decr(redisKeyAccepted)
       console.log(`[acceptOrder] Redis占位失败: orderId=${orderId}, slot=${slotNumber}/${redisRequiredCount}`)
-      throw new Error('订单名额已满')
+      throw new ConflictException('名额已满，请抢其他订单')
     }
 
     console.log(`[acceptOrder] Redis占位成功: orderId=${orderId}, slot=${slotNumber}/${redisRequiredCount}`)
@@ -864,7 +864,7 @@ async getExecutionProgress(orderId: string) {
         )
         request = (acceptRows1 as any[])?.[0]
         if (!request) {
-          throw new Error('暂无可接派单记录')
+          throw new NotFoundException('暂无可接派单记录')
         }
       } else {
         const [acceptRows2] = await conn.query(
@@ -889,7 +889,7 @@ async getExecutionProgress(orderId: string) {
         )
         const existingCount = Number((existingDispatchRows as any[])?.[0]?.count || 0)
         if (existingCount > 0) {
-          throw new Error('该分身已接单或已被派单，不能重复接单')
+          throw new ConflictException('该分身已接单，不能重复接单')
         }
       }
 
@@ -902,11 +902,11 @@ async getExecutionProgress(orderId: string) {
         )
         const order: any = (acceptOrderRows as any[])?.[0]
         if (!order) {
-          throw new Error('订单不存在')
+          throw new NotFoundException('订单不存在')
         }
 
         if (!avatarId || avatarId === 'undefined') {
-          throw new Error('缺少分身ID')
+          throw new BadRequestException('缺少分身ID')
         }
 
         const [avatarOwnerRows] = await conn.query(
@@ -918,7 +918,7 @@ async getExecutionProgress(orderId: string) {
         )
         const avatarOwner: any = (avatarOwnerRows as any[])?.[0]
         if (!avatarOwner || avatarOwner.status !== 'active') {
-          throw new Error('分身不存在或已失效，无法接单')
+          throw new NotFoundException('分身不存在或已失效，无法接单')
         }
 
         const dispatchId = 'odr-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8)
@@ -936,7 +936,7 @@ async getExecutionProgress(orderId: string) {
           )
         } catch (err: any) {
           if (String(err?.code || '') === 'ER_DUP_ENTRY') {
-            throw new Error('该分身已接单，不能重复接单')
+            throw new ConflictException('该分身已接单，不能重复接单')
           }
           throw err
         }
@@ -965,7 +965,7 @@ async getExecutionProgress(orderId: string) {
         const [avatarCheckRows] = await conn.query('SELECT id, status FROM avatars WHERE id = ?', [actualAvatarId])
         const avatarCheck: any = (avatarCheckRows as any[])?.[0]
         if (!avatarCheck || avatarCheck.status !== 'active') {
-          throw new Error('分身不存在或已失效，无法接单')
+          throw new NotFoundException('分身不存在或已失效，无法接单')
         }
       }
 
@@ -992,7 +992,7 @@ async getExecutionProgress(orderId: string) {
         if (currentRow && currentAvatarId === actualAvatarId && ['accepted', 'completed'].includes(currentStatus)) {
           wasAlreadyAccepted = true
         } else {
-          throw new Error('接单失败，派单已被处理')
+          throw new ConflictException('手慢了，订单已被其他人抢走')
         }
       }
 
@@ -1101,7 +1101,7 @@ async getExecutionProgress(orderId: string) {
     }
 
     if (!actualAvatarId) {
-      throw new Error('缺少分身ID')
+      throw new BadRequestException('缺少分身ID')
     }
 
     request.ownerUserId = request.ownerUserId || request.owner_user_id
@@ -1198,7 +1198,7 @@ async getExecutionProgress(orderId: string) {
     const request = declineRows?.[0]
     
     if (!request) {
-      throw new Error('分派记录不存在')
+      throw new NotFoundException('分派记录不存在')
     }
     
     // 更新状态为 declined
@@ -1267,7 +1267,7 @@ async getExecutionProgress(orderId: string) {
     const db = getMySQLClient()
     const order = await this.getOrderById(orderId)
     if (!order) {
-      throw new Error(`订单不存在: ${orderId}`)
+      throw new NotFoundException(`订单不存在: ${orderId}`)
     }
 
     const platforms = order.platforms ? JSON.parse(order.platforms) : ['wechat']
@@ -1501,7 +1501,7 @@ async getExecutionProgress(orderId: string) {
     const order = notifyOrderRows?.[0]
     
     if (!order) {
-      throw new Error('订单不存在')
+      throw new NotFoundException('订单不存在')
     }
     
     let notifiedCount = 0
