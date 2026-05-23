@@ -36,51 +36,7 @@ export type OrderStatusDeriveReason =
   | 'PENDING_ACCEPTANCE'
   | 'NO_MATCH'
 
-export type StatusFieldKey =
-  | 'orders.status'
-  | 'order_dispatch_requests.status'
-  | 'content_generation_requests.status'
-  | 'earnings.status'
-  | 'referrals.status'
-
-type CanonicalStatusDictionary<TStatus extends string> = {
-  readonly preserved: readonly TStatus[]
-  readonly compatibility: Readonly<Record<string, TStatus>>
-  readonly deprecated: readonly string[]
-}
-
-type StatusFieldBoundary<TStatus extends string> = {
-  readonly owner: string
-  readonly field: StatusFieldKey
-  readonly interfaceWriter: string
-  readonly syncWriter?: string
-  readonly forbiddenDirectWrites: readonly string[]
-  readonly dictionary: CanonicalStatusDictionary<TStatus>
-}
-
-const ORDER_CANONICAL_STATUSES: readonly OrderStatus[] = [
-  'pending_payment',
-  'open',
-  'pending_dispatch',
-  'pending_acceptance',
-  'in_progress',
-  'submitted',
-  'awaiting_acceptance',
-  'revision_requested',
-  'completed',
-  'cancelled',
-  'rejected',
-]
-
-const DISPATCH_CANONICAL_STATUSES = [
-  'pending',
-  'accepted',
-  'rejected',
-  'cancelled',
-  'completed',
-] as const
-
-const FULFILLMENT_CANONICAL_STATUSES = [
+const fulfillmentStatusSet = new Set<FulfillmentStatus>([
   'queuing',
   'generating',
   'preview',
@@ -90,154 +46,20 @@ const FULFILLMENT_CANONICAL_STATUSES = [
   'revision_requested',
   'settled',
   'failed',
-  'partial_failed',
-] as const
-
-const EARNING_CANONICAL_STATUSES = [
-  'pending',
-  'settled',
-  'rejected',
-] as const
-
-const REFERRAL_CANONICAL_STATUSES = [
-  'pending',
-  'completed',
-] as const
-
-const orderStatusSet = new Set<OrderStatus>(ORDER_CANONICAL_STATUSES)
-const dispatchStatusSet = new Set<(typeof DISPATCH_CANONICAL_STATUSES)[number]>(DISPATCH_CANONICAL_STATUSES)
-
-const fulfillmentStatusSet = new Set<FulfillmentStatus>([
-  'queuing',
-  'generating',
-  'publishing',
-  'published',
-  'awaiting_acceptance',
-  'revision_requested',
-  'settled',
-  'failed',
 ])
-
-export const ORDER_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  pending_payment: ['open', 'pending_dispatch', 'cancelled'],
-  open: ['pending_dispatch', 'pending_acceptance', 'in_progress', 'submitted', 'awaiting_acceptance', 'completed', 'cancelled'],
-  pending_dispatch: ['pending_acceptance', 'in_progress', 'submitted', 'awaiting_acceptance', 'completed', 'cancelled'],
-  pending_acceptance: ['in_progress', 'submitted', 'awaiting_acceptance', 'rejected', 'cancelled'],
-  in_progress: ['submitted', 'awaiting_acceptance', 'completed', 'cancelled'],
-  submitted: ['awaiting_acceptance', 'completed', 'revision_requested', 'cancelled'],
-  awaiting_acceptance: ['completed', 'revision_requested', 'cancelled'],
-  revision_requested: ['in_progress', 'submitted', 'awaiting_acceptance', 'cancelled'],
-  completed: [],
-  cancelled: [],
-  rejected: [],
-}
-
-export const STATUS_FIELD_BOUNDARIES: Readonly<Record<StatusFieldKey, StatusFieldBoundary<string>>> = {
-  'orders.status': {
-    owner: 'OrderService',
-    field: 'orders.status',
-    interfaceWriter: 'createOrder/payOrder/updateOrderStatus',
-    syncWriter: 'syncOrderStatusByContent',
-    forbiddenDirectWrites: [
-      'controller/SQL 直接写 pending_acceptance|in_progress|submitted|awaiting_acceptance|completed',
-      'order.service.acceptOrder/submitOrderResult 不得绕过 updateOrderStatus 或派单/履约聚合边界直写状态',
-    ],
-    dictionary: {
-      preserved: ORDER_CANONICAL_STATUSES,
-      compatibility: {},
-      deprecated: [],
-    },
-  },
-  'order_dispatch_requests.status': {
-    owner: 'OrderDispatchService / OrderProcessingService',
-    field: 'order_dispatch_requests.status',
-    interfaceWriter: 'accept/reject/cancel dispatch',
-    syncWriter: 'complete on order-processing settlement',
-    forbiddenDirectWrites: [
-      '订单聚合器不得越过派单服务直接写 accepted|rejected|cancelled|completed',
-    ],
-    dictionary: {
-      preserved: DISPATCH_CANONICAL_STATUSES,
-      compatibility: {
-        confirmed: 'accepted',
-        declined: 'rejected',
-        expired: 'cancelled',
-        settled: 'completed',
-        done: 'completed',
-      },
-      deprecated: ['confirmed', 'declined', 'expired', 'settled', 'done'],
-    },
-  },
-  'content_generation_requests.status': {
-    owner: 'ContentGenerationService / OrderProcessingService',
-    field: 'content_generation_requests.status',
-    interfaceWriter: 'generation/publish/review workflow',
-    syncWriter: 'orders.status 仅可读取本字段，不得反向直写',
-    forbiddenDirectWrites: [
-      '非生成链路禁止直接写 preview|publishing|published|awaiting_acceptance|settled',
-    ],
-    dictionary: {
-      preserved: FULFILLMENT_CANONICAL_STATUSES,
-      compatibility: {
-        pending: 'generating',
-        processing: 'generating',
-        generating_text: 'generating',
-        generating_images: 'generating',
-        generating_video: 'generating',
-        completed: 'preview',
-        feedback_submitted: 'awaiting_acceptance',
-        done: 'settled',
-      },
-      deprecated: ['pending', 'processing', 'generating_text', 'generating_images', 'generating_video', 'completed', 'feedback_submitted', 'done'],
-    },
-  },
-  'earnings.status': {
-    owner: 'EarningService / ReferralService',
-    field: 'earnings.status',
-    interfaceWriter: 'create pending earning',
-    syncWriter: 'settle earning after到账',
-    forbiddenDirectWrites: [
-      '页面接口禁止直接把 pending 改为 settled/completed/rejected',
-    ],
-    dictionary: {
-      preserved: EARNING_CANONICAL_STATUSES,
-      compatibility: {
-        completed: 'settled',
-      },
-      deprecated: ['completed'],
-    },
-  },
-  'referrals.status': {
-    owner: 'ReferralService',
-    field: 'referrals.status',
-    interfaceWriter: 'useReferralCode/create pending referral',
-    syncWriter: 'settleReferralOnFirstAvatar',
-    forbiddenDirectWrites: [
-      '收益模块禁止跳过 ReferralService 直接改 referrals.status',
-    ],
-    dictionary: {
-      preserved: REFERRAL_CANONICAL_STATUSES,
-      compatibility: {},
-      deprecated: [],
-    },
-  },
-}
-
-export function normalizeOrderStatus(status?: string): OrderStatus | null {
-  const value = String(status || '').trim().toLowerCase()
-  if (!value) return null
-  if (orderStatusSet.has(value as OrderStatus)) return value as OrderStatus
-  return null
-}
 
 export function normalizeDispatchStatus(status?: string): DispatchStatus {
   const value = String(status || '').trim().toLowerCase()
   if (!value) return 'pending'
-  const compatibilityStatus = STATUS_FIELD_BOUNDARIES['order_dispatch_requests.status'].dictionary.compatibility[value]
-  if (compatibilityStatus) return compatibilityStatus as DispatchStatus
-  if (dispatchStatusSet.has(value as (typeof DISPATCH_CANONICAL_STATUSES)[number])) {
-    return value as DispatchStatus
-  }
+  if (value === 'confirmed') return 'accepted'
+  if (value === 'done') return 'done'
+  if (value === 'settled') return 'settled'
+  if (value === 'completed') return 'completed'
+  if (value === 'declined') return 'rejected'
+  if (value === 'expired') return 'cancelled'
+  if (value === 'rejected') return 'rejected'
+  if (value === 'cancelled') return 'cancelled'
+  if (value === 'accepted') return 'accepted'
   return 'pending'
 }
 
@@ -262,11 +84,24 @@ export function normalizeFulfillmentStatus(status?: string): FulfillmentStatus {
 }
 
 export function isDispatchAccepted(status?: string): boolean {
-  return ['accepted', 'completed'].includes(normalizeDispatchStatus(status))
+  const value = String(status || '').trim().toLowerCase()
+  return [
+    'accepted',
+    'generating',
+    'preview',
+    'publishing',
+    'published',
+    'feedback_submitted',
+    'awaiting_acceptance',
+    'completed',
+    'settled',
+    'done',
+  ].includes(value)
 }
 
 export function isDispatchCompleted(status?: string): boolean {
-  return normalizeDispatchStatus(status) === 'completed'
+  const value = String(status || '').trim().toLowerCase()
+  return ['completed', 'settled', 'done'].includes(value)
 }
 
 export function deriveOrderStatusFromWorkflowDetailed(input: {
@@ -328,12 +163,4 @@ export function deriveOrderStatusFromWorkflow(input: {
   fulfillmentStatuses: FulfillmentStatus[]
 }): OrderStatus | null {
   return deriveOrderStatusFromWorkflowDetailed(input).status
-}
-
-export function isValidOrderStatusTransition(fromStatus: string, toStatus: string): boolean {
-  const from = normalizeOrderStatus(fromStatus)
-  const to = normalizeOrderStatus(toStatus)
-  if (!from || !to) return false
-  const allowedTransitions = ORDER_STATUS_TRANSITIONS[from] || []
-  return allowedTransitions.includes(to)
 }

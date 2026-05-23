@@ -1,12 +1,11 @@
 -- ============================================
 -- 「我的分身」MySQL 数据库初始化脚本
--- 执行方式: mysql -h <MYSQL_HOST> -P <MYSQL_PORT> -u <MYSQL_USER> -p<MYSQL_PASSWORD> <MYSQL_DATABASE> < init_database.sql
+-- 执行方式: mysql -h 180.184.205.74 -P 16033 -u mrl -pSYDPHJB8aGBn83Eh mrl < init_database.sql
 -- ============================================
 
 -- 创建数据库（如果不存在）
 CREATE DATABASE IF NOT EXISTS mrl CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE mrl;
-ALTER DATABASE mrl CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- ============================================
 -- 1. 用户相关表
@@ -16,26 +15,20 @@ ALTER DATABASE mrl CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE TABLE IF NOT EXISTS users (
   id VARCHAR(36) PRIMARY KEY,
   phone VARCHAR(20) UNIQUE,
-  openid VARCHAR(100) UNIQUE,
   nickname VARCHAR(100),
-  avatar VARCHAR(500),
   avatar_url VARCHAR(500),
   bio TEXT,
   total_earnings DECIMAL(10,2) DEFAULT 0,
-  balance DECIMAL(10,2) DEFAULT 0,
+  current_balance DECIMAL(10,2) DEFAULT 0,
   frozen_balance DECIMAL(10,2) DEFAULT 0,
   level INT DEFAULT 1,
-  exp INT DEFAULT 0,
-  credits INT DEFAULT 0,
   experience INT DEFAULT 0,
   referral_code VARCHAR(20),
-  referral_count INT DEFAULT 0,
   referred_by VARCHAR(36),
   settings JSON,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_phone (phone),
-  INDEX idx_openid (openid),
   INDEX idx_referral_code (referral_code),
   INDEX idx_referred_by (referred_by)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -61,8 +54,6 @@ CREATE TABLE IF NOT EXISTS user_subscriptions (
   status VARCHAR(20) DEFAULT 'active',
   start_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   end_date TIMESTAMP NOT NULL,
-  max_avatars INT DEFAULT 1,
-  can_receive_orders BOOLEAN DEFAULT FALSE,
   auto_renew BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -94,7 +85,7 @@ CREATE TABLE IF NOT EXISTS subscription_plans (
 
 -- AI分身表
 CREATE TABLE IF NOT EXISTS avatars (
-  id VARCHAR(64) PRIMARY KEY,
+  id VARCHAR(36) PRIMARY KEY,
   user_id VARCHAR(36) NOT NULL,
   name VARCHAR(100) NOT NULL,
   avatar_url VARCHAR(500),
@@ -130,7 +121,7 @@ CREATE TABLE IF NOT EXISTS avatars (
 -- 分身技能表
 CREATE TABLE IF NOT EXISTS avatar_skills (
   id VARCHAR(36) PRIMARY KEY,
-  avatar_id VARCHAR(64) NOT NULL,
+  avatar_id VARCHAR(36) NOT NULL,
   skill_id VARCHAR(36) NOT NULL,
   level INT DEFAULT 1,
   experience INT DEFAULT 0,
@@ -147,7 +138,7 @@ CREATE TABLE IF NOT EXISTS avatar_skills (
 -- 分身记忆表
 CREATE TABLE IF NOT EXISTS avatar_memories (
   id VARCHAR(36) PRIMARY KEY,
-  avatar_id VARCHAR(64) NOT NULL,
+  avatar_id VARCHAR(36) NOT NULL,
   memory_type VARCHAR(50),
   content TEXT,
   importance INT DEFAULT 1,
@@ -162,8 +153,8 @@ CREATE TABLE IF NOT EXISTS avatar_memories (
 -- 分身好友表
 CREATE TABLE IF NOT EXISTS avatar_friends (
   id VARCHAR(36) PRIMARY KEY,
-  avatar_id VARCHAR(64) NOT NULL,
-  friend_avatar_id VARCHAR(64) NOT NULL,
+  avatar_id VARCHAR(36) NOT NULL,
+  friend_avatar_id VARCHAR(36) NOT NULL,
   affinity_level INT DEFAULT 0,
   last_interaction_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -381,44 +372,27 @@ CREATE TABLE IF NOT EXISTS messages (
 
 -- 订单表
 CREATE TABLE IF NOT EXISTS orders (
-  id VARCHAR(36) PRIMARY KEY COMMENT '订单唯一ID',
-  user_id VARCHAR(36) NOT NULL COMMENT '需求方用户ID',
-  avatar_id VARCHAR(64) COMMENT '关联分身ID',
-  title VARCHAR(200) NOT NULL COMMENT '订单标题',
-  description TEXT COMMENT '订单描述',
-  content_type VARCHAR(50) DEFAULT 'text' COMMENT '内容类型',
-  platforms TEXT COMMENT '目标平台列表(JSON)',
-  requirements TEXT COMMENT '需求参数(JSON)',
-  budget DECIMAL(10,2) DEFAULT 0 COMMENT '订单预算',
-  status VARCHAR(50) DEFAULT 'pending_payment' COMMENT '订单状态',
-  result TEXT COMMENT '订单结果(JSON)',
-  expected_quantity INT DEFAULT 1 COMMENT '期望分身数量',
-  quantity_per_avatar INT DEFAULT 1 COMMENT '每个分身产出数量',
-  avatar_count INT DEFAULT 0 COMMENT '实际分配的分身数量',
-  is_paid TINYINT DEFAULT 0 COMMENT '是否已支付',
-  deadline DATETIME COMMENT '截止时间',
-  priority INT DEFAULT 2 COMMENT '优先级(1-3)',
-  primary_platform VARCHAR(50) COMMENT '主平台',
-  preferred_styles TEXT COMMENT '偏好风格(JSON)',
-  industry_tags TEXT COMMENT '行业标签(JSON)',
-  deadline_at DATETIME COMMENT '抢单截止时间',
-  content_deadline_at DATETIME COMMENT '内容截止时间',
-  auto_cancel_at DATETIME COMMENT '自动取消时间',
-  max_retries INT DEFAULT 3 COMMENT '最大重试次数',
-  order_type VARCHAR(50) COMMENT '订单类型',
-  assigned_to VARCHAR(36) COMMENT '分配给的用户',
-  latitude DECIMAL(10,6) COMMENT '纬度',
-  longitude DECIMAL(10,6) COMMENT '经度',
-  location_text VARCHAR(500) COMMENT '位置文本',
-  target_audience VARCHAR(200) COMMENT '目标受众',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  completed_at DATETIME COMMENT '完成时间',
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36) NOT NULL,
+  avatar_id VARCHAR(36),
+  order_type VARCHAR(50) NOT NULL,
+  requirements JSON,
+  status VARCHAR(20) DEFAULT 'pending',
+  priority INT DEFAULT 0,
+  assigned_to VARCHAR(36),
+  result JSON,
+  price DECIMAL(10,2) DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  completed_at TIMESTAMP,
   INDEX idx_user_id (user_id),
+  INDEX idx_avatar_id (avatar_id),
+  INDEX idx_order_type (order_type),
   INDEX idx_status (status),
+  INDEX idx_priority (priority),
   INDEX idx_created_at (created_at),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 订单执行记录表
 CREATE TABLE IF NOT EXISTS order_executions (
@@ -441,67 +415,36 @@ CREATE TABLE IF NOT EXISTS order_executions (
 
 -- 订单结果表
 CREATE TABLE IF NOT EXISTS order_results (
-  id VARCHAR(36) PRIMARY KEY COMMENT '结果ID',
-  order_id VARCHAR(36) NOT NULL COMMENT '关联订单ID',
-  avatar_id VARCHAR(64) COMMENT '分身ID',
-  user_id VARCHAR(36) COMMENT '用户ID',
-  result TEXT COMMENT '结果数据(JSON)',
-  customer_rating INT COMMENT '用户评分(1-5)',
-  customer_comment TEXT COMMENT '用户评价',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  id VARCHAR(36) PRIMARY KEY,
+  order_id VARCHAR(36) NOT NULL,
+  result_type VARCHAR(50),
+  content TEXT,
+  screenshots JSON,
+  metadata JSON,
+  quality_score DECIMAL(5,2),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_order_id (order_id),
-  INDEX idx_avatar_id (avatar_id),
   FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单结果表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 订单分发请求表
+-- 订单派发表
 CREATE TABLE IF NOT EXISTS order_dispatch_requests (
-  id VARCHAR(36) PRIMARY KEY COMMENT '分发请求ID',
-  order_id VARCHAR(36) NOT NULL COMMENT '关联订单ID',
-  avatar_id VARCHAR(64) NOT NULL COMMENT '分身份配ID',
-  user_id VARCHAR(36) NOT NULL COMMENT '分身所属用户ID',
-  target_avatar_id VARCHAR(64) COMMENT '兼容字段：目标分身ID',
-  target_user_id VARCHAR(36) COMMENT '兼容字段：目标用户ID',
-  platform VARCHAR(50) COMMENT '分配方式(auto/manual)',
-  status VARCHAR(50) DEFAULT 'pending' COMMENT '请求状态',
-  reject_reason TEXT COMMENT '拒绝原因',
-  expires_at DATETIME COMMENT '过期时间',
-  responded_at DATETIME COMMENT '响应时间',
-  accepted_at DATETIME COMMENT '接受时间',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  id VARCHAR(36) PRIMARY KEY,
+  order_id VARCHAR(36) NOT NULL,
+  target_avatar_id VARCHAR(36),
+  target_user_id VARCHAR(36),
+  status VARCHAR(20) DEFAULT 'pending',
+  priority INT DEFAULT 0,
+  estimated_time INT,
+  accepted_at TIMESTAMP,
+  completed_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_order_id (order_id),
-  INDEX idx_avatar_id (avatar_id),
+  INDEX idx_target_avatar_id (target_avatar_id),
+  INDEX idx_target_user_id (target_user_id),
   INDEX idx_status (status),
   FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单分发请求表';
-
--- 内容生成请求表
-CREATE TABLE IF NOT EXISTS content_generation_requests (
-  id VARCHAR(36) PRIMARY KEY COMMENT '生成请求ID',
-  order_id VARCHAR(36) NOT NULL COMMENT '关联订单ID',
-  avatar_id VARCHAR(64) NOT NULL COMMENT '创作分身ID',
-  user_id VARCHAR(36) COMMENT '用户ID',
-  platform VARCHAR(50) COMMENT '目标平台',
-  status VARCHAR(50) DEFAULT 'queuing' COMMENT '生成状态',
-  content_type VARCHAR(50) COMMENT '内容类型',
-  content TEXT COMMENT '生成的文案',
-  images TEXT COMMENT '生成的图片URL列表(JSON)',
-  video_url TEXT COMMENT '生成的视频URL列表(JSON)',
-  seedance_task_id VARCHAR(128) COMMENT '视频任务ID',
-  publish_proof TEXT COMMENT '发布凭证(JSON)',
-  error TEXT COMMENT '错误信息',
-  publish_status TEXT COMMENT '发布状态详情(JSON)',
-  publish_feedback TEXT COMMENT '发布反馈(JSON)',
-  config TEXT COMMENT '生成配置(JSON)',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  INDEX idx_order_id (order_id),
-  INDEX idx_avatar_id (avatar_id),
-  INDEX idx_status (status),
-  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='内容生成请求表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 订单支付表
 CREATE TABLE IF NOT EXISTS order_payments (
@@ -524,68 +467,60 @@ CREATE TABLE IF NOT EXISTS order_payments (
 
 -- 收益表
 CREATE TABLE IF NOT EXISTS earnings (
-  id VARCHAR(36) PRIMARY KEY COMMENT '收益ID',
-  user_id VARCHAR(36) NOT NULL COMMENT '收益归属用户',
-  type VARCHAR(50) NOT NULL COMMENT '收益类型',
-  amount DECIMAL(10,2) DEFAULT 0 COMMENT '收益金额',
-  status VARCHAR(50) DEFAULT 'pending' COMMENT '收益状态',
-  source VARCHAR(200) COMMENT '收益来源',
-  description VARCHAR(500) COMMENT '收益描述',
-  avatar_id VARCHAR(36) COMMENT '关联分身ID',
-  order_id VARCHAR(36) COMMENT '关联订单ID',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36) NOT NULL,
+  avatar_id VARCHAR(36),
+  source_type VARCHAR(50) NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  status VARCHAR(20) DEFAULT 'pending',
+  description TEXT,
+  order_id VARCHAR(36),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_user_id (user_id),
-  INDEX idx_type (type),
+  INDEX idx_avatar_id (avatar_id),
+  INDEX idx_source_type (source_type),
   INDEX idx_status (status),
-  INDEX idx_order_id (order_id),
+  INDEX idx_created_at (created_at),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='收益记录表';
-
-ALTER TABLE earnings
-  ADD UNIQUE KEY uniq_earn_order_avatar_type (order_id, avatar_id, type);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 交易记录表
 CREATE TABLE IF NOT EXISTS transactions (
-  id VARCHAR(36) PRIMARY KEY COMMENT '交易ID',
-  user_id VARCHAR(36) NOT NULL COMMENT '用户ID',
-  type VARCHAR(50) NOT NULL COMMENT '交易类型',
-  amount DECIMAL(10,2) DEFAULT 0 COMMENT '交易金额',
-  balance_before DECIMAL(10,2) DEFAULT 0 COMMENT '交易前余额',
-  balance_after DECIMAL(10,2) DEFAULT 0 COMMENT '交易后余额',
-  frozen_before DECIMAL(10,2) DEFAULT 0 COMMENT '交易前冻结余额',
-  frozen_after DECIMAL(10,2) DEFAULT 0 COMMENT '交易后冻结余额',
-  status VARCHAR(20) DEFAULT 'completed' COMMENT '交易状态',
-  description VARCHAR(500) COMMENT '交易描述',
-  reference_id VARCHAR(36) COMMENT '来源ID',
-  idempotency_key VARCHAR(128) COMMENT '幂等键',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36) NOT NULL,
+  type VARCHAR(50) NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  balance_before DECIMAL(10,2),
+  balance_after DECIMAL(10,2),
+  status VARCHAR(20) DEFAULT 'completed',
+  description TEXT,
+  reference_id VARCHAR(36),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_user_id (user_id),
   INDEX idx_type (type),
   INDEX idx_status (status),
   INDEX idx_created_at (created_at),
-  UNIQUE KEY uk_transactions_idempotency (idempotency_key),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='交易记录表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 提现表
 CREATE TABLE IF NOT EXISTS withdrawals (
-  id VARCHAR(36) PRIMARY KEY COMMENT '提现ID',
-  user_id VARCHAR(36) NOT NULL COMMENT '用户ID',
-  amount DECIMAL(10,2) DEFAULT 0 COMMENT '提现金额',
-  method VARCHAR(50) COMMENT '提现方式',
-  account VARCHAR(200) COMMENT '提现账号',
-  status VARCHAR(50) DEFAULT 'pending' COMMENT '提现状态',
-  rejected_reason TEXT COMMENT '驳回原因',
-  processed_at DATETIME COMMENT '处理时间',
-  error_message TEXT COMMENT '错误信息',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36) NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  bank_name VARCHAR(100),
+  bank_account VARCHAR(50),
+  bank_holder VARCHAR(100),
+  status VARCHAR(20) DEFAULT 'pending',
+  processed_at TIMESTAMP,
+  error_message TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_user_id (user_id),
   INDEX idx_status (status),
   INDEX idx_created_at (created_at),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='提现申请表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
 -- 7. 技能相关表
@@ -853,10 +788,7 @@ CREATE TABLE IF NOT EXISTS published_works (
 -- 支付订单表
 CREATE TABLE IF NOT EXISTS payment_orders (
   id VARCHAR(36) PRIMARY KEY,
-  out_trade_no VARCHAR(64) NOT NULL,
-  plan_id VARCHAR(36) NOT NULL,
   user_id VARCHAR(36) NOT NULL,
-  openid VARCHAR(64),
   order_type VARCHAR(50) NOT NULL,
   amount DECIMAL(10,2) NOT NULL,
   currency VARCHAR(10) DEFAULT 'CNY',
@@ -870,7 +802,6 @@ CREATE TABLE IF NOT EXISTS payment_orders (
   INDEX idx_user_id (user_id),
   INDEX idx_order_type (order_type),
   INDEX idx_status (status),
-  INDEX idx_out_trade_no (out_trade_no),
   INDEX idx_transaction_id (transaction_id),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

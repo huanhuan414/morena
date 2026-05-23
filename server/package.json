@@ -8,12 +8,7 @@
     "dev": "node load-env.js start --watch",
     "start": "node load-env.js start",
     "start:debug": "node load-env.js start --debug --watch",
-    "start:prod": "node dist/src/main.js",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
-    "validate": "pnpm run typecheck && pnpm run build"
+    "start:prod": "node dist/main"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.958.0",
@@ -57,13 +52,10 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/express": "5.0.6",
     "@types/form-data": "^2.5.2",
-    "@types/jest": "^29.5.12",
     "@types/multer": "^2.1.0",
     "@types/node": "^22.10.2",
     "@types/uuid": "^11.0.0",
     "drizzle-kit": "^0.31.8",
-    "jest": "^29.7.0",
-    "ts-jest": "^29.1.2",
     "typescript": "^5.7.2"
   }
 }

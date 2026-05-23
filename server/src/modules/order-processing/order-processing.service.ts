@@ -1,9 +1,7 @@
 import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common'
-import { Cron } from '@nestjs/schedule'
 import { randomUUID } from 'crypto'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { getCache, setCache } from '../../common/shared-cache'
-import { withMysqlNamedLock } from '../../common/mysql-named-lock'
 import { OrderService } from '../order/order.service'
 import { NotificationService } from '../notification/notification.service'
 import { normalizeFulfillmentStatus } from '../order/order-status'
@@ -314,7 +312,7 @@ export class OrderProcessingService {
   private async findByRequestId(requestId: string): Promise<any | null> {
     const db = getMySQLClient()
     const rows = await db.query(
-      'SELECT id, order_id, avatar_id, status, content_type, video_url, publish_feedback, created_at, updated_at, SUBSTRING(content, 1, 500) as content_preview, CASE WHEN images IS NOT NULL AND images != \'\' AND images != \'[]\' THEN JSON_LENGTH(images) ELSE 0 END as image_count FROM content_generation_requests WHERE id = ? ORDER BY created_at DESC LIMIT 1',
+      'SELECT * FROM content_generation_requests WHERE id = ? ORDER BY created_at DESC LIMIT 1',
       [requestId]
     )
     return rows?.[0] || null
@@ -323,7 +321,7 @@ export class OrderProcessingService {
   private async findByOrderId(orderId: string): Promise<any | null> {
     const db = getMySQLClient()
     const rows = await db.query(
-      `SELECT id, order_id, avatar_id, status, content_type, video_url, publish_feedback, created_at, updated_at, SUBSTRING(content, 1, 500) as content_preview, CASE WHEN images IS NOT NULL AND images != '' AND images != '[]' THEN JSON_LENGTH(images) ELSE 0 END as image_count FROM content_generation_requests 
+      `SELECT * FROM content_generation_requests 
        WHERE order_id = ? 
        ORDER BY 
          CASE WHEN status IN ('failed', 'partial_failed') THEN 1 ELSE 0 END ASC,
@@ -355,111 +353,36 @@ export class OrderProcessingService {
     const fallbackPlatforms = record.platform ? [this.canonicalizePlatform(record.platform)] : []
     const normalizedPlatforms = configPlatforms.length > 0 ? configPlatforms : fallbackPlatforms
     const platformStatus = this.normalizePlatformStatusMap(rawPublishStatus.platformStatus)
-    const toIsoString = (value: any): string | null => {
-      if (!value) return null
-      if (value instanceof Date) return value.toISOString()
-      const parsed = new Date(value)
-      return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toISOString()
-    }
-    const orderId = record.orderId || record.order_id || null
-    const avatarId = record.avatarId || record.avatar_id || null
-    const userId = record.userId || record.user_id || null
-    const platform = this.canonicalizePlatform(record.platform)
-    const status = normalizeFulfillmentStatus(record.status || 'pending')
-    const contentType = config.contentType || config.content_type || record.contentType || record.content_type || 'image'
-    const createdAt = toIsoString(record.createdAt || record.created_at)
-    const updatedAt = toIsoString(record.updatedAt || record.updated_at)
-    const completedAt = status === 'settled' ? (updatedAt || createdAt) : null
-    const publishStatus = {
-      ...rawPublishStatus,
-      platforms: this.normalizePlatforms(rawPublishStatus.platforms || normalizedPlatforms),
-      platformStatus
-    }
 
     return {
       id: record.id,
       requestId: record.id,
-      orderId,
-      avatarId,
-      userId,
-      platform,
+      order_id: record.orderId || record.order_id,
+      orderId: record.orderId || record.order_id,
+      avatar_id: record.avatarId || record.avatar_id,
+      avatarId: record.avatarId || record.avatar_id,
+      user_id: record.userId || record.user_id,
+      userId: record.userId || record.user_id,
+      platform: this.canonicalizePlatform(record.platform),
       rawStatus: record.status || 'pending',
-      status,
-      contentType,
+      status: normalizeFulfillmentStatus(record.status || 'pending'),
+      contentType: config.contentType || config.content_type || record.contentType || record.content_type || 'image',
       generatedContent: {
         title: config.title || '',
         content: record.content || '',
         images,
         videos,
-        platform,
+        platform: this.canonicalizePlatform(record.platform),
         platforms: normalizedPlatforms
       },
-      publishStatus,
+      publishStatus: {
+        ...rawPublishStatus,
+        platforms: this.normalizePlatforms(rawPublishStatus.platforms || normalizedPlatforms),
+        platformStatus
+      },
       publishFeedback,
-      createdAt,
-      updatedAt,
-      completedAt,
-      order_id: orderId,
-      avatar_id: avatarId,
-      user_id: userId,
-      publish_status: publishStatus,
-      publish_feedback: publishFeedback,
-      created_at: createdAt,
-      updated_at: updatedAt,
-    }
-  }
-
-  private normalizeRecordLite(record: any): any {
-    const rawPublishStatus = this.parseJsonObject<Record<string, any>>(record.publishStatus || record.publish_status, { platforms: [] })
-    const publishFeedback = this.mergeFeedback({}, this.parseJsonObject(record.publishFeedback || record.publish_feedback, {}))
-    const config = this.parseJsonObject<Record<string, any>>(record.config, {})
-    const configPlatforms = this.normalizePlatforms(config.platforms)
-    const fallbackPlatforms = record.platform ? [this.canonicalizePlatform(record.platform)] : []
-    const normalizedPlatforms = configPlatforms.length > 0 ? configPlatforms : fallbackPlatforms
-    const platformStatus = this.normalizePlatformStatusMap(rawPublishStatus.platformStatus)
-    const toIsoString = (value: any): string | null => {
-      if (!value) return null
-      if (value instanceof Date) return value.toISOString()
-      const parsed = new Date(value)
-      return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toISOString()
-    }
-    const orderId = record.orderId || record.order_id || null
-    const avatarId = record.avatarId || record.avatar_id || null
-    const userId = record.userId || record.user_id || null
-    const platform = this.canonicalizePlatform(record.platform)
-    const status = normalizeFulfillmentStatus(record.status || 'pending')
-    const contentType = config.contentType || config.content_type || record.contentType || record.content_type || 'image'
-    const createdAt = toIsoString(record.createdAt || record.created_at)
-    const updatedAt = toIsoString(record.updatedAt || record.updated_at)
-    const completedAt = status === 'settled' ? (updatedAt || createdAt) : null
-    const publishStatus = {
-      ...rawPublishStatus,
-      platforms: this.normalizePlatforms(rawPublishStatus.platforms || normalizedPlatforms),
-      platformStatus
-    }
-
-    return {
-      id: record.id,
-      requestId: record.id,
-      orderId,
-      avatarId,
-      userId,
-      platform,
-      rawStatus: record.status || 'pending',
-      status,
-      contentType,
-      publishStatus,
-      publishFeedback,
-      createdAt,
-      updatedAt,
-      completedAt,
-      order_id: orderId,
-      avatar_id: avatarId,
-      user_id: userId,
-      publish_status: publishStatus,
-      publish_feedback: publishFeedback,
-      created_at: createdAt,
-      updated_at: updatedAt,
+      created_at: record.createdAt || record.created_at,
+      updated_at: record.updatedAt || record.updated_at
     }
   }
 
@@ -493,56 +416,9 @@ export class OrderProcessingService {
     return this.findByRequestId(record.id)
   }
 
-  async getProcessingByRequestId(requestId: string, view?: string): Promise<any> {
+  async getProcessingByRequestId(requestId: string): Promise<any> {
     const record = await this.findByRequestId(requestId)
-    if (!record) return null
-    return view === 'lite' ? this.normalizeRecordLite(record) : this.normalizeRecord(record)
-  }
-
-  @Cron('*/60 * * * * *')
-  async markStuckRecords() {
-    try {
-      const { acquired } = await withMysqlNamedLock(
-        'order_processing:mark_stuck',
-        async () => {
-          const db = getMySQLClient()
-          await db.query(
-            `UPDATE content_generation_requests
-             SET status = CASE
-                 WHEN (content IS NOT NULL AND content <> '')
-                   OR (images IS NOT NULL AND images <> '' AND images <> '[]')
-                   OR (video_url IS NOT NULL AND video_url <> '' AND video_url <> '[]')
-                 THEN 'partial_failed'
-                 ELSE 'failed'
-               END,
-                 error = '生成超时',
-                 updated_at = NOW()
-             WHERE status IN ('processing','generating_text','generating_images')
-               AND updated_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE)`
-          )
-          await db.query(
-            `UPDATE content_generation_requests
-             SET status = CASE
-                 WHEN (content IS NOT NULL AND content <> '')
-                   OR (images IS NOT NULL AND images <> '' AND images <> '[]')
-                   OR (video_url IS NOT NULL AND video_url <> '' AND video_url <> '[]')
-                 THEN 'partial_failed'
-                 ELSE 'failed'
-               END,
-                 error = '视频生成超时',
-                 seedance_task_id = NULL,
-                 updated_at = NOW()
-             WHERE status = 'generating_video'
-               AND seedance_task_id IS NOT NULL
-               AND updated_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)`
-          )
-        },
-        { logger: this.logger }
-      )
-      if (!acquired) return
-    } catch {
-      return
-    }
+    return record ? this.normalizeRecord(record) : null
   }
 
   async createProcessingOrder(data: {
@@ -592,44 +468,42 @@ export class OrderProcessingService {
   private readonly STUCK_STATUSES = ['processing', 'generating_text', 'generating_images', 'generating_video']
   private readonly STUCK_TIMEOUT_MS = 10 * 60 * 1000 // 10分钟
 
-  async getProcessingStatus(identifier: string, userId?: string, view?: string): Promise<any> {
+  async getProcessingStatus(identifier: string, userId?: string): Promise<any> {
     this.logger.log(`查询订单处理状态: identifier=${identifier}, userId=${userId || ''}`)
 
-    // 1. 先从数据库查询（完整数据，前端需要展示 content/images）
+    // 1. 先从数据库查询
     try {
-      const db = getMySQLClient()
-      // 先按 requestId 查（精简字段避免读取大字段）
-      let rows = await db.query(
-        'SELECT id,order_id,avatar_id,content_type,platform,status,created_at,updated_at FROM content_generation_requests WHERE id = ? LIMIT 1',
-        [identifier]
-      ) as any[]
-      // 没找到则按 orderId 查
-      if (!rows?.[0]) {
-        rows = await db.query(
-          `SELECT id,order_id,avatar_id,content_type,platform,status,created_at,updated_at FROM content_generation_requests WHERE order_id = ? ORDER BY CASE WHEN status IN ('failed', 'partial_failed') THEN 1 ELSE 0 END ASC, created_at DESC LIMIT 1`,
-          [identifier]
-        ) as any[]
-      }
-      const record = rows?.[0]
+      const record = await this.findRecordByIdentifier(identifier)
       if (record) {
         this.logger.log(`从数据库找到记录: id=${record.id}, status=${record.status}`)
 
-        const normalized = view === 'lite' ? this.normalizeRecordLite(record) : this.normalizeRecord(record)
+        // 卡住检测：processing/generating_* 状态超时 → 标记 failed
+        // 注意：generating_video 状态下如果有 seedance_task_id，说明视频在后台生成中，不视为卡住
         if (this.STUCK_STATUSES.includes(record.status)) {
           const updatedAt = new Date(record.updated_at || record.created_at)
           const elapsed = Date.now() - updatedAt.getTime()
           const isVideoGenerating = record.status === 'generating_video' && record.seedance_task_id
+          // 视频异步生成最多等 30 分钟，其他状态 10 分钟
           const timeout = isVideoGenerating ? 30 * 60 * 1000 : this.STUCK_TIMEOUT_MS
           if (elapsed > timeout) {
-            normalized.suspectedStuck = true
-            normalized.stuckElapsedMs = elapsed
-            normalized.stuckTimeoutMs = timeout
+            const timeoutMin = Math.round(timeout / 60000)
+            this.logger.warn(`检测到卡住记录: id=${record.id}, status=${record.status}, 已耗时${Math.round(elapsed / 60000)}分钟，标记为 failed`)
+            try {
+              const db = getMySQLClient()
+              await db.query(
+                'UPDATE content_generation_requests SET status = ?, error = ?, updated_at = NOW() WHERE id = ?',
+                ['failed', `生成超时(卡在${record.status}状态超过${timeoutMin}分钟)`, record.id]
+              )
+              record.status = 'failed'
+            } catch (updateErr: any) {
+              this.logger.warn(`更新卡住记录失败: ${updateErr.message}`)
+            }
           }
         }
-        const cacheKey = view === 'lite' ? `${record.id}:lite` : record.id
-        const cacheOrderKey = view === 'lite' ? `${normalized.order_id}:lite` : normalized.order_id
-        setCache(cacheKey, normalized)
-        setCache(cacheOrderKey, normalized)
+
+        const normalized = this.normalizeRecord(record)
+        setCache(record.id, normalized)
+        setCache(normalized.order_id, normalized)
         return normalized
       }
     } catch (dbError: any) {
@@ -637,14 +511,10 @@ export class OrderProcessingService {
     }
 
     // 2. 数据库没有数据，从缓存查询
-    const isOrderId = typeof identifier === 'string' && identifier.length === 36 && identifier.includes('-')
-    const cacheLookupKey = view === 'lite' ? `${identifier}:lite` : identifier
-    if (!isOrderId) {
-      const cachedData = getCache(cacheLookupKey)
-      if (cachedData) {
-        this.logger.log(`从缓存找到数据: identifier=${cacheLookupKey}`)
-        return cachedData
-      }
+    const cachedData = getCache(identifier)
+    if (cachedData) {
+      this.logger.log(`从缓存找到数据: identifier=${identifier}`)
+      return cachedData
     }
 
     // 3. 没有任何数据
@@ -830,8 +700,80 @@ export class OrderProcessingService {
       }
     }
 
+    if (normalized.orderId && normalized.avatarId && userId) {
+      await this.settleSingleDispatch(normalized.orderId, normalized.avatarId, userId)
+    }
+
     await this.syncOrderStatus(normalized.orderId)
     return normalized
+  }
+
+  private async settleSingleDispatch(orderId: string, avatarId: string, userId: string): Promise<void> {
+    try {
+      const db = getMySQLClient()
+
+      const orderRows = await db.query(
+        `SELECT id, budget, is_paid, expected_quantity, avatar_count FROM orders WHERE id = ? LIMIT 1`,
+        [orderId]
+      )
+      const order = Array.isArray(orderRows) ? orderRows[0] : (orderRows as any)?.data?.[0]
+      if (!order) {
+        this.logger.warn(`[结算] 订单不存在: orderId=${orderId}`)
+        return
+      }
+
+      const isPaid = Number((order as any).isPaid ?? (order as any).is_paid ?? 0)
+      if (isPaid !== 1) {
+        this.logger.log(`[结算] 订单未支付，跳过结算: orderId=${orderId}`)
+        return
+      }
+
+      const [existingEarning] = await db.query(
+        `SELECT id FROM earnings WHERE order_id = ? AND avatar_id = ? AND type = 'order_reward' LIMIT 1`,
+        [orderId, avatarId]
+      ) as any[]
+      if (existingEarning && existingEarning.length > 0) {
+        this.logger.log(`[结算] 该分身已结算，跳过: orderId=${orderId}, avatarId=${avatarId}`)
+        return
+      }
+
+      const requiredCount = (() => {
+        const raw =
+          (order as any).expectedQuantity ??
+          (order as any).expected_quantity ??
+          (order as any).avatarCount ??
+          (order as any).avatar_count ??
+          1
+        const n = Number(raw)
+        return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1
+      })()
+
+      const totalAmount = Number(order.budget || 0)
+      const totalCents = Math.max(0, Math.round(totalAmount * 100))
+      if (totalCents <= 0) {
+        this.logger.warn(`[结算] 订单预算为0，跳过结算: orderId=${orderId}`)
+        return
+      }
+
+      const amountPerSlotCents = Math.floor(totalCents / requiredCount)
+      const amountPerSlot = amountPerSlotCents / 100
+
+      const earningId = randomUUID()
+      await db.query(
+        `INSERT INTO earnings (id, user_id, type, amount, status, description, avatar_id, order_id, created_at)
+         VALUES (?, ?, 'order_reward', ?, 'settled', '订单收益', ?, ?, NOW())`,
+        [earningId, userId, amountPerSlot, avatarId, orderId]
+      )
+
+      await db.query(
+        `UPDATE users SET balance = COALESCE(balance, 0) + ?, total_earnings = COALESCE(total_earnings, 0) + ?, updated_at = NOW() WHERE id = ?`,
+        [amountPerSlot, amountPerSlot, userId]
+      )
+
+      this.logger.log(`[结算] 分身结算成功: orderId=${orderId}, avatarId=${avatarId}, userId=${userId}, amount=${amountPerSlot}`)
+    } catch (error: any) {
+      this.logger.error(`[结算] 分身结算失败: orderId=${orderId}, avatarId=${avatarId}, error=${error.message}`)
+    }
   }
 
   private async syncOrderStatus(orderId?: string): Promise<void> {
@@ -909,7 +851,7 @@ export class OrderProcessingService {
   async getOrderProcessings(orderId: string): Promise<any[]> {
     const db = getMySQLClient()
     const rows = await db.query(
-      `SELECT id, order_id, avatar_id, status, content_type, video_url, publish_feedback, created_at, updated_at, SUBSTRING(content, 1, 500) as content_preview, CASE WHEN images IS NOT NULL AND images != '' AND images != '[]' THEN JSON_LENGTH(images) ELSE 0 END as image_count FROM content_generation_requests WHERE order_id = ? ORDER BY created_at DESC`,
+      `SELECT * FROM content_generation_requests WHERE order_id = ? ORDER BY created_at DESC`,
       [orderId]
     ) as any[]
 

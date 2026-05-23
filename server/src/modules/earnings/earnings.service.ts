@@ -9,7 +9,9 @@ export class EarningsService {
     type: string
     amount: number
     order_id?: string
+    order_title?: string
     avatar_id?: string
+    avatar_name?: string
     description?: string
     reference_id?: string
   }) {
@@ -20,13 +22,14 @@ export class EarningsService {
       id,
       user_id: userId,
       order_id: data.order_id || data.reference_id || null,
+      order_title: data.order_title || '',
       avatar_id: data.avatar_id || null,
+      avatar_name: data.avatar_name || '',
       type: data.type,
       amount: data.amount,
       description: data.description || '',
       status: 'pending',
       created_at: new Date(),
-      updated_at: new Date(),
     })
 
     if (insertResult.error) {
@@ -81,38 +84,12 @@ export class EarningsService {
       }
     }
 
-    const now = new Date()
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-    const [monthlyRows] = await pool.query(
-      "SELECT SUM(amount) as total_amount FROM earnings WHERE user_id = ? AND status IN ('settled', 'completed') AND created_at >= ?",
-      [userId, monthStart]
-    )
-    const monthlyAmount = Number(monthlyRows?.[0]?.total_amount) || 0
-
-    const [ordersRows] = await pool.query(
-      "SELECT COUNT(*) as count FROM earnings WHERE user_id = ? AND type = 'order_reward'",
-      [userId]
-    )
-    const totalOrders = Number(ordersRows?.[0]?.count) || 0
-
-    const [referralsRows] = await pool.query(
-      "SELECT COUNT(*) as count FROM earnings WHERE user_id = ? AND type = 'referral_bonus'",
-      [userId]
-    )
-    const totalReferrals = Number(referralsRows?.[0]?.count) || 0
-
     // 从 users 表获取可用余额
     const [userRows] = await pool.query('SELECT balance, frozen_balance FROM users WHERE id = ?', [userId])
     const availableBalance = Number(userRows[0]?.balance) || 0
     const frozenBalance = Number(userRows[0]?.frozen_balance) || 0
 
     return {
-      balance: availableBalance,
-      totalEarnings,
-      pendingAmount,
-      monthlyAmount,
-      totalOrders,
-      totalReferrals,
       total_earnings: totalEarnings,
       pending_earnings: pendingAmount,
       available_earnings: availableBalance,
@@ -123,11 +100,11 @@ export class EarningsService {
   async getLeaderboard() {
     const pool = getPool()
     const [rows] = await pool.query(
-      `SELECT e.user_id, u.nickname, SUM(e.amount) as total
+      `SELECT e.user_id, u.nickname, u.phone, SUM(e.amount) as total
        FROM earnings e
        LEFT JOIN users u ON e.user_id = u.id
-       WHERE e.status IN ('settled', 'completed')
-       GROUP BY e.user_id, u.nickname
+       WHERE e.status = 'settled'
+       GROUP BY e.user_id, u.nickname, u.phone
        ORDER BY total DESC
        LIMIT 50`
     )
@@ -179,9 +156,9 @@ export class EarningsService {
     // 创建提现记录（适配 withdrawals 表结构）
     const id = crypto.randomUUID()
     await pool.query(
-      `INSERT INTO withdrawals (id, user_id, amount, method, account, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)`,
-      [id, userId, amount, paymentMethod, paymentAccount, new Date(), new Date()]
+      `INSERT INTO withdrawals (id, user_id, amount, bank_name, bank_account, bank_holder, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)`,
+      [id, userId, amount, paymentMethod === 'wechat' ? '微信' : '银行卡', paymentAccount, '', new Date()]
     )
 
     return { id, amount, status: 'pending' }

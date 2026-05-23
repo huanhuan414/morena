@@ -271,11 +271,11 @@
 
 **连接配置**：
 ```yaml
-host: <MYSQL_HOST>
+host: 180.184.205.74
 port: 16033
 database: mrl
-user: <MYSQL_USER>
-password: <MYSQL_PASSWORD>
+user: mrl
+password: SYDPHJB8aGBn83Eh
 connectionLimit: 10
 ```
 
@@ -599,10 +599,10 @@ module.exports = {
 
 | 变量名 | 说明 | 示例值 |
 |--------|------|--------|
-| `MYSQL_HOST` | MySQL 主机 | <MYSQL_HOST> |
+| `MYSQL_HOST` | MySQL 主机 | 180.184.205.74 |
 | `MYSQL_PORT` | MySQL 端口 | 16033 |
 | `MYSQL_USER` | 数据库用户 | mrl |
-| `MYSQL_PASSWORD` | 数据库密码 | <MYSQL_PASSWORD> |
+| `MYSQL_PASSWORD` | 数据库密码 | SYDPHJB8aGBn83Eh |
 | `MYSQL_DATABASE` | 数据库名 | mrl |
 | `VOLC_ACCESS_KEY` | 火山引擎 AK | - |
 | `VOLC_SECRET_KEY` | 火山引擎 SK | - |

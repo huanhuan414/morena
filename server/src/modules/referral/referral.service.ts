@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { Injectable, Inject } from '@nestjs/common'
-import { getMySQLClient, getPool } from '../../storage/database/mysql-client'
+import { getMySQLClient } from '../../storage/database/mysql-client'
 import { EarningService } from '../earning/earning.service'
 import * as crypto from 'crypto'
 
@@ -54,65 +54,49 @@ export class ReferralService {
    * 使用邀请码注册
    */
   async useReferralCode(inviteeId: string, code: string) {
-    const pool = getPool()
-    const conn = await pool.getConnection()
-
+    const db = getMySQLClient()
+    
+    const inviter = await db.queryOne('users', { referral_code: code }) as any
+    
+    if (!inviter) {
+      throw new Error('邀请码无效')
+    }
+    
+    if (inviter.id === inviteeId) {
+      throw new Error('不能使用自己的邀请码')
+    }
+    
+    const existingReferral = await db.queryOne('referrals', { referred_id: inviteeId })
+    
+    if (existingReferral) {
+      throw new Error('您已被邀请过')
+    }
+    
     const INVITER_REWARD = 5
     const INVITEE_REWARD = 5
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
+    
+    const id = crypto.randomUUID()
+    await db.insert('referrals', {
+      id,
+      referrer_id: inviter.id,
+      referred_id: inviteeId,
+      status: 'pending',
+      reward_amount: INVITER_REWARD,
+      created_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
+    })
+    
+    // 注册时先记录为 pending，首次创建分身后再触发奖励结算。
+    // 这里仍维护邀请计数，便于邀请看板与后台统计即时展示。
+    const inviterRecord = await db.queryOne('users', { id: inviter.id }) as any
+    await db.updateWhere('users', { id: inviter.id }, {
+      referral_count: (inviterRecord?.referral_count || 0) + 1,
+      updated_at: new Date()
+    })
 
-    try {
-      await conn.beginTransaction()
-
-      const [inviterRows] = await conn.query(
-        'SELECT id FROM users WHERE referral_code = ? LIMIT 1',
-        [code]
-      ) as any[]
-      const inviter = (inviterRows as any[])?.[0]
-
-      if (!inviter) {
-        throw new Error('邀请码无效')
-      }
-
-      if (inviter.id === inviteeId) {
-        throw new Error('不能使用自己的邀请码')
-      }
-
-      await conn.query('SELECT id FROM users WHERE id = ? LIMIT 1 FOR UPDATE', [inviteeId])
-
-      const [existingRows] = await conn.query(
-        `SELECT id FROM referrals WHERE referred_id = ? LIMIT 1`,
-        [inviteeId]
-      ) as any[]
-      if ((existingRows as any[])?.length) {
-        throw new Error('您已被邀请过')
-      }
-
-      const id = crypto.randomUUID()
-      await conn.query(
-        `INSERT INTO referrals (id, referrer_id, referred_id, status, reward_amount, created_at)
-         VALUES (?, ?, ?, 'pending', ?, ?)`,
-        [id, inviter.id, inviteeId, INVITER_REWARD, now]
-      )
-
-      await conn.query(
-        'UPDATE users SET referral_count = referral_count + 1, updated_at = ? WHERE id = ?',
-        [now, inviter.id]
-      )
-
-      await conn.commit()
-      return {
-        success: true,
-        inviterReward: INVITER_REWARD,
-        inviteeReward: INVITEE_REWARD
-      }
-    } catch (error) {
-      try {
-        await conn.rollback()
-      } catch {}
-      throw error
-    } finally {
-      conn.release()
+    return { 
+      success: true,
+      inviterReward: INVITER_REWARD,
+      inviteeReward: INVITEE_REWARD
     }
   }
 
@@ -123,8 +107,8 @@ export class ReferralService {
     const db = getMySQLClient()
     
     const referralCode = await this.generateReferralCode(userId)
-
-    const referrals = await db.query(`SELECT * FROM referrals WHERE referrer_id = ?`, [userId]) as any
+    
+    const referrals = await db.query('referrals', { referrer_id: userId }) as any
     const completedReferrals = referrals?.filter((r: any) => r.status === 'completed') || []
     const pendingCount = (referrals?.length || 0) - completedReferrals.length
     
@@ -145,124 +129,52 @@ export class ReferralService {
   }
 
   async settleReferralOnFirstAvatar(inviteeId: string) {
-    const pool = getPool()
-    const conn = await pool.getConnection()
+    const db = getMySQLClient()
+    const pending = await db.queryOne('referrals', { referred_id: inviteeId, status: 'pending' }) as any
+    const referral = pending?.data
+    if (!referral) return { skipped: true }
 
-    try {
-      await conn.beginTransaction()
+    const inviterId = referral.referrer_id || referral.referrerId
+    if (!inviterId) return { skipped: true }
 
-      const [pendingRows] = await conn.query(
-        `SELECT id, referrer_id, referred_id
-         FROM referrals
-         WHERE referred_id = ? AND status = 'pending'
-         LIMIT 1
-         FOR UPDATE`,
-        [inviteeId]
-      ) as any[]
-      const referral = (pendingRows as any[])?.[0]
+    const INVITER_REWARD = 5
+    const INVITEE_REWARD = 5
+    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
 
-      if (!referral) {
-        await conn.rollback()
-        return { skipped: true }
-      }
+    await db.updateWhere('referrals', { id: referral.id }, {
+      status: 'completed',
+      reward_amount: INVITER_REWARD,
+    })
 
-      const inviterId = referral.referrer_id || referral.referrerId
-      if (!inviterId) {
-        await conn.rollback()
-        return { skipped: true }
-      }
+    await db.insert('earnings', {
+      id: crypto.randomUUID(),
+      user_id: inviterId,
+      type: 'referral_bonus',
+      amount: INVITER_REWARD,
+      description: '邀请好友奖励',
+      status: 'completed',
+      created_at: now,
+    })
+    await db.insert('earnings', {
+      id: crypto.randomUUID(),
+      user_id: inviteeId,
+      type: 'referral_bonus',
+      amount: INVITEE_REWARD,
+      description: '受邀创建分身奖励',
+      status: 'completed',
+      created_at: now,
+    })
 
-      const INVITER_REWARD = 5
-      const INVITEE_REWARD = 5
-      const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
+    await db.query(
+      'UPDATE users SET balance = balance + ?, total_earnings = total_earnings + ?, updated_at = ? WHERE id = ?',
+      [INVITER_REWARD, INVITER_REWARD, now, inviterId]
+    )
+    await db.query(
+      'UPDATE users SET balance = balance + ?, total_earnings = total_earnings + ?, updated_at = ? WHERE id = ?',
+      [INVITEE_REWARD, INVITEE_REWARD, now, inviteeId]
+    )
 
-      const [updateResult] = await conn.query(
-        `UPDATE referrals
-         SET status = 'completed',
-             reward_amount = ?
-         WHERE id = ? AND status = 'pending'`,
-        [INVITER_REWARD, referral.id]
-      ) as any[]
-
-      if (Number((updateResult as any)?.affectedRows || 0) !== 1) {
-        await conn.rollback()
-        return { skipped: true }
-      }
-
-      const [inviterUserRows] = await conn.query(
-        `SELECT balance FROM users WHERE id = ? FOR UPDATE`,
-        [inviterId]
-      ) as any[]
-      const inviterBalanceBefore = Number(inviterUserRows?.[0]?.balance) || 0
-
-      const [inviteeUserRows] = await conn.query(
-        `SELECT balance FROM users WHERE id = ? FOR UPDATE`,
-        [inviteeId]
-      ) as any[]
-      const inviteeBalanceBefore = Number(inviteeUserRows?.[0]?.balance) || 0
-
-      await this.earningService.createSettledEarningRecord(conn, {
-        userId: inviterId,
-        type: 'referral_bonus',
-        amount: INVITER_REWARD,
-        description: '邀请好友奖励',
-        createdAt: now,
-      })
-      await this.earningService.createSettledEarningRecord(conn, {
-        userId: inviteeId,
-        type: 'referral_bonus',
-        amount: INVITEE_REWARD,
-        description: '受邀创建分身奖励',
-        createdAt: now,
-      })
-
-      await conn.query(
-        `UPDATE users SET balance = balance + ?, total_earnings = total_earnings + ?, updated_at = ? WHERE id = ?`,
-        [INVITER_REWARD, INVITER_REWARD, now, inviterId]
-      )
-      await conn.query(
-        `UPDATE users SET balance = balance + ?, total_earnings = total_earnings + ?, updated_at = ? WHERE id = ?`,
-        [INVITEE_REWARD, INVITEE_REWARD, now, inviteeId]
-      )
-
-      await this.earningService.writeTransaction(conn, {
-        userId: inviterId,
-        type: 'referral_bonus_inviter',
-        amount: INVITER_REWARD,
-        balanceBefore: inviterBalanceBefore,
-        balanceAfter: inviterBalanceBefore + INVITER_REWARD,
-        frozenBefore: 0,
-        frozenAfter: 0,
-        status: 'completed',
-        description: '邀请好友奖励',
-        referenceId: referral.id,
-        idempotencyKey: `referral_bonus_inviter:${referral.id}`,
-      })
-
-      await this.earningService.writeTransaction(conn, {
-        userId: inviteeId,
-        type: 'referral_bonus_invitee',
-        amount: INVITEE_REWARD,
-        balanceBefore: inviteeBalanceBefore,
-        balanceAfter: inviteeBalanceBefore + INVITEE_REWARD,
-        frozenBefore: 0,
-        frozenAfter: 0,
-        status: 'completed',
-        description: '受邀创建分身奖励',
-        referenceId: referral.id,
-        idempotencyKey: `referral_bonus_invitee:${referral.id}`,
-      })
-
-      await conn.commit()
-      return { completed: true, inviterId }
-    } catch (error) {
-      try {
-        await conn.rollback()
-      } catch {}
-      throw error
-    } finally {
-      conn.release()
-    }
+    return { completed: true, inviterId }
   }
 
   /**
@@ -272,7 +184,7 @@ export class ReferralService {
     const db = getMySQLClient()
     
     const offset = (page - 1) * pageSize
-    const referrals = await db.query(`SELECT * FROM referrals WHERE referrer_id = ?`, [userId]) as any
+    const referrals = await db.query('referrals', { referrer_id: userId }) as any
     
     const total = referrals?.length || 0
     const paginatedReferrals = referrals?.slice(offset, offset + pageSize) || []

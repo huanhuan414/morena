@@ -2,11 +2,11 @@ const mysql = require('mysql2/promise');
 
 // 数据库配置
 const config = {
-  host: process.env.MYSQL_HOST || '127.0.0.1',
-  port: parseInt(process.env.MYSQL_PORT || '16033', 10),
-  user: process.env.MYSQL_USER || 'mrl',
-  password: process.env.MYSQL_PASSWORD || 'YOUR_MYSQL_PASSWORD',
-  database: process.env.MYSQL_DATABASE || 'mrl'
+  host: '180.184.205.74',
+  port: 16033,
+  user: 'mrl',
+  password: 'SYDPHJB8aGBn83Eh',
+  database: 'mrl'
 };
 
 async function queryEarnings() {

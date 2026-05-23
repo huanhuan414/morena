@@ -28,30 +28,6 @@ SET @sql = IF(@column_exists = 0, 'ALTER TABLE users ADD COLUMN experience INT D
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- ============================================
--- 1.1 补充 transactions 表缺失字段（用于资金流水审计/幂等）
--- ============================================
-
-SELECT COUNT(*) INTO @column_exists FROM information_schema.columns
-WHERE table_schema = 'mrl' AND table_name = 'transactions' AND column_name = 'frozen_before';
-SET @sql = IF(@column_exists = 0, 'ALTER TABLE transactions ADD COLUMN frozen_before DECIMAL(10,2) DEFAULT 0', 'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SELECT COUNT(*) INTO @column_exists FROM information_schema.columns
-WHERE table_schema = 'mrl' AND table_name = 'transactions' AND column_name = 'frozen_after';
-SET @sql = IF(@column_exists = 0, 'ALTER TABLE transactions ADD COLUMN frozen_after DECIMAL(10,2) DEFAULT 0', 'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SELECT COUNT(*) INTO @column_exists FROM information_schema.columns
-WHERE table_schema = 'mrl' AND table_name = 'transactions' AND column_name = 'idempotency_key';
-SET @sql = IF(@column_exists = 0, 'ALTER TABLE transactions ADD COLUMN idempotency_key VARCHAR(128)', 'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SELECT COUNT(*) INTO @index_exists FROM information_schema.statistics
-WHERE table_schema = 'mrl' AND table_name = 'transactions' AND index_name = 'uk_transactions_idempotency';
-SET @sql = IF(@index_exists = 0, 'CREATE UNIQUE INDEX uk_transactions_idempotency ON transactions(idempotency_key)', 'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- ============================================
 -- 2. 补充 avatars 表缺失字段
 -- ============================================
 

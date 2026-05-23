@@ -5,14 +5,6 @@ import { getMySQLClient } from '../../storage/database/mysql-client'
 import { EarningService } from '../earning/earning.service'
 import { NotificationService } from '../notification/notification.service'
 import { OrderDispatchService } from '../order-dispatch/order-dispatch.service'
-import {
-  deriveOrderStatusFromWorkflowDetailed,
-  isValidOrderStatusTransition,
-  normalizeDispatchStatus,
-  normalizeFulfillmentStatus,
-  normalizeOrderStatus,
-  ORDER_STATUS_TRANSITIONS,
-} from './order-status'
 import { WechatPayService } from '../payment/wechat-pay.service'
 
 /**
@@ -31,32 +23,6 @@ export class OrderService {
     @Inject(forwardRef(() => WechatPayService)) private readonly wechatPayService: WechatPayService,
   ) {}
 
-  private ordersColumns: Set<string> | null = null
-  private ordersColumnsCheckedAt = 0
-  private readCache = new Map<string, { value: any; expiresAt: number }>()
-  private readonly readCacheTtlMs = 2000
-
-  private stableStringify(value: any): string {
-    if (!value || typeof value !== 'object') return String(value)
-    if (Array.isArray(value)) return `[${value.map((v) => this.stableStringify(v)).join(',')}]`
-    const keys = Object.keys(value).sort()
-    return `{${keys.map((k) => `${k}:${this.stableStringify(value[k])}`).join(',')}}`
-  }
-
-  private getCached<T>(key: string): T | null {
-    const hit = this.readCache.get(key)
-    if (!hit) return null
-    if (Date.now() > hit.expiresAt) {
-      this.readCache.delete(key)
-      return null
-    }
-    return hit.value as T
-  }
-
-  private setCached(key: string, value: any) {
-    this.readCache.set(key, { value, expiresAt: Date.now() + this.readCacheTtlMs })
-  }
-
   private safeParseJson<T>(value: any, fallback: T): T {
     if (value === null || value === undefined) return fallback
     if (typeof value === 'object') return value as T
@@ -70,27 +36,35 @@ export class OrderService {
     return fallback
   }
 
-  private async getOrdersColumns() {
-    const now = Date.now()
-    if (this.ordersColumns && now - this.ordersColumnsCheckedAt < 60_000) return this.ordersColumns
-    const db = getMySQLClient()
-    const rows = await db.query(
-      `SELECT COLUMN_NAME as columnName
-       FROM INFORMATION_SCHEMA.COLUMNS
-       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders'`
-    )
-    const columns = new Set<string>((rows || []).map((r: any) => String(r.columnName || r.COLUMN_NAME || '').toLowerCase()).filter(Boolean))
-    this.ordersColumns = columns
-    this.ordersColumnsCheckedAt = now
-    return columns
+  private normalizeDispatchStatus(status?: string): string {
+    if (status === 'confirmed') {
+      return 'accepted'
+    }
+    return status || 'pending'
   }
 
-  private getPrimaryPlatformFromOrderData(orderData: Record<string, any>) {
-    const rawPlatforms = orderData.platforms
-    const platforms = Array.isArray(rawPlatforms) ? rawPlatforms : this.safeParseJson<any[]>(rawPlatforms, [])
-    const first = platforms?.[0]
-    if (typeof first === 'string' && first.trim()) return first.trim().slice(0, 50)
-    return 'general'
+  private isAcceptedDispatchStatus(status?: string): boolean {
+    return [
+      'accepted',
+      'generating',
+      'preview',
+      'publishing',
+      'published',
+      'feedback_submitted',
+      'awaiting_acceptance',
+      'completed'
+    ].includes(this.normalizeDispatchStatus(status))
+  }
+
+  private normalizeContentStatus(status?: string): string {
+    const value = String(status || '').trim().toLowerCase()
+    if (['pending', 'processing', 'generating_text', 'generating_images', 'generating_video'].includes(value)) return 'generating'
+    if (['completed'].includes(value)) return 'preview'
+    if (['revision_requested'].includes(value)) return 'revision_requested'
+    if (['published'].includes(value)) return 'published'
+    if (['feedback_submitted'].includes(value)) return 'awaiting_acceptance'
+    if (['settled', 'done'].includes(value)) return 'completed'
+    return value || 'generating'
   }
 
   // 订单状态流转映射
@@ -107,10 +81,22 @@ export class OrderService {
       )
 
       const allDispatchStatuses = (dispatches || []).map((d: any) => d.status)
-      const allContentStatuses = (contents || []).map((c: any) => normalizeFulfillmentStatus(c.status))
-      if (allDispatchStatuses.length === 0) return
+      const allContentStatuses = (contents || []).map((c: any) => this.normalizeContentStatus(c.status))
+      const totalDispatches = allDispatchStatuses.length
+      const totalContents = allContentStatuses.length
 
+      if (totalDispatches === 0) return
+
+      const hasPending = allDispatchStatuses.includes('pending')
+      const hasAccepted = allDispatchStatuses.includes('accepted') || allDispatchStatuses.includes('feedback_submitted')
+      const acceptedDispatchCount = allDispatchStatuses.filter(s => ['accepted', 'feedback_submitted'].includes(s)).length
       const completedDispatchCount = allDispatchStatuses.filter(s => ['completed', 'settled', 'done'].includes(s)).length
+
+      const hasProcessing = allContentStatuses.some(s => ['generating', 'publishing'].includes(s))
+      const hasRevisionRequested = allContentStatuses.some(s => s === 'revision_requested')
+      const allContentCompleted = totalContents > 0 && allContentStatuses.every(s => s === 'completed')
+      const allContentAwaitingAcceptance = totalContents > 0 && allContentStatuses.every(s => ['awaiting_acceptance', 'completed'].includes(s))
+      const allContentSubmitted = totalContents > 0 && allContentStatuses.every(s => ['completed', 'published', 'awaiting_acceptance'].includes(s))
 
       const currentOrder = await this.getOrderById(orderId)
       if (!currentOrder) return
@@ -124,37 +110,66 @@ export class OrderService {
             ? avatarCount
             : 1
 
-      const derived = deriveOrderStatusFromWorkflowDetailed({
-        dispatchStatuses: allDispatchStatuses,
-        fulfillmentStatuses: allContentStatuses,
-      })
-
-      let newStatus: string | null = derived.status
-      let deriveReason = derived.reason
+      let newStatus: string | null = null
 
       if (completedDispatchCount >= requiredAvatarCount) {
         newStatus = 'completed'
-        deriveReason = 'ALL_SETTLED_AND_DISPATCH_DONE'
+      } else if (hasRevisionRequested) {
+        newStatus = 'revision_requested'
+      } else if (allContentAwaitingAcceptance) {
+        newStatus = 'awaiting_acceptance'
+      } else if (allContentSubmitted) {
+        newStatus = 'awaiting_acceptance'
+        if (allContentStatuses.some(s => ['published', 'completed'].includes(s)) && !allContentStatuses.some(s => s === 'awaiting_acceptance')) {
+          newStatus = 'submitted'
+        }
+      } else if (hasProcessing) {
+        newStatus = 'in_progress'
+      } else if (hasAccepted && !hasPending) {
+        if (acceptedDispatchCount >= requiredAvatarCount) {
+          newStatus = 'in_progress'
+        } else {
+          newStatus = 'pending_acceptance'
+        }
+      } else if (hasAccepted && hasPending) {
+        newStatus = 'pending_acceptance'
       }
 
       if (newStatus && newStatus !== currentStatus) {
-        await this.updateOrderStatus(orderId, newStatus)
-        console.log(`[OrderService] 订单状态同步: ${currentStatus} → ${newStatus}, orderId=${orderId}, reason=${deriveReason}, 已验收${completedDispatchCount}/${requiredAvatarCount}`)
-      }
-
-      const shouldSettle =
-        (newStatus === 'completed' || currentStatus === 'completed') &&
-        completedDispatchCount >= requiredAvatarCount
-      if (shouldSettle) {
-        await this.triggerSettlement(orderId)
+        const payload: Record<string, any> = {
+          status: newStatus,
+          updated_at: new Date()
+        }
+        if (newStatus === 'completed') {
+          payload.completed_at = new Date()
+        }
+        const setClause = Object.keys(payload).map((key) => `${key} = ?`).join(', ')
+        const params = [...Object.values(payload), orderId]
+        await db.query(`UPDATE orders SET ${setClause} WHERE id = ?`, params)
+        console.log(`[OrderService] 订单状态同步: ${currentStatus} → ${newStatus}, orderId=${orderId}, 已验收${completedDispatchCount}/${requiredAvatarCount}`)
       }
     } catch (error: any) {
       console.error(`[OrderService] 同步订单状态失败: orderId=${orderId}, error=${error.message}`)
     }
   }
 
+  private statusTransitions: Record<string, string[]> = {
+    'pending_payment': ['open', 'cancelled'],
+    'open': ['pending_dispatch', 'cancelled'],
+    'pending_dispatch': ['pending_acceptance', 'cancelled'],
+    'pending_acceptance': ['in_progress', 'rejected', 'cancelled'],
+    'in_progress': ['submitted', 'cancelled'],
+    'submitted': ['awaiting_acceptance', 'revision_requested'],
+    'awaiting_acceptance': ['completed', 'revision_requested'],
+    'revision_requested': ['in_progress'],
+    'completed': [],
+    'cancelled': [],
+    'rejected': []
+  }
+
   private isValidTransition(fromStatus: string, toStatus: string): boolean {
-    return isValidOrderStatusTransition(fromStatus, toStatus)
+    const allowedTransitions = this.statusTransitions[fromStatus] || []
+    return allowedTransitions.includes(toStatus)
   }
 
   async createOrder(userId: string, orderData: Record<string, any>) {
@@ -177,8 +192,6 @@ export class OrderService {
     const priorityValue = priorityMap[orderData.priority] || priorityMap['normal']
     
     const budget = orderData.totalPrice || orderData.total_price || orderData.budget || 0
-    const primaryPlatform = this.getPrimaryPlatformFromOrderData(orderData)
-    const ordersColumns = await this.getOrdersColumns()
 
     // 写入DB → snake_case
     const insertData: Record<string, any> = {
@@ -203,9 +216,6 @@ export class OrderService {
       content_deadline_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' '),
       auto_cancel_at: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' '),
       max_retries: 3,
-    }
-    if (ordersColumns.has('primary_platform')) {
-      insertData.primary_platform = primaryPlatform
     }
 
     const fields = Object.keys(insertData).join(', ')
@@ -268,10 +278,6 @@ export class OrderService {
   }
 
   async getOrderById(orderId: string) {
-    const cacheKey = `order:getOrderById:${orderId}`
-    const cached = this.getCached<any>(cacheKey)
-    if (cached) return cached
-
     const db = getMySQLClient()
     
     const orderRows = await db.query(
@@ -289,12 +295,6 @@ export class OrderService {
     }
     // 读取DB返回值 → camelCase
     const order = orderRows[0]
-    const toIsoString = (value: any): string | null => {
-      if (!value) return null
-      if (value instanceof Date) return value.toISOString()
-      const parsed = new Date(value)
-      return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toISOString()
-    }
     
     // SQL别名 avatar_id → 返回值为 avatarId
     const avatarRows = await db.query(
@@ -327,8 +327,8 @@ export class OrderService {
       const avatarId = row.avatarId
       const processing = latestProcessingMap.get(avatarId)
       const normalizedStatus = processing
-        ? normalizeFulfillmentStatus(processing?.status)
-        : normalizeDispatchStatus(row.status)
+        ? this.normalizeContentStatus(processing?.status)
+        : this.normalizeDispatchStatus(row.status)
 
       return {
         id: row.id,
@@ -346,34 +346,30 @@ export class OrderService {
         content: processing?.content || null,
         images: this.safeParseJson<any[]>(processing?.images, []),
         videoUrl: this.safeParseJson<string[]>(processing?.videoUrl, []),
-        contentUpdatedAt: toIsoString(processing?.updatedAt),
+        contentUpdatedAt: processing?.updatedAt ? new Date(processing.updatedAt).toISOString() : null,
         publishFeedback: this.safeParseJson(processing?.publishFeedback, {}),
-        createdAt: toIsoString(row.createdAt) || new Date().toISOString()
+        createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : new Date().toISOString()
       }
     })
 
-    const completedAvatarStatuses = ['settled']
-    const acceptedAvatarStatuses = ['generating', 'preview', 'publishing', 'published', 'awaiting_acceptance', 'settled']
-    const publishedAvatarStatuses = ['published', 'awaiting_acceptance', 'settled']
-    const pendingAvatarStatuses = ['pending']
-    const rejectedAvatarStatuses = ['rejected', 'revision_requested', 'failed', 'partial_failed']
     const summaryStats = {
       totalAvatars: avatarStats.length,
-      acceptedAvatars: avatarStats.filter((row: any) => acceptedAvatarStatuses.includes(row.status)).length,
-      completedAvatars: avatarStats.filter((row: any) => completedAvatarStatuses.includes(row.status)).length,
-      pendingAvatars: avatarStats.filter((row: any) => pendingAvatarStatuses.includes(row.status)).length,
-      rejectedAvatars: avatarStats.filter((row: any) => rejectedAvatarStatuses.includes(row.status)).length,
+      acceptedAvatars: avatarStats.filter((row: any) => ['generating', 'preview', 'publishing', 'published', 'awaiting_acceptance', 'completed'].includes(row.status)).length,
+      completedAvatars: avatarStats.filter((row: any) => row.status === 'completed').length,
       totalPosts: 0,
       totalPlatforms: 0,
-      totalPublished: avatarStats.filter((row: any) => publishedAvatarStatuses.includes(row.status)).length,
+      totalPublished: avatarStats.filter((row: any) => ['published', 'awaiting_acceptance', 'completed'].includes(row.status)).length,
       totalManual: 0,
       totalViews: 0,
       totalLikes: 0,
       totalComments: 0,
       totalShares: 0,
-      effectiveStatus: order.status,
       avatarStats
     }
+    
+    const createdAt = order.createdAt instanceof Date 
+      ? order.createdAt.toISOString() 
+      : String(order.createdAt)
 
     const budget = Number(order.budget) || 0
     const expectedQuantity = Number(order.expectedQuantity)
@@ -388,70 +384,30 @@ export class OrderService {
       budget > 0 && requiredCount > 0
         ? Math.round((budget / requiredCount) * 100) / 100
         : budget
-
-    const platforms = this.safeParseJson<any[]>(order.platforms, [])
-    const requirements = this.safeParseJson<Record<string, any>>(order.requirements, {})
-    const createdAt = toIsoString(order.createdAt)
-    const updatedAt = toIsoString(order.updatedAt)
-    const completedAt = toIsoString(order.completedAt)
-    const deadlineAt = toIsoString(order.deadline)
-    const isPaid = Number(order.isPaid) === 1
-
+    
     return {
+      ...order,
       id: order.id,
-      userId: order.userId || null,
-      avatarId: order.avatarId || null,
       title: order.title,
       description: order.description,
       contentType: order.contentType,
-      platforms,
-      requirements,
+      platforms: typeof order.platforms === 'string' 
+        ? JSON.parse(order.platforms) 
+        : (order.platforms || []),
+      requirements: typeof order.requirements === 'string' 
+        ? JSON.parse(order.requirements) 
+        : (order.requirements || {}),
       budget,
-      totalPrice: budget,
-      status: order.status,
-      isPaid,
-      expectedQuantity: requiredCount,
-      avatarCount: requiredCount,
-      quantityPerAvatar: Number(order.quantityPerAvatar) || 1,
       expectedEarnings,
-      targetAudience: order.targetAudience || '',
-      latitude: order.latitude ?? null,
-      longitude: order.longitude ?? null,
-      locationText: order.locationText || '',
-      orderType: order.orderType || null,
-      priority: order.priority ?? null,
-      assignedTo: order.assignedTo || null,
-      deadlineAt,
-      createdAt,
-      updatedAt,
-      completedAt,
+      status: order.status,
+      avatarCount: requiredCount,
       avatarStats,
-      summaryStats,
-      user_id: order.userId || null,
-      avatar_id: order.avatarId || null,
-      total_price: budget,
-      is_paid: isPaid ? 1 : 0,
-      expected_quantity: requiredCount,
-      quantity_per_avatar: Number(order.quantityPerAvatar) || 1,
-      target_audience: order.targetAudience || '',
-      location_text: order.locationText || '',
-      order_type: order.orderType || null,
-      assigned_to: order.assignedTo || null,
-      deadline: deadlineAt,
-      created_at: createdAt,
-      updated_at: updatedAt,
-      completed_at: completedAt,
       summary_stats: summaryStats,
+      createdAt
     }
-    this.setCached(cacheKey, result)
-    return result
   }
 
   async getOrders(userId: string, filters: Record<string, any> = {}) {
-    const cacheKey = `order:getOrders:${userId}:${this.stableStringify(filters)}`
-    const cached = this.getCached<any>(cacheKey)
-    if (cached) return cached
-
     const db = getMySQLClient()
     
     let whereClause = 'WHERE user_id = ?'
@@ -517,8 +473,8 @@ export class OrderService {
         if (!dispatchSummaries[row.orderId]) dispatchSummaries[row.orderId] = []
         const contentRecord = contentMap[`${row.orderId}_${row.avatarId}`]
         const normalizedStatus = contentRecord
-          ? normalizeFulfillmentStatus(contentRecord.status)
-          : normalizeDispatchStatus(row.status)
+          ? this.normalizeContentStatus(contentRecord.status)
+          : this.normalizeDispatchStatus(row.status)
 
         dispatchSummaries[row.orderId].push({
           avatarId: row.avatarId,
@@ -694,14 +650,6 @@ export class OrderService {
 
   async getOpenOrders(page: number = 1, pageSize: number = 20, platform?: string, userId?: string) {
     const db = getMySQLClient()
-    const ordersColumns = await this.getOrdersColumns()
-    const platformFromPlatforms = `COALESCE(NULLIF(CASE WHEN o.platforms IS NOT NULL AND JSON_VALID(o.platforms) THEN JSON_UNQUOTE(JSON_EXTRACT(o.platforms, '$[0]')) ELSE NULL END, ''), 'general')`
-    const platformField = ordersColumns.has('primary_platform')
-      ? `COALESCE(NULLIF(o.primary_platform, ''), ${platformFromPlatforms})`
-      : platformFromPlatforms
-    const deadlineField = ordersColumns.has('deadline_at')
-      ? 'o.deadline_at'
-      : (ordersColumns.has('deadline') ? 'o.deadline' : 'NULL')
     const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1
     const safePageSize = Number.isFinite(pageSize) && pageSize > 0 ? Math.min(Math.floor(pageSize), 100) : 20
     const offset = (safePage - 1) * safePageSize
@@ -709,11 +657,9 @@ export class OrderService {
     const platformParams: any[] = []
     let platformClause = ''
     if (platform && platform !== 'all') {
-      platformClause = ` AND ${platformField} = ?`
-      platformParams.push(platform)
+      platformClause = ` AND (o.platforms LIKE ? OR o.platform = ?)`
+      platformParams.push(`%"${platform}"%`, platform)
     }
-
-    const requiredCountExpr = `GREATEST(COALESCE(NULLIF(o.avatar_count, 0), NULLIF(o.expected_quantity, 0), 1), 1)`
 
     const whereClause = `
       WHERE (
@@ -722,21 +668,18 @@ export class OrderService {
                          'awaiting_acceptance', 'submitted', 'auto_cancelled',
                          'pending_acceptance', 'created', 'assigned', 'pending_payment')
       )${platformClause}
-      AND COALESCE(odc.accept_count, 0) < ${requiredCountExpr}
     `
 
     const rows = await db.query(
-      `SELECT o.id, o.user_id, o.avatar_id, o.title, o.description, o.content_type, o.platforms,
-              ${platformField} as primary_platform,
-              o.requirements, o.target_audience, o.priority, ${deadlineField} as deadline, o.content_deadline_at,
+      `SELECT o.id, o.user_id, o.avatar_id, o.title, o.description, o.content_type, o.platforms, o.platform,
+              o.requirements, o.target_audience, o.priority, o.deadline, o.content_deadline_at,
               o.budget, o.price, o.status, o.expected_quantity, o.avatar_count, o.quantity_per_avatar, o.is_paid,
               o.created_at, o.updated_at,
               COALESCE(a_order.name, a_latest.name, u.nickname) as publisher_nickname,
               COALESCE(a_order.avatar_url, a_latest.avatar_url, u.avatar) as publisher_avatar,
               COALESCE(odc.accept_count, 0) as accept_count,
-              ${requiredCountExpr} as required_count,
-              COALESCE(odm.is_accepted_by_me, 0) as is_accepted_by_me,
-              odp.pending_avatar_ids as pending_avatar_ids
+              GREATEST(COALESCE(NULLIF(o.avatar_count, 0), NULLIF(o.expected_quantity, 0), 1), 1) as required_count,
+              COALESCE(odm.is_accepted_by_me, 0) as is_accepted_by_me
        FROM orders o
        LEFT JOIN users u ON u.id = o.user_id
        LEFT JOIN avatars a_order ON a_order.id = o.avatar_id
@@ -752,13 +695,6 @@ export class OrderService {
                   AND latest.max_created_at = a1.created_at
          WHERE a1.status = 'active'
        ) a_latest ON a_latest.user_id = o.user_id
-       INNER JOIN (
-         SELECT r.order_id, GROUP_CONCAT(DISTINCT r.avatar_id) as pending_avatar_ids
-         FROM order_dispatch_requests r
-         INNER JOIN avatars a ON a.id = r.avatar_id
-         WHERE r.status = 'pending' AND a.user_id = ?
-         GROUP BY r.order_id
-       ) odp ON odp.order_id = o.id
        LEFT JOIN (
          SELECT order_id, COUNT(DISTINCT CASE WHEN status IN ('accepted', 'in_progress', 'completed') THEN avatar_id END) as accept_count
          FROM order_dispatch_requests
@@ -774,33 +710,21 @@ export class OrderService {
        ${whereClause}
        ORDER BY o.priority DESC, o.created_at DESC
        LIMIT ? OFFSET ?`,
-      [userId || null, userId || null, ...platformParams, safePageSize, offset]
+      [userId || null, ...platformParams, safePageSize, offset]
     )
 
     const totalRows = await db.query(
       `SELECT COUNT(*) as total
        FROM orders o
-       INNER JOIN (
-         SELECT r.order_id
-         FROM order_dispatch_requests r
-         INNER JOIN avatars a ON a.id = r.avatar_id
-         WHERE r.status = 'pending' AND a.user_id = ?
-         GROUP BY r.order_id
-       ) odp ON odp.order_id = o.id
-       LEFT JOIN (
-         SELECT order_id, COUNT(DISTINCT CASE WHEN status IN ('accepted', 'in_progress', 'completed') THEN avatar_id END) as accept_count
-         FROM order_dispatch_requests
-         GROUP BY order_id
-       ) odc ON odc.order_id = o.id
        ${whereClause}`,
-      [userId || null, ...platformParams]
+      [...platformParams]
     )
     const total = Number(totalRows?.[0]?.total || 0)
 
     // 读取DB返回值 → camelCase
     const items = (rows || []).map((row: any) => {
       const platforms = this.safeParseJson<any[]>(row.platforms, [])
-      const primaryPlatform = row.primaryPlatform || row.primary_platform || platforms?.[0] || 'general'
+      const primaryPlatform = platforms?.[0] || row.platform || 'general'
       return ({
       id: row.id,
       userId: row.userId || row.user_id,
@@ -808,7 +732,7 @@ export class OrderService {
       title: row.title,
       description: row.description || '',
       contentType: row.contentType || row.content_type,
-      platform: primaryPlatform,
+      platform: row.platform || 'general',
       platforms,
       primaryPlatform,
       requirements: this.safeParseJson<Record<string, any>>(row.requirements, {}),
@@ -832,22 +756,16 @@ export class OrderService {
       publisherNickname: row.publisherNickname || row.publisher_nickname || '发布方',
       publisherAvatar: row.publisherAvatar || row.publisher_avatar || '',
       acceptCount: Number(row.acceptCount || row.accept_count || 0),
-      isAcceptedByMe: Boolean(row.isAcceptedByMe ?? row.is_accepted_by_me ?? 0),
-      pendingAvatarIds: String(row.pendingAvatarIds || row.pending_avatar_ids || '')
-        .split(',')
-        .map((x) => String(x || '').trim())
-        .filter(Boolean)
+      isAcceptedByMe: Boolean(row.isAcceptedByMe ?? row.is_accepted_by_me ?? 0)
       })
     })
 
-    const result = {
+    return {
       page: safePage,
       pageSize: safePageSize,
       total,
-      items,
+      items
     }
-    this.setCached(cacheKey, result)
-    return result
   }
 
   async getOrderFeedback(orderId: string) {
@@ -902,23 +820,13 @@ export class OrderService {
     }
 
     const currentStatus = currentOrder.status
-    const nextStatus = normalizeOrderStatus(status)
-    if (!nextStatus) {
-      throw new Error('缺少目标状态')
-    }
-
-    if (currentStatus === nextStatus) {
-      return currentOrder
-    }
-
-    if (!this.isValidTransition(currentStatus, nextStatus)) {
-      const allowedTransitions = ORDER_STATUS_TRANSITIONS[normalizeOrderStatus(currentStatus) || 'pending_payment'] || []
-      throw new Error(`无法从状态 "${currentStatus}" 转换到 "${nextStatus}"，允许流转: ${allowedTransitions.join(', ') || '无'}`)
+    if (!this.isValidTransition(currentStatus, status)) {
+      throw new Error(`无法从状态 "${currentStatus}" 转换到 "${status}"`)
     }
 
     // 写入DB → snake_case
     const payload: Record<string, any> = {
-      status: nextStatus,
+      status,
       updated_at: new Date()
     }
 
@@ -926,7 +834,7 @@ export class OrderService {
       payload.avatar_id = avatarId
     }
 
-    if (nextStatus === 'completed') {
+    if (status === 'completed') {
       payload.completed_at = new Date()
     }
 
@@ -934,72 +842,42 @@ export class OrderService {
     const params = [...Object.values(payload), orderId]
     await db.query(`UPDATE orders SET ${setClause} WHERE id = ?`, params)
 
-    await this.notifyStatusChange(orderId, nextStatus)
+    await this.notifyStatusChange(orderId, status)
 
     return this.getOrderById(orderId)
-  }
-
-  async assertOrderOwner(orderId: string, userId: string) {
-    const order = await this.getOrderById(orderId)
-    if (!order) {
-      throw new Error('订单不存在')
-    }
-    if (order.userId !== userId) {
-      throw new Error('无权访问此订单')
-    }
-    return order
-  }
-
-  async assertAvatarOwner(avatarId: string, userId: string) {
-    const db = getMySQLClient()
-    const avatar = await db.queryOne('avatars', { id: avatarId, user_id: userId })
-    if (!avatar) {
-      throw new Error('无权使用该分身')
-    }
-    return avatar
   }
 
   async acceptOrder(orderId: string, avatarId?: string) {
-    if (!avatarId) {
-      throw new Error('缺少分身ID')
+    const db = getMySQLClient()
+    const orderRows = await db.query(
+      `SELECT id, status, is_paid FROM orders WHERE id = ? LIMIT 1`,
+      [orderId]
+    )
+    const order = orderRows?.[0]
+    if (!order) {
+      throw new Error('订单不存在')
     }
 
-    // 接单边界统一收敛到派单服务，避免订单聚合层直接推动 orders.status。
-    await this.dispatchService.acceptOrder(avatarId, orderId)
-    return this.getOrderById(orderId)
+    // 读取DB返回值 → camelCase
+    const isPaid = Number(order.isPaid ?? 0)
+    if (order.status === 'pending_payment' && isPaid !== 1) {
+      throw new Error('订单未支付，暂不可接单')
+    }
+
+    return this.updateOrderStatus(orderId, 'in_progress', avatarId)
   }
 
   async submitOrderResult(orderId: string, result: Record<string, any>) {
     const db = getMySQLClient()
-    const currentOrder = await this.getOrderById(orderId)
-    if (!currentOrder) {
-      throw new Error('订单不存在')
-    }
-
-    const nextStatus = normalizeOrderStatus('submitted')
-    if (!nextStatus) {
-      throw new Error('缺少目标状态')
-    }
-
-    const shouldChangeStatus = currentOrder.status !== nextStatus
-    if (shouldChangeStatus && !this.isValidTransition(currentOrder.status, nextStatus)) {
-      const allowedTransitions = ORDER_STATUS_TRANSITIONS[normalizeOrderStatus(currentOrder.status) || 'pending_payment'] || []
-      throw new Error(`无法从状态 "${currentOrder.status}" 转换到 "${nextStatus}"，允许流转: ${allowedTransitions.join(', ') || '无'}`)
-    }
-
-    // 结果提交允许更新 payload，但 orders.status 仍需走统一状态边界校验。
-    const payload: Record<string, any> = {
+    // 写入DB → snake_case
+    const payload = {
       result: JSON.stringify(result || {}),
+      status: 'submitted',
       updated_at: new Date()
     }
     const setClause = Object.keys(payload).map((key) => `${key} = ?`).join(', ')
     const params = [...Object.values(payload), orderId]
     await db.query(`UPDATE orders SET ${setClause} WHERE id = ?`, params)
-
-    if (shouldChangeStatus) {
-      return this.updateOrderStatus(orderId, nextStatus)
-    }
-
     return this.getOrderById(orderId)
   }
 
@@ -1015,7 +893,7 @@ export class OrderService {
       throw new Error('无权操作此订单')
     }
     // 只有这些状态可以取消
-    const cancellableStatuses = ['pending_payment', 'open', 'pending_dispatch', 'awaiting_acceptance', 'pending_acceptance']
+    const cancellableStatuses = ['pending_payment', 'pending', 'awaiting_acceptance', 'pending_acceptance']
     if (!cancellableStatuses.includes(order.status)) {
       throw new Error(`订单状态为"${order.status}"，无法取消`)
     }
@@ -1025,18 +903,17 @@ export class OrderService {
       // TODO: 调用微信退款API
     }
     const db = getMySQLClient()
-    const nextStatus = normalizeOrderStatus('cancelled')
-    if (!nextStatus) {
-      throw new Error('缺少目标状态')
-    }
-    await this.updateOrderStatus(orderId, nextStatus)
+    await db.updateWhere('orders', { id: orderId }, {
+      status: order.isPaid === 1 ? 'cancelled' : 'auto_cancelled',
+      updated_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+    })
     // 取消关联的派单请求
-    await db.updateWhere('order_dispatch_requests', { order_id: orderId, status: 'pending' }, {
-      status: 'cancelled',
+    await db.updateWhere('dispatch_requests', { order_id: orderId, status: 'pending' }, {
+      status: 'expired',
       updated_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
     })
     console.log(`[cancelOrder] 订单${orderId}已取消，原状态: ${order.status}`)
-    return { success: true, orderId, newStatus: nextStatus }
+    return { success: true, orderId, newStatus: order.isPaid === 1 ? 'cancelled' : 'auto_cancelled' }
   }
 
   /**
@@ -1076,11 +953,12 @@ export class OrderService {
       throw new Error('订单已支付')
     }
 
-    // 写入DB → snake_case，支付成功后写 canonical 订单状态
-    // 支付成功后 → open（已支付，等待后续匹配/派单）
+    // 写入DB → snake_case，status必须使用orders表ENUM允许的值
+    // ENUM: pending, pending_acceptance, pending_payment, accepted, in_progress, ...
+    // 支付成功后 → pending（待接单/待处理）
     await db.query(
       'UPDATE orders SET is_paid = 1, status = ?, updated_at = ? WHERE id = ?',
-      ['open', new Date(), orderId]
+      ['pending', new Date(), orderId]
     )
 
     // 读取DB返回值 → camelCase (order.userId)
@@ -1202,35 +1080,30 @@ export class OrderService {
     const order = await this.getOrderById(orderId)
     if (!order) return
 
-    const canonicalStatus = normalizeOrderStatus(status)
-    if (!canonicalStatus) {
-      console.warn(`[notifyStatusChange] 跳过非 canonical 订单状态通知: ${status}`)
-      return
-    }
-
     const statusMessages: Record<string, string> = {
-      'pending_payment': '订单待支付',
-      'open': '订单已支付，等待派单',
-      'pending_dispatch': '订单正在派单',
-      'pending_acceptance': '订单已派单，等待接单',
-      'awaiting_acceptance': '订单结果已提交，等待验收',
+      'pending': '订单已支付，等待派单',
+      'awaiting_acceptance': '订单已分配，等待分身确认',
+      'accepted': '分身已接单',
       'in_progress': '订单开始处理',
+      'content_generated': '内容已生成',
       'submitted': '订单结果已提交',
-      'revision_requested': '订单需要修改',
+      'published': '内容已发布',
       'completed': '订单已完成',
       'cancelled': '订单已取消',
-      'rejected': '订单已拒绝',
+      'auto_cancelled': '订单已自动取消',
+      'timeout': '订单已超时',
+      'publish_failed': '发布失败',
     }
 
-    const message = statusMessages[canonicalStatus] || `订单状态变更为: ${canonicalStatus}`
+    const message = statusMessages[status] || `订单状态变更为: ${status}`
 
     // notificationService.createNotification 接收 snake_case 字段（它内部自己处理）
     await this.notificationService.createNotification({
       user_id: order.userId,
-      type: `order_${canonicalStatus}`,
+      type: `order_${status}`,
       title: '订单状态变更',
       content: message,
-      metadata: { orderId, status: canonicalStatus }
+      metadata: { orderId, status }
     })
   }
 
@@ -1304,61 +1177,6 @@ export class OrderService {
     await this.earningService.settleOrderEarnings(orderId)
 
     console.log(`[OrderService] 订单 ${orderId} 结算完成，共 ${participants.length}/${requiredCount} 个参与者`)
-  }
-
-  async settleDispatchOnAcceptance(orderId: string, avatarId: string, userId: string) {
-    const order = await this.getOrderById(orderId)
-    if (!order) return
-    if (Number((order as any).isPaid ?? (order as any).is_paid ?? 0) !== 1) return
-
-    const requiredCount = (() => {
-      const raw =
-        (order as any).requiredCount ??
-        (order as any).required_count ??
-        (order as any).avatarCount ??
-        (order as any).avatar_count ??
-        (order as any).expectedQuantity ??
-        (order as any).expected_quantity ??
-        1
-      const n = Number(raw)
-      return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1
-    })()
-
-    const totalAmount = Number(order.budget || 0)
-    const totalCents = Math.max(0, Math.round(totalAmount * 100))
-    if (totalCents <= 0) return
-
-    const db = getMySQLClient()
-    const dispatchRequests = await db.query(
-      `SELECT avatar_id, updated_at
-       FROM order_dispatch_requests
-       WHERE order_id = ? AND status = 'completed'
-         AND avatar_id IS NOT NULL AND avatar_id <> '' AND avatar_id <> 'undefined'
-       ORDER BY updated_at ASC`,
-      [orderId]
-    )
-
-    const uniq: string[] = []
-    for (const request of dispatchRequests || []) {
-      const id = request.avatarId || request.avatar_id
-      if (!id) continue
-      if (uniq.includes(id)) continue
-      uniq.push(id)
-      if (uniq.length >= requiredCount) break
-    }
-
-    const idx = uniq.indexOf(avatarId)
-    if (idx < 0 || idx >= requiredCount) return
-
-    const base = Math.floor(totalCents / requiredCount)
-    const remainder = totalCents - base * requiredCount
-    const cents = base + (idx < remainder ? 1 : 0)
-    if (cents <= 0) return
-
-    await this.earningService.createOrderEarnings(orderId, [
-      { user_id: userId, avatar_id: avatarId, amount: cents / 100 },
-    ])
-    await this.earningService.settleOrderEarnings(orderId)
   }
 
   async submitRating(orderId: string, rating: number, comment?: string) {

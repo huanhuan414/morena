@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Query, Body, Param, Req, HttpCode, HttpStatus, Inject, UseInterceptors, UploadedFile, BadRequestException, UnauthorizedException, NotFoundException, InternalServerErrorException, HttpException } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Query, Body, Param, Req, HttpCode, HttpStatus, Inject, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { AiSkillService, SkillType } from './ai-skill.service';
@@ -24,10 +24,10 @@ export class AiSkillController {
   ) {
     const userId = req.headers['x-user-id'];
     if (!userId) {
-      throw new UnauthorizedException({ msg: '请先登录', data: null })
+      return { code: 401, msg: '请先登录', data: null };
     }
     if (!body.skillType) {
-      throw new BadRequestException({ msg: '请选择技能类型', data: null })
+      return { code: 400, msg: '请选择技能类型', data: null };
     }
 
     // 合并图片URL：inputImageUrls 优先，否则用 inputImageUrl
@@ -42,13 +42,7 @@ export class AiSkillController {
       // 检查每日使用次数限制
       const limitCheck = await this.aiSkillService.checkDailyLimit(userId, body.skillType as SkillType);
       if (limitCheck.remaining <= 0) {
-        throw new HttpException(
-          {
-            msg: `今日使用次数已达上限（${limitCheck.limit}次/天）`,
-            data: { remaining: 0, limit: limitCheck.limit, used: limitCheck.used },
-          },
-          429,
-        )
+        return { code: 429, msg: `今日使用次数已达上限（${limitCheck.limit}次/天）`, data: { remaining: 0, limit: limitCheck.limit, used: limitCheck.used } };
       }
 
       const result = await this.aiSkillService.startGenerate(
@@ -60,9 +54,8 @@ export class AiSkillController {
       // 立即返回 recordId，前端轮询状态
       return { code: 200, msg: '已提交生成任务', data: result };
     } catch (error: any) {
-      if (error instanceof HttpException) throw error
       console.error('[AiSkillController] generate error:', error.message);
-      throw new InternalServerErrorException({ msg: error.message || '提交失败', data: null })
+      return { code: 500, msg: error.message || '提交失败', data: null };
     }
   }
 
@@ -79,7 +72,7 @@ export class AiSkillController {
   ) {
     const userId = req.headers['x-user-id'];
     if (!userId) {
-      throw new UnauthorizedException({ msg: '请先登录', data: null })
+      return { code: 401, msg: '请先登录', data: null };
     }
 
     const result = await this.aiSkillService.getHistory(
@@ -100,7 +93,7 @@ export class AiSkillController {
   async getUsageLimit(@Query('skillType') skillType: string, @Req() req: any) {
     const userId = req.headers['x-user-id'];
     if (!userId) {
-      throw new UnauthorizedException({ msg: '请先登录', data: null })
+      return { code: 401, msg: '请先登录', data: null };
     }
     if (skillType) {
       const result = await this.aiSkillService.checkDailyLimit(userId, skillType as SkillType);
@@ -116,15 +109,15 @@ export class AiSkillController {
    * 获取单条记录（轮询状态用）
    */
   @Get('record/:id')
-  async getRecord(@Param('id') id: string, @Req() req: any, @Query('view') view?: string) {
+  async getRecord(@Param('id') id: string, @Req() req: any) {
     const userId = req.headers['x-user-id'];
     if (!userId) {
-      throw new UnauthorizedException({ msg: '请先登录', data: null })
+      return { code: 401, msg: '请先登录', data: null };
     }
 
-    const record = await this.aiSkillService.getRecord(userId, id, view);
+    const record = await this.aiSkillService.getRecord(userId, id);
     if (!record) {
-      throw new NotFoundException({ msg: '记录不存在', data: null })
+      return { code: 404, msg: '记录不存在', data: null };
     }
     return { code: 200, msg: 'ok', data: record };
   }
@@ -135,7 +128,7 @@ export class AiSkillController {
   @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }))
   async uploadImage(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
-      throw new BadRequestException({ msg: '请选择图片', data: null })
+      return { code: 400, msg: '请选择图片', data: null };
     }
     console.log('[AiSkill] 上传图片:', file.originalname, file.mimetype, file.size, 'bytes');
     const imageUrl = await this.storageService.uploadImage(file);
@@ -152,14 +145,14 @@ export class AiSkillController {
   async deleteRecord(@Param('id') id: string, @Req() req: any) {
     const userId = req.headers['x-user-id'];
     if (!userId) {
-      throw new UnauthorizedException({ msg: '请先登录', data: null })
+      return { code: 401, msg: '请先登录', data: null };
     }
 
     try {
       const result = await this.aiSkillService.deleteRecords(userId, [id]);
       return { code: 200, msg: '删除成功', data: result };
     } catch (error: any) {
-      throw new BadRequestException({ msg: error.message || '删除失败', data: null })
+      return { code: 400, msg: error.message || '删除失败', data: null };
     }
   }
 
@@ -172,18 +165,18 @@ export class AiSkillController {
   async deleteRecords(@Body() body: { ids: string[] }, @Req() req: any) {
     const userId = req.headers['x-user-id'];
     if (!userId) {
-      throw new UnauthorizedException({ msg: '请先登录', data: null })
+      return { code: 401, msg: '请先登录', data: null };
     }
 
     if (!body.ids || !Array.isArray(body.ids) || body.ids.length === 0) {
-      throw new BadRequestException({ msg: '请选择要删除的记录', data: null })
+      return { code: 400, msg: '请选择要删除的记录', data: null };
     }
 
     try {
       const result = await this.aiSkillService.deleteRecords(userId, body.ids);
       return { code: 200, msg: '删除成功', data: result };
     } catch (error: any) {
-      throw new BadRequestException({ msg: error.message || '删除失败', data: null })
+      return { code: 400, msg: error.message || '删除失败', data: null };
     }
   }
 }

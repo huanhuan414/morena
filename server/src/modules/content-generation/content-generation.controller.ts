@@ -1,27 +1,8 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Delete,
-  Body,
-  Param,
-  Query,
-  HttpCode,
-  HttpStatus,
-  Inject,
-  forwardRef,
-  Headers,
-  ForbiddenException,
-  BadRequestException,
-  NotFoundException,
-  InternalServerErrorException,
-  HttpException,
-} from '@nestjs/common'
+import { Controller, Get, Post, Delete, Body, Param, Query, HttpCode, HttpStatus, Inject, forwardRef } from '@nestjs/common'
 import { ContentGenerationService } from './content-generation.service'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { OrderService } from '../order/order.service'
 import { OrderDispatchService } from '../order-dispatch/order-dispatch.service'
-import { assertResourceOwner, requireAuthenticatedUserId, rethrowAuthError } from '../../common/auth-user.util'
 
 @Controller('content-generation')
 export class ContentGenerationController {
@@ -61,59 +42,6 @@ export class ContentGenerationController {
     return picked
   }
 
-  private getAuthenticatedUserId(headers: Record<string, string | string[] | undefined>) {
-    return requireAuthenticatedUserId(headers)
-  }
-
-  private async assertOrderOwner(orderId: string, userId: string, message: string = '无权操作该订单内容') {
-    const order = await this.orderService.getOrderById(orderId)
-    if (!order) {
-      throw new Error('订单不存在')
-    }
-    assertResourceOwner(userId, order.userId || order.user_id, message)
-    return order
-  }
-
-  private async getContentOwnershipRecord(contentId: string) {
-    const db = getMySQLClient()
-    const rows = await db.query(
-      `SELECT c.id, c.order_id, c.avatar_id,
-              o.user_id AS order_owner_user_id,
-              a.user_id AS avatar_owner_user_id
-       FROM content_generation_requests c
-       LEFT JOIN orders o ON c.order_id = o.id
-       LEFT JOIN avatars a ON c.avatar_id = a.id
-       WHERE c.id = ?
-       LIMIT 1`,
-      [contentId]
-    )
-    return rows?.[0] || null
-  }
-
-  private async assertContentAccess(
-    contentId: string,
-    userId: string,
-    options?: { allowOrderOwner?: boolean; allowAvatarOwner?: boolean; message?: string }
-  ) {
-    const ownership = await this.getContentOwnershipRecord(contentId)
-    if (!ownership) {
-      throw new Error('内容不存在')
-    }
-
-    const allowOrderOwner = options?.allowOrderOwner !== false
-    const allowAvatarOwner = options?.allowAvatarOwner === true
-    const allowedOwners = [
-      allowOrderOwner ? ownership.orderOwnerUserId || ownership.order_owner_user_id : null,
-      allowAvatarOwner ? ownership.avatarOwnerUserId || ownership.avatar_owner_user_id : null,
-    ].filter(Boolean)
-
-    if (!allowedOwners.includes(userId)) {
-      throw new ForbiddenException(options?.message || '无权操作该内容资源')
-    }
-
-    return ownership
-  }
-
   @Post('generate')
   @HttpCode(HttpStatus.OK)
   async generateContent(@Body() body: {
@@ -126,10 +54,8 @@ export class ContentGenerationController {
     contentType: string
     targetAudience?: string
     contentQuantity?: number
-  }, @Headers() headers: Record<string, string | string[] | undefined>) {
+  }) {
     try {
-      const userId = this.getAuthenticatedUserId(headers)
-      await this.assertOrderOwner(body.orderId, userId)
       const payload = {
         ...body,
         targetAudience: body.targetAudience || '通用用户'
@@ -141,32 +67,29 @@ export class ContentGenerationController {
         data: result
       }
     } catch (error: any) {
-      rethrowAuthError(error)
-      if (error instanceof HttpException) throw error
-      throw new InternalServerErrorException({ msg: '内容生成失败', data: null })
+      return {
+        code: 500,
+        message: '内容生成失败',
+        error: error.message
+      }
     }
   }
 
   @Post('retry/:requestId')
   @HttpCode(HttpStatus.OK)
-  async retryGeneration(
-    @Param('requestId') requestId: string,
-    @Headers() headers: Record<string, string | string[] | undefined>
-  ) {
+  async retryGeneration(@Param('requestId') requestId: string) {
     try {
-      const userId = this.getAuthenticatedUserId(headers)
-      const db = getMySQLClient()
-      const records = await db.query(
+      const db = await getMySQLClient()
+      const records: any = await db.query(
         'SELECT * FROM content_generation_requests WHERE id = ?',
         [requestId]
       )
       if (!records || records.length === 0) {
-        throw new NotFoundException({ msg: '记录不存在', data: null })
+        return { code: 404, message: '记录不存在' }
       }
       const record = records[0]
       const orderId = record.orderId || record.order_id
       const avatarId = record.avatarId || record.avatar_id
-      await this.assertOrderOwner(orderId, userId)
 
       await db.query(
         'UPDATE content_generation_requests SET status = ?, updated_at = NOW() WHERE id = ?',
@@ -189,16 +112,11 @@ export class ContentGenerationController {
 
       return { code: 200, message: '已开始重新生成', data: { requestId, status: 'processing' } }
     } catch (error: any) {
-      rethrowAuthError(error)
       console.error('[ContentGeneration] retry error:', error)
-      if (error instanceof HttpException) throw error
-      throw new InternalServerErrorException({ msg: '重试失败', data: null })
+      return { code: 500, message: '重试失败', error: error.message }
     }
   }
 
-  /**
-   * 匿名边界：该接口保留匿名只读访问，仅返回单条生成内容的展示结果，不返回用户身份、支付或订单隐私字段。
-   */
   @Get('request/:requestId/avatar/:avatarId')
   async getGeneratedContent(
     @Param('requestId') requestId: string,
@@ -212,7 +130,7 @@ export class ContentGenerationController {
       )
 
       if (!rows || rows.length === 0) {
-        throw new NotFoundException({ msg: '内容不存在', data: null })
+        return { code: 404, message: '内容不存在', data: null }
       }
 
       const record = rows[0]
@@ -234,15 +152,13 @@ export class ContentGenerationController {
         }
       }
     } catch (error: any) {
-      if (error instanceof HttpException) throw error
-      throw new InternalServerErrorException({ msg: '获取失败', data: null })
+      return { code: 500, message: '获取失败', error: error.message }
     }
   }
 
   /**
    * 获取内容的图片URL列表（轻量接口，不查询content等大字段）
    * 过滤掉 base64 数据，只返回 URL 格式的图片
-   * 匿名边界：该接口保留匿名只读访问，仅暴露已生成图片 URL，不返回内容正文、用户身份或订单隐私字段。
    */
   @Get('content-images/:contentId')
   async getContentImages(@Param('contentId') contentId: string) {
@@ -254,7 +170,7 @@ export class ContentGenerationController {
       ) as any[]
       const rows = Array.isArray(results) ? results : []
       if (!rows || rows.length === 0) {
-        throw new NotFoundException({ msg: '内容不存在', data: { images: [] } })
+        return { code: 404, message: '内容不存在', data: { images: [] } }
       }
       let images: string[] = []
       const raw = rows[0]?.images
@@ -283,84 +199,22 @@ export class ContentGenerationController {
       // 当前请求只返回已有的 URL 图片
       return { code: 200, message: '获取成功', data: { images: urlImages } }
     } catch (error: any) {
-      if (error instanceof HttpException) throw error
-      throw new InternalServerErrorException({ msg: '获取失败', data: { images: [] } })
+      return { code: 500, message: '获取失败', data: { images: [] } }
     }
   }
 
-  @Post('content-images/batch')
-  async getContentImagesBatch(
-    @Body() body: { ids?: string[] }
-  ) {
-    const ids = Array.isArray(body?.ids) ? body.ids.map((x) => String(x || '').trim()).filter(Boolean) : []
-    if (ids.length === 0) {
-      throw new BadRequestException({ msg: 'ids不能为空', data: { items: [] } })
-    }
-    if (ids.length > 50) {
-      throw new BadRequestException({ msg: 'ids数量过多', data: { items: [] } })
-    }
-
-    try {
-      const db = getMySQLClient()
-      const results = await db.query(
-        'SELECT id, images FROM content_generation_requests WHERE id IN (?)',
-        [ids]
-      ) as any[]
-      const rows = Array.isArray(results) ? results : []
-
-      const items = rows.map((row: any) => {
-        const contentId = String(row?.id || '')
-        let images: string[] = []
-        const raw = row?.images
-        if (typeof raw === 'string') {
-          try { images = JSON.parse(raw) } catch { images = [] }
-        } else if (Array.isArray(raw)) {
-          images = raw
-        }
-
-        const urlImages: string[] = []
-        const base64Images: { index: number; data: string }[] = []
-        images.forEach((img: string, idx: number) => {
-          if (typeof img === 'string' && img.startsWith('http')) {
-            urlImages.push(img)
-          } else if (typeof img === 'string' && img.startsWith('data:image/')) {
-            base64Images.push({ index: idx, data: img })
-          }
-        })
-
-        if (base64Images.length > 0) {
-          this.contentGenerationService.migrateBase64ImagesToTos(contentId, images).catch(() => {})
-        }
-
-        return { id: contentId, images: urlImages }
-      })
-
-      return { code: 200, message: '获取成功', data: { items } }
-    } catch (error: any) {
-      if (error instanceof HttpException) throw error
-      throw new InternalServerErrorException({ msg: '获取失败', data: { items: [] } })
-    }
-  }
-
-  /**
-   * 匿名边界：该接口保留匿名只读访问，仅返回生成内容展示所需字段，不返回资源归属、支付信息或其它私有元数据。
-   */
   @Get('content/:contentId')
   async getContentById(@Param('contentId') contentId: string) {
     try {
       const db = await getMySQLClient()
       const results = await db.query(
-        `SELECT id, avatar_id, order_id, content, images, video_url, platform, platforms,
-                status, content_type, created_at, updated_at
-         FROM content_generation_requests
-         WHERE id = ?
-         LIMIT 1`,
+        'SELECT * FROM content_generation_requests WHERE id = ? LIMIT 1',
         [contentId]
       )
 
       const rows = Array.isArray(results) ? results : []
       if (rows.length === 0) {
-        throw new NotFoundException({ msg: '内容不存在', data: null })
+        return { code: 404, message: '内容不存在', data: null }
       }
 
       const record = rows[0]
@@ -424,80 +278,46 @@ export class ContentGenerationController {
         }
       }
     } catch (error: any) {
-      if (error instanceof HttpException) throw error
-      throw new InternalServerErrorException({ msg: '获取失败', data: null })
+      return { code: 500, message: '获取失败', error: error.message }
     }
   }
 
   @Post('content/:contentId/status')
   async updateContentStatus(
     @Param('contentId') contentId: string,
-    @Body() body: { status: string },
-    @Headers() headers: Record<string, string | string[] | undefined>
+    @Body() body: { status: string }
   ) {
     try {
-      const userId = this.getAuthenticatedUserId(headers)
-      await this.assertContentAccess(contentId, userId, {
-        allowOrderOwner: true,
-        allowAvatarOwner: true,
-        message: '无权更新该内容状态'
-      })
-      const pool = getMySQLClient()
+      const pool = await getMySQLClient()
       await pool.query(
         'UPDATE content_generation_requests SET status = ? WHERE id = ?',
         [body.status, contentId]
       )
       return { code: 200, message: '状态更新成功' }
     } catch (error: any) {
-      rethrowAuthError(error)
-      if (error instanceof HttpException) throw error
-      throw new InternalServerErrorException({ msg: '状态更新失败', data: null })
+      return { code: 500, message: '状态更新失败', error: error.message }
     }
   }
 
-  /**
-   * 匿名边界：该接口保留匿名只读访问，仅返回某个分身的公开生成历史结果，不返回资源归属、鉴权态或其它私有字段。
-   */
   @Get('history/avatar/:avatarId')
-  async getHistory(
-    @Param('avatarId') avatarId: string,
-    @Query('orderId') orderId?: string,
-    @Query('page') page?: string,
-    @Query('pageSize') pageSize?: string,
-  ) {
+  async getHistory(@Param('avatarId') avatarId: string, @Query('orderId') orderId?: string) {
     try {
       const pool = await getMySQLClient()
-      const safePage = Number.isFinite(Number(page)) && Number(page) > 0 ? Math.floor(Number(page)) : 1
-      const safePageSize = Number.isFinite(Number(pageSize)) && Number(pageSize) > 0
-        ? Math.min(Math.floor(Number(pageSize)), 50)
-        : 20
-      const offset = (safePage - 1) * safePageSize
-
-      let sql = `
-        SELECT id, avatar_id, order_id, platform, platforms, status, content_type, created_at, updated_at,
-               CASE WHEN images IS NOT NULL AND JSON_VALID(images) THEN JSON_LENGTH(images) ELSE 0 END as image_count,
-               CASE WHEN content IS NOT NULL THEN SUBSTRING(content, 1, 200) ELSE '' END as content_preview
-        FROM content_generation_requests
-        WHERE avatar_id = ?
-      `
-      const params: any[] = [avatarId]
+      let sql = 'SELECT * FROM content_generation_requests WHERE avatar_id = ?'
+      const params: string[] = [avatarId]
       if (orderId) {
         sql += ' AND order_id = ?'
         params.push(orderId)
       }
-      sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?'
-      params.push(safePageSize, offset)
+      sql += ' ORDER BY created_at DESC LIMIT 50'
       const [rows]: any = await pool.query(sql, params)
       return {
         code: 200,
         message: '获取成功',
-        data: rows,
-        page: safePage,
-        pageSize: safePageSize
+        data: rows
       }
     } catch (error: any) {
-      if (error instanceof HttpException) throw error
-      throw new InternalServerErrorException({ msg: '获取失败', data: null })
+      return { code: 500, message: '获取失败', error: error.message }
     }
   }
 
@@ -507,17 +327,10 @@ export class ContentGenerationController {
   @Post('content/:contentId/publish-proof')
   async submitPublishProof(
     @Param('contentId') contentId: string,
-    @Body() body: { publishUrl?: string; publishScreenshot?: string },
-    @Headers() headers: Record<string, string | string[] | undefined>
+    @Body() body: { publishUrl?: string; publishScreenshot?: string }
   ) {
     try {
-      const userId = this.getAuthenticatedUserId(headers)
-      const ownership = await this.assertContentAccess(contentId, userId, {
-        allowOrderOwner: true,
-        allowAvatarOwner: true,
-        message: '无权提交该内容的发布凭证'
-      })
-      const db = getMySQLClient()
+      const db = await getMySQLClient()
       const columns = await this.getContentGenerationColumns(db)
       
       // 更新内容的发布凭证和验证状态
@@ -538,20 +351,21 @@ export class ContentGenerationController {
       }
 
       // 同时更新关联订单的发布凭证
-      const orderId = ownership.orderId || ownership.order_id
-      if (orderId) {
+      const [contents]: any = await db.query(
+        'SELECT order_id FROM content_generation_requests WHERE id = ?',
+        [contentId]
+      )
+      if (contents && contents.length > 0 && contents[0].orderId) {
         await db.query(
           `UPDATE orders SET publish_proof_url = ?, publish_verified = 0 WHERE id = ?`,
-          [body.publishScreenshot || body.publishUrl || null, orderId]
+          [body.publishScreenshot || body.publishUrl || null, contents[0].orderId]
         )
       }
 
       console.log(`[发布凭证] contentId=${contentId}, publishUrl=${body.publishUrl}`)
       return { code: 200, message: '发布凭证提交成功，等待验证' }
     } catch (error: any) {
-      rethrowAuthError(error)
-      if (error instanceof HttpException) throw error
-      throw new InternalServerErrorException({ msg: '提交失败', data: null })
+      return { code: 500, message: '提交失败', error: error.message }
     }
   }
 
@@ -561,17 +375,10 @@ export class ContentGenerationController {
   @Post('content/:contentId/verify')
   async verifyPublish(
     @Param('contentId') contentId: string,
-    @Body() body: { verified: boolean; reason?: string },
-    @Headers() headers: Record<string, string | string[] | undefined>
+    @Body() body: { verified: boolean; reason?: string }
   ) {
     try {
-      const userId = this.getAuthenticatedUserId(headers)
-      const ownership = await this.assertContentAccess(contentId, userId, {
-        allowOrderOwner: true,
-        allowAvatarOwner: false,
-        message: '无权验证该内容发布结果'
-      })
-      const db = getMySQLClient()
+      const db = await getMySQLClient()
       const columns = await this.getContentGenerationColumns(db)
       const verificationStatus = body.verified ? 'verified' : 'failed'
 
@@ -590,25 +397,28 @@ export class ContentGenerationController {
       }
 
       // 如果验证通过，更新关联订单
-      const orderId = ownership.orderId || ownership.order_id
-      if (orderId) {
+      const [contents]: any = await db.query(
+        'SELECT order_id FROM content_generation_requests WHERE id = ?',
+        [contentId]
+      )
+      if (contents && contents.length > 0 && contents[0].orderId) {
         if (body.verified) {
           await db.query(
             `UPDATE orders SET publish_verified = 1, status = 'completed' WHERE id = ?`,
-            [orderId]
+            [contents[0].orderId]
           )
         } else {
           // 验证失败，标记需要重新发布
           await db.query(
             `UPDATE orders SET publish_verified = 0, status = 'publish_failed' WHERE id = ?`,
-            [orderId]
+            [contents[0].orderId]
           )
           // 记录超时日志
           try {
             await db.query(
               `INSERT INTO order_timeout_logs (id, order_id, event_type, old_status, new_status, notes)
                VALUES (UUID(), ?, 'publish_timeout', 'published', 'publish_failed', ?)`,
-              [orderId, body.reason || '发布验证失败']
+              [contents[0].orderId, body.reason || '发布验证失败']
             )
           } catch {}
         }
@@ -617,32 +427,25 @@ export class ContentGenerationController {
       console.log(`[发布验证] contentId=${contentId}, verified=${body.verified}`)
       return { code: 200, message: body.verified ? '验证通过' : '验证失败，需重新发布' }
     } catch (error: any) {
-      rethrowAuthError(error)
-      if (error instanceof HttpException) throw error
-      throw new InternalServerErrorException({ msg: '验证失败', data: null })
+      return { code: 500, message: '验证失败', error: error.message }
     }
   }
 
   @Post('order/:orderId/retry-publish')
   @HttpCode(HttpStatus.OK)
-  async retryPublish(
-    @Param('orderId') orderId: string,
-    @Headers() headers: Record<string, string | string[] | undefined>
-  ) {
+  async retryPublish(@Param('orderId') orderId: string) {
     try {
-      const userId = this.getAuthenticatedUserId(headers)
-      await this.assertOrderOwner(orderId, userId, '无权重试该订单发布流程')
-      const db = getMySQLClient()
+      const db = await getMySQLClient()
       const columns = await this.getContentGenerationColumns(db)
       const rows = await db.query('SELECT id, status FROM orders WHERE id = ? LIMIT 1', [orderId])
       const order = rows?.[0] || rows?.data?.[0]
       if (!order) {
-        throw new NotFoundException({ msg: '订单不存在', data: null })
+        return { code: 404, message: '订单不存在', data: null }
       }
 
       const currentStatus = String(order.status || '')
       if (!['publish_failed', 'publish_timeout'].includes(currentStatus)) {
-        throw new BadRequestException({ msg: '当前订单状态不可重试', data: { status: currentStatus } })
+        return { code: 400, message: '当前订单状态不可重试', data: { status: currentStatus } }
       }
 
       const orderUpdateResult = await db.query(
@@ -682,9 +485,7 @@ export class ContentGenerationController {
         }
       }
     } catch (error: any) {
-      rethrowAuthError(error)
-      if (error instanceof HttpException) throw error
-      throw new InternalServerErrorException({ msg: '重试失败', data: null })
+      return { code: 500, message: '重试失败', error: error.message }
     }
   }
 
@@ -692,14 +493,9 @@ export class ContentGenerationController {
    * 清除订单的内容生成记录（重新生成时调用）
    */
   @Delete('clear/:orderId')
-  async clearGeneration(
-    @Param('orderId') orderId: string,
-    @Headers() headers: Record<string, string | string[] | undefined>
-  ) {
+  async clearGeneration(@Param('orderId') orderId: string) {
     try {
-      const userId = this.getAuthenticatedUserId(headers)
-      await this.assertOrderOwner(orderId, userId, '无权清除该订单的生成记录')
-      const pool = getMySQLClient()
+      const pool = await getMySQLClient()
       await pool.query(
         'DELETE FROM content_generation_requests WHERE order_id = ?',
         [orderId]
@@ -709,9 +505,7 @@ export class ContentGenerationController {
         message: '清除成功'
       }
     } catch (error: any) {
-      rethrowAuthError(error)
-      if (error instanceof HttpException) throw error
-      throw new InternalServerErrorException({ msg: '清除失败', data: null })
+      return { code: 500, message: '清除失败', error: error.message }
     }
   }
 }

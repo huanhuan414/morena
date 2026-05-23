@@ -9,7 +9,7 @@ export class TikHubService {
 
   constructor() {
     // 直接从环境变量获取，不依赖 ConfigService
-    this.apiKey = process.env.TIKHUB_API_KEY || ''
+    this.apiKey = process.env.TIKHUB_API_KEY || 'iawtA+4A7Gr1hkOTKq2M5SfzahTUd5h4uUjatHyZS/m90wqBB2yqURXBKw=='
 
     this.axios = axios.create({
       baseURL: 'https://api.tikhub.io/api/v1',

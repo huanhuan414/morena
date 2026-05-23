@@ -1,7 +1,5 @@
 import { Controller, Post, Body, Get, Headers, Inject } from '@nestjs/common'
 import { AuthService } from './auth.service'
-import { requireAuthenticatedUserId } from '../../common/auth-user.util'
-import { BadRequestException, InternalServerErrorException, HttpException } from '@nestjs/common'
 
 @Controller('auth')
 export class AuthController {
@@ -72,7 +70,7 @@ export class AuthController {
   @Post('wechat/get-openid')
   async getOpenid(@Body('code') code: string) {
     if (!code) {
-      throw new BadRequestException({ msg: '缺少code参数', data: null })
+      return { code: 400, data: null, message: '缺少code参数' }
     }
     try {
       const result = await this.authService.wechatLogin(code)
@@ -82,19 +80,49 @@ export class AuthController {
         message: '获取成功',
       }
     } catch (error: any) {
-      if (error instanceof HttpException) throw error
-      throw new InternalServerErrorException({ msg: error.message || '获取openid失败', data: null })
+      return {
+        code: 500,
+        data: null,
+        message: error.message || '获取openid失败',
+      }
     }
   }
 
   @Get('me')
   async getCurrentUser(@Headers() headers: Record<string, string | string[] | undefined>) {
-    const userId = requireAuthenticatedUserId(headers)
-    const user = await this.authService.getUserById(userId)
-    return {
-      code: 200,
-      data: user,
-      message: '获取成功',
+    const authorization = (headers.authorization || headers.Authorization) as string | undefined
+    const userIdFromHeader = (headers['x-user-id'] || headers['X-User-Id']) as string | undefined
+    try {
+      if (authorization) {
+        const result = await this.authService.getCurrentUser(authorization)
+        return {
+          code: 200,
+          data: result.user,
+          message: '获取成功',
+        }
+      }
+
+      // 兼容旧链路：允许通过 X-User-Id 获取当前用户
+      if (!userIdFromHeader) {
+        return {
+          code: 401,
+          data: null,
+          message: '未登录',
+        }
+      }
+
+      const user = await this.authService.getUserById(userIdFromHeader)
+      return {
+        code: 200,
+        data: user,
+        message: '获取成功',
+      }
+    } catch (error) {
+      return {
+        code: 401,
+        data: null,
+        message: 'token 无效',
+      }
     }
   }
 }

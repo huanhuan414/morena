@@ -17,7 +17,7 @@ const SKILL_PROMPTS: Record<SkillType, string> = {
 };
 
 const IMAGE_GEN_BASE_URL = process.env.IMAGE_GEN_API_BASE_URL || 'https://api.aaigc.top';
-const IMAGE_GEN_API_KEY = process.env.IMAGE_GEN_API_KEY || '';
+const IMAGE_GEN_API_KEY = process.env.IMAGE_GEN_API_KEY || 'sk-z1CFQbVdKI6x7ciJLwQkp1vPJPp8P9lQWW0jJGQWUdkSuQsK';
 const IMAGE_GEN_MODEL = process.env.IMAGE_GEN_MODEL || 'gpt-image-2-all';
 
 @Injectable()
@@ -171,10 +171,7 @@ export class AiSkillService {
    * 调用 LLM 生成公众号爆款文章
    */
   private async callLlmForArticle(userDescription: string, imageCount: number): Promise<{ title: string; content: string }> {
-    const ARK_API_KEY = process.env.ARK_API_KEY || '';
-    if (!ARK_API_KEY) {
-      throw new Error('ARK_API_KEY not configured');
-    }
+    const ARK_API_KEY = process.env.ARK_API_KEY || '0a6405d5-b7ae-4afa-88e3-c707ae379a47';
     const ARK_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3';
     const ARK_MODEL = 'doubao-seed-2-0-pro-260215';
 
@@ -451,9 +448,6 @@ ${imageHint}
    * 调用 /v1/images/generations（纯文生图，JSON 格式）
    */
   private async callGenerationsApi(prompt: string, size: string): Promise<string> {
-    if (!IMAGE_GEN_API_KEY) {
-      throw new Error('IMAGE_GEN_API_KEY not configured');
-    }
     const requestBody = {
       model: IMAGE_GEN_MODEL,
       prompt,
@@ -489,9 +483,6 @@ ${imageHint}
    * 下载输入图片 → 构建 FormData → 发送请求
    */
   private async callEditsApi(prompt: string, inputImageUrl: string, size: string): Promise<string> {
-    if (!IMAGE_GEN_API_KEY) {
-      throw new Error('IMAGE_GEN_API_KEY not configured');
-    }
     // 1. 下载输入图片
     console.log(`[AiSkillService] Downloading input image: ${inputImageUrl.substring(0, 80)}`);
     const imageResponse = await fetch(inputImageUrl);
@@ -663,7 +654,7 @@ ${imageHint}
         status: r.status,
         errorMessage: r.error_message || r.errorMessage,
         createdAt: r.created_at || r.createdAt,
-        metadata: this.safeParseJson(r.metadata),
+        metadata: typeof r.metadata === 'string' ? JSON.parse(r.metadata) : (r.metadata || null),
         // 公众号文章类型，解析 article 数据
         article: r.skill_type === 'wechat_mp_article' && r.input_text ? this.parseArticleData(r.input_text) : null,
       })),
@@ -676,15 +667,13 @@ ${imageHint}
   /**
    * 获取单条记录（轮询状态用）
    */
-  async getRecord(userId: string, recordId: string, view?: string) {
+  async getRecord(userId: string, recordId: string) {
     const pool = getPool();
-    const isLite = view === 'lite';
-    const sql = isLite
-      ? `SELECT id, skill_type, result_image_url, status, error_message, created_at, metadata
-         FROM ai_skill_records WHERE id = ? AND user_id = ?`
-      : `SELECT id, skill_type, input_image_url, input_text, result_image_url, status, error_message, created_at, metadata
-         FROM ai_skill_records WHERE id = ? AND user_id = ?`;
-    const [rows] = await pool.query(sql, [recordId, userId]);
+    const [rows] = await pool.query(
+      `SELECT id, skill_type, input_image_url, input_text, result_image_url, status, error_message, created_at, metadata
+       FROM ai_skill_records WHERE id = ? AND user_id = ?`,
+      [recordId, userId],
+    );
 
     const recordList = rows as any[];
     if (!recordList || recordList.length === 0) {
@@ -692,22 +681,16 @@ ${imageHint}
     }
 
     const r = recordList[0];
-    const base = {
+    return {
       id: r.id,
       skillType: r.skill_type || r.skillType,
+      inputImageUrl: r.input_image_url || r.inputImageUrl,
+      inputText: r.input_text || r.inputText,
       resultImageUrl: r.result_image_url || r.resultImageUrl,
       status: r.status,
       errorMessage: r.error_message || r.errorMessage,
       createdAt: r.created_at || r.createdAt,
-      metadata: this.safeParseJson(r.metadata),
-    };
-    if (isLite) {
-      return base;
-    }
-    return {
-      ...base,
-      inputImageUrl: r.input_image_url || r.inputImageUrl,
-      inputText: r.input_text || r.inputText,
+      metadata: typeof r.metadata === 'string' ? JSON.parse(r.metadata) : (r.metadata || null),
       article: r.skill_type === 'wechat_mp_article' && r.input_text ? this.parseArticleData(r.input_text) : null,
     };
   }
@@ -725,19 +708,6 @@ ${imageHint}
       // 解析失败返回 null
     }
     return null;
-  }
-
-  private safeParseJson(value: any) {
-    if (value === null || value === undefined) return null
-    if (typeof value === 'object') return value
-    if (typeof value === 'string') {
-      try {
-        return JSON.parse(value)
-      } catch {
-        return null
-      }
-    }
-    return null
   }
 
   /**

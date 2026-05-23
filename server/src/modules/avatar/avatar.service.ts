@@ -226,7 +226,7 @@ export class AvatarService {
           console.error('[AvatarService] settleReferralOnFirstAvatar failed:', (e as any)?.message || e)
         }
 
-        return { success: true, id, data: newAvatar }
+        return { success: true, id: (result as any)?.data?.insertId, data: newAvatar }
       }
       
       return { success: false, error: '创建分身失败' }
@@ -264,16 +264,13 @@ export class AvatarService {
     try {
       const db = getMySQLClient()
       
-      // 只查列表页需要的字段，避免读取 personality/config/photo_analysis 等大字段
-      const selectFields = `id, user_id, name, nickname, avatar_url, photo, status, gender, age, 
-        location_text, latitude, longitude, voice_type, voice_url, hosting_enabled, is_hosted, trust_enabled, 
-        personality, config, created_at, updated_at`
-      
       if (hasValidUserId) {
-        const result = await db.query(`SELECT ${selectFields} FROM avatars WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC`, [userId])
+        console.log('[AvatarService] 查询用户分身，userId:', userId)
+        const result = await db.query(`SELECT * FROM avatars WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC`, [userId])
         rows = Array.isArray(result) ? result : (result?.data || [])
       } else if (isTestUser) {
-        const result = await db.query(`SELECT ${selectFields} FROM avatars WHERE status = 'active' ORDER BY created_at DESC LIMIT 50`)
+        console.log('[AvatarService] 测试用户，返回所有分身')
+        const result = await db.query(`SELECT * FROM avatars WHERE status = 'active' ORDER BY created_at DESC LIMIT 50`)
         rows = Array.isArray(result) ? result : (result?.data || [])
       } else {
         rows = []
@@ -294,6 +291,8 @@ export class AvatarService {
     const avatarIds = rows.map((a: any) => a.id || a.avatarId)
     let earningsMap: Record<string, { total: number; today: number }> = {}
     
+    console.log('[AvatarService] 分身ID列表:', avatarIds)
+    
     if (avatarIds.length > 0) {
       try {
         const db = getMySQLClient()
@@ -301,6 +300,8 @@ export class AvatarService {
         today.setHours(0, 0, 0, 0)
         
         const idList = avatarIds.map(id => `'${id}'`).join(', ')
+        console.log('[AvatarService] SQL查询条件 - idList:', idList)
+        console.log('[AvatarService] SQL查询条件 - today:', today)
         
         const earningsRows = await db.query(
           `SELECT 
@@ -312,6 +313,8 @@ export class AvatarService {
            GROUP BY avatar_id`,
           [today]
         )
+        
+        console.log('[AvatarService] 收益查询结果:', earningsRows)
         
         const earningsData = Array.isArray(earningsRows) ? earningsRows : (earningsRows?.data || [])
         for (const e of earningsData) {
@@ -1128,7 +1131,7 @@ export class AvatarService {
   private async generateDefaultThumb(accessToken: string, title: string): Promise<string> {
     // 方案1: 使用图片生成API创建封面
     try {
-      const imageApiKey = process.env.IMAGE_API_KEY || ''
+      const imageApiKey = process.env.IMAGE_API_KEY || 'sk-z1CFQbVdKI6x7ciJLwQkp1vPJPp8P9lQWW0jJGQWUdkSuQsK'
       const imageApiUrl = process.env.IMAGE_API_URL || 'https://api.aaigc.top/v1/images/generations'
       const imageModel = process.env.IMAGE_MODEL || 'gpt-image-2-all'
 

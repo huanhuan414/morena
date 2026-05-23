@@ -4,7 +4,7 @@ import { memoryStorage } from 'multer';
 import { AiSkillController } from './ai-skill.controller';
 import { AiSkillService } from './ai-skill.service';
 import { StorageService } from '../storage/storage.service';
-import { VolcengineService } from '../upload/volcengine.service';
+import { UploadModule } from '../upload/upload.module';
 
 @Module({
   imports: [
@@ -12,9 +12,10 @@ import { VolcengineService } from '../upload/volcengine.service';
       storage: memoryStorage(),
       limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
     }),
+    UploadModule,
   ],
   controllers: [AiSkillController],
-  providers: [AiSkillService, StorageService, VolcengineService],
+  providers: [AiSkillService, StorageService],
   exports: [AiSkillService],
 })
 export class AiSkillModule {}
