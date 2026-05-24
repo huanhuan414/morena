@@ -27,9 +27,11 @@ interface OrderInfo {
 
 interface GeneratedContent {
   content: string
-  images: string[]
-  videos: string[]
+  displayImages: string[]
+  displayVideos: string[]
   platforms: string[]
+  assignedImages?: string[]
+  assignedVideoUrl?: string
 }
 
 interface ProcessingData {
@@ -105,9 +107,11 @@ function normalizeProcessingData(raw: any): ProcessingData | null {
     contentType: raw.contentType || raw.content_type || 'image_text',
     generatedContent: {
       content: generatedContent.content || '',
-      images: parseStringArray(generatedContent.images),
-      videos: parseStringArray(generatedContent.videos || generatedContent.videoUrls || generatedContent.video_urls),
+      displayImages: parseStringArray(generatedContent.displayImages),
+      displayVideos: parseStringArray(generatedContent.displayVideos || generatedContent.videoUrls || generatedContent.video_urls),
       platforms: parseStringArray(generatedContent.platforms),
+      assignedImages: parseStringArray(generatedContent.assignedImages || generatedContent.assigned_displayImages),
+      assignedVideoUrl: generatedContent.assignedVideoUrl || generatedContent.assigned_video_url || '',
     },
     publishFeedback: normalizePublishFeedback(raw.publishFeedback),
     queueInfo: raw.queueInfo || raw.queue_info || undefined,
@@ -396,14 +400,20 @@ export default function OrderContentCreation() {
   // 内容数据
   const genContent = processingData?.generatedContent
   const textContent = genContent?.content || ''
-  const images = genContent?.images || []
-  const videos = genContent?.videos || []
+  const rawImages = genContent?.displayImages || []
+  const rawVideos = genContent?.displayVideos || []
+  const assignedImages = genContent?.assignedImages || []
+  const assignedVideoUrl = genContent?.assignedVideoUrl || ''
+
+  // 合并：如果有assigned素材且rawImages为空，使用assigned素材
+  const displayImages = rawImages.length > 0 ? rawImages : assignedImages
+  const displayVideos = rawVideos.length > 0 ? rawVideos : (assignedVideoUrl ? [assignedVideoUrl] : [])
 
   // preview 状态需额外检查：如果需要图片/视频但实际为空，视为部分失败
   const needImage = contentType === 'image_text' || contentType === 'image'
   const needVideo = contentType === 'video' || contentType === 'video_text'
-  const imageEmpty = needImage && images.length === 0
-  const videoEmpty = needVideo && videos.length === 0
+  const imageEmpty = needImage && displayImages.length === 0
+  const videoEmpty = needVideo && displayVideos.length === 0
   const isPreviewWithMissing = rawStatus === 'preview' && (imageEmpty || videoEmpty)
   const effectiveIsPartialFailed = isPartialFailed || isPreviewWithMissing
   const isCompleted = !GENERATING_STATUSES.includes(rawStatus) && rawStatus !== 'failed' && !effectiveIsPartialFailed && !isRejected
@@ -583,19 +593,19 @@ export default function OrderContentCreation() {
           )}
 
           {/* 实时预览：图片 */}
-          {images.length > 0 && isGenerating && rawStatus !== 'generating_video' && (
+          {displayImages.length > 0 && isGenerating && rawStatus !== 'generating_video' && (
             <View className="cc-partial-preview">
               <View className="cc-partial-header">
                 <ImageIcon size={14} color="#8B5CF6" />
-                <Text className="cc-partial-title">配图预览 ({images.length}张已生成)</Text>
+                <Text className="cc-partial-title">配图预览 ({displayImages.length}张已生成)</Text>
               </View>
               <View className="cc-partial-body">
                 <View className="cc-images-grid">
-                  {images.map((img, i) => (
+                  {displayImages.map((img, i) => (
                     <View className="cc-image-item" key={i}>
                       <TaroImage
                         className="cc-image-preview" src={img} mode="aspectFill"
-                        onClick={() => { Taro.previewImage({ urls: images, current: img }) }}
+                        onClick={() => { Taro.previewImage({ urls: displayImages, current: img }) }}
                       />
                     </View>
                   ))}
@@ -666,16 +676,16 @@ export default function OrderContentCreation() {
             )}
 
             {/* 图片卡片 */}
-            {images.length > 0 && (
+            {displayImages.length > 0 && (
               <View className="cc-content-card">
                 <View className="cc-card-header">
                   <ImageIcon size={16} color="#6366F1" />
-                  <Text className="cc-card-title">配图 ({images.length})</Text>
+                  <Text className="cc-card-title">配图 ({displayImages.length})</Text>
                 </View>
                 <View className="cc-images-grid">
-                  {images.map((img, i) => (
+                  {displayImages.map((img, i) => (
                     <View className="cc-image-item" key={i}>
-                      <TaroImage className="cc-image-preview" src={img} mode="aspectFill" onClick={() => { Taro.previewImage({ urls: images, current: img }) }} />
+                      <TaroImage className="cc-image-preview" src={img} mode="aspectFill" onClick={() => { Taro.previewImage({ urls: displayImages, current: img }) }} />
                     </View>
                   ))}
                 </View>
@@ -683,13 +693,13 @@ export default function OrderContentCreation() {
             )}
 
             {/* 视频卡片 */}
-            {videos.length > 0 && (
+            {displayVideos.length > 0 && (
               <View className="cc-content-card">
                 <View className="cc-card-header">
                   <VideoIcon size={16} color="#6366F1" />
                   <Text className="cc-card-title">视频</Text>
                 </View>
-                {videos.map((v, i) => (
+                {displayVideos.map((v, i) => (
                   <View className="cc-video-cover" key={i}>
                     <View className="cc-video-play" onClick={() => {
                       const isMiniApp = [Taro.ENV_TYPE.WEAPP as string, Taro.ENV_TYPE.TT as string].includes(Taro.getEnv())
@@ -767,29 +777,29 @@ export default function OrderContentCreation() {
                 </View>
               </View>
             )}
-            {images.length > 0 && (
+            {displayImages.length > 0 && (
               <View className="cc-content-card">
                 <View className="cc-card-header">
                   <ImageIcon size={16} color="#6366F1" />
-                  <Text className="cc-card-title">配图 ({images.length})</Text>
+                  <Text className="cc-card-title">配图 ({displayImages.length})</Text>
                 </View>
                 <View className="cc-images-grid">
-                  {images.map((img, i) => (
+                  {displayImages.map((img, i) => (
                     <View className="cc-image-item" key={i}>
-                      <TaroImage className="cc-image-preview" src={img} mode="aspectFill" onClick={() => { Taro.previewImage({ urls: images, current: img }) }} />
+                      <TaroImage className="cc-image-preview" src={img} mode="aspectFill" onClick={() => { Taro.previewImage({ urls: displayImages, current: img }) }} />
                     </View>
                   ))}
                 </View>
               </View>
             )}
-            {videos.length > 0 && (
+            {displayVideos.length > 0 && (
               <View className="cc-content-card">
                 <View className="cc-card-header">
                   <VideoIcon size={16} color="#6366F1" />
                   <Text className="cc-card-title">视频</Text>
                 </View>
                 <View className="cc-video-cover-list">
-                  {videos.map((v, i) => (
+                  {displayVideos.map((v, i) => (
                     <View className="cc-video-cover" key={i}>
                       <View
                         className="cc-video-play"

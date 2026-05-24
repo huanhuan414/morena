@@ -281,6 +281,8 @@ export class ContentGenerationService implements OnModuleInit {
     industryTags?: string[]
     contentQuantity?: number
     requestId?: string
+    assignedImages?: string[]
+    assignedVideoUrl?: string
   }): Promise<any[]> {
     const results: any[] = []
 
@@ -404,6 +406,15 @@ export class ContentGenerationService implements OnModuleInit {
 
     this.logger.log(`开始后台生成: requestId=${requestId}, platform=${platform}, contentType=${contentType}, primarySkill=${primarySkill}`)
 
+    // 检查是否有预分配的素材（来自order_assets素材池）
+    const assignedImages: string[] = input.assignedImages || []
+    const assignedVideoUrl: string | undefined = input.assignedVideoUrl
+    const hasAssignedImages = assignedImages.length > 0
+    const hasAssignedVideo = !!assignedVideoUrl
+    if (hasAssignedImages || hasAssignedVideo) {
+      this.logger.log(`使用预分配素材: ${assignedImages.length}张图片, ${assignedVideoUrl ? '有视频' : '无视频'}`)
+    }
+
     let textContent = ''
     let images: string[] = []
     let videos: string[] = []
@@ -414,24 +425,30 @@ export class ContentGenerationService implements OnModuleInit {
     // 判断是否为"图文文章"型平台
     const isArticlePlatform = this.isArticlePlatform(platform)
 
-    if (isArticlePlatform && needText && needImage) {
+    if (isArticlePlatform && needText && (needImage || hasAssignedImages)) {
       // ===== 图文文章模式 =====
       try {
-        const imageCount = this.getDefaultImageCount(platform, contentType)
+        const imageCount = hasAssignedImages ? assignedImages.length : this.getDefaultImageCount(platform, contentType)
         await this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
         textContent = await this.generateArticleContent(platform, input, imageCount)
         this.logger.log(`图文文章生成完成: ${textContent.length}字`)
-        await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
 
-        images = await this.generateArticleImages(platform, input, textContent, imageCount, requestId)
-        this.logger.log(`文章配图生成完成: ${images.length}张`)
+        if (hasAssignedImages) {
+          // 使用预分配的图片，跳过图片生成
+          images = assignedImages
+          this.logger.log(`使用预分配配图: ${images.length}张`)
+        } else {
+          await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
+          images = await this.generateArticleImages(platform, input, textContent, imageCount, requestId)
+          this.logger.log(`文章配图生成完成: ${images.length}张`)
+        }
 
         textContent = this.replaceImagePlaceholders(textContent, images)
         await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
       } catch (err: any) {
         this.logger.warn(`图文文章生成失败: ${err.message}`)
         textFailed = !textContent
-        imageFailed = images.length === 0
+        imageFailed = images.length === 0 && !hasAssignedImages
       }
     } else {
       // ===== 传统模式：文案 + 配图分离 =====
@@ -470,14 +487,21 @@ export class ContentGenerationService implements OnModuleInit {
           this.logger.warn(`视频脚本生成失败，跳过视频生成`)
         } else {
           if (needImage) {
-            try {
-              await this.updateDetailedStatus(requestId, input.orderId, 'generating_images')
-              images = await this.generateImages(platform, input, textContent, requestId)
-              this.logger.log(`图片生成完成: ${images.length}张`)
+            if (hasAssignedImages) {
+              // 使用预分配的图片，跳过图片生成
+              images = assignedImages
+              this.logger.log(`使用预分配配图: ${images.length}张，跳过图片生成`)
               await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
-            } catch (err: any) {
-              this.logger.warn(`图片生成失败: ${err.message}`)
-              imageFailed = true
+            } else {
+              try {
+                await this.updateDetailedStatus(requestId, input.orderId, 'generating_images')
+                images = await this.generateImages(platform, input, textContent, requestId)
+                this.logger.log(`图片生成完成: ${images.length}张`)
+                await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
+              } catch (err: any) {
+                this.logger.warn(`图片生成失败: ${err.message}`)
+                imageFailed = true
+              }
             }
           }
         }
@@ -487,18 +511,19 @@ export class ContentGenerationService implements OnModuleInit {
     // 3. 生成视频（异步模式：只创建 Seedance 任务，不等待结果）
     // 视频结果由 pollPendingVideoTasks 定时任务轮询获取
     if (needVideo && !textFailed) {
-      try {
-        await this.updateDetailedStatus(requestId, input.orderId, 'generating_video')
-        await this.generateVideos(platform, input, textContent, images, requestId)
-        // 视频任务是异步的，此时 videos 为空，状态保持 generating_video
-        // 如果 Seedance 任务创建成功，seedance_task_id 已存到数据库
-        // 如果 Seedance 任务创建失败，videos 也为空，后续会被空结果检测标记为失败
-        this.logger.log(`Seedance异步视频任务已提交: requestId=${requestId}`)
-        // 视频异步生成中，直接进入最终状态判断
-        // 如果有 seedance_task_id，说明视频正在后台生成，不算失败
-      } catch (err: any) {
-        this.logger.warn(`视频任务提交失败: ${err.message}`)
-        videoFailed = true
+      if (hasAssignedVideo) {
+        // 使用预分配的视频，跳过视频生成
+        videos = [assignedVideoUrl]
+        this.logger.log(`使用预分配视频: ${assignedVideoUrl}，跳过视频生成`)
+      } else {
+        try {
+          await this.updateDetailedStatus(requestId, input.orderId, 'generating_video')
+          await this.generateVideos(platform, input, textContent, images, requestId)
+          this.logger.log(`Seedance异步视频任务已提交: requestId=${requestId}`)
+        } catch (err: any) {
+          this.logger.warn(`视频任务提交失败: ${err.message}`)
+          videoFailed = true
+        }
       }
     } else if (needVideo && textFailed) {
       this.logger.warn(`文案/脚本生成失败，跳过视频生成`)
@@ -525,9 +550,10 @@ export class ContentGenerationService implements OnModuleInit {
 
     // 5. 根据各环节成败决定最终状态
     // 视频是异步模式：如果 Seedance 任务已提交（有 seedance_task_id），则视频不算失败
+    // 如果使用了预分配视频，则视频已完成
     // 需要查询数据库确认是否有 seedance_task_id
     let videoTaskSubmitted = false
-    if (needVideo && !videoFailed) {
+    if (needVideo && !videoFailed && !hasAssignedVideo) {
       try {
         const pool = getPool()
         const [taskRows]: any = await pool.execute(
@@ -540,8 +566,8 @@ export class ContentGenerationService implements OnModuleInit {
       }
     }
 
-    const imageMissing = needImage && !imageFailed && images.length === 0
-    const videoMissing = needVideo && !videoFailed && videos.length === 0 && !videoTaskSubmitted
+    const imageMissing = needImage && !imageFailed && images.length === 0 && !hasAssignedImages
+    const videoMissing = needVideo && !videoFailed && videos.length === 0 && !videoTaskSubmitted && !hasAssignedVideo
     if (imageMissing) {
       imageFailed = true
       this.logger.warn(`配图生成返回空结果，标记为失败`)
@@ -557,10 +583,10 @@ export class ContentGenerationService implements OnModuleInit {
       this.logger.warn(`配图生成不完整: 预期${expectedImageCount}张，实际${images.length}张`)
     }
 
-    const hasAnyContent = textContent || images.length > 0 || videos.length > 0
+    const hasAnyContent = textContent || images.length > 0 || videos.length > 0 || hasAssignedImages || hasAssignedVideo
     const allRequiredFailed = (needText && textFailed && !textContent) &&
-                              (needImage && imageFailed && images.length === 0) &&
-                              (needVideo && videoFailed && videos.length === 0)
+                              (needImage && imageFailed && images.length === 0 && !hasAssignedImages) &&
+                              (needVideo && videoFailed && videos.length === 0 && !hasAssignedVideo)
 
     let finalStatus: string
     let failedParts: string[] = []
@@ -1558,12 +1584,14 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
       const db = getMySQLClient()
       if ((status === 'preview' || status === 'completed') && generatedContent) {
         await db.query(
-          'UPDATE content_generation_requests SET status = ?, content = ?, images = ?, video_url = ?, error = NULL WHERE id = ?',
+          'UPDATE content_generation_requests SET status = ?, content = ?, images = ?, video_url = ?, assigned_images = ?, assigned_video_url = ?, error = NULL WHERE id = ?',
           [
             status,
             generatedContent.content || '',
             generatedContent.images?.length > 0 ? JSON.stringify(generatedContent.images) : null,
             generatedContent.videos?.length > 0 ? JSON.stringify(generatedContent.videos) : null,
+            generatedContent.assignedImages?.length > 0 ? JSON.stringify(generatedContent.assignedImages) : null,
+            generatedContent.assignedVideoUrl || null,
             requestId
           ]
         )
@@ -2021,5 +2049,211 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
     } catch (error) {
       console.error(`[TOS迁移] 迁移失败 ${requestId}:`, error.message)
     }
+  }
+
+  // ========== 订单素材预生成 ==========
+
+  /**
+   * 订单支付成功后，预生成图片/视频素材到 order_assets 素材池
+   * 逻辑：
+   * 1. 查看订单已有的用户上传素材（B端上传）
+   * 2. 根据平台需求计算缺失的素材数量
+   * 3. AI补齐缺失的图片/视频
+   */
+  async pregenerateOrderAssets(orderId: string): Promise<void> {
+    try {
+      const db = getMySQLClient()
+
+      // 获取订单信息
+      const [orders] = await db.query('SELECT * FROM orders WHERE id = ?', [orderId])
+      if (!orders || orders.length === 0) {
+        console.warn(`[预生成] 订单 ${orderId} 不存在`)
+        return
+      }
+      const order = orders[0]
+      const platforms: string[] = JSON.parse(order.platforms || '[]')
+      const contentType = order.content_type || 'image_text'
+      const title = order.title || ''
+      const description = order.description || ''
+
+      console.log(`[预生成] 开始为订单 ${orderId} 预生成素材, 平台: ${platforms.join(',')}, 类型: ${contentType}`)
+
+      // 查看已有用户上传素材
+      const [existingAssets] = await db.query(
+        'SELECT asset_type, COUNT(*) as cnt FROM order_assets WHERE order_id = ? AND status = ? GROUP BY asset_type',
+        [orderId, 'ready']
+      )
+      const uploadedImageCount = (existingAssets as any[])?.find(a => a.asset_type === 'image')?.cnt || 0
+      const uploadedVideoCount = (existingAssets as any[])?.find(a => a.asset_type === 'video')?.cnt || 0
+
+      console.log(`[预生成] 订单 ${orderId} 已有素材: 图片${uploadedImageCount}张, 视频${uploadedVideoCount}个`)
+
+      // 确定需要的素材数量（取各平台最大需求）
+      let requiredImageCount = 0
+      let requiredVideo = false
+      for (const platform of platforms) {
+        const imgCount = this.getDefaultImageCount(platform, contentType)
+        requiredImageCount = Math.max(requiredImageCount, imgCount)
+        if (contentType === 'video') {
+          requiredVideo = true
+        }
+      }
+
+      // 计算缺失
+      const missingImages = Math.max(0, requiredImageCount - uploadedImageCount)
+      const needVideo = requiredVideo && uploadedVideoCount === 0
+
+      console.log(`[预生成] 需要: 图片${requiredImageCount}张(缺${missingImages}), 视频${requiredVideo ? '1个' : '0个'}(缺${needVideo ? 1 : 0})`)
+
+      // AI补齐图片
+      if (missingImages > 0) {
+        const prompt = this.buildAssetPrompt(title, description, platforms)
+        await this.pregenerateImages(orderId, prompt, missingImages, platforms[0] || 'wechat')
+      }
+
+      // AI补齐视频
+      if (needVideo) {
+        await this.pregenerateVideo(orderId, title, description, platforms[0] || 'wechat')
+      }
+
+      console.log(`[预生成] 订单 ${orderId} 素材预生成完成`)
+    } catch (err: any) {
+      console.error(`[预生成] 订单 ${orderId} 素材预生成失败:`, err.message)
+      // 预生成失败不影响主流程，分身接单时会回退到实时生成
+    }
+  }
+
+  /** 构建素材生成的提示词 */
+  private buildAssetPrompt(title: string, description: string, platforms: string[]): string {
+    const platformStyle = platforms.includes('xiaohongshu')
+      ? '小红书风格，清新文艺，高颜值'
+      : platforms.includes('douyin')
+        ? '抖音风格，潮流时尚，视觉冲击'
+        : '微信公众号风格，专业大气'
+    return `${title}。${description}。${platformStyle}，高质量配图`
+  }
+
+  /** AI预生成图片 */
+  private async pregenerateImages(orderId: string, prompt: string, count: number, platform: string): Promise<void> {
+    const db = getMySQLClient()
+
+    for (let i = 0; i < count; i++) {
+      const assetId = `asset_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
+
+      // 先创建 pending 记录
+      await db.query(
+        `INSERT INTO order_assets (id, order_id, asset_type, source, platform, asset_url, prompt, status, sort_order)
+         VALUES (?, ?, 'image', 'ai_generated', ?, '', ?, 'generating', ?)`,
+        [assetId, orderId, platform, prompt, i]
+      )
+
+      // 通过限流器排队生成
+      this.imageLimiter.run(async () => {
+        try {
+          console.log(`[预生成] 图片 ${i + 1}/${count} 开始生成, assetId=${assetId}`)
+          const imageUrl = await this.generateImageViaHttp(prompt)
+          await db.query(
+            'UPDATE order_assets SET asset_url = ?, status = ? WHERE id = ?',
+            [imageUrl, 'ready', assetId]
+          )
+          console.log(`[预生成] 图片 ${i + 1}/${count} 生成成功: ${imageUrl.slice(0, 80)}...`)
+        } catch (err: any) {
+          console.error(`[预生成] 图片 ${i + 1}/${count} 生成失败:`, err.message)
+          await db.query('UPDATE order_assets SET status = ? WHERE id = ?', ['failed', assetId])
+        }
+      }).catch(err => {
+        console.error(`[预生成] 图片生成异常:`, err.message)
+      })
+    }
+  }
+
+  /** AI预生成视频 - 订单创建时不预生成视频，由分身接单后实时生成 */
+  private async pregenerateVideo(orderId: string, title: string, description: string, platform: string): Promise<void> {
+    // 视频生成需要文案内容作为上下文，在订单创建时尚无文案
+    // 因此跳过视频预生成，由分身接单后实时生成
+    console.log(`[预生成] 订单 ${orderId} 视频跳过预生成，将在分身接单后实时生成`)
+  }
+
+  /** 从 order_assets 为请求分配素材 */
+  async assignAssetsToRequest(orderId: string): Promise<{ images: string[]; videoUrl: string | null }> {
+    const db = getMySQLClient()
+    const images: string[] = []
+    let videoUrl: string | null = null
+
+    // 分配已就绪的图片（按sort_order排序）
+    const [imageRows] = await db.query(
+      `SELECT asset_url FROM order_assets 
+       WHERE order_id = ? AND asset_type = 'image' AND status = 'ready' 
+       ORDER BY sort_order ASC`,
+      [orderId]
+    )
+    for (const row of (imageRows as any[])) {
+      if (row.asset_url) images.push(row.asset_url)
+    }
+
+    // 分配已就绪的视频
+    const [videoRows] = await db.query(
+      `SELECT asset_url FROM order_assets 
+       WHERE order_id = ? AND asset_type = 'video' AND status = 'ready' 
+       LIMIT 1`,
+      [orderId]
+    )
+    if ((videoRows as any[]).length > 0 && (videoRows as any[])[0].asset_url) {
+      videoUrl = (videoRows as any[])[0].asset_url
+    }
+
+    // 如果图片还在生成中，短轮询等待（最多30秒）
+    if (images.length === 0) {
+      const [pendingImages] = await db.query(
+        `SELECT COUNT(*) as cnt FROM order_assets WHERE order_id = ? AND asset_type = 'image' AND status IN ('pending', 'generating')`,
+        [orderId]
+      )
+      if ((pendingImages as any[])[0]?.cnt > 0) {
+        console.log(`[素材分配] 订单 ${orderId} 图片仍在生成中，等待...`)
+        const waited = await this.waitForAssetsReady(orderId, 'image', 30000)
+        images.push(...waited)
+      }
+    }
+
+    // 如果视频还在生成中，短轮询等待（最多60秒）
+    if (!videoUrl) {
+      const [pendingVideos] = await db.query(
+        `SELECT COUNT(*) as cnt FROM order_assets WHERE order_id = ? AND asset_type = 'video' AND status IN ('pending', 'generating')`,
+        [orderId]
+      )
+      if ((pendingVideos as any[])[0]?.cnt > 0) {
+        console.log(`[素材分配] 订单 ${orderId} 视频仍在生成中，等待...`)
+        const waited = await this.waitForAssetsReady(orderId, 'video', 60000)
+        if (waited.length > 0) videoUrl = waited[0]
+      }
+    }
+
+    console.log(`[素材分配] 订单 ${orderId}: 分配图片${images.length}张, 视频${videoUrl ? '1个' : '0个'}`)
+    return { images, videoUrl }
+  }
+
+  /** 等待素材就绪（轮询） */
+  private async waitForAssetsReady(orderId: string, assetType: 'image' | 'video', maxWaitMs: number): Promise<string[]> {
+    const startTime = Date.now()
+    const interval = 3000
+    const results: string[] = []
+
+    while (Date.now() - startTime < maxWaitMs) {
+      await new Promise(resolve => setTimeout(resolve, interval))
+
+      const db = getMySQLClient()
+      const [rows] = await db.query(
+        `SELECT asset_url FROM order_assets 
+         WHERE order_id = ? AND asset_type = ? AND status = 'ready' 
+         ORDER BY sort_order ASC`,
+        [orderId, assetType]
+      )
+      for (const row of (rows as any[])) {
+        if (row.asset_url) results.push(row.asset_url)
+      }
+      if (results.length > 0) break
+    }
+
+    return results
   }
 }

@@ -346,6 +346,8 @@ export class OrderProcessingService {
   private normalizeRecord(record: any): any {
     const images = this.parseJsonArray(record.images)
     const videos = this.parseJsonArray(record.videoUrl || record.video_url)
+    const assignedImages = this.parseJsonArray(record.assigned_images || record.assignedImages)
+    const assignedVideoUrl = record.assigned_video_url || record.assignedVideoUrl || null
     const rawPublishStatus = this.parseJsonObject<Record<string, any>>(record.publishStatus || record.publish_status, { platforms: [] })
     const publishFeedback = this.mergeFeedback({}, this.parseJsonObject(record.publishFeedback || record.publish_feedback, {}))
     const config = this.parseJsonObject<Record<string, any>>(record.config, {})
@@ -353,6 +355,15 @@ export class OrderProcessingService {
     const fallbackPlatforms = record.platform ? [this.canonicalizePlatform(record.platform)] : []
     const normalizedPlatforms = configPlatforms.length > 0 ? configPlatforms : fallbackPlatforms
     const platformStatus = this.normalizePlatformStatusMap(rawPublishStatus.platformStatus)
+
+    // 合并 AI 生成的图片和从 order_assets 分配的图片
+    const allImages = [...images]
+    for (const img of assignedImages) {
+      if (typeof img === 'string' && !allImages.includes(img)) allImages.push(img)
+      else if (typeof img === 'object' && img.url && !allImages.find(i => i === img.url || (typeof i === 'object' && i.url === img.url))) allImages.push(img)
+    }
+    // 如果有分配的视频且没有生成的视频，使用分配的视频
+    const finalVideos = videos.length > 0 ? videos : (assignedVideoUrl ? [assignedVideoUrl] : [])
 
     return {
       id: record.id,
@@ -370,11 +381,13 @@ export class OrderProcessingService {
       generatedContent: {
         title: config.title || '',
         content: record.content || '',
-        images,
-        videos,
+        images: allImages,
+        videos: finalVideos,
         platform: this.canonicalizePlatform(record.platform),
         platforms: normalizedPlatforms
       },
+      assignedImages,
+      assignedVideoUrl,
       publishStatus: {
         ...rawPublishStatus,
         platforms: this.normalizePlatforms(rawPublishStatus.platforms || normalizedPlatforms),

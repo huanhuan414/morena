@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import Taro from '@tarojs/taro'
-import { View, Text, ScrollView } from '@tarojs/components'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Send, Check, ChevronRight, Loader, ArrowLeft,
   Users, Coins, Sparkles, Zap, ShieldCheck, Clock,
-  Target, TrendingUp, Lightbulb, ClipboardList
+  Target, TrendingUp, Lightbulb, ClipboardList,
+  Plus, X, Film
 } from 'lucide-react-taro'
 import { Network } from '@/network'
 import {
@@ -42,6 +43,8 @@ export default function OrderCreate() {
     avatarCount: 1,
     quantityPerAvatar: 1,
   })
+  const [uploadedAssets, setUploadedAssets] = useState<{ id: string; url: string; type: 'image' | 'video'; filename: string; size: number; mimeType: string }[]>([])
+  const [isUploading, setIsUploading] = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPlatformReq, setShowPlatformReq] = useState(false)
@@ -62,6 +65,94 @@ export default function OrderCreate() {
   }
 
   useEffect(() => { return () => { stopAiPolling() } }, [])
+
+  // ========== 素材上传相关 ==========
+  const imageCount = uploadedAssets.filter(a => a.type === 'image').length
+  const videoCount = uploadedAssets.filter(a => a.type === 'video').length
+  const requiredImageCount = form.contentType !== 'text' ? 3 : 0
+  const needVideo = form.contentType === 'video'
+
+  const handleUploadImage = async () => {
+    if (imageCount >= 9) {
+      Taro.showToast({ title: '最多上传9张图片', icon: 'none' })
+      return
+    }
+    try {
+      const res = await Taro.chooseImage({ count: 9 - imageCount, sizeType: ['compressed'], sourceType: ['album', 'camera'] })
+      setIsUploading(true)
+      for (const tempPath of res.tempFilePaths) {
+        try {
+          const uploadRes = await Network.uploadFile({ url: '/api/upload/image', filePath: tempPath, name: 'file' })
+          const data = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data
+          const url = data?.data?.url || data?.url
+          if (url) {
+            setUploadedAssets(prev => [...prev, { id: `img_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, url, type: 'image', filename: tempPath.split('/').pop() || 'image', size: 0, mimeType: 'image/jpeg' }])
+          }
+        } catch (e) { console.error('图片上传失败:', e) }
+      }
+    } catch (e) { /* 用户取消选择 */ }
+    finally { setIsUploading(false) }
+  }
+
+  const handleUploadVideo = async () => {
+    if (videoCount >= 3) {
+      Taro.showToast({ title: '最多上传3个视频', icon: 'none' })
+      return
+    }
+    try {
+      const res = await Taro.chooseVideo({ sourceType: ['album', 'camera'], maxDuration: 60, compressed: true })
+      setIsUploading(true)
+      try {
+        const uploadRes = await Network.uploadFile({ url: '/api/upload/video', filePath: res.tempFilePath, name: 'file' })
+        const data = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data
+        const url = data?.data?.url || data?.url
+        if (url) {
+          setUploadedAssets(prev => [...prev, { id: `vid_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, url, type: 'video', filename: 'video', size: 0, mimeType: 'video/mp4' }])
+        }
+      } catch (e) { console.error('视频上传失败:', e) }
+    } catch (e) { /* 用户取消选择 */ }
+    finally { setIsUploading(false) }
+  }
+
+  const handleUploadZip = async () => {
+    const env = Taro.getEnv()
+    if (env === Taro.ENV_TYPE.WEAPP) {
+      try {
+        const res = await Taro.chooseMessageFile({ count: 1, type: 'file', extension: ['.zip', '.rar', '.7z'] })
+        setIsUploading(true)
+        Taro.showLoading({ title: '上传解压中...' })
+        try {
+          const uploadRes = await Network.uploadFile({ url: '/api/upload/zip', filePath: res.tempFiles[0].path, name: 'file' })
+          const data = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data
+          const extracted = data?.data
+          if (extracted) {
+            const newAssets: typeof uploadedAssets = []
+            ;(extracted.images || []).forEach((img: { url: string; filename: string; size?: number; mimeType?: string }, idx: number) => {
+              newAssets.push({ id: `zip_img_${Date.now()}_${idx}`, url: img.url, type: 'image', filename: img.filename, size: img.size || 0, mimeType: img.mimeType || 'image/jpeg' })
+            })
+            ;(extracted.videos || []).forEach((vid: { url: string; filename: string; size?: number; mimeType?: string }, idx: number) => {
+              newAssets.push({ id: `zip_vid_${Date.now()}_${idx}`, url: vid.url, type: 'video', filename: vid.filename, size: vid.size || 0, mimeType: vid.mimeType || 'video/mp4' })
+            })
+            setUploadedAssets(prev => [...prev, ...newAssets])
+            Taro.showToast({ title: `提取${newAssets.length}个文件`, icon: 'success' })
+          }
+        } catch (e) {
+          console.error('压缩包上传失败:', e)
+          Taro.showToast({ title: '上传失败', icon: 'none' })
+        }
+        Taro.hideLoading()
+      } catch (e) { /* 用户取消 */ }
+      finally { setIsUploading(false) }
+    } else {
+      Taro.showToast({ title: '请在小程序中上传压缩包', icon: 'none' })
+    }
+  }
+
+  const handleRemoveAsset = (id: string) => {
+    setUploadedAssets(prev => prev.filter(a => a.id !== id))
+  }
+
+  // ========== END 素材上传 ==========
 
   const selectedType = CONTENT_TYPES.find(t => t.id === form.contentType)
   const basePricePerUnit = selectedType?.basePrice || 2
@@ -322,6 +413,30 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
       if (payloadObj?.code === 200 && payloadObj?.data?.id) {
         const orderId = payloadObj.data.id
         const payment = payloadObj.data.payment
+
+        // 将已上传的素材绑定到订单
+        if (uploadedAssets.length > 0) {
+          try {
+            const assetData = uploadedAssets.map((a, idx) => ({
+              id: `oa_${Date.now()}_${idx}`,
+              assetType: a.type,
+              source: 'user_uploaded',
+              assetUrl: a.url,
+              originalFilename: a.filename,
+              fileSize: a.size,
+              mimeType: a.mimeType,
+              sortOrder: idx,
+            }))
+            await Network.request({
+              url: '/api/order-assets/batch',
+              method: 'POST',
+              data: { orderId, assets: assetData },
+            })
+            console.log('[OrderCreate] 素材绑定成功:', assetData.length, '个')
+          } catch (assetErr) {
+            console.warn('[OrderCreate] 素材绑定失败（不影响订单）:', assetErr)
+          }
+        }
 
         if (payment && payment.packageValue) {
           // 有支付参数，唤起微信支付
@@ -674,6 +789,71 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
             ))}
           </View>
         </View>
+
+        {/* 素材上传（可选） */}
+        {form.contentType !== 'text' && (
+          <View className="section">
+            <View className="section-header">
+              <View className="section-title-row">
+                <View className="title-dot accent" />
+                <Text className="section-title">素材上传</Text>
+              </View>
+              <Text className="section-hint">
+                {uploadedAssets.filter(a => a.type === 'image').length >= requiredImageCount
+                  ? '图片素材已满足'
+                  : `需${requiredImageCount}张图，不足将AI生成`}
+              </Text>
+            </View>
+            {/* 已上传的图片 */}
+            <View className="asset-upload-grid">
+              {uploadedAssets.filter(a => a.type === 'image').map((asset, idx) => (
+                <View key={asset.url + idx} className="asset-preview-item">
+                  <Image src={asset.url} className="asset-preview-img" mode="aspectFill" />
+                  <View
+                    className="asset-remove-btn"
+                    onClick={() => handleRemoveAsset(asset.id)}
+                  >
+                    <X size={12} color="#fff" />
+                  </View>
+                </View>
+              ))}
+              {/* 添加图片按钮 */}
+              {uploadedAssets.filter(a => a.type === 'image').length < 9 && (
+                <View className="asset-add-btn" onClick={handleUploadImage}>
+                  <Plus size={20} color="#999" />
+                  <Text className="asset-add-text">添加图片</Text>
+                </View>
+              )}
+              {/* 上传视频按钮 */}
+              {needVideo && uploadedAssets.filter(a => a.type === 'video').length === 0 && (
+                <View className="asset-add-btn" onClick={handleUploadVideo}>
+                  <Film size={20} color="#999" />
+                  <Text className="asset-add-text">添加视频</Text>
+                </View>
+              )}
+            </View>
+            {/* 已上传的视频 */}
+            {uploadedAssets.filter(a => a.type === 'video').map((asset, idx) => (
+              <View key={asset.url + idx} className="asset-video-item">
+                <Film size={14} color="#6366F1" />
+                <Text className="asset-video-name">{asset.filename}</Text>
+                <View className="asset-remove-btn-small" onClick={() => handleRemoveAsset(asset.id)}>
+                  <X size={12} color="#999" />
+                </View>
+              </View>
+            ))}
+            {/* 上传压缩包 */}
+            <View className="asset-zip-row" onClick={handleUploadZip}>
+              <Plus size={14} color="#6366F1" />
+              <Text className="asset-zip-text">上传压缩包批量导入图片/视频</Text>
+            </View>
+            {isUploading && (
+              <View className="asset-uploading">
+                <Text className="asset-uploading-text">上传中...</Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* 行业领域偏好 */}
         <View className="section">

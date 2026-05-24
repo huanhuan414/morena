@@ -6,6 +6,7 @@ import { EarningService } from '../earning/earning.service'
 import { NotificationService } from '../notification/notification.service'
 import { OrderDispatchService } from '../order-dispatch/order-dispatch.service'
 import { WechatPayService } from '../payment/wechat-pay.service'
+import { ContentGenerationService } from '../content-generation/content-generation.service'
 
 /**
  * 字段命名规则说明：
@@ -21,6 +22,7 @@ export class OrderService {
     @Inject(NotificationService) private readonly notificationService: NotificationService,
     @Inject(forwardRef(() => OrderDispatchService)) private readonly dispatchService: OrderDispatchService,
     @Inject(forwardRef(() => WechatPayService)) private readonly wechatPayService: WechatPayService,
+    @Inject(forwardRef(() => ContentGenerationService)) private readonly contentGenService: ContentGenerationService,
   ) {}
 
   private safeParseJson<T>(value: any, fallback: T): T {
@@ -991,6 +993,11 @@ export class OrderService {
 
     // 派单和短信通知由前端匹配确认页触发（POST /api/order-dispatch/:orderId/dispatch-all）
     // 不在支付成功时自动派单，等待发单方在匹配页确认后再执行
+
+    // 支付成功后立即触发AI素材预生成（异步，不阻塞返回）
+    this.contentGenService.pregenerateOrderAssets(orderId).catch(err => {
+      console.warn(`[handlePaymentSuccess] 素材预生成启动失败(非阻塞): ${err.message}`)
+    })
 
     return this.getOrderById(orderId)
   }

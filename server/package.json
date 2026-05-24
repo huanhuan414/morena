@@ -24,6 +24,7 @@
     "@supabase/supabase-js": "2.95.3",
     "@volcengine/imagex-openapi": "^2.2.0",
     "@volcengine/openapi": "^1.36.1",
+    "adm-zip": "^0.5.17",
     "axios": "^1.15.0",
     "better-sqlite3": "^11.9.1",
     "coze-coding-dev-sdk": "^0.7.16",
@@ -50,6 +51,7 @@
   "devDependencies": {
     "@nestjs/cli": "^10.4.9",
     "@nestjs/schematics": "^10.2.3",
+    "@types/adm-zip": "^0.5.8",
     "@types/better-sqlite3": "^7.6.13",
     "@types/express": "5.0.6",
     "@types/form-data": "^2.5.2",

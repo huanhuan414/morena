@@ -902,3 +902,155 @@
 .btn-loading {
   animation: spin 1s linear infinite;
 }
+
+/* 素材上传区域 */
+.asset-upload-section {
+  margin: 0 32rpx 24rpx;
+  padding: 28rpx;
+  background: #fff;
+  border-radius: 20rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+.asset-section-title {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8rpx;
+  margin-bottom: 20rpx;
+}
+
+.asset-section-title-text {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.asset-section-optional {
+  font-size: 22rpx;
+  color: #999;
+  font-weight: 400;
+}
+
+.asset-grid {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.asset-item {
+  position: relative;
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 12rpx;
+  overflow: hidden;
+}
+
+.asset-item-image {
+  width: 160rpx;
+  height: 160rpx;
+}
+
+.asset-item-video {
+  width: 160rpx;
+  height: 160rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f0f0f5;
+  border-radius: 12rpx;
+}
+
+.asset-item-delete {
+  position: absolute;
+  top: 4rpx;
+  right: 4rpx;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.asset-add-btn {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 12rpx;
+  border: 2rpx dashed #d0d0d8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+  background: #fafafe;
+}
+
+.asset-add-text {
+  font-size: 20rpx;
+  color: #999;
+}
+
+.asset-add-zip {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 12rpx;
+  border: 2rpx dashed #d0d0d8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+  background: #fafafe;
+}
+
+.asset-add-zip-text {
+  font-size: 20rpx;
+  color: #999;
+}
+
+.asset-tip {
+  margin-top: 16rpx;
+  font-size: 22rpx;
+  color: #888;
+}
+
+.asset-tip-success {
+  color: #52c41a;
+}
+
+.asset-uploading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12rpx;
+}
+
+.video-icon-wrap {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-filename {
+  font-size: 20rpx;
+  color: #666;
+  text-align: center;
+  padding: 0 8rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 148rpx;
+}

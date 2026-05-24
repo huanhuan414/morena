@@ -8,9 +8,10 @@ import { NotificationModule } from '../notification/notification.module';
 import { OrderProcessingModule } from '../order-processing/order-processing.module';
 import { ReverseGeocodingService } from '../../services/reverse-geocoding.service';
 import { PaymentModule } from '../payment/payment.module';
+import { ContentGenerationModule } from '../content-generation/content-generation.module';
 
 @Module({
-  imports: [OrderDispatchModule, EarningModule, NotificationModule, forwardRef(() => OrderProcessingModule), forwardRef(() => PaymentModule)],
+  imports: [OrderDispatchModule, EarningModule, NotificationModule, forwardRef(() => OrderProcessingModule), forwardRef(() => PaymentModule), forwardRef(() => ContentGenerationModule)],
   controllers: [OrderController],
   providers: [
     OrderService,

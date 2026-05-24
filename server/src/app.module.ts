@@ -39,6 +39,7 @@ import { SkillModule } from './modules/skill/skill.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { ImageGenModule } from './modules/image-gen/image-gen.module';
 import { AiSkillModule } from './modules/ai-skill/ai-skill.module';
+import { OrderAssetsModule } from './modules/order-assets/order-assets.module';
 import { RedisModule } from './modules/redis/redis.module';
 
 @Module({
@@ -80,7 +81,8 @@ import { RedisModule } from './modules/redis/redis.module';
     SkillModule,
     PaymentModule,
     ImageGenModule,
-    AiSkillModule
+    AiSkillModule,
+    OrderAssetsModule
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -236,6 +236,9 @@ importers:
       '@volcengine/openapi':
         specifier: ^1.36.1
         version: 1.36.1(buffer@6.0.3)
+      adm-zip:
+        specifier: ^0.5.17
+        version: 0.5.17
       axios:
         specifier: ^1.15.0
         version: 1.15.0
@@ -309,6 +312,9 @@ importers:
       '@nestjs/schematics':
         specifier: ^10.2.3
         version: 10.2.3(chokidar@3.6.0)(typescript@5.9.3)
+      '@types/adm-zip':
+        specifier: ^0.5.8
+        version: 0.5.8
       '@types/better-sqlite3':
         specifier: ^7.6.13
         version: 7.6.13
@@ -5606,6 +5612,9 @@ packages:
   '@tt-miniprogram/ext-pack@1.2.4':
     resolution: {integrity: sha512-pIXzF6YcCtJdlIGNByUIZr8OArdhi15ybS+N5Rr8x2YNQqFg/asacWqOSTnlOAOk2d5K6HA79sjdKodkrql7yQ==}
 
+  '@types/adm-zip@0.5.8':
+    resolution: {integrity: sha512-RVVH7QvZYbN+ihqZ4kX/dMiowf6o+Jk1fNwiSdx0NahBJLU787zkULhGhJM8mf/obmLGmgdMM0bXsQTmyfbR7Q==}
+
   '@types/archy@0.0.31':
     resolution: {integrity: sha512-v+dxizsFVyXgD3EpFuqT9YjdEjbJmPxNf1QIX9ohZOhxh1ZF2yhqv3vYaeum9lg3VghhxS5S0a6yldN9J9lPEQ==}
 
@@ -6045,6 +6054,10 @@ packages:
 
   adm-zip@0.5.16:
     resolution: {integrity: sha512-TGw5yVi4saajsSEgz25grObGHEUaDrniwvA2qwSC060KfqGPdglhvPMA2lPIoxs3PQIItj2iag35fONcQqgUaQ==}
+    engines: {node: '>=12.0'}
+
+  adm-zip@0.5.17:
+    resolution: {integrity: sha512-+Ut8d9LLqwEvHHJl1+PIHqoyDxFgVN847JTVM3Izi3xHDWPE4UtzzXysMZQs64DMcrJfBeS/uoEP4AD3HQHnQQ==}
     engines: {node: '>=12.0'}
 
   agent-base@6.0.2:
@@ -19620,6 +19633,10 @@ snapshots:
       read-package-tree: 5.3.1
       terser: 5.26.0
 
+  '@types/adm-zip@0.5.8':
+    dependencies:
+      '@types/node': 22.19.6
+
   '@types/archy@0.0.31': {}
 
   '@types/babel__core@7.20.5':
@@ -20239,6 +20256,8 @@ snapshots:
   adm-zip@0.5.10: {}
 
   adm-zip@0.5.16: {}
+
+  adm-zip@0.5.17: {}
 
   agent-base@6.0.2:
     dependencies:

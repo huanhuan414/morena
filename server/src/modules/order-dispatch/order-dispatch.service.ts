@@ -1317,6 +1317,29 @@ async getExecutionProgress(orderId: string) {
         : []
     } catch (_) {}
 
+    // 获取订单素材池中已就绪的素材
+    const assignedImages: string[] = []
+    let assignedVideoUrl: string | undefined
+    try {
+      const db2 = getMySQLClient()
+      const readyAssets = await db2.query(
+        'SELECT asset_type, asset_url FROM order_assets WHERE order_id = ? AND status = \'ready\' ORDER BY sort_order ASC',
+        [orderId]
+      ) as [any[], any]
+      if (readyAssets && readyAssets.length > 0) {
+        for (const asset of readyAssets) {
+          if (asset.asset_type === 'image' && assignedImages.length < 9) {
+            assignedImages.push(asset.asset_url)
+          } else if (asset.asset_type === 'video' && !assignedVideoUrl) {
+            assignedVideoUrl = asset.asset_url
+          }
+        }
+        console.log(`[startContentGeneration] 订单${orderId}素材池: ${assignedImages.length}张图片, ${assignedVideoUrl ? '有视频' : '无视频'}`)
+      }
+    } catch (err: any) {
+      console.warn('[startContentGeneration] 获取订单素材失败:', err.message)
+    }
+
     // 调用内容生成服务
     await this.contentGenerationService.generateContent({
       orderId,
@@ -1335,6 +1358,8 @@ async getExecutionProgress(orderId: string) {
       preferredStyles,
       industryTags,
       requestId,
+      assignedImages: assignedImages.length > 0 ? assignedImages : undefined,
+      assignedVideoUrl,
     })
 
     console.log(`[startContentGeneration] 内容生成已启动: orderId=${orderId}, avatarId=${avatarId}, skills=${avatarSkills.join(',')}`)
