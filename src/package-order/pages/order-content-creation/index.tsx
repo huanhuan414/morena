@@ -23,6 +23,10 @@ interface OrderInfo {
   status: string
   orderType: string
   contentType?: string
+  requirements?: {
+    platformRemarks?: Record<string, string>
+    [key: string]: any
+  }
 }
 
 interface GeneratedContent {
@@ -82,6 +86,7 @@ function normalizeOrderInfo(raw: any): OrderInfo | null {
     status: raw.status || '',
     orderType: raw.orderType || raw.order_type || '',
     contentType: raw.contentType || raw.content_type || 'image_text',
+    requirements: raw.requirements ? (typeof raw.requirements === 'string' ? JSON.parse(raw.requirements) : raw.requirements) : undefined,
   }
 }
 
@@ -110,8 +115,8 @@ function normalizeProcessingData(raw: any): ProcessingData | null {
       displayImages: parseStringArray(generatedContent.displayImages),
       displayVideos: parseStringArray(generatedContent.displayVideos || generatedContent.videoUrls || generatedContent.video_urls),
       platforms: parseStringArray(generatedContent.platforms),
-      assignedImages: parseStringArray(generatedContent.assignedImages || generatedContent.assigned_displayImages),
-      assignedVideoUrl: generatedContent.assignedVideoUrl || generatedContent.assigned_video_url || '',
+      assignedImages: parseStringArray(raw.assignedImages || generatedContent.assignedImages || generatedContent.assigned_displayImages),
+      assignedVideoUrl: raw.assignedVideoUrl || raw.assigned_video_url || generatedContent.assignedVideoUrl || generatedContent.assigned_video_url || '',
     },
     publishFeedback: normalizePublishFeedback(raw.publishFeedback),
     queueInfo: raw.queueInfo || raw.queue_info || undefined,
@@ -506,6 +511,20 @@ export default function OrderContentCreation() {
                 </View>
               )}
             </View>
+            {/* 平台备注 */}
+            {orderInfo.requirements?.platformRemarks && Object.keys(orderInfo.requirements.platformRemarks).some(k => orderInfo.requirements!.platformRemarks![k]) && (
+              <View className="cc-remarks-section" style={{ marginTop: '8rpx' }}>
+                <Text className="cc-remarks-title">平台要求</Text>
+                {Object.entries(orderInfo.requirements.platformRemarks).map(([platform, remark]) => (
+                  remark ? (
+                    <View className="cc-remark-item" key={platform}>
+                      <Text className="cc-remark-platform">{getPlatformLabel(platform)}：</Text>
+                      <Text className="cc-remark-text">{remark}</Text>
+                    </View>
+                  ) : null
+                ))}
+              </View>
+            )}
           </View>
         )}
 

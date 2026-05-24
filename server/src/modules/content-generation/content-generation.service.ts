@@ -292,38 +292,52 @@ export class ContentGenerationService implements OnModuleInit {
 
     this.logger.log(`内容生成: orderId=${input.orderId}, avatarId=${input.avatarId}, primarySkill=${primarySkill}, contentType=${input.contentType}->${effectiveContentType}, skills=${input.avatarSkills?.join(',')}, requestId=${input.requestId || 'new'}`)
 
-    for (const platform of input.platforms) {
-      const requestId = input.requestId || `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    for (let i = 0; i < input.platforms.length; i++) {
+      const platform = input.platforms[i]
+      // 如果有多个平台，第二个平台起加后缀避免主键冲突
+      const requestId = i === 0
+        ? (input.requestId || `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`)
+        : `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      const isFirstPlatform = i === 0
 
       const db = getMySQLClient()
       
-      if (input.requestId) {
-        try {
-          await db.query(
-            'UPDATE content_generation_requests SET status = ?, updated_at = NOW() WHERE id = ?',
-            ['processing', requestId]
-          )
-          this.logger.log(`复用生成记录: ${requestId}, 状态: processing`)
-        } catch (dbError: any) {
-          this.logger.warn(`更新记录失败: ${dbError.message}`)
-        }
-      } else {
-        try {
-          await db.insert('content_generation_requests', {
-            id: requestId,
-            avatar_id: input.avatarId,
-            order_id: input.orderId,
-            platform,
-            status: 'processing',
-            content_type: effectiveContentType,
-            content_quantity: input.contentQuantity || 1,
-            content: '',
-            images: null,
-            video_url: null,
-            // created_at 和 updated_at 由数据库 DEFAULT CURRENT_TIMESTAMP 自动填充
-          })
-          this.logger.log(`创建生成记录: ${requestId}, 状态: processing`)
-        } catch (dbError: any) {
+      // 统一使用 INSERT 创建记录（不管是否传入 requestId）
+      // 因为 requestId 是在 _doStartContentGeneration 中新生成的，记录一定不存在
+      try {
+        await db.insert('content_generation_requests', {
+          id: requestId,
+          avatar_id: input.avatarId,
+          order_id: input.orderId,
+          platform,
+          status: 'processing',
+          content_type: effectiveContentType,
+          content_quantity: input.contentQuantity || 1,
+          content: '',
+          images: null,
+          video_url: null,
+          assigned_images: input.assignedImages?.length > 0 ? JSON.stringify(input.assignedImages) : null,
+          assigned_video_url: input.assignedVideoUrl || null,
+        })
+        this.logger.log(`创建生成记录: ${requestId}, platform=${platform}, assignedImages=${input.assignedImages?.length || 0}, assignedVideoUrl=${input.assignedVideoUrl || 'none'}`)
+      } catch (dbError: any) {
+        // 如果主键冲突，尝试 UPDATE
+        if (dbError.code === 'ER_DUP_ENTRY') {
+          try {
+            await db.query(
+              'UPDATE content_generation_requests SET status = ?, assigned_images = ?, assigned_video_url = ?, updated_at = NOW() WHERE id = ?',
+              [
+                'processing',
+                input.assignedImages?.length > 0 ? JSON.stringify(input.assignedImages) : null,
+                input.assignedVideoUrl || null,
+                requestId
+              ]
+            )
+            this.logger.log(`复用生成记录: ${requestId}, 状态: processing`)
+          } catch (updateError: any) {
+            this.logger.warn(`更新记录失败: ${updateError.message}`)
+          }
+        } else {
           this.logger.warn(`数据库创建记录失败: ${dbError.message}`)
         }
       }

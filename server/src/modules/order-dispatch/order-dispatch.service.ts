@@ -1288,6 +1288,8 @@ async getExecutionProgress(orderId: string) {
    * 实际执行内容生成
    */
   private async _doStartContentGeneration(orderId: string, avatarId: string, request: any, requestId?: string) {
+    // 提前生成 requestId，用于独占模式标记 assigned_to
+    const effectiveRequestId = requestId || `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     const db = getMySQLClient()
     const order = await this.getOrderById(orderId)
     if (!order) {
@@ -1349,36 +1351,41 @@ async getExecutionProgress(orderId: string) {
       const db2 = getMySQLClient()
       
       // 第一步：查询是否有任何素材记录（包括generating/pending）
-      const [anyAssets] = await db2.query(
+      // 注意：getMySQLClient().query() 返回直接的行数组（已转camelCase），不是 [rows, fields] 元组
+      const anyAssetRows = await db2.query(
         'SELECT COUNT(*) as cnt FROM order_assets WHERE order_id = ?',
         [orderId]
-      ) as [any[], any]
-      const hasAssets = (anyAssets as any)?.[0]?.cnt > 0
+      )
+      const hasAssets = (anyAssetRows as any[])?.[0]?.cnt > 0
       
       if (hasAssets) {
-        // 第二步：查已就绪的素材
+        // 第二步：查已就绪的素材（包含id和assigned_to用于独占模式）
+        // db2.query 返回的行已转为 camelCase: asset_type → assetType, asset_url → assetUrl, assigned_to → assignedTo
         let readyAssets = await db2.query(
-          'SELECT asset_type, asset_url FROM order_assets WHERE order_id = ? AND status = \'ready\' ORDER BY sort_order ASC',
+          'SELECT id, asset_type, asset_url, assigned_to FROM order_assets WHERE order_id = ? AND status = \'ready\' ORDER BY sort_order ASC',
           [orderId]
-        ) as [any[], any]
+        ) as any[]
         
-        let readyImageCount = readyAssets?.filter((a: any) => a.asset_type === 'image').length || 0
-        let readyVideoCount = readyAssets?.filter((a: any) => a.asset_type === 'video').length || 0
+        let readyImageCount = readyAssets?.filter((a: any) => a.assetType === 'image').length || 0
+        let readyVideoCount = readyAssets?.filter((a: any) => a.assetType === 'video').length || 0
         
         // 第三步：如果还有pending/generating的素材，轮询等待（最多60秒）
-        const hasPending = await db2.query(
+        const hasPendingRows = await db2.query(
           'SELECT COUNT(*) as cnt FROM order_assets WHERE order_id = ? AND status IN (\'pending\', \'generating\')',
           [orderId]
-        ) as [any[], any]
-        const pendingCount = (hasPending as any)?.[0]?.cnt || 0
+        )
+        const pendingCount = (hasPendingRows as any[])?.[0]?.cnt || 0
+        
+        const orderContentType = order.contentType || order.content_type || 'image_text'
+        const defaultImageCount = orderContentType === 'video' ? 0 : 3
+        const defaultVideoCount = orderContentType === 'video' ? 1 : 0
         
         if (pendingCount > 0) {
           // 需要等待的场景：
           // 1. 没有任何就绪图片/视频
-          // 2. 就绪图片数量不足（默认需要3张）
-          const requiredImageCount = 3
-          const needMoreImages = readyImageCount < requiredImageCount
-          const needMoreVideos = contentType === 'video' && readyVideoCount === 0
+          // 2. 就绪素材数量不足
+          const needMoreImages = readyImageCount < defaultImageCount
+          const needMoreVideos = orderContentType === 'video' && readyVideoCount < defaultVideoCount
           
           if (readyImageCount === 0 || needMoreImages || needMoreVideos) {
             console.log(`[startContentGeneration] 订单${orderId}有${pendingCount}个素材生成中，已就绪${readyImageCount}图${readyVideoCount}视频，等待就绪...`)
@@ -1390,57 +1397,82 @@ async getExecutionProgress(orderId: string) {
               await new Promise(resolve => setTimeout(resolve, pollIntervalMs))
               
               readyAssets = await db2.query(
-                'SELECT asset_type, asset_url FROM order_assets WHERE order_id = ? AND status = \'ready\' ORDER BY sort_order ASC',
+                'SELECT id, asset_type, asset_url, assigned_to FROM order_assets WHERE order_id = ? AND status = \'ready\' ORDER BY sort_order ASC',
                 [orderId]
-              ) as [any[], any]
+              ) as any[]
               
-              readyImageCount = readyAssets?.filter((a: any) => a.asset_type === 'image').length || 0
-              readyVideoCount = readyAssets?.filter((a: any) => a.asset_type === 'video').length || 0
+              readyImageCount = readyAssets?.filter((a: any) => a.assetType === 'image').length || 0
+              readyVideoCount = readyAssets?.filter((a: any) => a.assetType === 'video').length || 0
               
-              // 就绪数量已满足需求，或至少有1张图片时可以提前退出
-              if (readyImageCount >= requiredImageCount || (readyImageCount > 0 && Date.now() - startTime > 15000)) {
+              // 就绪数量已满足需求，或至少有1张素材时可以提前退出
+              const imagesEnough = readyImageCount >= defaultImageCount
+              const videosEnough = orderContentType !== 'video' || readyVideoCount >= defaultVideoCount
+              if ((imagesEnough && videosEnough) || ((readyImageCount > 0 || readyVideoCount > 0) && Date.now() - startTime > 15000)) {
                 console.log(`[startContentGeneration] 订单${orderId}素材已就绪: ${readyImageCount}张图片, ${readyVideoCount}个视频 (等待${Math.round((Date.now()-startTime)/1000)}秒)`)
                 break
               }
               
               // 检查是否还有pending的
-              const stillPending = await db2.query(
+              const stillPendingRows = await db2.query(
                 'SELECT COUNT(*) as cnt FROM order_assets WHERE order_id = ? AND status IN (\'pending\', \'generating\')',
                 [orderId]
-              ) as [any[], any]
-              if ((stillPending as any)?.[0]?.cnt === 0) break
+              )
+              if ((stillPendingRows as any[])?.[0]?.cnt === 0) break
             }
           }
         }
         
         // 第四步：分配就绪素材（根据分配模式）
         if (readyAssets && readyAssets.length > 0) {
+          // 计算独占模式下每个分身的素材上限
+          const totalImageAssets = readyAssets.filter((a: any) => a.assetType === 'image').length
+          const totalVideoAssets = readyAssets.filter((a: any) => a.assetType === 'video').length
+          const avatarCount = order.avatarCount || order.avatar_count || 1
+          const maxImagesPerAvatar = assetDistributeMode === 'exclusive' ? Math.ceil(totalImageAssets / avatarCount) : 9
+          const maxVideosPerAvatar = assetDistributeMode === 'exclusive' ? Math.ceil(totalVideoAssets / avatarCount) : 1
+          console.log(`[startContentGeneration] 素材上限: mode=${assetDistributeMode}, totalImg=${totalImageAssets}, totalVid=${totalVideoAssets}, avatars=${avatarCount}, maxImg=${maxImagesPerAvatar}, maxVid=${maxVideosPerAvatar}`)
+
           if (assetDistributeMode === 'exclusive') {
-            // 独占模式：每个素材只能分配给一个分身，排除已被分配的
-            const unassignedAssets = readyAssets.filter((a: any) => !a.assigned_to && !a.assignedTo)
+            // 独占模式：每个素材只能分配给一个分身，每个分身最多分配 maxImagesPerAvatar / maxVideosPerAvatar
+            // 使用原子性 UPDATE + affectedRows 确保并发安全
+            const unassignedAssets = readyAssets.filter((a: any) => !a.assignedTo)
+            console.log(`[startContentGeneration] 独占模式分配: orderId=${orderId}, requestId=${effectiveRequestId}, unassigned=${unassignedAssets.length}个`)
             for (const asset of unassignedAssets) {
-              if (asset.asset_type === 'image' && assignedImages.length < 9) {
-                assignedImages.push(asset.asset_url)
-                // 标记已分配给此请求
-                await db2.query('UPDATE order_assets SET assigned_to = ? WHERE id = ?', [requestId, asset.id])
-              } else if (asset.asset_type === 'video' && !assignedVideoUrl) {
-                assignedVideoUrl = asset.asset_url
-                await db2.query('UPDATE order_assets SET assigned_to = ? WHERE id = ?', [requestId, asset.id])
+              if (asset.assetType === 'image' && assignedImages.length < maxImagesPerAvatar) {
+                // 原子性占位：只有 assigned_to 为 NULL 时才能更新成功
+                const updateResult = await db2.query(
+                  'UPDATE order_assets SET assigned_to = ? WHERE id = ? AND assigned_to IS NULL',
+                  [effectiveRequestId, asset.id]
+                )
+                const affected = (updateResult as any)?.affectedRows || (updateResult as any)?.[0]?.affectedRows || 0
+                console.log(`[startContentGeneration] 独占占位: asset=${asset.id}, requestId=${effectiveRequestId}, affected=${affected}`)
+                if (affected > 0) {
+                  assignedImages.push(asset.assetUrl)
+                }
+              } else if (asset.assetType === 'video' && !assignedVideoUrl && maxVideosPerAvatar > 0) {
+                const updateResult = await db2.query(
+                  'UPDATE order_assets SET assigned_to = ? WHERE id = ? AND assigned_to IS NULL',
+                  [effectiveRequestId, asset.id]
+                )
+                const affected = (updateResult as any)?.affectedRows || (updateResult as any)?.[0]?.affectedRows || 0
+                if (affected > 0) {
+                  assignedVideoUrl = asset.assetUrl
+                }
               }
             }
           } else {
             // 共享模式：所有分身拿到同样素材
             for (const asset of readyAssets) {
-              if (asset.asset_type === 'image' && assignedImages.length < 9) {
-                assignedImages.push(asset.asset_url)
-              } else if (asset.asset_type === 'video' && !assignedVideoUrl) {
-                assignedVideoUrl = asset.asset_url
+              if (asset.assetType === 'image' && assignedImages.length < 9) {
+                assignedImages.push(asset.assetUrl)
+              } else if (asset.assetType === 'video' && !assignedVideoUrl) {
+                assignedVideoUrl = asset.assetUrl
               }
             }
           }
         }
         
-        console.log(`[startContentGeneration] 订单${orderId}素材分配结果: ${assignedImages.length}张图片, ${assignedVideoUrl ? '有视频' : '无视频'}`)
+        console.log(`[startContentGeneration] 订单${orderId}素材分配结果(模式=${assetDistributeMode}): ${assignedImages.length}张图片, ${assignedVideoUrl ? '有视频' : '无视频'}`)
       }
     } catch (err: any) {
       console.warn('[startContentGeneration] 获取订单素材失败:', err.message)
@@ -1463,7 +1495,7 @@ async getExecutionProgress(orderId: string) {
       nicheTags,
       preferredStyles,
       industryTags,
-      requestId,
+      requestId: effectiveRequestId,
       assignedImages: assignedImages.length > 0 ? assignedImages : undefined,
       assignedVideoUrl,
     })

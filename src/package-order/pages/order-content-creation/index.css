@@ -186,6 +186,44 @@
 }
 
 /* 加载中 */
+
+/* 平台备注区域 */
+.cc-remarks-section {
+  padding: 16rpx 0 0;
+}
+
+.cc-remarks-title {
+  display: block;
+  font-size: 22rpx;
+  color: #6366F1;
+  font-weight: 500;
+  margin-bottom: 8rpx;
+}
+
+.cc-remark-item {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  padding: 8rpx 16rpx;
+  background: #F8FAFC;
+  border-radius: 12rpx;
+  margin-bottom: 6rpx;
+}
+
+.cc-remark-platform {
+  font-size: 22rpx;
+  color: #6366F1;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.cc-remark-text {
+  font-size: 22rpx;
+  color: #475569;
+  line-height: 1.4;
+  flex: 1;
+}
+
 .cc-loading {
   display: flex;
   flex-direction: column;
