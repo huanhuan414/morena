@@ -831,7 +831,7 @@ export class AvatarService {
     const id = `acct_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
 
     // 如果没有 avatar_id，自动使用用户的第一个分身
-    let avatarId = data.avatar_id || ''
+    let avatarId: string | null = data.avatar_id || null
     const userId = data.user_id || null
     if (!avatarId && userId) {
       const [rows] = await db.query(
@@ -862,7 +862,10 @@ export class AvatarService {
       platform_user_id: data.platform_user_id || null,
       status: 'active',
     }
-    await db.insert('avatar_accounts', record)
+    const insertResult = await db.insert('avatar_accounts', record)
+    if (insertResult.error) {
+      throw new Error(`创建账号失败: ${insertResult.error.message || insertResult.error}`)
+    }
     return this.normalizeAccount(record)
   }
 

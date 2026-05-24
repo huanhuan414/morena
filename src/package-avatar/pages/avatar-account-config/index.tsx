@@ -433,7 +433,7 @@ export default function AvatarAccountConfigPage() {
 
     // 构建账号数据
     const data: any = {
-      avatar_id: avatarId || '',  // 如果没有 avatarId，后端会使用用户的第一个分身
+      avatar_id: avatarId || null,  // 如果没有 avatarId，后端会使用用户的第一个分身
       platform: platformId,
       account_name: accountName || '',
       appid: platformId === 'wechat_mp' ? appid : undefined,
