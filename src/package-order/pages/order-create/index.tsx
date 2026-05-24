@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import Taro from '@tarojs/taro'
-import { View, Text, ScrollView, Image } from '@tarojs/components'
+import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Send, Check, ChevronRight, Loader, ArrowLeft,
   Users, Coins, Sparkles, Zap, ShieldCheck, Clock,
   Target, TrendingUp, Lightbulb, ClipboardList,
-  Plus, X, Film
+  Plus, X
 } from 'lucide-react-taro'
 import { Network } from '@/network'
 import {
@@ -311,7 +311,9 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         showCancel: false,
       })
     } finally {
-      if (!aiPollTimerRef.current) {
+      // 只有非轮询场景（同步返回结果或错误）才在此清除loading
+      // 轮询场景由 onData/onError 回调负责清除
+      if (!aiPollUnsubRef.current) {
         setAiLoading(false)
       }
     }
@@ -778,9 +780,16 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
               {uploadedAssets.map((asset, idx) => (
                 <View key={asset.id + idx} className="asset-preview-item">
                   {asset.type === 'video' ? (
-                    <View className="asset-video-thumb">
-                      <Film size={20} color="#fff" />
-                    </View>
+                    <Video
+                      src={asset.url}
+                      className="asset-preview-video"
+                      muted
+                      showPlayBtn={false}
+                      showCenterPlayBtn={false}
+                      showFullscreenBtn={false}
+                      controls={false}
+                      autoplay={false}
+                    />
                   ) : (
                     <Image src={asset.url} className="asset-preview-img" mode="aspectFill" />
                   )}
