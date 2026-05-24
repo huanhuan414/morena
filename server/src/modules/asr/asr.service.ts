@@ -6,7 +6,6 @@ import { Request } from 'express';
 export class AsrService {
   async recognizeAudio(audioUrl: string): Promise<{ text: string; duration?: number }> {
     try {
-      console.log('[ASR] 开始识别音频:', { audioUrl });
 
       // 创建 ASR 客户端
       const config = new Config();
@@ -18,10 +17,6 @@ export class AsrService {
         url: audioUrl
       });
 
-      console.log('[ASR] 识别结果:', {
-        text: result.text,
-        duration: result.duration
-      });
 
       return {
         text: result.text || '',

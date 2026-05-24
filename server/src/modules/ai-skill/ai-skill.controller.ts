@@ -36,7 +36,6 @@ export class AiSkillController {
       imageUrl = body.inputImageUrls.join(',');
     }
 
-    console.log(`[AiSkillController] generate: userId=${userId}, skillType=${body.skillType}, hasImage=${!!imageUrl}, imageCount=${body.inputImageUrls?.length || 0}, hasText=${!!body.inputText}`);
 
     try {
       // 检查每日使用次数限制
@@ -130,9 +129,7 @@ export class AiSkillController {
     if (!file) {
       return { code: 400, msg: '请选择图片', data: null };
     }
-    console.log('[AiSkill] 上传图片:', file.originalname, file.mimetype, file.size, 'bytes');
     const imageUrl = await this.storageService.uploadImage(file);
-    console.log('[AiSkill] 图片URL:', imageUrl);
     return { code: 200, msg: 'ok', data: { imageUrl } };
   }
 

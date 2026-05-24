@@ -57,10 +57,6 @@ export class VideoService {
         generateAudio: true,
       });
 
-      console.log('[VideoService] 莫瑞娜推广视频生成成功:', {
-        videoUrl: response.videoUrl,
-        taskId: response.response?.id,
-      });
 
       return {
         success: true,

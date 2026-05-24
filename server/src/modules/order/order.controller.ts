@@ -15,7 +15,6 @@ export class OrderController {
     @Headers('x-user-id') userId: string,
     @Body() orderData: Record<string, any>
   ) {
-    console.log('[OrderController] 创建订单，用户ID:', userId, '订单数据:', orderData)
     const result = await this.orderService.createOrder(userId, orderData)
     return {
       code: 200,
@@ -39,7 +38,6 @@ export class OrderController {
     @Query('status') status?: string,
     @Query('avatar_id') avatarId?: string
   ) {
-    console.log('[OrderController] list 被调用, userId:', userId, 'status:', status, 'avatarId:', avatarId)
     const filters: Record<string, any> = {}
     if (status) {
       filters.status = status
@@ -69,14 +67,12 @@ export class OrderController {
 
   @Get('stats')
   async stats(@Headers('x-user-id') userId: string) {
-    console.log('[OrderController] stats 被调用, userId:', userId)
     const stats = await this.orderService.getOrderStats(userId || '')
     return { code: 200, data: stats, message: '获取成功' }
   }
 
   @Get(':id')
   async get(@Param('id') orderId: string) {
-    console.log('[OrderController] get 被调用, orderId:', orderId)
     const order = await this.orderService.getOrderById(orderId)
     return { code: 200, data: order, message: '获取成功' }
   }

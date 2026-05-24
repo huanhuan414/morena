@@ -84,7 +84,6 @@ export default function AvatarOrderCompletedPage() {
         withShareTicket: true
       })
     } catch (error) {
-      console.log('分享菜单配置失败，不影响其他功能')
     }
   }
 

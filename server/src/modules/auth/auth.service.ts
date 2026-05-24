@@ -43,7 +43,6 @@ export class AuthService {
       expiresAt: Date.now() + 5 * 60 * 1000,
     });
     const result = await this.smsService.sendVerificationCode(phone, code);
-    console.log(`[验证码] 手机号: ${phone}, 验证码: ${code}`);
     if (result.success && result.isDev) {
       return { ...result, code };
     }
@@ -128,29 +127,16 @@ export class AuthService {
 
     let referralReward = 0;
     if (referralCode && newUser) {
-      console.log(
-        "[AuthService] 开始处理邀请码, referralCode:",
-        referralCode,
-        "newUser.id:",
-        newUser.id,
-      );
       try {
         const referralResult = await this.processReferral(
           newUser.id,
           referralCode,
         );
         referralReward = referralResult.reward;
-        console.log("[AuthService] 邀请码处理成功, reward:", referralReward);
       } catch (error: any) {
         console.error("[AuthService] 处理邀请码失败:", error.message);
       }
     } else {
-      console.log(
-        "[AuthService] 跳过邀请码处理, referralCode:",
-        referralCode,
-        "newUser:",
-        !!newUser,
-      );
     }
 
     return {
@@ -169,17 +155,12 @@ export class AuthService {
     referralCode: string,
   ): Promise<{ inviterId: string; reward: number }> {
     const db = getMySQLClient();
-    console.log("[processReferral] 查找邀请人, referralCode:", referralCode);
     const inviterResult = await db.query("users", {
       referral_code: referralCode,
     });
     const inviter = Array.isArray(inviterResult)
       ? inviterResult[0]
       : (inviterResult as any)?.data?.[0];
-    console.log(
-      "[processReferral] 查询结果 inviter:",
-      inviter ? { id: inviter.id, phone: inviter.phone } : null,
-    );
     if (!inviter) {
       throw new Error("邀请码无效");
     }
@@ -219,12 +200,6 @@ export class AuthService {
     }
 
     const INVITER_REWARD = 5;
-    console.log(
-      "[processReferral] 创建邀请记录, referrer_id:",
-      inviter.id,
-      "referred_id:",
-      inviteeId,
-    );
     const referralId = require("uuid").v4();
     const insertResult = await db.insert("referrals", {
       id: referralId,
@@ -234,7 +209,6 @@ export class AuthService {
       reward_amount: INVITER_REWARD,
       created_at: new Date().toISOString().slice(0, 19).replace("T", " "),
     });
-    console.log("[processReferral] insert 结果:", JSON.stringify(insertResult));
     if (insertResult.error) {
       throw new Error(
         `创建邀请记录失败: ${insertResult.error.message || JSON.stringify(insertResult.error)}`,
@@ -280,7 +254,6 @@ export class AuthService {
       
       // 如果 access_token 无效 (errcode 40001)，强制刷新后重试一次
       if (!phoneResult.phone && phoneResult.errcode === 40001) {
-        console.log('[wechatPhoneLogin] access_token无效，强制刷新后重试');
         accessToken = await this.getWechatAccessToken(true);
         phoneResult = await this.getWechatPhoneNumber(accessToken, phoneCode);
       }
@@ -356,12 +329,6 @@ export class AuthService {
 
       let referralReward = 0;
       if (referralCode && newUser) {
-        console.log(
-          "[AuthService] 微信手机号登录-处理邀请码, referralCode:",
-          referralCode,
-          "newUser.id:",
-          newUser.id,
-        );
         try {
           const referralResult = await this.processReferral(
             newUser.id,
@@ -410,7 +377,6 @@ export class AuthService {
       token: data.access_token,
       expiresAt: now + (data.expires_in - 300) * 1000,
     };
-    console.log('[getWechatAccessToken] 获取新access_token成功, 有效期:', data.expires_in, '秒');
     return data.access_token;
   }
 

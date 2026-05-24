@@ -85,13 +85,6 @@ export class UploadController {
   @Post('audio')
   @UseInterceptors(FileInterceptor('file', multerOptions))
   async uploadAudio(@UploadedFile() file: Express.Multer.File) {
-    console.log('[UploadController] 接收到音频上传请求')
-    console.log('[UploadController] 文件信息:', {
-      originalname: file?.originalname,
-      size: file?.size,
-      mimetype: file?.mimetype,
-      hasBuffer: !!file?.buffer
-    })
 
     if (!file) {
       return {
@@ -123,13 +116,6 @@ export class UploadController {
   @Post('video')
   @UseInterceptors(FileInterceptor('file', multerOptions))
   async uploadVideo(@UploadedFile() file: Express.Multer.File) {
-    console.log('[UploadController] 接收到视频上传请求')
-    console.log('[UploadController] 文件信息:', {
-      originalname: file?.originalname,
-      size: file?.size,
-      mimetype: file?.mimetype,
-      hasBuffer: !!file?.buffer
-    })
 
     if (!file) {
       console.error('[UploadController] 未接收到文件')
@@ -164,14 +150,6 @@ export class UploadController {
   @Post('zip')
   @UseInterceptors(FileInterceptor('file', multerOptions))
   async uploadZip(@UploadedFile() file: Express.Multer.File, @Body() body: any) {
-    console.log('[UploadController] 接收到压缩包上传请求')
-    console.log('[UploadController] 文件信息:', {
-      originalname: file?.originalname,
-      size: file?.size,
-      mimetype: file?.mimetype,
-      hasBuffer: !!file?.buffer,
-      taskId: body?.taskId,
-    })
 
     if (!file) {
       return { code: 400, message: '未接收到文件' }
@@ -217,13 +195,6 @@ export class UploadController {
   @Post()
   @UseInterceptors(FileInterceptor('file', multerOptions))
   async uploadFile(@UploadedFile() file: Express.Multer.File) {
-    console.log('[UploadController] 接收到通用文件上传请求')
-    console.log('[UploadController] 文件信息:', {
-      originalname: file?.originalname,
-      size: file?.size,
-      mimetype: file?.mimetype,
-      hasBuffer: !!file?.buffer
-    })
 
     if (!file) {
       return {

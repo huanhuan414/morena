@@ -308,7 +308,6 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         },
       })
 
-      console.log('[AI生成] 响应:', res.data)
 
       const payload: any = res.data
       const data = payload?.data
@@ -490,7 +489,6 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         openid,
       }
 
-      console.log('创建发单记录请求:', { url: '/api/order', method: 'POST', data: orderData })
 
       const res = await Network.request({
         url: '/api/order',
@@ -498,7 +496,6 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         data: orderData,
       })
 
-      console.log('创建订单响应:', res.data)
 
       const rawPayload = res?.data
       let payload = rawPayload
@@ -524,12 +521,11 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
               mimeType: a.mimeType,
               sortOrder: idx,
             }))
-            const bindRes = await Network.request({
+            await Network.request({
               url: '/api/order-assets/batch',
               method: 'POST',
               data: { orderId, assets: assetData },
             })
-            console.log('[OrderCreate] 素材绑定成功:', assetData.length, '个, res=', bindRes)
           } catch (assetErr) {
             console.error('[OrderCreate] 素材绑定失败:', assetErr)
             Taro.showToast({ title: '素材上传失败，请重试', icon: 'none' })

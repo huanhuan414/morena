@@ -39,9 +39,7 @@ export class OrderAssetsService {
   private volcengineServiceInstance: VolcengineService
 
   constructor() {
-    console.log('[OrderAssetsService] 构造函数被调用 (无参版)')
     this.volcengineServiceInstance = new VolcengineService()
-    console.log('[OrderAssetsService] 实例化完成')
   }
 
   /**
@@ -559,7 +557,6 @@ export class OrderAssetsService {
    * 无素材时创建素材记录并生成；有失败素材时重新生成
    */
   async generateForOrder(orderId: string, _userId?: string) {
-    console.log(`[OrderAssets] 为订单 ${orderId} 触发AI素材生成`)
 
     // 查询订单信息
     const pool = getPool()

@@ -233,7 +233,6 @@ export default function AvatarCreate() {
         filePath: tempFilePath,
         name: 'file',
       })
-      console.log('[上传] 响应:', uploadRes)
       let resData = uploadRes.data
       if (typeof resData === 'string') {
         try { resData = JSON.parse(resData) } catch (e) { console.error('[上传] JSON解析失败:', e) }
@@ -368,7 +367,6 @@ export default function AvatarCreate() {
         abilities: { chat: true, reading: true, analysis: true },
       }
 
-      console.log('提交创建分身:', submitData)
 
       const res = await Network.request({
         url: '/api/avatar',
@@ -376,7 +374,6 @@ export default function AvatarCreate() {
         data: submitData,
       })
 
-      console.log('创建分身响应:', res.data)
 
       Taro.hideLoading()
 
@@ -398,16 +395,12 @@ export default function AvatarCreate() {
         })
         setCurrentStep(1)
         if (createdAvatarId) {
-          console.log('[avatar-create] Setting onboarding storage, avatarId =', createdAvatarId)
           Taro.setStorageSync('onboarding_new_avatar_id', createdAvatarId)
           Taro.setStorageSync(MIND_CHAT_FOCUS_AVATAR_KEY, { avatarId: createdAvatarId, ts: Date.now() })
-          console.log('[avatar-create] Storage set, verifying:', Taro.getStorageSync('onboarding_new_avatar_id'))
         } else {
-          console.log('[avatar-create] WARNING: createdAvatarId is empty!')
         }
         Taro.showToast({ title: '创建成功！', icon: 'success' })
         setTimeout(() => {
-          console.log('[avatar-create] Switching to mind-chat tab...')
           Taro.switchTab({ url: '/pages/mind-chat/index' })
         }, 1500)
       } else {

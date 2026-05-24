@@ -44,7 +44,6 @@ import * as multer from 'multer'
           'application/x-zip-compressed',
           'application/x-zip',
         ]
-        console.log(`[MulterFileFilter] 检查文件: ${file.originalname}, MIME: ${file.mimetype}`)
         if (allowedMimes.includes(file.mimetype)) {
           // 🔴 修复：如果文件名不包含扩展名，根据MIME类型添加扩展名
           if (!file.originalname || !file.originalname.includes('.')) {
@@ -69,11 +68,9 @@ import * as multer from 'multer'
             }
             const ext = mimeToExt[file.mimetype] || 'png';
             file.originalname = `image_${Date.now()}.${ext}`;
-            console.log(`[MulterFileFilter] 修正文件名: ${file.originalname}`)
           }
           callback(null, true)
         } else {
-          console.log(`[MulterFileFilter] 不支持的MIME类型: ${file.mimetype}`)
           callback(new Error('只支持图片、视频、音频和ZIP压缩包格式'), false)
         }
       }

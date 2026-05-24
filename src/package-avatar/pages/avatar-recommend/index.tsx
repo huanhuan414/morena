@@ -48,7 +48,6 @@ export default function AvatarRecommendPage() {
     if (options.orderParams) {
       try {
         const params = JSON.parse(decodeURIComponent(options.orderParams))
-        console.log('接收到的订单参数:', params)
         setOrderParams(params)
       } catch (err) {
         console.error('解析订单参数失败:', err)
@@ -64,7 +63,6 @@ export default function AvatarRecommendPage() {
       const res = await Network.request({
         url: '/api/avatar'
       })
-      console.log('获取分身列表:', res.data)
       if (res.data?.data?.length > 0) {
         setCurrentAvatarId(res.data.data[0].id)
       }
@@ -88,13 +86,11 @@ export default function AvatarRecommendPage() {
           longitude: locationRes.longitude
         }
         setUserLocation(location)
-        console.log('获取用户位置成功:', location)
       } catch (error) {
         console.warn('获取位置失败，将使用默认推荐:', error)
       }
 
       // 2. 请求推荐分身（使用获取到的位置）
-      console.log('请求推荐分身，location:', location)
       const res = await Network.request({
         url: '/api/avatar/recommendations',
         method: 'POST',
@@ -104,12 +100,10 @@ export default function AvatarRecommendPage() {
         }
       })
 
-      console.log('推荐分身响应:', res)
 
       if (res.data?.code === 200) {
         const data = res.data.data
         const recommendations = Array.isArray(data) ? data : (data?.recommendations || data?.data || [])
-        console.log('获取到推荐分身数量:', recommendations.length)
         setAvatars(recommendations)
 
         if (recommendations.length === 0) {

@@ -8,7 +8,6 @@ export class OrderAssetsController {
   constructor(
     private readonly orderAssetsService: OrderAssetsService,
   ) {
-    console.log(`[OrderAssetsController] 构造函数被调用, orderAssetsService= ${!!this.orderAssetsService}`)
   }
 
   /**

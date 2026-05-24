@@ -161,9 +161,7 @@ export default function PendingOrderListPage() {
   const fetchOrders = async () => {
     setLoading(true)
     try {
-      console.log('[待接订单] 开始获取数据')
       const res = await Network.request({ url: '/api/order-dispatch/pending-requests' })
-      console.log('[待接订单] API 响应:', res.data)
       const data = res.data?.data
       if (res.data?.code === 200 && Array.isArray(data)) {
         // 获取分身信息以映射 avatarName
@@ -204,10 +202,8 @@ export default function PendingOrderListPage() {
             requirements: item.requirements || '',
           }
         })
-        console.log('[待接订单] 解析后数据:', realOrders.length, '条')
         setOrders(realOrders)
       } else {
-        console.log('[待接订单] 无数据')
         setOrders([])
       }
     } catch (error) {
@@ -223,12 +219,10 @@ export default function PendingOrderListPage() {
     if (accepting) return
     setAccepting(order.dispatchId)
     try {
-      console.log('[待接订单] 接单:', order.avatarId, order.orderId)
       const res = await Network.request({
         url: `/api/order-dispatch/avatar/${order.avatarId}/accept/${order.orderId}`,
         method: 'POST',
       })
-      console.log('[待接订单] 接单响应:', res.data)
       if (res.data?.code === 200) {
         Taro.showToast({ title: '接单成功，正在生成内容', icon: 'success' })
         const result = res.data?.data || {}

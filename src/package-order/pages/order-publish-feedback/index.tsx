@@ -60,7 +60,6 @@ export default function OrderPublishFeedback() {
   const [verifyResults, setVerifyResults] = useState<Record<string, { verified: boolean; message: string; title?: string; verifying?: boolean }>>({})
 
   useLoad(() => {
-    console.log('[OrderPublishFeedback] 页面加载，params:', { requestId, orderId, contentId })
     loadOrderData()
   })
 
@@ -71,7 +70,6 @@ export default function OrderPublishFeedback() {
 
       // 如果传了 contentId，先通过 contentId 获取内容
       if (contentId && !requestId) {
-        console.log('[OrderPublishFeedback] 通过 contentId 获取内容:', contentId)
         const contentRes = await Network.request({
           url: `/api/content-generation/content/${contentId}`
         })
@@ -102,7 +100,6 @@ export default function OrderPublishFeedback() {
 
       // 如果有 requestId，通过状态接口获取
       if (reqId) {
-        console.log('[OrderPublishFeedback] 通过 requestId 获取状态:', reqId)
         const response = await Network.request({
           url: `/api/order-processing/status/${reqId}`,
           dedupKey: `order-processing-status:${reqId}:full`,

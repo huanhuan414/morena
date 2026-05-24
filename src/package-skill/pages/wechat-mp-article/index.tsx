@@ -110,7 +110,6 @@ export default function WechatMpArticle() {
         url: '/api/ai-skill/history',
         data: { skillType: 'wechat_mp_article', page: 1, pageSize: 20 },
       })
-      console.log('[公众号爆款] 历史记录:', res.data)
       if (res.data?.code === 200 && res.data?.data?.list) {
         setHistory(res.data.data.list)
       }
@@ -229,7 +228,6 @@ export default function WechatMpArticle() {
     if (!aid) {
       try {
         const res = await Network.request({ url: '/api/avatar/list', data: { pageSize: 1 } })
-        console.log('[公众号爆款] 分身列表响应:', JSON.stringify(res.data)?.substring(0, 200))
         // 响应格式: {code:200, data:{success:true, data:{list:[...]}}}，需要取 res.data.data.data.list
         const outerData = res.data?.data
         const list = outerData?.data?.list || outerData?.list || (Array.isArray(outerData) ? outerData : [])
@@ -249,7 +247,6 @@ export default function WechatMpArticle() {
       const res = await Network.request({
         url: `/api/avatar/${aid}/accounts`,
       })
-      console.log('[公众号爆款] 账号列表响应:', JSON.stringify(res.data)?.substring(0, 200))
       if (res.data?.code === 200) {
         const outerData = res.data.data
         const accounts = Array.isArray(outerData) ? outerData : (outerData?.data || outerData?.list || [])
@@ -338,7 +335,6 @@ export default function WechatMpArticle() {
         },
         dedupKey: `ai-skill:generate:wechat_mp_article:${inputText.trim()}`,
       })
-      console.log('[公众号爆款] 生成请求:', res.data)
 
       if (res.data?.code === 200 && res.data?.data?.id) {
         startPolling(res.data.data.id)
@@ -466,7 +462,6 @@ export default function WechatMpArticle() {
           digest: result?.content?.substring(0, 60) || '',
         },
       })
-      console.log('[公众号爆款] 发布结果:', res.data)
       if (res.data?.code === 200) {
         Taro.showToast({ title: '已发布到草稿箱', icon: 'success' })
       } else {

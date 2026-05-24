@@ -78,8 +78,6 @@ export default function ProfilePage() {
         Network.request({ url: '/api/user-stats/overview' }),
         Network.request({ url: '/api/earnings/overview' })
       ])
-      console.log('[Profile] stats response:', statsRes.data)
-      console.log('[Profile] earnings response:', earningsRes.data)
       const data = statsRes.data?.code === 200 ? statsRes.data.data : {}
       const earningsData = earningsRes.data?.code === 200 ? earningsRes.data.data : {}
       setStats({

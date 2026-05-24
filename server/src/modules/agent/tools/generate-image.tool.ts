@@ -63,14 +63,12 @@ export class GenerateImageTool implements ITool {
       }
 
       const originalUrl = helper.imageUrls[0]
-      console.log('[GenerateImageTool] 图片生成成功:', originalUrl)
 
       // 更新进度：正在上传到CDN
       await db.updateWhere('tasks', { id: taskId }, { progress: 60 })
 
       // 上传到火山引擎CDN
       const imageKey = await this.storage.uploadFromUrl({ url: originalUrl, timeout: 30000 })
-      console.log('[GenerateImageTool] 上传CDN成功, key:', imageKey)
 
       // 生成CDN访问URL
       const cdnUrl = await this.storage.generatePresignedUrl({ key: imageKey, expireTime: 86400 * 30 })

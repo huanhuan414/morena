@@ -84,7 +84,6 @@ export default function SkillTryPage() {
         method: 'GET',
         data: { page: 1, pageSize: 20 },
       })
-      console.log('[SkillTry] history response:', res.data)
       const data = res.data?.data
       if (res.data?.code === 200 && data?.list) {
         setHistoryList(data.list)
@@ -111,13 +110,11 @@ export default function SkillTryPage() {
     setHasResult(false)
 
     try {
-      console.log('[SkillTry] 请求体验技能:', skillId, input)
       const res = await Network.request({
         url: '/api/skills/' + skillId + '/try',
         method: 'POST',
         data: { input },
       })
-      console.log('[SkillTry] 响应:', res.data)
 
       const data = res.data?.data
       if (res.data?.code === 200 && data?.content) {
@@ -151,13 +148,11 @@ export default function SkillTryPage() {
     setShowHistory(false)
 
     try {
-      console.log('[SkillTry] 图片生成:', input, 'style:', imageStyle)
       const res = await Network.request({
         url: '/api/image-gen/generate',
         method: 'POST',
         data: { prompt: input.trim(), style: imageStyle, size: '1024x1536' },
       })
-      console.log('[SkillTry] 图片生成响应:', res.data)
 
       const data = res.data?.data
       if (res.data?.code === 200 && data?.url) {

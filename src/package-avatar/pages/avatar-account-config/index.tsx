@@ -133,7 +133,6 @@ export default function AvatarAccountConfigPage() {
         data: { avatarId, userId: 'current_user' },
       })
       const resData = res.data as any
-      console.log('[抖音OAuth] 创建授权任务:', resData)
 
       if (resData?.code !== 200 || !resData?.data?.url) {
         showToast({ title: resData?.msg || '创建授权任务失败', icon: 'none' })
@@ -278,7 +277,6 @@ export default function AvatarAccountConfigPage() {
 
       try {
         setIsFetchingUserInfo(true)
-        console.log('[AvatarAccountConfig] 开始获取抖音用户信息，抖音号:', accountName)
 
         const res = await Network.request({
           url: '/api/tikhub/douyin/user-info',
@@ -286,7 +284,6 @@ export default function AvatarAccountConfigPage() {
           data: { douyinId: accountName }
         })
 
-        console.log('[AvatarAccountConfig] 抖音用户信息响应:', res.data)
 
         if (res.data?.code === 200 && res.data?.data) {
           const userInfo = res.data.data
@@ -311,7 +308,6 @@ export default function AvatarAccountConfigPage() {
 
       try {
         setIsFetchingUserInfo(true)
-        console.log('[AvatarAccountConfig] 开始获取小红书用户信息，分享链接:', xiaohongshuUrl)
 
         const res = await Network.request({
           url: '/api/tikhub/xiaohongshu/user-info',
@@ -319,7 +315,6 @@ export default function AvatarAccountConfigPage() {
           data: { shareUrl: xiaohongshuUrl }
         })
 
-        console.log('[AvatarAccountConfig] 小红书用户信息响应:', res.data)
 
         if (res.data?.code === 200 && res.data?.data) {
           const userInfo = res.data.data
@@ -361,7 +356,6 @@ export default function AvatarAccountConfigPage() {
       setIsValidatingWechat(true)
       setWechatValidationResult(null)
 
-      console.log('[AvatarAccountConfig] 开始验证微信公众号配置，AppID:', appid)
 
       const res = await Network.request({
         url: `/api/agent/platform-config/wechat/validate`,
@@ -369,7 +363,6 @@ export default function AvatarAccountConfigPage() {
         data: { app_id: appid, app_secret: appkey }
       })
 
-      console.log('[AvatarAccountConfig] 微信公众号配置验证响应:', res.data)
 
       if (res.data?.code === 200) {
         const validation = res.data.data
@@ -451,7 +444,6 @@ export default function AvatarAccountConfigPage() {
 
     // 如果获取了用户信息，使用这些数据
     if (fetchedUserInfo) {
-      console.log('[AvatarAccountConfig] 使用获取到的用户信息:', fetchedUserInfo)
       data.followers = fetchedUserInfo.follower_count || 0
       data.total_works = fetchedUserInfo.aweme_count || fetchedUserInfo.notes_count || 0
 
@@ -530,7 +522,6 @@ export default function AvatarAccountConfigPage() {
   const refreshAccount = async (account: AvatarAccount) => {
     try {
       setRefreshingAccountId(account.id!)
-      console.log('[AvatarAccountConfig] 开始刷新账号:', account.platform, account.account_name)
 
       let userInfo: any = null
 
@@ -627,7 +618,6 @@ export default function AvatarAccountConfigPage() {
         <View
           className="header-left"
           onClick={() => {
-            console.log('[AvatarAccountConfig] 点击返回按钮')
             navigateBack()
           }}
         >
@@ -654,7 +644,6 @@ export default function AvatarAccountConfigPage() {
             <View
               className="add-btn-wrapper"
               onClick={() => {
-                console.log('[AvatarAccountConfig] 打开添加账号弹窗')
                 openModal()
               }}
             >
@@ -792,7 +781,6 @@ export default function AvatarAccountConfigPage() {
                     <View
                       className="action-btn"
                       onClick={() => {
-                        console.log('[AvatarAccountConfig] 打开编辑账号弹窗')
                         openModal(account)
                       }}
                     >

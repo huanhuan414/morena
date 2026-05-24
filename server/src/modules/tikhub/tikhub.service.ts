@@ -30,8 +30,6 @@ export class TikHubService {
    */
   async callTikHubAPI(endpoint: string, params: any = {}, method: 'GET' | 'POST' = 'GET') {
     try {
-      console.log(`[TikHubService] 调用 TikHub API: ${endpoint}`, params)
-      console.log('[TikHubService] API Key 是否存在:', !!this.apiKey)
 
       if (!this.apiKey) {
         throw new Error('TikHub API Key 未配置')
@@ -44,8 +42,6 @@ export class TikHubService {
         response = await this.axios.post(endpoint, params)
       }
 
-      console.log(`[TikHubService] TikHub API 响应状态:`, response.status)
-      console.log(`[TikHubService] TikHub API 响应数据:`, JSON.stringify(response.data, null, 2))
 
       return response.data
     } catch (error: any) {
@@ -63,8 +59,6 @@ export class TikHubService {
    */
   async getDouyinUserInfo(douyinId: string) {
     try {
-      console.log('[TikHubService] 获取抖音用户信息，输入值:', douyinId)
-      console.log('[TikHubService] API Key 是否存在:', !!this.apiKey)
 
       if (!this.apiKey) {
         return {
@@ -80,8 +74,6 @@ export class TikHubService {
         },
       })
 
-      console.log('[TikHubService] 抖音用户信息响应状态:', response.status)
-      console.log('[TikHubService] 抖音用户信息响应数据:', JSON.stringify(response.data, null, 2))
 
       if (response.data?.code === 200 && response.data?.data?.user_info) {
         const userInfo = response.data.data.user_info
@@ -134,8 +126,6 @@ export class TikHubService {
    */
   async getXiaohongshuUserInfo(shareUrl: string) {
     try {
-      console.log('[TikHubService] 获取小红书用户信息，分享链接:', shareUrl)
-      console.log('[TikHubService] API Key 是否存在:', !!this.apiKey)
 
       if (!this.apiKey) {
         return {
@@ -151,7 +141,6 @@ export class TikHubService {
         },
       })
 
-      console.log('[TikHubService] 第一步获取token响应:', JSON.stringify(tokenResponse.data, null, 2))
 
       if (tokenResponse.data?.code !== 200 || !tokenResponse.data?.data) {
         return {
@@ -164,7 +153,6 @@ export class TikHubService {
       const userId = tokenData.user_id
       const xsecToken = tokenData.xsec_token
 
-      console.log('[TikHubService] 获取到用户ID:', userId)
 
       // 第二步：使用用户ID获取详细信息
       const userResponse = await this.axios.get('/xiaohongshu/app/get_user_info', {
@@ -173,7 +161,6 @@ export class TikHubService {
         },
       })
 
-      console.log('[TikHubService] 第二步获取用户信息响应:', JSON.stringify(userResponse.data, null, 2))
 
       if (userResponse.data?.code === 200 && userResponse.data?.data?.data) {
         const data = userResponse.data.data.data
@@ -225,7 +212,6 @@ export class TikHubService {
    */
   async verifyPost(platform: string, postUrl: string, keywords: string[] = []) {
     try {
-      console.log(`[TikHubService] 验证发布内容: platform=${platform}, url=${postUrl}, keywords=${keywords.join(',')}`)
 
       if (!postUrl) {
         return { success: false, message: '请输入发布链接' }
@@ -267,7 +253,6 @@ export class TikHubService {
       if (platform === 'xiaohongshu') {
         // 备选方案：只要链接含有 xhslink.com 就直接通过
         if (postUrl.includes('xhslink.com')) {
-          console.log(`[TikHubService] 小红书链接验证通过（备选方案）: ${postUrl}`)
           return {
             success: true,
             data: {
@@ -290,7 +275,6 @@ export class TikHubService {
         // 抖音使用简化验证（备选方案）
         if (platform === 'douyin') {
           if (postUrl.includes('douyin.com') || postUrl.includes('v.douyin.com')) {
-            console.log(`[TikHubService] 抖音链接验证通过（简化方案）: ${postUrl}`)
             return {
               success: true,
               data: {
@@ -314,7 +298,6 @@ export class TikHubService {
         // 快手使用简化验证（备选方案）
         if (platform === 'kuaishou') {
           if (postUrl.includes('kuaishou.com') || postUrl.includes('v.kuaishou.com')) {
-            console.log(`[TikHubService] 快手链接验证通过（简化方案）: ${postUrl}`)
             return {
               success: true,
               data: {
@@ -393,7 +376,6 @@ export class TikHubService {
     try {
       // 备选方案：只要链接是微信公众号文章格式就直接通过
       if (postUrl.includes('mp.weixin.qq.com/s/')) {
-        console.log(`[TikHubService] 微信公众号链接验证通过（备选方案）: ${postUrl}`)
         return {
           success: true,
           data: {

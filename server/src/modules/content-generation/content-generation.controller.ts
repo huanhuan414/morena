@@ -375,7 +375,6 @@ export class ContentGenerationController {
         )
       }
 
-      console.log(`[发布凭证] contentId=${contentId}, publishUrl=${body.publishUrl}`)
       return { code: 200, message: '发布凭证提交成功，等待验证' }
     } catch (error: any) {
       return { code: 500, message: '提交失败', error: error.message }
@@ -437,7 +436,6 @@ export class ContentGenerationController {
         }
       }
 
-      console.log(`[发布验证] contentId=${contentId}, verified=${body.verified}`)
       return { code: 200, message: body.verified ? '验证通过' : '验证失败，需重新发布' }
     } catch (error: any) {
       return { code: 500, message: '验证失败', error: error.message }

@@ -102,7 +102,6 @@ export default function OrderFeedbackPage() {
 
   const fetchGeneratedContent = async () => {
     try {
-      console.log('开始获取生成内容, requestId:', requestId, 'avatarId:', avatarId)
 
       // 直接使用传入的 requestId
       if (requestId) {
@@ -111,24 +110,18 @@ export default function OrderFeedbackPage() {
           url: `/api/content-generation/request/${requestId}/avatar/${avatarId}`
         })
 
-        console.log('生成内容接口响应:', contentRes)
 
         if (contentRes.data?.code === 200) {
           const contents = contentRes.data.data || []
-          console.log('获取到的内容数量:', contents.length)
           setGeneratedContents(contents)
 
           if (contents.length > 0) {
-            console.log('设置第一个内容为选中:', contents[0])
             setSelectedContent(contents[0])
           } else {
-            console.log('没有找到生成内容')
           }
         } else {
-          console.log('接口返回非200状态码:', contentRes.data)
         }
       } else {
-        console.log('requestId 为空，无法获取生成内容')
       }
     } catch (error) {
       console.error('获取生成内容失败:', error)
@@ -137,20 +130,17 @@ export default function OrderFeedbackPage() {
   }
 
   const handleChooseImage = () => {
-    console.log('选择图片...')
 
     chooseImage({
       count: 9 - uploadedImages.length,
       sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
       success: async (res) => {
-        console.log('图片选择成功:', res)
         const tempFilePaths = res.tempFilePaths
         setUploading(true)
 
         try {
           for (const filePath of tempFilePaths) {
-            console.log('上传图片:', filePath)
             await uploadImage(filePath)
           }
           showToast({ title: '上传成功', icon: 'success' })
@@ -169,7 +159,6 @@ export default function OrderFeedbackPage() {
   }
 
   const uploadImage = async (filePath: string) => {
-    console.log('开始上传图片:', filePath)
 
     try {
       const res: any = await Network.uploadFile({
@@ -178,7 +167,6 @@ export default function OrderFeedbackPage() {
         name: 'file'
       })
 
-      console.log('上传响应:', res)
 
       let data
       try {
@@ -191,11 +179,9 @@ export default function OrderFeedbackPage() {
         throw new Error('响应解析失败')
       }
 
-      console.log('解析后的数据:', data)
 
       if (data?.code === 200 && data?.data?.url) {
         setUploadedImages(prev => [...prev, data.data.url])
-        console.log('图片URL已添加:', data.data.url)
       } else {
         const errorMsg = data?.message || '上传失败，未返回URL'
         console.error('上传失败:', errorMsg, data)

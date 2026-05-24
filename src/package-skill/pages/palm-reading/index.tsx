@@ -55,7 +55,6 @@ export default function PalmReadingPage() {
         url: '/api/ai-skill/history',
         data: { skillType: 'palm_reading', pageSize: 20 }
       })
-      console.log('[掌相阅读] 历史记录:', res.data)
       const rawData = res.data?.data
       const list = Array.isArray(rawData) ? rawData : (rawData?.list || [])
       setHistory(list)
@@ -71,7 +70,6 @@ export default function PalmReadingPage() {
       sourceType: ['album', 'camera'],
       success: async (res) => {
         const tempFilePath = res.tempFilePaths[0]
-        console.log('[掌相阅读] 选择图片:', tempFilePath)
         Taro.showLoading({ title: '上传中...' })
         try {
           const uploadRes = await Network.uploadFile({
@@ -79,7 +77,6 @@ export default function PalmReadingPage() {
             filePath: tempFilePath,
             name: 'file'
           })
-          console.log('[掌相阅读] 上传结果:', uploadRes.data)
           const data = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data
           const url = data?.data?.url || data?.data?.imageUrl || ''
           if (url) {
@@ -107,7 +104,6 @@ export default function PalmReadingPage() {
     setResultImageUrl('')
     setErrorMessage('')
     try {
-      console.log('[掌相阅读] 开始生成, inputImageUrl:', inputImageUrl)
       const res = await Network.request({
         url: '/api/ai-skill/generate',
         method: 'POST',
@@ -117,7 +113,6 @@ export default function PalmReadingPage() {
         },
         dedupKey: `ai-skill:generate:palm_reading:${inputImageUrl}`,
       })
-      console.log('[掌相阅读] 生成响应:', res.data)
       const data = res.data?.data
       if (data?.id && (data?.status === 'generating' || data?.status === 'pending')) {
         // 异步模式：立即拿到 recordId，开始轮询
@@ -568,7 +563,6 @@ export default function PalmReadingPage() {
                             style={{ width: '100%', height: '160px' }}
                             mode="aspectFill"
                             onError={() => {
-                              console.log('[掌相阅读] 结果图加载失败:', item.resultImageUrl?.slice(0, 80))
                               setFailedImages(prev => new Set(prev).add(item.id))
                             }}
                           />

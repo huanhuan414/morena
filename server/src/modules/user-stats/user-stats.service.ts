@@ -37,7 +37,6 @@ export class UserStatsService {
           if (newAvatars.length > 0) {
             avatarList = [...avatarList, ...newAvatars]
             avatarCount = avatarList.length
-            console.log('[UserStats] 从共享缓存同步 AvatarService 数据:', newAvatars.length)
           }
         }
       } catch (e) {
@@ -55,7 +54,6 @@ export class UserStatsService {
         `SELECT id, user_id, name, avatar_url, status, is_hosted, hosting_enabled FROM avatars WHERE user_id = ? AND status = ?`,
         [userId, 'active']
       ) as any[]
-      console.log('[UserStats] DB avatars for', userId, ':', dbAvatars?.length || 0)
       avatarList = dbAvatars || []
       
       // 同步 AvatarService 的内存数据
@@ -345,7 +343,6 @@ export class UserStatsService {
         const sql = `SELECT id, order_id, avatar_id, content_type, platform, platforms, status, created_at, updated_at, video_url, images, publish_feedback, SUBSTRING(content, 1, 200) as content, CASE WHEN images IS NOT NULL AND images != '' AND images != '[]' THEN JSON_LENGTH(images) ELSE 0 END as image_count FROM content_generation_requests WHERE avatar_id IN (${avatarIdParams}) ORDER BY created_at DESC LIMIT 50`
         const t0 = Date.now()
         const result = await db.query(sql, avatarIds) as any
-        console.log(`[getAvatarContents] SQL query took ${Date.now() - t0}ms`)
         contents = Array.isArray(result) ? result : (result?.data || [])
       } catch (e) {
         contents = []

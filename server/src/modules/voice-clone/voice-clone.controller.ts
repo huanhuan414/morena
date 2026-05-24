@@ -23,7 +23,6 @@ export class VoiceCloneController {
   @Post('start')
   @HttpCode(HttpStatus.OK)
   async startVoiceClone(@Body() body: { audio_url: string; user_id: string }) {
-    console.log('[VoiceCloneController] 开始声音复刻:', body)
     
     if (!body.audio_url) {
       return { code: 400, msg: '音频文件不能为空', data: null }
@@ -48,7 +47,6 @@ export class VoiceCloneController {
   @Get('status/:voiceId')
   @HttpCode(HttpStatus.OK)
   async getVoiceCloneStatus(@Param('voiceId') voiceId: string) {
-    console.log('[VoiceCloneController] 查询复刻状态:', voiceId)
     
     const result = await this.voiceCloneService.queryVoiceClone(voiceId)
 
@@ -66,7 +64,6 @@ export class VoiceCloneController {
   @Post('synthesize')
   @HttpCode(HttpStatus.OK)
   async synthesizeSpeech(@Body() body: { voice_id: string; text: string }) {
-    console.log('[VoiceCloneController] TTS合成:', body)
     
     if (!body.voice_id || !body.text) {
       return { code: 400, msg: 'voice_id 和 text 不能为空', data: null }

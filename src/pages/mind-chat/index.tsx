@@ -165,7 +165,6 @@ const MindChat: React.FC = () => {
         method: 'GET',
         dedupKey: 'avatar:my-list',
       })
-      console.log('加载分身列表:', res.data)
       
       if (res.data?.code === 200 && res.data?.data) {
         const rawData = res.data.data
@@ -211,7 +210,6 @@ const MindChat: React.FC = () => {
             })()
           }
         })
-        console.log('处理后的分身列表:', avatars)
         setMyClones(avatars)
       } else {
         setMyClones([])
@@ -226,26 +224,22 @@ const MindChat: React.FC = () => {
 
   const loadSquareClones = useCallback(async (page = 1, append = false) => {
     if (squareLoadingRef.current) {
-      console.log('[分身广场] 已有请求进行中，跳过')
       return
     }
     try {
       squareLoadingRef.current = true
       if (!append) setLoading(true)
       const pageSize = 10
-      console.log('[分身广场] 开始加载, page:', page, 'pageSize:', pageSize, 'append:', append)
       const res = await Network.request({
         url: '/api/avatar/list',
         method: 'GET',
         data: { page, pageSize }
       })
-      console.log('[分身广场] API响应:', res.data)
       
       if (res.data?.code === 200) {
         const result = res.data?.data
         const listData = result?.data?.list || result?.list || []
         const total = result?.data?.total || result?.total || listData.length
-        console.log('[分身广场] 解析数据: listData.length:', listData.length, 'total:', total)
         const avatars = listData.map((item: any) => {
           const { tags, abilities } = parsePersonality(item.personality)
           let roleLabel = '通用助手'
@@ -273,12 +267,10 @@ const MindChat: React.FC = () => {
         setSquareClones(prev => {
           const next = append ? [...prev, ...avatars] : avatars
           nextLength = next.length
-          console.log('[分身广场] 更新列表: prev.length:', prev.length, 'avatars.length:', avatars.length, 'nextLength:', nextLength)
           return next
         })
         setSquarePage(page)
         const hasMore = nextLength < total
-        console.log('[分身广场] 设置hasMore:', hasMore, 'nextLength:', nextLength, 'total:', total)
         setHasMoreSquare(hasMore)
       } else {
         if (!append) setSquareClones([])
@@ -301,7 +293,6 @@ const MindChat: React.FC = () => {
   }, [loadMyClones, loadSquareClones])
 
   const onSquareScrollToLower = useCallback(async () => {
-    console.log('[分身广场] onScrollToLower触发, hasMoreSquare:', hasMoreSquare, 'loading:', squareLoadingRef.current, 'squarePage:', squarePage)
     if (!hasMoreSquare || squareLoadingRef.current) return
     await loadSquareClones(squarePage + 1, true)
   }, [hasMoreSquare, squarePage, loadSquareClones])
@@ -407,7 +398,6 @@ const MindChat: React.FC = () => {
       if (res.data?.code !== 200) {
         throw new Error(res.data?.msg || '更新失败')
       }
-      console.log('更新托管状态成功:', id, checked)
       if (checked) {
         Taro.showToast({ title: '托管已开启，分身将自动接单赚钱', icon: 'none', duration: 2000 })
       }
@@ -446,11 +436,10 @@ const MindChat: React.FC = () => {
     const res = await Taro.showModal({ title: '确认删除', content: '删除后无法恢复，确定要删除这个分身吗？' })
     if (!res.confirm) return
     try {
-      const result = await Network.request({
+      await Network.request({
         url: `/api/avatar/${avatarId}`,
         method: 'DELETE'
       })
-      console.log('deleteAvatar result:', result)
       Taro.showToast({ title: '删除成功', icon: 'success' })
       loadMyClones()
     } catch (err) {

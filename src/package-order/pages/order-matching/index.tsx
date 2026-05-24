@@ -116,12 +116,10 @@ export default function OrderMatchingPage() {
 
   const loadData = async () => {
     setLoading(true)
-    console.log('[OrderMatching] loadData 开始, orderId:', orderId)
     try {
       // 先加载订单信息
       try {
         const orderRes = await Network.request({ url: `/api/order/${orderId}` })
-        console.log('[OrderMatching] 订单接口返回, code:', orderRes?.data?.code)
         if (orderRes?.data?.code === 200 && orderRes?.data?.data) {
           const orderData = orderRes.data.data
           setOrder({
@@ -143,7 +141,6 @@ export default function OrderMatchingPage() {
       // 再加载推荐列表
       try {
         const recommendRes = await Network.request({ url: `/api/order-dispatch/recommend/${orderId}` })
-        console.log('[OrderMatching] 推荐接口返回, code:', recommendRes?.data?.code, 'dataLen:', Array.isArray(recommendRes?.data?.data) ? recommendRes.data.data.length : 'N/A')
         processRecommendations(recommendRes)
       } catch (e) {
         console.error('[OrderMatching] 推荐请求失败:', e)
@@ -151,7 +148,6 @@ export default function OrderMatchingPage() {
     } catch (error) {
       console.error('[OrderMatching] loadData 异常:', error)
     } finally {
-      console.log('[OrderMatching] loadData 完成, setLoading(false)')
       setLoading(false)
     }
   }
@@ -160,14 +156,11 @@ export default function OrderMatchingPage() {
     try {
       // Network.request 返回 Taro.request 结果，res.data 是 HTTP 响应体
       const payload = res?.data
-      console.log('[OrderMatching] processRecommendations payload:', JSON.stringify(payload)?.substring(0, 200))
       
       if (payload?.code === 200) {
         const data = payload.data || []
-        console.log('[OrderMatching] 推荐数据条数:', Array.isArray(data) ? data.length : 'not array')
         
         if (!Array.isArray(data) || data.length === 0) {
-          console.log('[OrderMatching] 推荐数据为空')
           return
         }
         
@@ -216,14 +209,12 @@ export default function OrderMatchingPage() {
         // 按匹配度从高到低排序
         avatars.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0))
         
-        console.log('[OrderMatching] 转换后数据条数:', avatars.length)
         setRecommendations(avatars)
         
         if (avatars.length > 0) {
           setStep(2)
         }
       } else {
-        console.log('[OrderMatching] 推荐接口返回错误:', payload?.code, payload?.msg)
       }
     } catch (error) {
       console.error('[OrderMatching] 处理推荐数据异常:', error)

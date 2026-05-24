@@ -19,7 +19,6 @@ const Input = React.forwardRef<React.ElementRef<typeof TaroInput>, InputProps>(
     }, [autoFocus, focus])
 
     const handleInput = (e: any) => {
-      console.log('[Input] onInput event:', e)
       if (onInput) {
         onInput(e)
       }

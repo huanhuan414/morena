@@ -40,7 +40,6 @@ export default function EarningCenterPage() {
   const fetchOverview = async () => {
     try {
       const res = await Network.request({ url: '/api/earnings/overview' })
-      console.log('收益概览返回:', res.data)
       if (res.data?.code === 200) {
         setOverview(normalizeEarningOverview(res.data?.data))
       }
@@ -53,7 +52,6 @@ export default function EarningCenterPage() {
     setLoading(true)
     try {
       const res = await Network.request({ url: '/api/earnings' })
-      console.log('收益记录返回:', res.data)
       if (res.data?.code === 200) {
         setRecords(normalizeEarningRecords(res.data?.data))
       }

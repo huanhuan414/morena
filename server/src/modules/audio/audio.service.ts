@@ -12,9 +12,6 @@ export class AudioService {
   }
 
   async recognizeSpeech(file: Express.Multer.File): Promise<{ text: string; duration?: number }> {
-    console.log('[AudioService] 开始语音识别');
-    console.log('[AudioService] 文件大小:', file.size, 'bytes');
-    console.log('[AudioService] 文件类型:', file.mimetype);
 
     try {
       let audioUrl: string;
@@ -22,7 +19,6 @@ export class AudioService {
 
       // 方式1: 如果有文件路径（磁盘存储），上传到临时存储获取URL
       if (file.path) {
-        console.log('[AudioService] 使用文件路径:', file.path);
         // 这里可以上传到对象存储，暂时使用base64
         const fs = await import('fs');
         const buffer = fs.readFileSync(file.path);
@@ -30,13 +26,11 @@ export class AudioService {
       } 
       // 方式2: 如果有buffer（内存存储），直接使用base64
       else if (file.buffer) {
-        console.log('[AudioService] 使用文件buffer');
         audioBase64 = file.buffer.toString('base64');
       } else {
         throw new Error('无法读取音频文件');
       }
 
-      console.log('[AudioService] Base64长度:', audioBase64.length);
 
       // 调用ASR识别
       const result = await this.asrClient.recognize({
@@ -44,7 +38,6 @@ export class AudioService {
         base64Data: audioBase64,
       });
 
-      console.log('[AudioService] ASR识别成功:', result.text);
 
       return {
         text: result.text,
@@ -57,7 +50,6 @@ export class AudioService {
   }
 
   async recognizeFromUrl(url: string): Promise<{ text: string; duration?: number }> {
-    console.log('[AudioService] 从URL识别:', url);
 
     try {
       const result = await this.asrClient.recognize({
@@ -65,7 +57,6 @@ export class AudioService {
         url: url,
       });
 
-      console.log('[AudioService] ASR识别成功:', result.text);
 
       return {
         text: result.text,

@@ -15,20 +15,13 @@ export class ReferralService {
     const db = getMySQLClient()
     
     const user = await db.queryOne('users', { id: userId }) as any
-    console.log('[ReferralService] generateReferralCode - userId:', userId)
-    console.log('[ReferralService] user data:', { 
-      referral_code: user?.referral_code, 
-      referralCode: user?.referralCode 
-    })
     
     if (user?.referral_code || user?.referralCode) {
       const existingCode = user.referral_code || user.referralCode
-      console.log('[ReferralService] returning existing code:', existingCode)
       return existingCode
     }
     
     const code = this.generateUniqueCode()
-    console.log('[ReferralService] generating new code:', code)
     
     await db.updateWhere('users', { id: userId }, {
       referral_code: code,

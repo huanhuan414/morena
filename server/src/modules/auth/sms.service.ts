@@ -15,11 +15,9 @@ export class AuthSmsService {
   async sendVerificationCode(phone: string, code: string): Promise<{ success: boolean; message: string; isDev?: boolean }> {
     // 未配置阿里云密钥时，直接走开发模式
     if (!this.accessKeyId || !this.accessKeySecret) {
-      console.log(`[SMS开发模式] 阿里云密钥未配置，验证码: ${code}，手机号: ${phone}`)
       return { success: true, message: '验证码发送成功（开发模式）', isDev: true }
     }
 
-    console.log(`[SMS] 尝试发送验证码到 ${phone}，签名: ${this.signName}，模板: ${this.templateCode}`)
 
     const params: Record<string, string> = {
       AccessKeyId: this.accessKeyId,
@@ -66,7 +64,6 @@ export class AuthSmsService {
       })
 
       const result = await response.json() as any
-      console.log('[SMS] 阿里云返回:', JSON.stringify(result))
 
       if (result.Code === 'OK') {
         return { success: true, message: '验证码发送成功', isDev: false }
@@ -79,7 +76,6 @@ export class AuthSmsService {
       // 开发环境降级：签名/模板问题时返回验证码
       if (result.Code === 'isv.SIGN_NOT_EXIST' || result.Code === 'isv.TEMPLATE_NOT_EXIST' || 
           result.Code === 'isv.SIGN_NAME_ILLEGAL' || result.Code === 'isv.TEMPLATE_MISSING_PARAMETERS') {
-        console.log(`[SMS降级] 短信配置问题，降级为开发模式。验证码: ${code}`)
         return { success: true, message: `验证码已发送（开发模式：${errorMsg}）`, isDev: true }
       }
       
@@ -88,7 +84,6 @@ export class AuthSmsService {
     } catch (error) {
       console.error('[SMS] 请求异常:', error)
       // 网络错误降级为开发模式
-      console.log(`[SMS降级] 网络异常，降级为开发模式。验证码: ${code}`)
       return { success: true, message: '验证码发送成功（开发模式：网络异常）', isDev: true }
     }
   }

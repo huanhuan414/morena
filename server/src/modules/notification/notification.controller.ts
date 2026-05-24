@@ -90,7 +90,6 @@ export class NotificationController {
     @Body() body: { orderId: string; contentTitle?: string }
   ) {
     try {
-      console.log('[urgeReview] 收到请求:', { userId, orderId: body?.orderId, contentTitle: body?.contentTitle })
       
       if (this.notificationService && body?.orderId) {
         const { getMySQLClient } = await import('../../storage/database/mysql-client')
@@ -100,14 +99,12 @@ export class NotificationController {
           `SELECT user_id FROM orders WHERE id = ?`,
           [body.orderId]
         )
-        console.log('[urgeReview] 查询订单结果:', orderResult)
         
         const orders = Array.isArray(orderResult) ? orderResult : (orderResult?.data || [])
         const order = orders[0]
         const orderUserId = order?.userId || order?.user_id
 
         if (!orderUserId) {
-          console.log('[urgeReview] 订单不存在或user_id为空:', { order, orders })
           return { code: 404, data: null, message: '订单不存在' }
         }
 

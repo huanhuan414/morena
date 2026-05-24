@@ -81,7 +81,6 @@ export default function AvatarAccountAddPage() {
           data: { sec_user_id: accountName.trim() }
         })
 
-        console.log('抖音用户信息响应:', res.data)
 
         if (res.data?.code === 200 && res.data.data) {
           const userData = res.data.data
@@ -119,7 +118,6 @@ export default function AvatarAccountAddPage() {
           data: { share_url: xiaohongshuUrl.trim() }
         })
 
-        console.log('小红书用户信息响应:', res.data)
 
         if (res.data?.code === 200 && res.data.data) {
           const userData = res.data.data

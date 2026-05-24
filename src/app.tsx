@@ -31,7 +31,6 @@ class App extends Component<PropsWithChildren> {
   }
 
   onLaunch() {
-    console.log('[App] onLaunch - 应用启动');
     // 捕获未处理的 Promise 拒绝
     // @ts-ignore
     if (typeof wx !== 'undefined' && wx.onUnhandledRejection) {

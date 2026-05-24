@@ -42,13 +42,11 @@ export async function checkPermission(
     }
 
     const query = Object.entries(params).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&')
-    console.log(`[Permission] 检查权益: type=${type}, params=`, params)
 
     const res = await Network.request({
       url: `/api/subscription/check?${query}`,
     })
 
-    console.log(`[Permission] 权益校验结果:`, res.data)
 
     const data = res.data?.data
     if (res.data?.code === 200 && data) {

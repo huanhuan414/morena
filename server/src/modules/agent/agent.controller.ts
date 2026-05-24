@@ -298,12 +298,6 @@ export class AgentController {
       const apiUrl = 'https://ark.cn-beijing.volces.com/api/v3/images/generations'
       const apiKey = process.env.VOLC_VIDEO_API_KEY || '0a6405d5-b7ae-4afa-88e3-c707ae379a47'
 
-      console.log('[AgentController] 生成图片:', {
-        prompt_length: body.prompt?.length,
-        size: body.size || '2K',
-        style: body.style || 'realistic'
-      })
-
       const response = await axios.post(apiUrl, {
         model: 'doubao-seedream-4-0-250828',
         prompt: body.prompt,
@@ -320,7 +314,6 @@ export class AgentController {
         timeout: 120000 // 2分钟超时
       })
 
-      console.log('[AgentController] 图片生成响应:', response.status, response.statusText)
 
       if (response.status !== 200) {
         const errorMsg = response.data?.error?.message || response.data?.message || '图片生成失败'

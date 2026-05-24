@@ -62,7 +62,6 @@ export default function NotificationsPage() {
     try {
       setLoading(true)
       const res = await Network.request({ url: '/api/notifications' })
-      console.log('[Notifications] response:', res.data)
       if (res.data?.code === 200) {
         const data = res.data.data
         setNotifications(data?.list || data || [])

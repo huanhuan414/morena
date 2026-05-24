@@ -47,7 +47,6 @@ export class AgentGateway implements OnGatewayConnection, OnGatewayDisconnect {
       }
       this.userSockets.get(userId)!.add(client.id)
       
-      console.log(`[WebSocket] 用户 ${userId} 已连接, socket: ${client.id}`)
     }
   }
 
@@ -59,7 +58,6 @@ export class AgentGateway implements OnGatewayConnection, OnGatewayDisconnect {
         this.userSockets.delete(userId)
       }
     }
-    console.log(`[WebSocket] Socket ${client.id} 已断开`)
   }
 
   /**

@@ -8,25 +8,22 @@ import './index.css'
 
 export default function OrderCompletedPage() {
   const router = useRouter()
-  const { requestId, orderId } = router.params
+  const { requestId } = router.params
 
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<any>(null)
 
   useLoad(() => {
-    console.log('[OrderCompleted] 页面加载，params:', { requestId, orderId })
     loadData()
   })
 
   const loadData = async () => {
     try {
-      console.log('[OrderCompleted] 开始加载数据')
       const response = await Network.request({
         url: `/api/order-processing/status/${requestId}`,
         dedupKey: `order-processing-status:${requestId}:full`,
       })
 
-      console.log('[OrderCompleted] 数据响应:', response.data)
 
       if (response.data?.code === 200) {
         setData(response.data.data)

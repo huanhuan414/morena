@@ -22,13 +22,10 @@ export class DashboardController {
           // 无用户ID或测试用户，返回所有分身数量
           const countResult = await db.query('SELECT COUNT(*) as count FROM avatars WHERE status = ?', ['active'])
           avatarCount = countResult?.[0]?.count || 0
-          console.log('[Dashboard] 无用户ID/测试用户，返回所有分身数量:', avatarCount)
         } else {
           // 有效用户：查询该用户自己的分身
-          console.log('[Dashboard] 有效用户:', userId)
           const avatarResult = await db.query('SELECT COUNT(*) as count FROM avatars WHERE user_id = ? AND status = ?', [userId, 'active'])
           avatarCount = avatarResult?.[0]?.count || 0
-          console.log('[Dashboard] 查询结果:', JSON.stringify(avatarResult))
         }
       } catch (err) {
         console.error('[Dashboard] 查询失败:', err)

@@ -20,13 +20,11 @@ export default function OrderAcceptanceFeedback() {
   const isIssuer = role !== 'avatar'
 
   useLoad(() => {
-    console.log('[OrderAcceptanceFeedback] 页面加载，params:', { requestId, orderId, role, isIssuer })
     loadData()
   })
 
   const loadData = async () => {
     try {
-      console.log('[OrderAcceptanceFeedback] 开始加载数据')
       const identifier = requestId || orderId
       if (!identifier) {
         Taro.showToast({ title: '缺少参数', icon: 'none' })
@@ -37,7 +35,6 @@ export default function OrderAcceptanceFeedback() {
         dedupKey: `order-processing-status:${identifier}:full`,
       })
 
-      console.log('[OrderAcceptanceFeedback] 数据响应:', response.data)
 
       if (response.data?.code === 200) {
         setData(normalizeOrderProcessingStatus(response.data.data))

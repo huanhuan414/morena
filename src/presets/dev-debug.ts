@@ -11,7 +11,6 @@ export function devDebug() {
     try {
       const accountInfo = Taro.getAccountInfoSync();
       const envVersion = accountInfo.miniProgram.envVersion;
-      console.log('[Debug] envVersion:', envVersion);
 
       if (envVersion !== 'release') {
         Taro.setEnableDebug({ enableDebug: true });

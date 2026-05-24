@@ -51,7 +51,6 @@ export function useAgent() {
     }))
 
     try {
-      console.log('执行 Agent 任务:', options)
 
       const res = await Network.request({
         url: '/api/agent/execute',

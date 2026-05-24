@@ -23,7 +23,6 @@ export class AsrController {
   @HttpCode(HttpStatus.OK)
   async recognize(@Body() body: AsrRequestDto, @Req() req: Request): Promise<AsrResponseDto> {
     try {
-      console.log('[ASR] 语音识别请求:', { audioUrl: body.audioUrl, uid: body.uid });
 
       // 提取并转发请求头（用于追踪和认证）
       const customHeaders = HeaderUtils.extractForwardHeaders(req.headers as Record<string, string>);
@@ -38,10 +37,6 @@ export class AsrController {
         url: body.audioUrl,
       });
 
-      console.log('[ASR] 语音识别成功:', {
-        text: result.text,
-        duration: result.duration,
-      });
 
       return {
         code: 200,

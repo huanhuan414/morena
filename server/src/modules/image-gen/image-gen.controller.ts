@@ -29,7 +29,6 @@ export class ImageGenController {
       return { code: 400, msg: '请输入图片描述', data: null };
     }
 
-    console.log(`[ImageGenController] generate: userId=${userId}, prompt="${body.prompt.slice(0, 50)}"`);
 
     try {
       const result = await this.imageGenService.generate({

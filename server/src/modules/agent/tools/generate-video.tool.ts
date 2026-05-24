@@ -93,7 +93,6 @@ export class GenerateVideoTool implements ITool {
         throw new Error(response.response?.error_message || '视频生成失败')
       }
 
-      console.log('[GenerateVideoTool] 视频生成成功:', originalUrl)
 
       // 上传到火山引擎CDN
       await db.updateWhere('tasks', { id: taskId }, { progress: 70 })

@@ -230,7 +230,6 @@ const Index: React.FC = () => {
         url: `/api/order-dispatch/avatar/${avatarIdToUse}/accept/${orderId}`,
         method: 'POST'
       })
-      console.log('[首页] 接单 URL:', `/api/order-dispatch/avatar/${avatarIdToUse}/accept/${orderId}`, 'Method:POST', 'Response:', res.data)
       if (res.data?.code === 200) {
         Taro.showToast({ title: '接单成功，正在生成内容', icon: 'success' })
         fetchOrders()
@@ -301,7 +300,6 @@ const Index: React.FC = () => {
       // }
 
       const res = await Network.request({ url: '/api/user-stats/overview' })
-      console.log('统计数据:', res.data)
 
       if (res.data?.code === 200 && res.data?.data) {
         const d = res.data.data

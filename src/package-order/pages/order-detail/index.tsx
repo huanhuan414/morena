@@ -165,7 +165,6 @@ export default function OrderDetailPage() {
         Network.request({ url: `/api/order/${orderId}` }),
         Network.request({ url: `/api/order-dispatch/${orderId}/timeline` }).catch(() => ({ data: { data: [] } })),
       ])
-      console.log('[OrderDetail] order:', JSON.stringify(orderRes.data)?.substring(0, 200))
       const orderData = normalizeOrderDetail(orderRes.data?.data)
       setOrder(orderData)
 
@@ -342,18 +341,12 @@ export default function OrderDetailPage() {
   }
 
   const avatarStats = order.avatarStats || []
-  // 有待验收或已验收的分身
-  const hasVerifiableAvatars = avatarStats.some((a: any) =>
-    ['awaiting_acceptance', 'feedback_submitted', 'preview', 'completed'].includes(a.status)
-  )
   const hasAwaitingAcceptance = avatarStats.some((a: any) =>
     ['awaiting_acceptance', 'feedback_submitted', 'preview'].includes(a.status)
   )
   const isAllVerified = avatarStats.length > 0 && avatarStats.every((a: any) =>
     ['completed', 'rejected'].includes(a.status)
   )
-  console.log('[OrderDetail] avatarStats:', JSON.stringify(avatarStats))
-  console.log('[OrderDetail] hasVerifiableAvatars:', hasVerifiableAvatars, 'hasAwaitingAcceptance:', hasAwaitingAcceptance, 'isAllVerified:', isAllVerified, 'order.status:', order.status)
 
   const effectiveStatus = order.status
   const statusCfg = STATUS_CONFIG[effectiveStatus] || { label: effectiveStatus, color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1, desc: '' }

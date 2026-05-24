@@ -133,10 +133,8 @@ export default function OrderListPage() {
     const promise = (async () => {
       try {
         const res = await Network.request({ url: '/api/order/list', dedupKey: 'order:list' })
-      console.log('[OrderList] response:', JSON.stringify(res.data)?.substring(0, 300))
       const raw = res.data?.data
       const list = Array.isArray(raw) ? raw : []
-      console.log('[OrderList] parsed list length:', list.length)
       setOrders(list)
       } catch (err) {
         console.error('[OrderList] fetch error:', err)

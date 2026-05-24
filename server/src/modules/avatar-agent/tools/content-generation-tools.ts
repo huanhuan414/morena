@@ -71,15 +71,8 @@ export class GenerateImageTool implements AvatarTool {
   async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
     try {
       const startTime = Date.now()
-      console.log('AvatarAgent工具 - 生成图片:', params.prompt)
 
       const optimizedPrompt = ImagePromptOptimizer.optimize(params.prompt, params.style || 'realistic')
-
-      console.log('AvatarAgent工具 - 调用图片生成 SDK:', {
-        prompt_length: optimizedPrompt.length,
-        size: params.size || '2K',
-        style: params.style || 'realistic'
-      })
 
       // 使用 SDK 调用图片生成
       const config = new Config()
@@ -98,7 +91,6 @@ export class GenerateImageTool implements AvatarTool {
       }
 
       const imageUrls = helper.imageUrls
-      console.log('AvatarAgent工具 - 图片生成成功，URL:', imageUrls[0])
 
       return {
         success: true,
@@ -200,7 +192,6 @@ export class GenerateVideoTool implements AvatarTool {
   async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
     try {
       const startTime = Date.now()
-      console.log('AvatarAgent工具 - 生成视频开始:', params.prompt?.substring(0, 100))
 
       const optimizedPrompt = VideoPromptOptimizer.optimize(
         params.prompt,
@@ -274,7 +265,6 @@ export class GenerateVideoTool implements AvatarTool {
         return { success: false, toolName: this.name, error: `视频生成失败: ${errorMsg}` }
       }
 
-      console.log('AvatarAgent工具 - 视频生成任务已提交，任务ID:', taskId)
 
       const maxAttempts = 100
       let videoUrl: string | null = null

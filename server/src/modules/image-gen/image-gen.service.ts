@@ -36,10 +36,8 @@ export class ImageGenService {
   async generate(params: ImageGenParams): Promise<ImageGenResult> {
     const { userId, prompt, style = 'realistic', size = '1024x1536', n = 1 } = params;
 
-    console.log(`[ImageGenService] generate: userId=${userId}, prompt="${prompt.slice(0, 50)}", style=${style}, size=${size}`);
 
     const apiUrl = `${this.baseUrl}/v1/images/generations`;
-    console.log(`[ImageGenService] calling API: ${apiUrl}, model: ${this.model}`);
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -63,7 +61,6 @@ export class ImageGenService {
     }
 
     const result = await response.json() as any;
-    console.log(`[ImageGenService] API response:`, JSON.stringify(result).slice(0, 300));
 
     // 解析返回的图片 URL
     let imageUrl = '';
@@ -74,14 +71,12 @@ export class ImageGenService {
         imageUrl = firstItem.url;
       } else if (firstItem.b64_json) {
         // base64 图片上传到 veImageX CDN，避免存入数据库
-        console.log('[ImageGenService] API返回base64，上传到veImageX CDN...');
         try {
           const base64Data = firstItem.b64_json;
           const buffer = Buffer.from(base64Data, 'base64');
           const fileName = `image-gen_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.png`;
           const uploadResult = await this.volcengineService.uploadImage({ buffer, originalname: fileName, mimetype: 'image/png' } as Express.Multer.File);
           imageUrl = uploadResult.url;
-          console.log(`[ImageGenService] base64上传veImageX成功: ${imageUrl.slice(0, 80)}...`);
         } catch (uploadErr: any) {
           console.error(`[ImageGenService] base64上传veImageX失败: ${uploadErr.message}`);
           throw new Error(`图片上传CDN失败: ${uploadErr.message}`);
@@ -93,7 +88,6 @@ export class ImageGenService {
       throw new Error('图片生成返回数据为空');
     }
 
-    console.log(`[ImageGenService] 图片生成成功, url: ${imageUrl.slice(0, 80)}...`);
 
     // 保存记录到数据库
     const recordId = crypto.randomUUID();
@@ -114,7 +108,6 @@ export class ImageGenService {
           JSON.stringify({ style, size, model: this.model, apiResponse: { created: result.created } }),
         ]
       );
-      console.log('[ImageGenService] 保存记录成功, id:', recordId);
     } catch (dbError: any) {
       console.error('[ImageGenService] 保存记录失败:', dbError.message);
     }

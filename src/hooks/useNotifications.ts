@@ -49,7 +49,6 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         url: '/api/notifications',
         dedupKey: 'notifications:list',
       })
-      console.log('[useNotifications] 获取通知:', res.data)
       
       if (res.data?.code === 200 && res.data?.data) {
         const list = (res.data.data.list || res.data.data || []).map(normalizeNotification)
@@ -72,7 +71,6 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         url: '/api/notifications/unread-count',
         dedupKey: 'notifications:unread-count',
       })
-      console.log('[useNotifications] 未读数量:', res.data)
       
       if (res.data?.code === 200) {
         const count = res.data.data?.count || 0

@@ -45,7 +45,6 @@ export class AiSkillService {
       const inputImageUrls: string[] = inputImageUrl ? inputImageUrl.split(',').map(u => u.trim()).filter(Boolean) : [];
       const inputCount = inputImageUrls.length;
 
-      console.log(`[AiSkillService] 公众号爆款生成: inputCount=${inputCount}, inputText=${inputText?.substring(0, 50)}`);
 
       // 更新状态为 generating_text
       await pool.query(
@@ -60,7 +59,6 @@ export class AiSkillService {
         const llmResult = await this.callLlmForArticle(inputText || '', inputCount);
         articleTitle = llmResult.title;
         articleContent = llmResult.content;
-        console.log(`[AiSkillService] 文章生成成功: title=${articleTitle}, contentLen=${articleContent.length}`);
 
         // 文章生成成功后立即保存到 metadata，并更新状态
         await pool.query(
@@ -85,7 +83,6 @@ export class AiSkillService {
       }
 
       if (needGenerate > 0) {
-        console.log(`[AiSkillService] 需要生成${needGenerate}张配图`);
         // 提取每个占位符的上下文，用于生成相关配图
         const imageContexts = this.extractImageContexts(articleContent, inputCount + needGenerate);
         // 逐张生成配图，每生成一张就保存到 metadata
@@ -96,7 +93,6 @@ export class AiSkillService {
             const imagePrompt = `微信公众号文章配图，与以下内容紧密相关：${context}，风格：高端简约商务，宽幅横版，高质量插图`;
             const url = await this.callGenerationsApi(imagePrompt, '1536x1024');
             imageUrls.push(url);
-            console.log(`[AiSkillService] 生成配图${i + 1}成功, prompt: ${imagePrompt.substring(0, 80)}`);
 
             // 每生成一张图就更新 metadata，前端可以逐步看到图片
             const currentImageUrls = imageUrls.filter(Boolean);
@@ -157,7 +153,6 @@ export class AiSkillService {
         ],
       );
 
-      console.log(`[AiSkillService] 公众号爆款生成成功, recordId=${recordId}`);
     } catch (error: any) {
       console.error(`[AiSkillService] 公众号爆款生成失败, recordId=${recordId}:`, error.message);
       await pool.query(
@@ -415,11 +410,9 @@ ${imageHint}
 
       if (inputImageUrl) {
         // 有参考图 → 用 /v1/images/edits 端点（multipart/form-data）
-        console.log(`[AiSkillService] Using /v1/images/edits with reference image, skillType=${skillType}`);
         resultImageUrl = await this.callEditsApi(fullPrompt, inputImageUrl, size);
       } else {
         // 无参考图 → 用 /v1/images/generations 端点（JSON）
-        console.log(`[AiSkillService] Using /v1/images/generations (text-only), skillType=${skillType}`);
         resultImageUrl = await this.callGenerationsApi(fullPrompt, size);
       }
 
@@ -433,7 +426,6 @@ ${imageHint}
         [resultImageUrl, recordId],
       );
 
-      console.log(`[AiSkillService] 生成成功, recordId=${recordId}, url=${resultImageUrl.substring(0, 80)}`);
     } catch (error: any) {
       // 更新记录为 failed
       console.error(`[AiSkillService] 生成失败, recordId=${recordId}:`, error.message);
@@ -456,7 +448,6 @@ ${imageHint}
     };
 
     const apiUrl = `${IMAGE_GEN_BASE_URL}/v1/images/generations`;
-    console.log(`[AiSkillService] POST ${apiUrl}, promptLen=${prompt.length}`);
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -473,7 +464,6 @@ ${imageHint}
     }
 
     const result = (await response.json()) as any;
-    console.log(`[AiSkillService] generations response:`, JSON.stringify(result).slice(0, 300));
 
     return this.extractResultImageUrl(result, 'generations');
   }
@@ -484,7 +474,6 @@ ${imageHint}
    */
   private async callEditsApi(prompt: string, inputImageUrl: string, size: string): Promise<string> {
     // 1. 下载输入图片
-    console.log(`[AiSkillService] Downloading input image: ${inputImageUrl.substring(0, 80)}`);
     const imageResponse = await fetch(inputImageUrl);
     if (!imageResponse.ok) {
       throw new Error(`下载输入图片失败: ${imageResponse.status}`);
@@ -492,7 +481,6 @@ ${imageHint}
     const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
     const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
     const ext = contentType.includes('png') ? 'png' : 'jpg';
-    console.log(`[AiSkillService] Downloaded image: ${imageBuffer.length} bytes, type=${contentType}`);
 
     // 2. 构建 multipart/form-data
     const boundary = `----FormBoundary${crypto.randomBytes(16).toString('hex')}`;
@@ -532,7 +520,6 @@ ${imageHint}
 
     // 3. 发送请求
     const apiUrl = `${IMAGE_GEN_BASE_URL}/v1/images/edits`;
-    console.log(`[AiSkillService] POST ${apiUrl} (multipart/form-data), imageLen=${imageBuffer.length}`);
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -549,14 +536,12 @@ ${imageHint}
 
       // 如果 edits 端点不可用，fallback 到 generations（不带图片）
       if (response.status === 404 || response.status === 405) {
-        console.log(`[AiSkillService] /edits endpoint not available, falling back to /generations without image`);
         return this.callGenerationsApi(prompt, size);
       }
       throw new Error(`edits API error: ${response.status} ${errorText.slice(0, 200)}`);
     }
 
     const result = (await response.json()) as any;
-    console.log(`[AiSkillService] edits response:`, JSON.stringify(result).slice(0, 300));
 
     return this.extractResultImageUrl(result, 'edits');
   }
@@ -574,13 +559,11 @@ ${imageHint}
     if (firstItem.url) {
       // 下载临时URL并转存到veImageX CDN，避免第三方链接过期
       try {
-        console.log(`[AiSkillService] 下载临时图片并转存veImageX CDN: ${firstItem.url.slice(0, 80)}...`)
         const imgResponse = await fetch(firstItem.url)
         if (imgResponse.ok) {
           const imgBuffer = Buffer.from(await imgResponse.arrayBuffer())
           const fileName = `ai-skill_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.png`
           const uploadResult = await this.volcengineService.uploadImage({ buffer: imgBuffer, originalname: fileName, mimetype: 'image/png' } as Express.Multer.File)
-          console.log(`[AiSkillService] 图片转存veImageX CDN成功: ${uploadResult.url.slice(0, 80)}...`)
           return uploadResult.url
         } else {
           console.warn(`[AiSkillService] 下载临时图片失败: ${imgResponse.status}，使用原始URL`)
@@ -592,12 +575,10 @@ ${imageHint}
     }
 
     if (firstItem.b64_json) {
-      console.log(`[AiSkillService] 收到 base64 图片，上传到 veImageX CDN`);
       try {
         const buffer = Buffer.from(firstItem.b64_json, 'base64');
         const fileName = `ai-skill_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.png`;
         const uploadResult = await this.volcengineService.uploadImage({ buffer, originalname: fileName, mimetype: 'image/png' } as Express.Multer.File);
-        console.log(`[AiSkillService] base64 图片转存 veImageX CDN 成功: ${uploadResult.url.slice(0, 80)}...`);
         return uploadResult.url;
       } catch (volcErr: any) {
         console.warn(`[AiSkillService] veImageX 上传失败: ${volcErr.message}，降级到对象存储`);

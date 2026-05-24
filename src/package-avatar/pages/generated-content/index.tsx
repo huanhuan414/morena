@@ -100,7 +100,6 @@ export default function GeneratedContentPage() {
     setLoading(true)
     try {
       const res = await Network.request({ url: '/api/user-stats/contents' })
-      console.log('[已生成内容] API响应:', res.data?.code, 'avatars:', res.data?.data?.avatars?.length, 'contents:', res.data?.data?.contents?.length)
       if (res.data?.code === 200) {
         const rawAvatars = res.data.data.avatars || []
         const rawContents = res.data.data.contents || []
@@ -133,7 +132,6 @@ export default function GeneratedContentPage() {
 
         setAvatars(parsedAvatars)
         setContents(parsedContents)
-        console.log('[已生成内容] 解析后: avatars=', parsedAvatars.length, 'contents=', parsedContents.length)
 
         // 对图片为空的记录异步加载（列表API可能未返回images，或base64尚未迁移）
         const needLoadImages = parsedContents.filter((c: any) => !Array.isArray(c.images) || c.images.length === 0)
@@ -360,7 +358,6 @@ export default function GeneratedContentPage() {
   }
 
   const playVideo = (url: string) => {
-    console.log('[generated-content] playVideo url:', url)
     Taro.previewMedia({
       sources: [{ url, type: 'video' }],
       current: 0,

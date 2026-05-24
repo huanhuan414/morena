@@ -54,7 +54,6 @@ export class VoiceCloneService {
         }
       )
 
-      console.log('[VoiceCloneService] 查询复刻状态响应:', response.data)
 
       return {
         success: true,
@@ -118,7 +117,6 @@ export class VoiceCloneService {
         }
       )
 
-      console.log('[VoiceCloneService] TTS合成响应:', response.data)
 
       // 字节跳动TTS返回的是音频base64数据，需要解码
       const audioData = response.data?.data?.audio_data
@@ -177,11 +175,6 @@ export class VoiceCloneService {
       // 生成唯一的voice_id
       const voiceId = `clone_${userId}_${Date.now()}`
       
-      console.log('[VoiceCloneService] 开始声音复刻训练:', {
-        voice_id: voiceId,
-        audio_url: audioUrl,
-        user_id: userId
-      })
 
       // 注意：字节跳动声音克隆需要企业资质和特定接口
       // 这里我们存储信息，后续可以通过其他方式实现

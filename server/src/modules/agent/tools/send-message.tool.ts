@@ -43,10 +43,8 @@ export class SendMessageTool implements ITool {
           status: 'sent'
         })
       } catch (e) {
-        console.log('[SendMessageTool] 消息记录失败（忽略）:', e)
       }
 
-      console.log('[SendMessageTool] 发送消息:', { to, message, type })
 
       return {
         success: true,

@@ -28,7 +28,6 @@ export class SmsService {
    */
   async sendSms(phone: string, templateCode: string, params: Record<string, string>): Promise<boolean> {
     try {
-      console.log('[SmsService] 发送短信:', { phone, templateCode, params })
 
       const smsParams: Record<string, string> = {
         AccessKeyId: this.accessKeyId,
@@ -74,25 +73,20 @@ export class SmsService {
       })
 
       const result = await response.json() as any
-      console.log('[SmsService] 短信发送结果:', result)
 
       if (result.Code === 'OK') {
-        console.log('[SmsService] 短信发送成功')
         return true
       } else if (result.Code === 'isv.TEMPLATE_MISSING_PARAMETERS' || result.Code === 'isv.TEMPLATE_NOT_EXIST') {
         // 模板不存在，开发环境模拟发送成功
-        console.log(`[开发模式] 模板未配置，模拟发送成功`)
         return true
       } else {
         console.error('[SmsService] 短信发送失败:', result)
         // 开发环境：模拟发送成功
-        console.log(`[开发模式] 模拟发送成功`)
         return true
       }
     } catch (error) {
       console.error('[SmsService] 短信发送异常:', error)
       // 开发环境：模拟发送成功
-      console.log(`[开发模式] 模拟发送成功`)
       return true
     }
   }

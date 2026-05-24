@@ -103,7 +103,6 @@ export default function OrderPublishGuide() {
             url: `/api/content-generation/content/${params.contentId}`
           })
           const resData = res.data as any
-          console.log('[发布引导] 通过contentId获取数据:', resData?.code, resData?.data?.id)
           if (resData?.code === 200 && resData?.data) {
             const data = resData.data
             if (data.content) setContent(data.content)
@@ -183,7 +182,6 @@ export default function OrderPublishGuide() {
       })
 
       const resData = res.data as any
-      console.log('[发布引导] 获取分身账号:', resData?.code, resData?.data?.length)
       if (resData?.code === 200 && Array.isArray(resData.data)) {
         // 将后端返回的账号数据映射为前端格式
         const accounts: AvatarAccount[] = resData.data.map((a: any) => ({
@@ -236,13 +234,10 @@ export default function OrderPublishGuide() {
     }
     // 规范化匹配：wechat/wechat_mp/wechat_official 都应该匹配
     const canonical = canonicalizePlatform(platform) as CanonicalPlatformKey
-    console.log('[发布引导] 绑定检查:', { platform, canonical, accountsCount: avatarAccounts.length, accountPlatforms: avatarAccounts.map(a => a.platform) })
     const account = avatarAccounts.find(a => {
       const aCanonical = canonicalizePlatform(a.platform) as CanonicalPlatformKey
-      console.log('[发布引导] 匹配:', a.platform, '→', aCanonical, '===', canonical, '?', aCanonical === canonical)
       return aCanonical === canonical
     })
-    console.log('[发布引导] 匹配结果:', { bound: !!account, accountName: account?.account_name })
     return { required: true, bound: !!account, account }
   }
 
@@ -255,15 +250,12 @@ export default function OrderPublishGuide() {
 
   // 处理打开APP/发布
   const handleOpenApp = (platform: string) => {
-    console.log('[发布引导] handleOpenApp:', { platform, avatarAccountsCount: avatarAccounts.length })
     const info = getValidatedPlatformMeta(platform)
     if (!info) {
-      console.log('[发布引导] 平台信息未找到:', platform)
       return
     }
 
     const bindingStatus = getPlatformBindingStatus(platform)
-    console.log('[发布引导] 绑定状态:', bindingStatus)
 
     if (bindingStatus.required && !bindingStatus.bound) {
       Taro.showModal({
@@ -319,7 +311,6 @@ export default function OrderPublishGuide() {
 
   // 处理抖音 shareSchema 半自动发布
   const handleDouyinPublish = async (account?: AvatarAccount) => {
-    console.log('[发布引导] handleDouyinPublish called, account:', JSON.stringify(account))
 
     // 检查是否已绑定抖音 OAuth
     if (!account) {
@@ -370,7 +361,6 @@ export default function OrderPublishGuide() {
         hashtags.push(match[1])
       }
 
-      console.log('[发布引导] 调用抖音 shareSchema 接口, images:', images.length, 'videos:', videos.length, 'hashtags:', hashtags)
 
       const result = await Network.request({
         url: '/api/douyin/publish/share-schema',
@@ -385,7 +375,6 @@ export default function OrderPublishGuide() {
 
       Taro.hideLoading()
       const resData = result.data as any
-      console.log('[发布引导] 抖音 shareSchema 结果:', resData)
 
       if (resData?.code === 200 && resData?.data?.schemaUrl) {
         const { schemaUrl, tips } = resData.data
@@ -443,9 +432,7 @@ export default function OrderPublishGuide() {
 
   // 处理微信公众号
   const handleOpenWechatMp = async (account?: AvatarAccount) => {
-    console.log('[发布引导] handleOpenWechatMp called, account:', JSON.stringify(account))
     if (!account) {
-      console.log('[发布引导] 无绑定账号，显示手动发布提示')
       Taro.showModal({
         title: '发布到公众号',
         content: '请前往微信公众平台 (mp.weixin.qq.com) 登录并发布内容',
@@ -468,7 +455,6 @@ export default function OrderPublishGuide() {
       setPublishing(true)
       Taro.showLoading({ title: '发布中...' })
       try {
-        console.log('[发布引导] 开始调用草稿箱API, accountId:', account.id, 'title:', title?.substring(0, 30), 'images:', images.length)
         const result = await Network.request({
           url: '/api/avatar/publish/wechat-draft',
           method: 'POST',
@@ -482,7 +468,6 @@ export default function OrderPublishGuide() {
         })
         Taro.hideLoading()
         const resData = result.data as any
-        console.log('[发布引导] 公众号草稿发布结果:', resData)
         if (resData?.code === 200 && resData?.data) {
           Taro.showModal({
             title: '发布成功',
@@ -650,12 +635,10 @@ export default function OrderPublishGuide() {
           url: images[i],
           timeout: 60000
         })
-        console.log(`[保存图片] 第${i + 1}张下载结果:`, res.statusCode, res.tempFilePath)
         if (res.statusCode === 200) {
           try {
             await Taro.saveImageToPhotosAlbum({ filePath: res.tempFilePath })
             savedCount++
-            console.log(`[保存图片] 第${i + 1}张保存成功`)
           } catch (saveErr) {
             console.error(`[保存图片] 第${i + 1}张保存到相册失败:`, saveErr)
             failedCount++

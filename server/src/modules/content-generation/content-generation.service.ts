@@ -2234,7 +2234,6 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
             const filename = `content-images_${requestId}_${Date.now()}-${Math.random().toString(36).substring(2, 8)}.png`
             const uploadResult = await this.volcengineService.uploadImage({ buffer, originalname: filename, mimetype: 'image/png' } as Express.Multer.File)
             const url = uploadResult.url
-            console.log(`[CDN迁移] base64→永久URL: ${filename} → ${url.slice(0, 80)}...`)
             updatedImages.push(url)
           } else {
             // 无法解析的 base64，跳过
@@ -2251,7 +2250,6 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
           'UPDATE content_generation_requests SET images = ? WHERE id = ?',
           [JSON.stringify(updatedImages), requestId]
         )
-        console.log(`[TOS迁移] 已更新 ${requestId} 的图片: ${updatedImages.length} 张`)
       }
     } catch (error) {
       console.error(`[TOS迁移] 迁移失败 ${requestId}:`, error.message)
@@ -2293,7 +2291,6 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
       } catch { requirements = {} }
       const aiAutoFill = requirements?.ai_auto_fill !== false // 默认 true（兼容旧数据）
 
-      console.log(`[预生成] 开始为订单 ${orderId} 预生成素材, 平台: ${platforms.join(',')}, 类型: ${contentType}, AI自动补足: ${aiAutoFill}`)
 
       // 查看已有用户上传素材（带重试，因素材绑定可能还在写入）
       let uploadedImageCount = 0
@@ -2305,7 +2302,6 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
         ) as any[]
         uploadedImageCount = existingAssets?.find(a => a.assetType === 'image')?.cnt || 0
         uploadedVideoCount = existingAssets?.find(a => a.assetType === 'video')?.cnt || 0
-        console.log(`[预生成] 订单 ${orderId} 已有素材(第${attempt + 1}次查询): 图片${uploadedImageCount}张, 视频${uploadedVideoCount}个`)
         if (uploadedImageCount > 0 || uploadedVideoCount > 0) break
         if (attempt < 2) await new Promise(r => setTimeout(r, 2000))
       }
@@ -2318,7 +2314,6 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
       const needAiGenerate = !hasUploadedAssets || aiAutoFill
 
       if (!needAiGenerate) {
-        console.log(`[预生成] 订单 ${orderId} 有用户素材且AI补足已关闭，跳过生成`)
         return
       }
 
@@ -2342,19 +2337,16 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
         // 独占模式：每个分身需要独立素材，总素材数 = 分身数 × 每分身素材数
         requiredImageCount = perAvatarImages * avatarCount
         requiredVideoCount = perAvatarVideos * avatarCount
-        console.log(`[预生成] 独占模式: ${avatarCount}个分身 × (图片${perAvatarImages}张 + 视频${perAvatarVideos}个)/分身 = 共需图片${requiredImageCount}张, 视频${requiredVideoCount}个`)
       } else {
         // 共享模式：所有分身共享同一套素材
         requiredImageCount = perAvatarImages
         requiredVideoCount = perAvatarVideos
-        console.log(`[预生成] 共享模式: 需要图片${requiredImageCount}张, 视频${requiredVideoCount}个`)
       }
 
       // 计算缺失
       const missingImages = Math.max(0, requiredImageCount - uploadedImageCount)
       const missingVideos = Math.max(0, requiredVideoCount - uploadedVideoCount)
 
-      console.log(`[预生成] 需要: 图片${requiredImageCount}张(已有${uploadedImageCount},缺${missingImages}), 视频${requiredVideoCount}个(已有${uploadedVideoCount},缺${missingVideos}), 来源: ${hasUploadedAssets ? '用户上传+AI补足' : '纯AI生成'}`)
 
       // AI补齐图片
       if (missingImages > 0) {
@@ -2369,7 +2361,6 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
         })
       }
 
-      console.log(`[预生成] 订单 ${orderId} 素材预生成完成`)
     } catch (err: any) {
       console.error(`[预生成] 订单 ${orderId} 素材预生成失败:`, err.message)
       // 预生成失败不影响主流程，分身接单时会回退到实时生成
@@ -2403,13 +2394,11 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
       // 通过限流器排队生成
       this.imageLimiter.run(async () => {
         try {
-          console.log(`[预生成] 图片 ${i + 1}/${count} 开始生成, assetId=${assetId}`)
           const imageUrl = await this.generateImageViaHttp(prompt)
           await db.query(
             'UPDATE order_assets SET asset_url = ?, status = ? WHERE id = ?',
             [imageUrl, 'ready', assetId]
           )
-          console.log(`[预生成] 图片 ${i + 1}/${count} 生成成功: ${imageUrl.slice(0, 80)}...`)
         } catch (err: any) {
           console.error(`[预生成] 图片 ${i + 1}/${count} 生成失败:`, err.message)
           await db.query('UPDATE order_assets SET status = ? WHERE id = ?', ['failed', assetId])
@@ -2435,7 +2424,6 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
     // 2. 异步生成视频（不阻塞图片生成）
     ;(async () => {
       try {
-        console.log(`[预生成] 订单 ${orderId} 开始预生成视频...`)
 
         // 构建输入上下文（不需要文案，用订单标题+描述即可）
         const input = {
@@ -2453,18 +2441,15 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
           await db.query('UPDATE order_assets SET status = ? WHERE id = ?', ['failed', videoAssetId])
           return
         }
-        console.log(`[预生成] 订单 ${orderId} 视频脚本生成完成: ${videoScript.length}字`)
 
         // 4. 提取视觉prompt
         const seedancePrompt = await this.extractVisualPrompt(videoScript, input)
-        console.log(`[预生成] 订单 ${orderId} Seedance视觉prompt: ${seedancePrompt.substring(0, 80)}...`)
 
         // 5. 创建Seedance异步任务
         const taskId = await this.createSeedanceTask(seedancePrompt)
         if (taskId) {
           // 存储 taskId，由 pollPendingVideoTasks 定时任务轮询结果
           await db.query('UPDATE order_assets SET seedance_task_id = ? WHERE id = ?', [taskId, videoAssetId])
-          console.log(`[预生成] 订单 ${orderId} 视频任务已创建: taskId=${taskId}`)
         } else {
           console.error(`[预生成] 订单 ${orderId} Seedance任务创建失败`)
           await db.query('UPDATE order_assets SET status = ? WHERE id = ?', ['failed', videoAssetId])
@@ -2486,18 +2471,15 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
 
     this.imageLimiter.run(async () => {
       try {
-        console.log(`[重新生成] 素材 ${assetId} 开始生成, type=${assetType}`)
         if (assetType === 'image') {
           const imageUrl = await this.generateImageViaHttp(prompt)
           await db.query(
             'UPDATE order_assets SET asset_url = ?, status = ? WHERE id = ?',
             [imageUrl, 'ready', assetId],
           )
-          console.log(`[重新生成] 素材 ${assetId} 生成成功`)
         } else {
           // 视频暂不支持重新生成，标记为failed
           await db.query('UPDATE order_assets SET status = ? WHERE id = ?', ['failed', assetId])
-          console.log(`[重新生成] 素材 ${assetId} 视频暂不支持重新生成`)
         }
       } catch (err: any) {
         console.error(`[重新生成] 素材 ${assetId} 生成失败:`, err.message)
@@ -2563,7 +2545,6 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
         [orderId]
       )
       if ((pendingImages as any[])[0]?.cnt > 0) {
-        console.log(`[素材分配] 订单 ${orderId} 图片仍在生成中，等待...`)
         const waited = await this.waitForAssetsReady(orderId, 'image', 30000)
         images.push(...waited)
       }
@@ -2576,13 +2557,11 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
         [orderId]
       )
       if ((pendingVideos as any[])[0]?.cnt > 0) {
-        console.log(`[素材分配] 订单 ${orderId} 视频仍在生成中，等待...`)
         const waited = await this.waitForAssetsReady(orderId, 'video', 60000)
         if (waited.length > 0) videoUrl = waited[0]
       }
     }
 
-    console.log(`[素材分配] 订单 ${orderId}: 分配图片${images.length}张, 视频${videoUrl ? '1个' : '0个'}`)
     return { images, videoUrl }
   }
 

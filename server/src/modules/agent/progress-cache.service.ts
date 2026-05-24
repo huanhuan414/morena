@@ -53,7 +53,6 @@ export class ProgressCacheService {
     }
     const key = `${userId}:${taskId}`
     this.resultMap.set(key, result)
-    console.log(`[ProgressCache] 创建任务: ${key}`)
     return result
   }
 
@@ -74,7 +73,6 @@ export class ProgressCacheService {
       if (status === 'completed' || status === 'failed') {
         taskResult.completedAt = Date.now()
       }
-      console.log(`[ProgressCache] 更新任务状态: ${key} -> ${status}`)
     }
   }
 
@@ -118,7 +116,6 @@ export class ProgressCacheService {
       progressList.shift()
     }
 
-    console.log(`[ProgressCache] 更新进度: ${key}`, progress.type, progress.message)
 
     // 通过 WebSocket 推送进度更新（如果有 gateway 引用）
     // 注意：这里需要注入 AgentGateway，但由于循环依赖问题，暂时只更新缓存
@@ -143,7 +140,6 @@ export class ProgressCacheService {
       progressList.shift()
     }
     
-    console.log(`[ProgressCache] 添加进度: ${key}`, progress.type, progress.message)
   }
 
   /**
@@ -216,7 +212,6 @@ export class ProgressCacheService {
         this.progressMap.delete(key)
         this.resultMap.delete(key)
       })
-      console.log(`[ProgressCache] 清除用户 ${userId} 的所有进度，共 ${keysToDelete.length} 个任务`)
     }
   }
 
@@ -231,7 +226,6 @@ export class ProgressCacheService {
       if (latestProgress && now - latestProgress.timestamp > this.EXPIRE_TIME) {
         this.progressMap.delete(key)
         this.resultMap.delete(key)
-        console.log(`[ProgressCache] 清理过期进度: ${key}`)
       }
     })
   }

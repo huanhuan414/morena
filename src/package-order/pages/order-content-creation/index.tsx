@@ -386,7 +386,6 @@ export default function OrderContentCreation() {
         method: 'POST',
         dedupKey: `content-generation:retry:${retryRequestId}`,
       })
-      console.log('[ContentCreation] retry response:', res.data)
       Taro.hideLoading()
       if (res.data?.code === 200) {
         Taro.showToast({ title: '已开始重新生成', icon: 'success' })

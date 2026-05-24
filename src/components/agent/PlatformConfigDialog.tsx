@@ -385,7 +385,6 @@ export function PlatformConfigDialog({
         data: formData
       })
 
-      console.log('保存平台配置:', res)
 
       if (res.data?.code === 200) {
         Taro.showToast({ title: '配置成功', icon: 'success' })

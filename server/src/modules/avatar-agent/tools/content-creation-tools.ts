@@ -568,7 +568,6 @@ export class WriteWechatMomentsTool implements AvatarTool {
           // 添加唯一标识确保每次生成都不同
           const uniqueId = `${i + 1}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
           const uniquePrompt = `${promptText} [图片序号: ${i + 1}, 唯一ID: ${uniqueId}]`
-          console.log(`生成朋友圈配图[${i + 1}], prompt: ${uniquePrompt}`)
           try {
             const imgResponse = await imageClient.generate({
               prompt: uniquePrompt,
@@ -576,7 +575,6 @@ export class WriteWechatMomentsTool implements AvatarTool {
               watermark: false
             })
             const helper = imageClient.getResponseHelper(imgResponse)
-            console.log(`朋友圈配图[${i + 1}]生成结果, success: ${helper.success}, urls: ${JSON.stringify(helper.imageUrls)}`)
             if (helper.success && helper.imageUrls.length > 0) {
               imageUrls.push(helper.imageUrls[0])
             }

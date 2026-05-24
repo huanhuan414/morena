@@ -207,17 +207,13 @@ export class AgentService {
    */
   async getAvatarTools(avatarId: string): Promise<ToolDefinition[]> {
     try {
-      console.log(`[AgentService] 获取分身工具，分身ID: ${avatarId}`)
 
       // 获取分身的技能列表
       const db = getMySQLClient()
       const avatarSkillsResult = await db.query('avatar_skills', { avatar_id: avatarId })
       const avatarSkills = avatarSkillsResult?.data || []
 
-      console.log(`[AgentService] 查询分身技能结果:`, {
-        count: avatarSkills.length,
-        skills: avatarSkills.map((s: any) => ({ skill_type: s.skill_type, metadata: s.metadata }))
-      })
+
 
       // 定义基础工具（所有分身都能使用的内部功能）
       const basicTools: string[] = [
@@ -253,7 +249,6 @@ export class AgentService {
 
       // 如果没有技能，只返回基础工具
       if (!avatarSkills || avatarSkills.length === 0) {
-        console.log(`[AgentService] ⚠️ 分身没有技能，只返回基础工具`)
         return this.getToolsByNames(basicTools)
       }
 
@@ -272,8 +267,6 @@ export class AgentService {
         }
       }
 
-      console.log(`[AgentService] 提取的工具名称:`, toolNames)
-      console.log(`[AgentService] 提取的技能ID:`, skillIds)
 
       // 如果有 skill_id，需要从 skills 表中获取 tool_name
       if (skillIds.length > 0) {
@@ -292,14 +285,12 @@ export class AgentService {
 
       // 如果技能中没有工具名称，只返回基础工具
       if (toolNames.length === 0) {
-        console.log(`[AgentService] ⚠️ 技能列表为空，只返回基础工具`)
         return this.getToolsByNames(basicTools)
       }
 
       // 返回分身拥有的工具 + 基础工具（任务管理、分身管理等）
       const allToolNames = [...new Set([...basicTools, ...toolNames])]
 
-      console.log(`[AgentService] 最终工具列表:`, allToolNames)
 
       const result = allToolNames
         .map(toolName => {
@@ -308,7 +299,6 @@ export class AgentService {
         })
         .filter((t): t is ToolDefinition => t !== null)
 
-      console.log(`[AgentService] 返回工具数量: ${result.length}`)
       return result
     } catch (error) {
       console.error('[AgentService] 获取分身工具失败:', error)
@@ -533,7 +523,6 @@ export class AgentService {
             image_urls: data.image_urls || [],
             production_stats: data.production_stats || null
           })
-          console.log('[Agent] 检测到媒体内容生成，保留完整数据:', Object.keys(data))
         } else {
           // 没有媒体内容，调用 LLM 总结
           finalAnswer = await this.summarizeExecution(context, steps)
@@ -663,7 +652,6 @@ export class AgentService {
           taskDescription,
           result.finalAnswer || ''
         )
-        console.log(`[AgentService] 分身 ${avatarId} 学习数据已更新`)
       } catch (learningError) {
         console.error(`[AgentService] 分身学习更新失败:`, learningError)
       }
@@ -760,7 +748,6 @@ export class AgentService {
           taskDescription,
           result.finalAnswer || ''
         )
-        console.log(`[AgentService] 异步任务 - 分身 ${avatarId} 学习数据已更新`)
       } catch (learningError) {
         console.error(`[AgentService] 异步任务 - 分身学习更新失败:`, learningError)
       }
@@ -932,7 +919,6 @@ export class AgentService {
 
         // 提取 video_clips 并添加到 media
         if (finalAnswerJson.video_clips && Array.isArray(finalAnswerJson.video_clips)) {
-          console.log('[媒体提取] 从 finalAnswer JSON 中提取视频剪辑:', finalAnswerJson.video_clips.length)
           finalAnswerJson.video_clips.forEach((clip: any) => {
             if (clip.url) {
               extractedFromFinalAnswer.add(clip.url) // 记录已提取的 URL
@@ -948,7 +934,6 @@ export class AgentService {
 
         // 🔴 提取成品视频 URL
         if (finalAnswerJson.edited_video_url) {
-          console.log('[媒体提取] 从 finalAnswer JSON 中提取成品视频 URL:', finalAnswerJson.edited_video_url)
           extractedFromFinalAnswer.add(finalAnswerJson.edited_video_url)
           media.push({
             type: 'video',
@@ -960,7 +945,6 @@ export class AgentService {
 
         // 提取单视频 URL
         if (finalAnswerJson.video_url) {
-          console.log('[媒体提取] 从 finalAnswer JSON 中提取视频 URL:', finalAnswerJson.video_url)
           extractedFromFinalAnswer.add(finalAnswerJson.video_url)
           media.push({
             type: 'video',
@@ -971,7 +955,6 @@ export class AgentService {
 
         // 提取角色形象
         if (finalAnswerJson.characters && Array.isArray(finalAnswerJson.characters)) {
-          console.log('[媒体提取] 从 finalAnswer JSON 中提取角色形象:', finalAnswerJson.characters.length)
           finalAnswerJson.characters.forEach((char: any) => {
             if (char.url) {
               extractedFromFinalAnswer.add(char.url)
@@ -987,7 +970,6 @@ export class AgentService {
 
         // 提取场景设计
         if (finalAnswerJson.scenes && Array.isArray(finalAnswerJson.scenes)) {
-          console.log('[媒体提取] 从 finalAnswer JSON 中提取场景设计:', finalAnswerJson.scenes.length)
           finalAnswerJson.scenes.forEach((scene: any) => {
             if (scene.url) {
               extractedFromFinalAnswer.add(scene.url)
@@ -1003,7 +985,6 @@ export class AgentService {
 
         // 提取图片数组
         if (finalAnswerJson.image_urls && Array.isArray(finalAnswerJson.image_urls)) {
-          console.log('[媒体提取] 从 finalAnswer JSON 中提取图片数组:', finalAnswerJson.image_urls.length)
           finalAnswerJson.image_urls.forEach((url: string) => {
             if (url) {
               extractedFromFinalAnswer.add(url)
@@ -1014,7 +995,6 @@ export class AgentService {
 
         // 🔴 修复：将短剧数据作为一个特殊的媒体项插入（避免 TypeScript 编译错误）
         if (finalAnswerJson.title || finalAnswerJson.script || finalAnswerJson.bgm_recommendations) {
-          console.log('[媒体提取] 插入短剧信息媒体项')
           media.unshift({
             type: 'shortdrama_info',
             title: finalAnswerJson.title,
@@ -1032,7 +1012,6 @@ export class AgentService {
         }
       }
     } catch (error) {
-      console.log('[媒体提取] finalAnswer 不是 JSON 格式，使用常规提取方式')
     }
 
     // 🔴 修复：从 steps 中提取媒体内容时，避免重复提取已经在 finalAnswer 中提取过的内容
@@ -1044,19 +1023,16 @@ export class AgentService {
         if (data.url && typeof data.url === 'string') {
           // 🔴 修复：检查是否已经提取过
           if (!extractedFromFinalAnswer.has(data.url)) {
-            console.log('[媒体提取] 提取单个图片 URL:', data.url, 'key:', data.key)
             const mediaItem: any = { type: 'image', url: data.url }
             if (data.key) {
               mediaItem.key = data.key
             }
-            console.log('[媒体提取] 准备添加的 mediaItem:', mediaItem)
             media.push(mediaItem)
             extractedFromFinalAnswer.add(data.url) // 记录已提取
           }
         }
         if (data.image_urls && Array.isArray(data.image_urls)) {
           // URL数组
-          console.log('[媒体提取] 提取图片数组:', data.image_urls)
           data.image_urls.forEach((url: string) => {
             if (url && typeof url === 'string' && !extractedFromFinalAnswer.has(url)) {
               media.push({ type: 'image', url })
@@ -1077,10 +1053,8 @@ export class AgentService {
 
         // 🔴 修复：视频剪辑数组 - 检查是否已经提取过
         if (data.video_clips && Array.isArray(data.video_clips)) {
-          console.log('[媒体提取] 检查视频剪辑数组，已从 finalAnswer 提取:', extractedFromFinalAnswer.size)
           data.video_clips.forEach((clip: any) => {
             if (clip.url && !extractedFromFinalAnswer.has(clip.url)) {
-              console.log('[媒体提取] 从 steps 中提取视频剪辑:', clip.url)
               media.push({
                 type: 'video',
                 url: clip.url,
@@ -1094,26 +1068,22 @@ export class AgentService {
 
         // 🔴 修复：单个视频 - 检查是否已经提取过
         if (data.video_url && !extractedFromFinalAnswer.has(data.video_url)) {
-          console.log('[媒体提取] 从 steps 中提取视频 URL:', data.video_url, 'key:', data.video_key || data.key)
           media.push({
             type: 'video',
             url: data.video_url,
             key: data.video_key || data.key  // 保存 key 用于重新生成签名链接
           })
           extractedFromFinalAnswer.add(data.video_url) // 记录已提取
-          console.log('[媒体提取] 已添加视频到 media 列表，当前 media 数量:', media.length)
         }
 
         // 封面图（单独展示）
         if (data.cover_image_url && !data.content && !extractedFromFinalAnswer.has(data.cover_image_url)) {
-          console.log('[媒体提取] 提取封面图 URL:', data.cover_image_url)
           media.push({ type: 'image', url: data.cover_image_url })
           extractedFromFinalAnswer.add(data.cover_image_url)
         }
       }
     })
 
-    console.log('[媒体提取] 最终提取的媒体列表:', media)
 
     // 获取当前任务上下文
     const taskContext = this.currentTaskMap.get(userId)
@@ -1123,14 +1093,12 @@ export class AgentService {
 
     // 🔴 新增：从 progressHistory 中提取图片（特别是 generate_image 工具返回的图片）
     if (progressHistory && Array.isArray(progressHistory)) {
-      console.log('[媒体提取] 从 progressHistory 中提取媒体，进度历史数量:', progressHistory.length)
 
       progressHistory.forEach((progress: any, idx: number) => {
         // 处理 generate_image 工具返回的数据
         if (progress.action === 'generate_image') {
           // 从 image_urls 中提取
           if (progress.image_urls && Array.isArray(progress.image_urls)) {
-            console.log(`[媒体提取] Progress ${idx}: 从 generate_image.image_urls 提取图片:`, progress.image_urls.length)
             progress.image_urls.forEach((url: string) => {
               if (url && typeof url === 'string' && !extractedFromFinalAnswer.has(url)) {
                 media.push({ type: 'image', url })
@@ -1141,7 +1109,6 @@ export class AgentService {
 
           // 从 cdn_urls 中提取
           if (progress.cdn_urls && Array.isArray(progress.cdn_urls)) {
-            console.log(`[媒体提取] Progress ${idx}: 从 generate_image.cdn_urls 提取图片:`, progress.cdn_urls.length)
             progress.cdn_urls.forEach((url: string) => {
               if (url && typeof url === 'string' && !extractedFromFinalAnswer.has(url)) {
                 media.push({ type: 'image', url })
@@ -1194,25 +1161,11 @@ export class AgentService {
     if (messages && messages.length > 0) {
       const lastMessage = messages[0]
 
-      console.log('[AgentService updateAssistantMessage] 准备更新消息:', {
-        messageId: lastMessage.id,
-        原有metadata: (lastMessage as any).metadata,
-        新mediaCount: media.length,
-        新media: media,
-        新agentResultStepsCount: agentResult?.steps?.length || 0
-      })
 
       // 检查 agentResult 是否有效，如果无效则不更新（保留原有数据）
       const hasValidAgentResult = agentResult && agentResult.steps && agentResult.steps.length > 0
       const hasValidMedia = media && media.length > 0
 
-      console.log('[AgentService updateAssistantMessage] 数据有效性检查:', {
-        hasValidAgentResult,
-        hasValidMedia,
-        mediaList: media,
-        mediaTypes: media.map(m => m.type),
-        mediaCount: media.length
-      })
 
       // 只在有有效数据时才更新，避免覆盖原有数据
       const updateData: any = {
@@ -1236,24 +1189,10 @@ export class AgentService {
           delete updateData.metadata.task_state
         }
 
-        console.log('[AgentService updateAssistantMessage] 准备更新的 metadata.media:', {
-          mediaCount: updateData.metadata.media?.length || 0,
-          mediaTypes: updateData.metadata.media?.map(m => m.type) || [],
-          media: updateData.metadata.media
-        })
 
-        console.log('[AgentService updateAssistantMessage] 最终更新的 metadata:', updateData.metadata)
       } else {
-        console.log('[AgentService updateAssistantMessage] 没有有效数据，只更新 content')
       }
 
-      console.log('[AgentService updateAssistantMessage] 更新消息:', {
-        messageId: lastMessage.id,
-        hasValidAgentResult,
-        hasValidMedia,
-        stepsCount: agentResult?.steps?.length || 0,
-        mediaCount: media?.length || 0
-      })
 
       await client
         .from('messages')
@@ -1403,7 +1342,6 @@ export class AgentService {
       .eq('id', avatarId)
       .single()
 
-    console.log('[AgentService] 获取分身信息:', { avatarId, avatarInfo })
 
     // 获取分身的技能
     const { data: avatarSkills } = await client
@@ -1477,7 +1415,6 @@ export class AgentService {
 
 请前往技能广场添加这些技能后，再重新发送相同指令，我会帮您完成${context.taskDescription}主题短剧成品的生成任务。`
 
-      console.log(`[AgentService] 检测到缺少技能: ${missingSkillNames}，直接返回答案`)
 
       // 保存错误信息到缓存
       const taskId = context.taskId || `task-${Date.now()}`
@@ -1533,12 +1470,10 @@ export class AgentService {
 
         if (hasDramaKeywords && !hasVideo && isDramaTask) {
           // 🔴 修复：如果包含短剧关键词但缺少视频数据，且明确是短剧任务，说明 LLM 只是生成了文本，没有调用工具
-          console.log('[AgentService] 警告：检测到短剧任务，但生成的内容没有视频数据，强制调用 produce_shortdrama...')
 
           // 🔴 修复：不重新赋值 thought，而是直接执行工具调用逻辑
           // 根据任务描述构建参数
           const toolInput = this.extractShortdramaParams(context.taskDescription, potentialFinalAnswer)
-          console.log('[AgentService] 强制调用 produce_shortdrama 工具:', toolInput)
 
           // 🔴 修复：直接调用工具
           const toolResult = await this.executeTool('produce_shortdrama', toolInput, context)
@@ -1580,18 +1515,9 @@ export class AgentService {
           const hasWrittenArticle = steps.some(s => s.action === 'write_wechat_mp_article' || s.action === 'write_xiaohongshu_note')
           const hasPublished = steps.some(s => s.action === 'publish_wechat_mp' || s.action === 'publish_xiaohongshu')
 
-          // 🔴 添加调试日志
-          console.log('[AgentService] Final Answer 检测:', {
-            isWriteAndPublishTask,
-            hasWrittenArticle,
-            hasPublished,
-            taskDescription: context.taskDescription,
-            steps: steps.map(s => s.action)
-          })
 
           if (isWriteAndPublishTask && hasWrittenArticle && !hasPublished) {
             // 🔴 强制继续执行发布
-            console.log('[AgentService] 检测到"写作并发布"任务，文章已写完但未发布，强制继续发布...')
             // 不返回，继续执行下一步（不 break）
           } else {
             // 如果只是普通文本（不是短剧任务），可以返回
@@ -1696,7 +1622,6 @@ export class AgentService {
       if (!toolResult.success && toolResult.error?.includes('您的分身尚未添加该功能')) {
         // 直接返回技能缺失错误，不继续执行
         finalAnswer = toolResult.error
-        console.log(`[Agent] 检测到技能缺失错误，直接返回: ${finalAnswer}`)
         break
       }
     }
@@ -1773,9 +1698,7 @@ export class AgentService {
 - 如果用户没有上传图片：只使用文本描述生成视频，不传递图片参数
 分身头像 URL：${context.avatarInfo.avatar_url || '未设置'}
 `
-      console.log('[AgentService] 分身身份信息已生成:', avatarInfoText)
     } else {
-      console.log('[AgentService] 警告：context.avatarInfo 为空，分身无法识别自己的身份')
     }
 
     // 智能任务理解提示（不包含技能检测，因为已经在前面处理了）
@@ -1786,17 +1709,8 @@ export class AgentService {
     const hasWrittenArticle = history.some(s => s.action === 'write_wechat_mp_article' || s.action === 'write_xiaohongshu_note')
     const hasPublished = history.some(s => s.action === 'publish_wechat_mp' || s.action === 'publish_xiaohongshu')
 
-    // 🔴 添加调试日志
-    console.log('[AgentService] think() 方法 - 任务状态检测:', {
-      isWriteAndPublishTask,
-      hasWrittenArticle,
-      hasPublished,
-      taskDescription: context.taskDescription,
-      historySteps: history.map(s => s.action)
-    })
 
     if (isWriteAndPublishTask && hasWrittenArticle && !hasPublished) {
-      console.log('[AgentService] 检测到"写作并发布"任务，文章已写完但未发布，添加强制发布提示')
       taskUnderstandingHint += `\n\n【🔴 强制任务提示 - 必须执行】\n用户要求"写作并发布"，文章已经写完，你现在必须：\n1. 立即调用 publish_wechat_mp 工具发布文章\n2. 使用 write_wechat_mp_article 返回的 title 和 content 作为参数\n3. 等待 publish_wechat_mp 执行完成后再返回结果\n4. 将 publish_wechat_mp 的结果（成功或失败）告知用户\n**严禁：直接返回 Final Answer 而不执行发布！**`
     }
 
@@ -2205,9 +2119,6 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
     const isToolAvailable = context.availableTools.some(tool => tool.name === toolName)
 
     // 强制日志输出
-    console.log(`[Agent] 执行工具检查 - 工具名: ${toolName}`)
-    console.log(`[Agent] 可用工具列表:`, context.availableTools.map(t => t.name))
-    console.log(`[Agent] 工具是否可用: ${isToolAvailable}`)
 
     if (!isToolAvailable) {
       console.warn(`[Agent] ⛔ 工具 ${toolName} 不在分身的可用工具列表中，拒绝执行`)
@@ -2279,7 +2190,6 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
 
         // 如果 params.content 为空或长度太短，使用历史记录中的完整内容
         if (!params.content || params.content.length < 100) {
-          console.log(`[Agent] 自动填充发布内容，原 content 长度: ${params.content?.length || 0}，新长度: ${generatedData.content?.length || 0}`)
           params = {
             ...params,
             title: params.title || generatedData.title,
@@ -2447,7 +2357,6 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
       params.key_scenes_count = parseInt(clipCountMatch[1])
     }
 
-    console.log('[AgentService] 提取短剧参数:', params)
     return params
   }
 
@@ -2620,7 +2529,6 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
     platform: PlatformType,
     configData: Record<string, any>
   ): Promise<{ valid: boolean; message?: string; accountInfo?: any; serverIp?: string }> {
-    console.log(`验证平台配置: ${platform}`, Object.keys(configData))
 
     try {
       switch (platform) {
@@ -2702,7 +2610,6 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
         const accountInfoRes = await fetch(accountInfoUrl)
         const accountData = await accountInfoRes.json()
 
-        console.log('公众号账号信息 API 响应:', accountData)
 
         if (accountData.errcode === 0) {
           accountInfo = {
@@ -2714,9 +2621,7 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
             service_type_info: accountData.service_type_info,
             verify_type_info: accountData.verify_type_info,
           }
-          console.log('获取公众号基本信息成功:', accountInfo)
         } else {
-          console.log('获取公众号基本信息失败，错误码:', accountData.errcode, '错误信息:', accountData.errmsg)
           // 即使获取基本信息失败，也继续尝试获取其他信息
           accountInfo = {
             note: `无法获取公众号详细信息（${accountData.errmsg || '权限不足'}）`,
@@ -2725,7 +2630,6 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
           }
         }
       } catch (err: any) {
-        console.log('获取公众号基本信息异常:', err)
         accountInfo = {
           note: '无法获取公众号详细信息（网络异常）',
           error: err.message
@@ -2738,20 +2642,16 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
         const userCountRes = await fetch(userCountUrl)
         const userCountData = await userCountRes.json()
 
-        console.log('粉丝数 API 响应:', userCountData)
 
         if (userCountData.errcode === 0 && userCountData.total !== undefined) {
           accountInfo.follower_count = userCountData.total
-          console.log('获取粉丝数成功:', accountInfo.follower_count)
         } else {
           accountInfo.follower_count = 0
           accountInfo.follower_note = `无法获取粉丝数：${userCountData.errmsg || '可能需要认证的服务号权限'}`
-          console.log('获取粉丝数失败:', userCountData)
         }
       } catch (err: any) {
         accountInfo.follower_count = 0
         accountInfo.follower_note = `无法获取粉丝数：${err.message}`
-        console.log('获取粉丝数异常:', err)
       }
 
       // 4. 尝试获取作品数量（已发布的图文）
@@ -2760,20 +2660,16 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
         const publishRes = await fetch(publishListUrl)
         const publishData = await publishRes.json()
 
-        console.log('作品数量 API 响应:', publishData)
 
         if (publishData.errcode === 0 && publishData.total_count !== undefined) {
           accountInfo.total_works = publishData.total_count
-          console.log('获取作品数量成功:', accountInfo.total_works)
         } else {
           accountInfo.total_works = 0
           accountInfo.works_note = `无法获取作品数量：${publishData.errmsg || '可能需要更多权限'}`
-          console.log('获取作品数量失败:', publishData)
         }
       } catch (err: any) {
         accountInfo.total_works = 0
         accountInfo.works_note = `无法获取作品数量：${err.message}`
-        console.log('获取作品数量异常:', err)
       }
 
       // 构建验证成功消息
@@ -3096,7 +2992,6 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
     }
 
     try {
-      console.log(`[AgentService] 发布到 ${platform}:`, params)
       const result = await tool.execute(params, toolContext)
       
       return {

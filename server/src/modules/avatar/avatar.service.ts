@@ -179,10 +179,8 @@ export class AvatarService {
           .filter(([key, value]) => value !== undefined && columns.has(String(key).toLowerCase()))
       )
 
-      console.log('[AvatarService] 创建分身，用户ID:', effectiveUserId, '数据:', filteredInsertData)
       const result = await db.insert('avatars', filteredInsertData)
       
-      console.log('[AvatarService] 插入结果:', result)
 
       // 检查是否有错误
       if (result.error) {
@@ -265,11 +263,9 @@ export class AvatarService {
       const db = getMySQLClient()
       
       if (hasValidUserId) {
-        console.log('[AvatarService] 查询用户分身，userId:', userId)
         const result = await db.query(`SELECT * FROM avatars WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC`, [userId])
         rows = Array.isArray(result) ? result : (result?.data || [])
       } else if (isTestUser) {
-        console.log('[AvatarService] 测试用户，返回所有分身')
         const result = await db.query(`SELECT * FROM avatars WHERE status = 'active' ORDER BY created_at DESC LIMIT 50`)
         rows = Array.isArray(result) ? result : (result?.data || [])
       } else {
@@ -291,7 +287,6 @@ export class AvatarService {
     const avatarIds = rows.map((a: any) => a.id || a.avatarId)
     let earningsMap: Record<string, { total: number; today: number }> = {}
     
-    console.log('[AvatarService] 分身ID列表:', avatarIds)
     
     if (avatarIds.length > 0) {
       try {
@@ -300,8 +295,6 @@ export class AvatarService {
         today.setHours(0, 0, 0, 0)
         
         const idList = avatarIds.map(id => `'${id}'`).join(', ')
-        console.log('[AvatarService] SQL查询条件 - idList:', idList)
-        console.log('[AvatarService] SQL查询条件 - today:', today)
         
         const earningsRows = await db.query(
           `SELECT 
@@ -314,7 +307,6 @@ export class AvatarService {
           [today]
         )
         
-        console.log('[AvatarService] 收益查询结果:', earningsRows)
         
         const earningsData = Array.isArray(earningsRows) ? earningsRows : (earningsRows?.data || [])
         for (const e of earningsData) {
@@ -509,7 +501,6 @@ export class AvatarService {
         `UPDATE order_dispatch_requests SET status = 'cancelled', updated_at = NOW() WHERE avatar_id = ? AND status = 'pending'`,
         [avatarId]
       )
-      console.log('[AvatarService] 已取消分身的所有待接单dispatch:', avatarId)
     } catch (e) {
       console.warn('[AvatarService] 取消待接单dispatch失败:', e.message)
     }
@@ -517,7 +508,6 @@ export class AvatarService {
     // 3. 级联清理：删除 avatar_skills
     try {
       await db.query('DELETE FROM avatar_skills WHERE avatar_id = ?', [avatarId])
-      console.log('[AvatarService] 已删除分身技能:', avatarId)
     } catch (e) {
       console.warn('[AvatarService] 删除分身技能失败:', e.message)
     }
@@ -525,7 +515,6 @@ export class AvatarService {
     // 4. 级联清理：删除 avatar_notifications
     try {
       await db.query('DELETE FROM avatar_notifications WHERE avatar_id = ?', [avatarId])
-      console.log('[AvatarService] 已删除分身通知:', avatarId)
     } catch (e) {
       console.warn('[AvatarService] 删除分身通知失败:', e.message)
     }
@@ -533,7 +522,6 @@ export class AvatarService {
     // 5. 级联清理：删除 avatar_memories
     try {
       await db.query('DELETE FROM avatar_memories WHERE avatar_id = ?', [avatarId])
-      console.log('[AvatarService] 已删除分身记忆:', avatarId)
     } catch (e) {
       console.warn('[AvatarService] 删除分身记忆失败:', e.message)
     }
@@ -549,7 +537,6 @@ export class AvatarService {
       console.error('[AvatarService] 分身删除失败，未匹配到记录:', avatarId, 'userId:', userId)
       return { success: false, error: '分身删除失败，请重试' }
     }
-    console.log('[AvatarService] 分身删除完成:', avatarId)
     return { success: true }
   }
 
@@ -952,7 +939,6 @@ export class AvatarService {
       throw new Error('缺少 AppID 或 AppSecret，请先完善公众号配置')
     }
 
-    console.log(`[微信发布] 开始发布，appid: ${appid}, title: ${title}`)
 
     // 2. 获取 access_token
     const tokenUrl = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appid}&secret=${appsecret}`
@@ -963,7 +949,6 @@ export class AvatarService {
       throw new Error(`获取access_token失败: ${tokenData.errmsg} (errcode: ${tokenData.errcode})`)
     }
     const accessToken = tokenData.access_token
-    console.log(`[微信发布] access_token 获取成功`)
 
     // 3. 上传图片到微信素材库（thumb_media_id 用于封面）
     let thumbMediaId = ''
@@ -974,7 +959,6 @@ export class AvatarService {
       try {
         const thumbResult = await this.uploadWechatMedia(accessToken, imageUrls[0], 'thumb')
         thumbMediaId = thumbResult.media_id
-        console.log(`[微信发布] 封面上传成功, thumb_media_id: ${thumbMediaId}`)
       } catch (err) {
         console.error('[微信发布] 封面上传失败:', err.message)
         // 封面失败不阻断，继续发布
@@ -987,7 +971,6 @@ export class AvatarService {
           if (imgResult.url) {
             // 替换 content 中的图片 URL 为微信素材 URL
             processedContent = processedContent.replace(imageUrls[i], imgResult.url)
-            console.log(`[微信发布] 图片${i + 1}上传成功, 微信URL: ${imgResult.url.substring(0, 80)}`)
           }
         } catch (err) {
           console.error(`[微信发布] 图片${i + 1}上传失败:`, err.message)
@@ -998,10 +981,8 @@ export class AvatarService {
     // 4. 如果没有封面图，生成一张默认封面并上传
     if (!thumbMediaId) {
       try {
-        console.log('[微信发布] 无封面图，生成默认封面')
         const defaultThumb = await this.generateDefaultThumb(accessToken, title)
         thumbMediaId = defaultThumb
-        console.log(`[微信发布] 默认封面上传成功, thumb_media_id: ${thumbMediaId}`)
       } catch (err) {
         console.error('[微信发布] 默认封面生成失败:', err.message)
       }
@@ -1038,7 +1019,6 @@ export class AvatarService {
     }
 
     const mediaId = draftData.media_id
-    console.log(`[微信发布] 草稿创建成功, media_id: ${mediaId}`)
 
     return {
       mediaId,
@@ -1052,7 +1032,6 @@ export class AvatarService {
    */
   private async uploadWechatMedia(accessToken: string, imageUrl: string, type: 'thumb' | 'image') {
     // 1. 下载图片
-    console.log(`[微信发布] 下载图片: ${imageUrl.substring(0, 80)}`)
     const imgRes = await fetch(imageUrl)
     if (!imgRes.ok) {
       throw new Error(`下载图片失败: HTTP ${imgRes.status}`)
@@ -1137,7 +1116,6 @@ export class AvatarService {
 
       const prompt = `微信公众号文章封面图，简约大气的设计风格，渐变蓝色背景，中央有装饰性几何图形，无文字，尺寸900x383像素，专业杂志风格`
 
-      console.log(`[微信发布] 使用图片API生成封面, prompt: ${prompt.substring(0, 80)}`)
 
       const imgRes = await fetch(imageApiUrl, {
         method: 'POST',

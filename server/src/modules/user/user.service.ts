@@ -22,7 +22,6 @@ export class UserService {
       return userIdFromHeader
     }
     if (userIdFromHeader && TEST_USER_IDS.includes(userIdFromHeader)) {
-      console.log(`[UserService] 使用测试用户ID: ${userIdFromHeader}`)
       return userIdFromHeader
     }
     return 'dev_user'

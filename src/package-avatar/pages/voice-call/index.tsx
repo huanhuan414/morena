@@ -44,7 +44,6 @@ export default function VoiceCallPage() {
     if (isMiniApp) {
       recorderManager.current = Taro.getRecorderManager()
       recorderManager.current.onStart(() => {
-        console.log('[录音] 开始')
       })
       recorderManager.current.onStop((res) => {
         handleRecordingComplete(res.tempFilePath)
@@ -67,13 +66,11 @@ export default function VoiceCallPage() {
     const host = typeof window !== 'undefined' ? window.location.host : 'localhost:3000'
     const serverUrl = `${protocol}//${host}/voice-call`
 
-    console.log('[语音通话] 连接 WebSocket:', serverUrl)
 
     Taro.connectSocket({ url: `${serverUrl}?userId=${userId}` })
       .then(task => {
         socketRef.current = task
         task.onOpen(() => {
-          console.log('[语音通话] WebSocket 已连接')
           setConnected(true)
           startCall()
         })
@@ -86,7 +83,6 @@ export default function VoiceCallPage() {
           }
         })
         task.onClose(() => {
-          console.log('[语音通话] 连接关闭')
           setConnected(false)
         })
         task.onError((err) => {
@@ -99,7 +95,6 @@ export default function VoiceCallPage() {
   }
 
   const handleSocketMessage = (data: any) => {
-    console.log('[语音通话] 收到:', data)
     const evt = data.event || data.type
 
     if (evt === 'call-started') {
@@ -172,7 +167,6 @@ export default function VoiceCallPage() {
   const startCall = () => {
     if (!connected) return
     setCallStatus('connecting')
-    console.log('[语音通话] 发起:', { avatarId, friendId })
     emit('start-call', {
       avatarId,
       friendAvatarId: friendId,

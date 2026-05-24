@@ -52,7 +52,6 @@ export class ToolsRegistry {
   private register(tool: any) {
     const name = getToolName(tool)
     this.tools.set(name, tool)
-    console.log(`[ToolsRegistry] 注册工具: ${name}`)
   }
 
   /**
@@ -80,11 +79,9 @@ export class ToolsRegistry {
       }
     }
     
-    console.log(`[ToolsRegistry] 执行工具: ${request.tool}`, request.parameters)
     
     try {
       const result = await tool.execute(request.parameters || {}, context)
-      console.log(`[ToolsRegistry] 工具执行结果:`, result.success ? '成功' : '失败')
       return result
     } catch (error) {
       console.error(`[ToolsRegistry] 工具执行异常:`, error)

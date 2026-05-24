@@ -19,8 +19,7 @@ export default function OauthWebviewPage() {
     Taro.navigateBack()
   }
 
-  const handleMessage = (e: any) => {
-    console.log('[OAuthWebView] 收到消息:', e.detail.data)
+  const handleMessage = (_e: any) => {
   }
 
   if (!url) {

@@ -134,7 +134,6 @@ export default function AvatarManagePage() {
   })
 
   useDidShow(async () => {
-    console.log('[useDidShow] 页面显示，开始加载数据')
     // 先确保用户信息加载完成
     await loadUserFromStorage()
     // 等待一小段时间确保 storage 写入完成
@@ -152,7 +151,6 @@ export default function AvatarManagePage() {
       
       // 如果没有用户ID，使用测试用户ID（仅用于开发）
       if (!userId) {
-        console.log('[loadSubscriptionInfo] 未找到用户ID，跳过订阅信息加载')
         setUserSubscription(null)
         setMaxAvatars(1)
         setCanCreateAvatar(true)
@@ -216,7 +214,6 @@ export default function AvatarManagePage() {
       
       // 检查是否已登录
       if (!userId) {
-        console.log('[fetchAvatars] 用户未登录，提示登录')
         Taro.showModal({
           title: '提示',
           content: '您还未登录，请先登录',
@@ -230,16 +227,13 @@ export default function AvatarManagePage() {
         return
       }
       
-      console.log('[fetchAvatars] 用户 userId:', userId)
       
       // 获取分身列表（Network模块会自动添加userId）
       const res = await Network.request({ 
         url: '/api/avatar'
       })
-      console.log('[fetchAvatars] 响应 code:', res.data?.code, 'data:', JSON.stringify(res.data?.data)?.slice(0, 200))
       if (res.data?.code === 200) {
         const avatarList = unwrapAvatarList(res.data?.data)
-        console.log('[fetchAvatars] 获取到分身数量:', avatarList.length)
         // 展开托管设置到顶层，便于前端使用
         setAvatars(avatarList.map((avatar: any) => ({
           ...avatar,
@@ -254,7 +248,6 @@ export default function AvatarManagePage() {
           }
         })))
       } else {
-        console.log('[fetchAvatars] 接口返回错误:', res.data)
       }
     } catch (error) {
       console.error('获取分身失败:', error)
@@ -265,7 +258,6 @@ export default function AvatarManagePage() {
   }
 
   const toggleHosting = async (avatarId: string, enabled: boolean) => {
-    console.log('切换托管状态:', avatarId, enabled)
     try {
       // 获取用户ID
       const userInfo = Taro.getStorageSync('userInfo') || {}
@@ -278,7 +270,6 @@ export default function AvatarManagePage() {
         data: { trust_enabled: enabled },
         header: { 'x-user-id': userId }
       })
-      console.log('托管响应:', res.data)
       
       if (res.data?.code === 200) {
         setAvatars(prev => prev.map(avatar => 
@@ -300,14 +291,12 @@ export default function AvatarManagePage() {
   }
 
   const updateHostingSettings = async (avatarId: string, settings: Partial<Avatar['hosting_settings']>) => {
-    console.log('更新托管设置:', avatarId, settings)
     try {
       const res = await Network.request({
         url: `/api/avatar/${avatarId}/hosting/settings`,
         method: 'POST',
         data: settings
       })
-      console.log('更新设置响应:', res.data)
       
       if (res.data?.code === 200) {
         setAvatars(prev => prev.map(avatar => 
@@ -394,7 +383,6 @@ export default function AvatarManagePage() {
         method: 'DELETE',
         header: { 'x-user-id': userId }
       })
-      console.log('删除分身响应:', res.data)
       
       if (res.data?.code === 200) {
         setAvatars(prev => prev.filter(a => a.id !== avatarId))

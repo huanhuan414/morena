@@ -108,7 +108,6 @@ export default function OrderAcceptance() {
     if (avatar.requestId) {
       try {
         const res = await Network.request({ url: `/api/content-generation/content/${avatar.requestId}` })
-        console.log('验收页获取生成内容:', res.data)
         if (res.data?.code === 200 && res.data.data) {
           const data = res.data.data
           setGeneratedContent({

@@ -75,9 +75,7 @@ export default function SkillsSquare() {
     try {
       setLoading(true)
       const res = await Network.request({ url: '/api/skills' })
-      console.log('[SkillsSquare] /api/skills response:', JSON.stringify(res?.data)?.substring(0, 300))
       const allSkills = res?.data?.data || []
-      console.log('[SkillsSquare] allSkills count:', allSkills.length)
       setSkills(allSkills)
 
       if (avatarId) {
@@ -89,15 +87,11 @@ export default function SkillsSquare() {
       // 获取每个技能的每日使用限额
       try {
         const limitRes = await Network.request({ url: '/api/ai-skill/usage-limit' })
-        console.log('[SkillsSquare] usage-limit full response:', JSON.stringify(limitRes?.data))
         const limitsData = limitRes?.data?.data || {}
-        console.log('[SkillsSquare] limitsData:', JSON.stringify(limitsData))
         setUsageLimits(limitsData)
       } catch (e) {
-        console.log('[SkillsSquare] 获取使用限额失败:', e)
       }
     } catch (err) {
-      console.log('[SkillsSquare] 加载技能失败:', err)
     } finally {
       setLoading(false)
     }
@@ -114,7 +108,6 @@ export default function SkillsSquare() {
       setAvatarSkills(prev => [...prev, skillId])
       Taro.showToast({ title: '添加成功', icon: 'success' })
     } catch (err) {
-      console.log('[SkillsSquare] 添加技能失败:', err)
       Taro.showToast({ title: '添加失败', icon: 'none' })
     } finally {
       setAddingSkill(null)
@@ -132,7 +125,6 @@ export default function SkillsSquare() {
       setAvatarSkills(prev => prev.filter(id => id !== skillId))
       Taro.showToast({ title: '已移除', icon: 'success' })
     } catch (err) {
-      console.log('[SkillsSquare] 移除技能失败:', err)
       Taro.showToast({ title: '移除失败', icon: 'none' })
     } finally {
       setAddingSkill(null)

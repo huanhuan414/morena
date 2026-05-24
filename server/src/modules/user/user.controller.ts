@@ -21,9 +21,7 @@ export class UserController {
     @Headers('x-user-id') userId: string,
     @Body() updates: Record<string, any>
   ) {
-    console.log('[UserController] updateProfile called, userId:', userId, 'updates:', JSON.stringify(updates))
     const profile = await this.userService.updateUserProfile(userId, updates)
-    console.log('[UserController] updateProfile result:', JSON.stringify(profile))
     return {
       code: 200,
       data: profile,

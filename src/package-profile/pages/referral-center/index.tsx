@@ -27,7 +27,6 @@ export default function ReferralCenter() {
   const loadReferralData = async () => {
     try {
       const statsRes = await Network.request({ url: '/api/referral/stats' })
-      console.log('[ReferralCenter] stats response:', statsRes.data)
       const statsData = statsRes.data?.data || statsRes.data || {}
 
       setStats({

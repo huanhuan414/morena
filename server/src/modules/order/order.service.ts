@@ -148,7 +148,6 @@ export class OrderService {
         const setClause = Object.keys(payload).map((key) => `${key} = ?`).join(', ')
         const params = [...Object.values(payload), orderId]
         await db.query(`UPDATE orders SET ${setClause} WHERE id = ?`, params)
-        console.log(`[OrderService] 订单状态同步: ${currentStatus} → ${newStatus}, orderId=${orderId}, 已验收${completedDispatchCount}/${requiredAvatarCount}`)
       }
     } catch (error: any) {
       console.error(`[OrderService] 同步订单状态失败: orderId=${orderId}, error=${error.message}`)
@@ -178,7 +177,6 @@ export class OrderService {
     const db = getMySQLClient()
     
     const id = crypto.randomUUID()
-    console.log('[OrderService] 创建订单，ID:', id, '数据:', orderData)
     
     const avatarCount = (() => {
       const raw = orderData.avatarCount ?? orderData.avatar_count ?? orderData.requiredAvatars ?? 1
@@ -271,7 +269,6 @@ export class OrderService {
           signType: payResult.signType,
           paySign: payResult.paySign,
         }
-        console.log('[OrderService] 支付订单创建成功:', payResult.outTradeNo)
       } catch (err) {
         console.error('[OrderService] 创建支付订单失败:', err.message)
       }
@@ -315,7 +312,6 @@ export class OrderService {
       const sql = `SELECT id, order_id, avatar_id, status, content_type, content, images, video_url, publish_feedback, created_at, updated_at FROM content_generation_requests WHERE order_id = ? ORDER BY updated_at DESC, created_at DESC`
       processingRows = await db.query(sql, [orderId])
     } catch (err) {
-      console.log('[OrderService] processingRows error:', err)
     }
 
     const latestProcessingMap = new Map<string, any>()
@@ -469,7 +465,6 @@ export class OrderService {
           if (!contentMap[key]) contentMap[key] = cr
         }
       } catch (err) {
-        console.log('[getOrders] content_generation_requests query error:', err)
       }
 
       for (const row of dispatchRows || []) {
@@ -906,7 +901,6 @@ export class OrderService {
     }
     // 如果已支付，需要退款逻辑（暂记TODO，目前先标记取消）
     if (order.isPaid === 1) {
-      console.log(`[cancelOrder] 订单${orderId}已支付，取消后需退款 ¥${order.budget}`)
       // TODO: 调用微信退款API
     }
     const db = getMySQLClient()
@@ -919,7 +913,6 @@ export class OrderService {
       status: 'expired',
       updated_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
     })
-    console.log(`[cancelOrder] 订单${orderId}已取消，原状态: ${order.status}`)
     return { success: true, orderId, newStatus: order.isPaid === 1 ? 'cancelled' : 'auto_cancelled' }
   }
 
@@ -944,7 +937,6 @@ export class OrderService {
     await db.query('DELETE FROM order_results WHERE order_id = ?', [orderId])
     await db.query('DELETE FROM order_events WHERE order_id = ?', [orderId])
     await db.query('DELETE FROM orders WHERE id = ?', [orderId])
-    console.log(`[deleteOrder] 订单${orderId}已删除`)
     return { success: true, orderId }
   }
 
@@ -1057,7 +1049,6 @@ export class OrderService {
         for (const p of pendingPayments) {
           try {
             await this.wechatPayService.closeOrder(p.outTradeNo || p.out_trade_no)
-            console.log('[repayOrder] 关闭旧支付单:', p.outTradeNo || p.out_trade_no)
           } catch (e) {
             console.warn('[repayOrder] 关闭旧支付单失败(忽略):', e.message)
           }
@@ -1188,7 +1179,6 @@ export class OrderService {
     
     await this.earningService.settleOrderEarnings(orderId)
 
-    console.log(`[OrderService] 订单 ${orderId} 结算完成，共 ${participants.length}/${requiredCount} 个参与者`)
   }
 
   async submitRating(orderId: string, rating: number, comment?: string) {

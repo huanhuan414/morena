@@ -586,7 +586,6 @@ async getExecutionProgress(orderId: string) {
       1,
       Number(order.expectedQuantity || order.expected_quantity || order.avatarCount || order.avatar_count || 1) || 1
     )
-    console.log(`[dispatchToAllAvatars] 订单需要分身数量: expectedQuantity=${order.expectedQuantity}, expected_quantity=${order.expected_quantity}, requiredCount=${requiredCount}`)
 
     const existingDistinctRows = await db.query(
       `SELECT COUNT(DISTINCT avatar_id) as count
@@ -672,7 +671,6 @@ async getExecutionProgress(orderId: string) {
         [orderId, avatar.id]
       )
       if (existingDispatchRows && existingDispatchRows.length > 0) {
-        console.log(`[dispatchToAllAvatars] 分身 ${avatar.name} 已有派单记录，跳过`)
         continue
       }
       
@@ -707,7 +705,6 @@ async getExecutionProgress(orderId: string) {
       
       // 发送真实短信通知 - 使用分身所属账号的手机号
       const userPhone = avatar.userPhone || avatar.phone
-      console.log('[dispatchToAllAvatars] 分身手机号检查:', avatar.name, avatar.user_phone, avatar.phone, userPhone)
       if (userPhone) {
         const smsContent = `${order?.title || '内容创作'}`
         
@@ -720,7 +717,6 @@ async getExecutionProgress(orderId: string) {
           
           if (smsResult) {
             smsSentCount++
-            console.log(`[SMS] 成功发送给分身 ${avatar.name} (用户手机: ${userPhone})`)
           }
         } catch (err) {
           console.error(`[SMS] 发送给 ${avatar.name} 失败:`, err)
@@ -829,7 +825,6 @@ async getExecutionProgress(orderId: string) {
       )
       const currentAccepted = Number((currentAcceptedRows as any[])?.[0]?.count || 0)
       await this.redisService.getClient().set(redisKeyAccepted, String(currentAccepted), 'EX', OrderDispatchService.REDIS_TTL_SECONDS)
-      console.log(`[acceptOrder] Redis计数器初始化: orderId=${orderId}, required=${requiredCount}, currentAccepted=${currentAccepted}`)
     }
 
     // 独占模式校验：分身数不能超过可用素材数
@@ -847,7 +842,6 @@ async getExecutionProgress(orderId: string) {
         const maxAvatarsByAssets = readyImageCount + readyVideoCount
         if (maxAvatarsByAssets > 0 && maxAvatarsByAssets < effectiveRequired) {
           effectiveRequired = maxAvatarsByAssets
-          console.log(`[acceptOrder] 独占模式: 限制分身数为${effectiveRequired}（可用素材${maxAvatarsByAssets}个）`)
           // 更新Redis中的required计数
           await this.redisService.getClient().set(redisKeyRequired, String(effectiveRequired), 'EX', OrderDispatchService.REDIS_TTL_SECONDS)
         }
@@ -864,11 +858,9 @@ async getExecutionProgress(orderId: string) {
     if (slotNumber > redisRequiredCount && redisRequiredCount > 0) {
       // 超出名额，回滚占位
       await this.redisService.getClient().decr(redisKeyAccepted)
-      console.log(`[acceptOrder] Redis占位失败: orderId=${orderId}, slot=${slotNumber}/${redisRequiredCount}`)
       throw new ConflictException('名额已满，请抢其他订单')
     }
 
-    console.log(`[acceptOrder] Redis占位成功: orderId=${orderId}, slot=${slotNumber}/${redisRequiredCount}`)
 
     // =====================================================
     // 第二阶段：数据库短事务（不锁orders行，仅操作dispatch_requests）
@@ -918,7 +910,6 @@ async getExecutionProgress(orderId: string) {
       }
 
       if (!request) {
-        console.log(`[acceptOrder] 无分派记录，尝试直接从 orders 查找: orderId=${orderId}, avatarId=${avatarId}`)
         const [acceptOrderRows] = await conn.query(
           `SELECT id, title, user_id as owner_user_id, description, platforms, budget, expected_quantity, quantity_per_avatar, target_audience, status
            FROM orders WHERE id = ?`,
@@ -1039,7 +1030,6 @@ async getExecutionProgress(orderId: string) {
         )
         const matchedPendingCount = Number((matchedPendingRows as any[])?.[0]?.count || 0)
         const shouldKick = !isMatchedAvatar && (acceptedCount + matchedPendingCount) >= requiredCount
-        console.log(`[acceptOrder] 踢人判断: isMatched=${isMatchedAvatar}, accepted=${acceptedCount}, pending=${matchedPendingCount}, required=${requiredCount}, shouldKick=${shouldKick}`)
         if (shouldKick) {
           const [pendingDispatches] = await conn.query(
             `SELECT d.id, d.avatar_id, d.user_id
@@ -1078,14 +1068,12 @@ async getExecutionProgress(orderId: string) {
              WHERE id = ?`,
             [orderId]
           )
-          console.log(`[acceptOrder] 所有分身已接单(${acceptedCount}/${requiredCount})，订单状态更新为 in_progress`)
         }
       }
 
       await conn.commit()
 
       // INCR已在事务前完成，无需再次更新Redis
-      console.log(`[acceptOrder] 接单事务提交成功: orderId=${orderId}`)
     } catch (error) {
       try {
         await conn.rollback()
@@ -1093,7 +1081,6 @@ async getExecutionProgress(orderId: string) {
       // 事务失败，回滚Redis占位
       if (!wasAlreadyAccepted) {
         await this.redisService.getClient().decr(redisKeyAccepted)
-        console.log(`[acceptOrder] 事务失败，Redis占位回滚: orderId=${orderId}`)
       }
       throw error
     } finally {
@@ -1118,7 +1105,6 @@ async getExecutionProgress(orderId: string) {
            WHERE order_id = ? AND status = 'pending'`,
           [orderId]
         )
-        console.log(`[acceptOrder] 名额已满(${slotNumber}/${redisRequiredCount})，订单更新为in_progress，踢掉剩余pending`)
       } catch (err) {
         console.error(`[acceptOrder] 名额满后更新失败:`, err)
       }
@@ -1247,7 +1233,6 @@ async getExecutionProgress(orderId: string) {
       avatarName: declinedAvatarName,
     }).catch(err => console.warn('[事件] rejected 记录失败:', err.message))
     
-    console.log(`[declineOrder] 已婉拒: dispatchId=${dispatchId}`)
     return { success: true }
   }
 
@@ -1388,7 +1373,6 @@ async getExecutionProgress(orderId: string) {
           const needMoreVideos = orderContentType === 'video' && readyVideoCount < defaultVideoCount
           
           if (readyImageCount === 0 || needMoreImages || needMoreVideos) {
-            console.log(`[startContentGeneration] 订单${orderId}有${pendingCount}个素材生成中，已就绪${readyImageCount}图${readyVideoCount}视频，等待就绪...`)
             const maxWaitMs = 60000
             const pollIntervalMs = 3000
             const startTime = Date.now()
@@ -1408,7 +1392,6 @@ async getExecutionProgress(orderId: string) {
               const imagesEnough = readyImageCount >= defaultImageCount
               const videosEnough = orderContentType !== 'video' || readyVideoCount >= defaultVideoCount
               if ((imagesEnough && videosEnough) || ((readyImageCount > 0 || readyVideoCount > 0) && Date.now() - startTime > 15000)) {
-                console.log(`[startContentGeneration] 订单${orderId}素材已就绪: ${readyImageCount}张图片, ${readyVideoCount}个视频 (等待${Math.round((Date.now()-startTime)/1000)}秒)`)
                 break
               }
               
@@ -1430,13 +1413,11 @@ async getExecutionProgress(orderId: string) {
           const avatarCount = order.avatarCount || order.avatar_count || 1
           const maxImagesPerAvatar = assetDistributeMode === 'exclusive' ? Math.ceil(totalImageAssets / avatarCount) : 9
           const maxVideosPerAvatar = assetDistributeMode === 'exclusive' ? Math.ceil(totalVideoAssets / avatarCount) : 1
-          console.log(`[startContentGeneration] 素材上限: mode=${assetDistributeMode}, totalImg=${totalImageAssets}, totalVid=${totalVideoAssets}, avatars=${avatarCount}, maxImg=${maxImagesPerAvatar}, maxVid=${maxVideosPerAvatar}`)
 
           if (assetDistributeMode === 'exclusive') {
             // 独占模式：每个素材只能分配给一个分身，每个分身最多分配 maxImagesPerAvatar / maxVideosPerAvatar
             // 使用原子性 UPDATE + affectedRows 确保并发安全
             const unassignedAssets = readyAssets.filter((a: any) => !a.assignedTo)
-            console.log(`[startContentGeneration] 独占模式分配: orderId=${orderId}, requestId=${effectiveRequestId}, unassigned=${unassignedAssets.length}个`)
             for (const asset of unassignedAssets) {
               if (asset.assetType === 'image' && assignedImages.length < maxImagesPerAvatar) {
                 // 原子性占位：只有 assigned_to 为 NULL 时才能更新成功
@@ -1445,7 +1426,6 @@ async getExecutionProgress(orderId: string) {
                   [effectiveRequestId, asset.id]
                 )
                 const affected = (updateResult as any)?.affectedRows || (updateResult as any)?.[0]?.affectedRows || 0
-                console.log(`[startContentGeneration] 独占占位: asset=${asset.id}, requestId=${effectiveRequestId}, affected=${affected}`)
                 if (affected > 0) {
                   assignedImages.push(asset.assetUrl)
                 }
@@ -1472,7 +1452,6 @@ async getExecutionProgress(orderId: string) {
           }
         }
         
-        console.log(`[startContentGeneration] 订单${orderId}素材分配结果(模式=${assetDistributeMode}): ${assignedImages.length}张图片, ${assignedVideoUrl ? '有视频' : '无视频'}`)
       }
     } catch (err: any) {
       console.warn('[startContentGeneration] 获取订单素材失败:', err.message)
@@ -1500,7 +1479,6 @@ async getExecutionProgress(orderId: string) {
       assignedVideoUrl,
     })
 
-    console.log(`[startContentGeneration] 内容生成已启动: orderId=${orderId}, avatarId=${avatarId}, skills=${avatarSkills.join(',')}`)
   }
 
   /**
@@ -1704,7 +1682,6 @@ async getExecutionProgress(orderId: string) {
       
       // 发送真实短信 - 使用分身所属账号的手机号
       const userPhone = avatar.userPhone || avatar.phone
-      console.log('[dispatchToAllAvatars] 分身手机号检查:', avatar.name, avatar.user_phone, avatar.phone, userPhone)
       if (userPhone) {
         try {
           const smsResult = await this.smsService.sendSms(
@@ -1715,13 +1692,11 @@ async getExecutionProgress(orderId: string) {
           
           if (smsResult) {
             smsSentCount++
-            console.log(`[SMS] 通知短信发送给 ${avatar.name} (用户手机: ${userPhone}) 成功`)
           }
         } catch (err) {
           console.error(`[SMS] 发送给 ${avatar.name} 失败:`, err)
         }
       } else {
-        console.log(`[SMS] 分身 ${avatar.name} 的账号未绑定手机号，跳过短信发送`)
       }
       
       notifiedCount++

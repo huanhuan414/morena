@@ -131,7 +131,6 @@ export default function OrderAssetWaiting() {
           setRequiredVideoCount(perAvatarVideos)
         }
 
-        console.log('[AssetWaiting] 订单信息:', { mode, autoFill, contentType: order.content_type, requiredImageCount: perAvatarImages, requiredVideoCount: perAvatarVideos })
       }
     } catch (e) {
       console.error('[AssetWaiting] 获取订单信息失败:', e)
@@ -141,7 +140,6 @@ export default function OrderAssetWaiting() {
   // 自动触发 AI 补足
   const triggerAiAutoFill = async () => {
     if (!orderId || autoFillTriggered) return
-    console.log('[AssetWaiting] 自动触发AI补足')
     setAutoFillTriggered(true)
     try {
       const res = await Network.request({
@@ -150,7 +148,6 @@ export default function OrderAssetWaiting() {
         data: { orderId },
       })
       const payload = res?.data
-      console.log('[AssetWaiting] AI补足结果:', payload)
       if (payload?.code === 200) {
         // 刷新素材列表
         await fetchAssets(1)
@@ -200,7 +197,6 @@ export default function OrderAssetWaiting() {
     const totalNeeded = contentType === 'video' ? requiredVideoCount : requiredImageCount + requiredVideoCount
     const needMore = contentType !== 'text' && totalReady + totalGenerating < totalNeeded
 
-    console.log('[AssetWaiting] 补足检查:', { totalReady, totalGenerating, requiredImageCount, requiredVideoCount, totalNeeded, aiAutoFill, needMore })
 
     if (needMore && aiAutoFill && totalGenerating === 0) {
       // 素材不足 + AI补足开启 + 没有正在生成的 → 自动触发

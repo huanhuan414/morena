@@ -35,7 +35,6 @@ export default function PalmReading() {
     // 优先从 storage 读取外部传入的手掌图片（来自分身对话页面）
     const externalImage = Taro.getStorageSync('__palm_image_url__')
     if (externalImage && !selectedImage) {
-      console.log('[PalmReading] 接收外部图片:', externalImage)
       setSelectedImage(externalImage)
       // 清除 storage，避免下次进入时残留
       Taro.removeStorageSync('__palm_image_url__')
@@ -81,7 +80,6 @@ export default function PalmReading() {
         const latestProcessing = processing.sort(
           (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         )[0]
-        console.log('[PalmReading] 恢复轮询任务:', latestProcessing.id)
         setTaskStatus(latestProcessing.status)
         setTaskProgress(latestProcessing.progress || '继续生成中...')
         startPolling(latestProcessing.id)
@@ -213,7 +211,6 @@ export default function PalmReading() {
       let tempFilePath = ''
 
       if (isMiniApp) {
-        console.log('[PalmReading] 开始选择图片 (小程序端)...')
         
         // 使用 chooseImage 支持相册和拍照
         const chooseRes = await new Promise<any>((resolve, reject) => {
@@ -235,7 +232,6 @@ export default function PalmReading() {
           // 用户取消
           return
         }
-        console.log('[PalmReading] 选择结果:', JSON.stringify(chooseRes))
         tempFilePath = chooseRes.tempFilePaths[0]
       } else {
         const chooseRes = await Taro.chooseImage({ count: 1, sourceType: ['album', 'camera'] }) as any
@@ -256,7 +252,6 @@ export default function PalmReading() {
           filePath: tempFilePath,
           name: 'file',
         }) as any
-        console.log('[PalmReading] 上传结果:', JSON.stringify(uploadRes))
 
         let parsedData = uploadRes?.data
         if (typeof parsedData === 'string') {

@@ -155,7 +155,6 @@ export class SubscriptionService {
     current?: number
   }> {
     const subscription = await this.getUserSubscription(userId)
-    console.log('[Subscription] getUserSubscription result:', JSON.stringify(subscription, null, 2))
 
     // 获取当前用户套餐的 features
     let features: any = {}
@@ -163,21 +162,17 @@ export class SubscriptionService {
 
     if (subscription && subscription.status === 'active') {
       planId = subscription.plan?.id || 'plan_free'
-      console.log('[Subscription] planId from subscription:', planId)
       const plan = await this.getPlanById(planId)
-      console.log('[Subscription] plan from getPlanById:', JSON.stringify(plan, null, 2))
       if (plan) {
         features = typeof plan.features === 'string' ? JSON.parse(plan.features) : (plan.features || {})
       }
     } else {
-      console.log('[Subscription] No active subscription, using free plan')
       // 免费用户
       const freePlan = await this.getPlanById('plan_free')
       if (freePlan) {
         features = typeof freePlan.features === 'string' ? JSON.parse(freePlan.features) : (freePlan.features || {})
       }
     }
-    console.log('[Subscription] features:', JSON.stringify(features, null, 2))
 
     switch (type) {
       case 'check_avatars': {

@@ -85,14 +85,6 @@ export function getSafeArea(): SafeArea {
         // 右侧占位宽度 = 胶囊按钮左边界距离屏幕右边的距离
         placeholderWidth = screenWidth - menuButton.left + 5
 
-        console.log('[SafeArea] 胶囊按钮信息:', {
-          capsuleWidth: menuButton.width,
-          capsuleHeight: menuButton.height,
-          leftMargin,
-          rightMargin,
-          safeWidth,
-          placeholderWidth
-        })
       }
     } catch (error) {
       console.error('[SafeArea] 获取胶囊按钮信息失败:', error)
@@ -128,7 +120,6 @@ export function getCapsuleButtonBottom(): number {
       if (menuButton && menuButton.height > 0) {
         // 胶囊按钮下边界 = top + height
         capsuleBottom = menuButton.top + menuButton.height
-        console.log('[SafeArea] capsuleBottom:', capsuleBottom, 'menuButton:', menuButton)
       }
     } catch (error) {
       console.error('[SafeArea] 获取胶囊按钮信息失败:', error)
@@ -155,7 +146,6 @@ export function getStatusBarHeight(): number {
     statusBarHeight = 44
   }
 
-  console.log('[SafeArea] statusBarHeight:', statusBarHeight)
   return statusBarHeight
 }
 

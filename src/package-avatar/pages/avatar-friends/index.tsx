@@ -101,7 +101,6 @@ export default function AvatarFriendsPage() {
     try {
       setLoading(true)
       const res = await Network.request({ url: `/api/avatar/${avatarId}/friends` })
-      console.log('好友列表响应:', res.data)
       if (res.data?.code === 200) {
         setFriends(res.data.data || [])
       }

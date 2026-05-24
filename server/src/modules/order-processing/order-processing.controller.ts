@@ -180,10 +180,8 @@ export class OrderProcessingController {
    */
   @Put('accept/:id')
   async acceptContent(@Param('id') id: string) {
-    console.log(`[OrderProcessingController] 验收请求: id=${id}`)
     try {
       const result = await this.processingService.acceptProcessing(id)
-      console.log(`[OrderProcessingController] 验收结果:`, JSON.stringify(result))
       return {
         code: 200,
         data: result,

@@ -25,7 +25,6 @@ export class SearchTool implements Tool {
       const query = params.query
       const count = params.count || 5
       
-      console.log(`[SearchTool] 执行搜索: ${query}`)
       
       const customHeaders = context.headers ? HeaderUtils.extractForwardHeaders(context.headers as any) : undefined
       const config = new Config()

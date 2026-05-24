@@ -78,7 +78,6 @@ export default function EarningsWallPage() {
         url: '/api/earnings/leaderboard',
         method: 'GET'
       })
-      console.log('[EarningsWall] API响应:', res.data)
 
       if (res.data?.code === 200 && res.data?.data) {
         const apiData = res.data.data
