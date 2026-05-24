@@ -5,7 +5,7 @@ import { Network } from '@/network'
 import {
   ArrowLeft, Loader, PackageOpen, CircleCheck, CircleX,
   Users, UserCheck, RefreshCw, Sparkles, ImagePlus, Play,
-  ChevronRight, TriangleAlert
+  ChevronRight, TriangleAlert, FileText
 } from 'lucide-react-taro'
 import { subscribePolling } from '@/utils/polling'
 import './index.css'
@@ -260,6 +260,32 @@ export default function OrderAssetWaiting() {
     }
   }
 
+  // 预览素材
+  const handlePreviewAsset = (asset: any) => {
+    if (asset.status !== 'ready' || !asset.asset_url) return
+    if (asset.asset_type === 'video') {
+      // 视频预览 - 小程序用 previewMedia，H5直接跳转
+      if (Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT) {
+        Taro.previewMedia({
+          sources: [{ url: asset.asset_url, type: 'video' }],
+          current: 0,
+        }).catch(() => {})
+      } else {
+        // H5端打开视频链接
+        window.open(asset.asset_url, '_blank')
+      }
+    } else {
+      // 图片预览
+      const imageAssets = assets.filter(a => a.asset_type === 'image' && a.status === 'ready' && a.asset_url)
+      const urls = imageAssets.map(a => a.asset_url).filter((u): u is string => !!u)
+      const current = urls.indexOf(asset.asset_url || '')
+      Taro.previewImage({
+        urls,
+        current: current >= 0 ? current : 0,
+      }).catch(() => {})
+    }
+  }
+
   // 下一步：匹配分身
   const goToMatching = () => {
     if (!orderId) return
@@ -404,13 +430,19 @@ export default function OrderAssetWaiting() {
           </View>
         )}
 
+        {/* 文案生成提示 */}
+        <View className="aw-copywriting-hint">
+          <FileText size={14} color="#94A3B8" />
+          <Text className="aw-copywriting-hint-text">文案由分身接单时根据订单内容具体生成</Text>
+        </View>
+
         {/* 素材网格 */}
         {assets.length > 0 && (
           <View className="aw-assets-section">
             <Text className="aw-section-title">素材列表</Text>
             <View className="aw-assets-grid">
               {assets.map((asset) => (
-                <View key={asset.id} className="aw-asset-item">
+                <View key={asset.id} className="aw-asset-item" onClick={() => handlePreviewAsset(asset)}>
                   {asset.asset_type === 'video' ? (
                     <View className="aw-asset-video-wrap">
                       {asset.status === 'ready' && asset.asset_url ? (
@@ -483,6 +515,12 @@ export default function OrderAssetWaiting() {
                       {asset.source === 'user_uploaded' ? '已上传' : 'AI生成'}
                     </Text>
                   </View>
+                  {/* 可预览提示 */}
+                  {asset.status === 'ready' && asset.asset_url && (
+                    <View className="aw-preview-hint">
+                      <Text className="aw-preview-hint-text">点击预览</Text>
+                    </View>
+                  )}
                 </View>
               ))}
             </View>
