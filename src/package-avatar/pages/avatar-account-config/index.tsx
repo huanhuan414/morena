@@ -85,9 +85,7 @@ export default function AvatarAccountConfigPage() {
   })
 
   useDidShow(() => {
-    if (avatarId) {
-      fetchAccounts()
-    }
+    fetchAccounts()
 
     // 检查是否从 OAuth 回调返回
     const instance = Taro.getCurrentInstance()
@@ -219,11 +217,12 @@ export default function AvatarAccountConfigPage() {
 
   const fetchAccounts = async () => {
     try {
+      // 使用用户级别接口获取所有账号
       const res = await Network.request({
-        url: `/api/avatar/${avatarId}/accounts`
+        url: '/api/avatar/accounts/by-user'
       })
       if (res.data?.code === 200) {
-        setAccounts(res.data.data || [])
+        setAccounts(Array.isArray(res.data.data) ? res.data.data : [])
       }
     } catch (error) {
       console.error('获取账号数据失败:', error)
@@ -434,7 +433,7 @@ export default function AvatarAccountConfigPage() {
 
     // 构建账号数据
     const data: any = {
-      avatar_id: avatarId,
+      avatar_id: avatarId || '',  // 如果没有 avatarId，后端会使用用户的第一个分身
       platform: platformId,
       account_name: accountName || '',
       appid: platformId === 'wechat_mp' ? appid : undefined,

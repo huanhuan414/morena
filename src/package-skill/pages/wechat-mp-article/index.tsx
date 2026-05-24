@@ -10,7 +10,6 @@ import {
   Link, ImagePlus, Send, FileText, Loader, X
 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
-import { useUserStore } from '@/stores/user'
 
 interface HistoryRecord {
   id: string
@@ -30,8 +29,6 @@ const PRIMARY_BORDER = '#B3D9FF'
 
 export default function WechatMpArticle() {
   const statusBarHeight = getStatusBarHeight()
-  const storeAvatarId = useUserStore(state => state.avatarId)
-  const [resolvedAvatarId, setResolvedAvatarId] = useState<string>('')
   const [activeTab, setActiveTab] = useState<'generate' | 'history'>('generate')
   const [inputText, setInputText] = useState('')
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
@@ -223,33 +220,13 @@ export default function WechatMpArticle() {
   }
 
   const fetchWechatAccounts = async () => {
-    // 如果没有 avatarId，先从 API 获取用户的第一个分身
-    let aid = storeAvatarId || resolvedAvatarId
-    if (!aid) {
-      try {
-        const res = await Network.request({ url: '/api/avatar/list', data: { pageSize: 1 } })
-        // 响应格式: {code:200, data:{success:true, data:{list:[...]}}}，需要取 res.data.data.data.list
-        const outerData = res.data?.data
-        const list = outerData?.data?.list || outerData?.list || (Array.isArray(outerData) ? outerData : [])
-        if (Array.isArray(list) && list.length > 0 && list[0].id) {
-          aid = list[0].id
-          setResolvedAvatarId(aid)
-        }
-      } catch (err) {
-        console.error('[公众号爆款] 获取分身列表失败:', err)
-      }
-    }
-    if (!aid) {
-      setWechatAccounts([])
-      return
-    }
+    // 使用用户级别的接口获取公众号账号（不再依赖分身ID）
     try {
       const res = await Network.request({
-        url: `/api/avatar/${aid}/accounts`,
+        url: '/api/avatar/accounts/by-user',
       })
       if (res.data?.code === 200) {
-        const outerData = res.data.data
-        const accounts = Array.isArray(outerData) ? outerData : (outerData?.data || outerData?.list || [])
+        const accounts = Array.isArray(res.data.data) ? res.data.data : (res.data.data?.data || res.data.data?.list || [])
         const filtered = accounts.filter((a: any) => a.platform === 'wechat_mp')
         setWechatAccounts(filtered)
       }
@@ -437,9 +414,8 @@ export default function WechatMpArticle() {
         confirmText: '去绑定',
         success: (res) => {
           if (res.confirm) {
-            const aid = storeAvatarId || resolvedAvatarId
             Taro.navigateTo({
-              url: `/package-avatar/pages/avatar-account-config/index?avatarId=${aid}&platform=wechat_mp`,
+              url: `/package-avatar/pages/avatar-account-config/index?platform=wechat_mp`,
             })
           }
         },
@@ -685,26 +661,7 @@ export default function WechatMpArticle() {
                     <View
                       style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', backgroundColor: PRIMARY_FAINT, borderRadius: '20px', paddingLeft: '10px', paddingRight: '10px', paddingTop: '4px', paddingBottom: '4px' }}
                       onClick={async () => {
-                        let aid = storeAvatarId || resolvedAvatarId
-                        if (!aid) {
-                          // 先获取分身ID
-                          try {
-                            const res = await Network.request({ url: '/api/avatar/list', data: { pageSize: 1 } })
-                            const outerData = res.data?.data
-                            const list = outerData?.data?.list || outerData?.list || (Array.isArray(outerData) ? outerData : [])
-                            if (Array.isArray(list) && list.length > 0 && list[0].id) {
-                              aid = list[0].id
-                              setResolvedAvatarId(aid)
-                            }
-                          } catch (err) {
-                            console.error('[公众号爆款] 获取分身列表失败:', err)
-                          }
-                        }
-                        if (aid) {
-                          Taro.navigateTo({ url: `/package-avatar/pages/avatar-account-config/index?avatarId=${aid}&platform=wechat_mp` })
-                        } else {
-                          Taro.showToast({ title: '请先创建AI分身', icon: 'none' })
-                        }
+                        Taro.navigateTo({ url: `/package-avatar/pages/avatar-account-config/index?platform=wechat_mp` })
                       }}
                     >
                       <Link size={12} color={PRIMARY} style={{ marginRight: '4px' }} />

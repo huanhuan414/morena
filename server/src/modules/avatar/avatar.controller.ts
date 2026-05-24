@@ -286,6 +286,16 @@ export class AvatarController {
 
   // ==================== 账号管理 ====================
 
+  @Get('accounts/by-user')
+  async getAccountsByUser(@Headers('x-user-id') userId: string) {
+    try {
+      const accounts = await this.avatarService.getAccountsByUserId(userId)
+      return { code: 200, msg: 'success', data: accounts }
+    } catch (err) {
+      return { code: 500, msg: err.message || '服务器错误', data: [] }
+    }
+  }
+
   @Get(':avatarId/accounts')
   async getAccounts(@Param('avatarId') avatarId: string) {
     try {
@@ -298,9 +308,12 @@ export class AvatarController {
   }
 
   @Post('accounts')
-  async createAccount(@Body() body: Record<string, any>) {
+  async createAccount(
+    @Headers('x-user-id') userId: string,
+    @Body() body: Record<string, any>
+  ) {
     try {
-      const account = await this.avatarService.createAccount(body)
+      const account = await this.avatarService.createAccount({ ...body, user_id: userId })
       return { code: 200, msg: 'success', data: account }
     } catch (err) {
       console.error('创建账号失败:', err)

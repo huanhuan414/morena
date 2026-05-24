@@ -819,12 +819,34 @@ export class AvatarService {
     return results.map(r => this.normalizeAccount(r))
   }
 
+  async getAccountsByUserId(userId: string) {
+    const db = await getMySQLClient()
+    const results = await db.query('avatar_accounts', { user_id: userId })
+    if (!results || results.length === 0) return []
+    return results.map(r => this.normalizeAccount(r))
+  }
+
   async createAccount(data: Record<string, any>) {
     const db = await getMySQLClient()
     const id = `acct_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+
+    // 如果没有 avatar_id，自动使用用户的第一个分身
+    let avatarId = data.avatar_id || ''
+    const userId = data.user_id || null
+    if (!avatarId && userId) {
+      const [rows] = await db.query(
+        'SELECT id FROM avatars WHERE user_id = ? ORDER BY created_at ASC LIMIT 1',
+        [userId]
+      )
+      if (Array.isArray(rows) && rows.length > 0) {
+        avatarId = rows[0].id
+      }
+    }
+
     const record = {
       id,
-      avatar_id: data.avatar_id || '',
+      avatar_id: avatarId,
+      user_id: userId,
       platform: data.platform || '',
       account_name: data.account_name || '',
       followers: data.followers || 0,
@@ -850,7 +872,7 @@ export class AvatarService {
 
     // Only update fields that are provided
     const updatableFields = [
-      'platform', 'account_name', 'followers', 'total_exposure', 'total_works',
+      'user_id', 'platform', 'account_name', 'followers', 'total_exposure', 'total_works',
       'avg_likes_per_work', 'avg_comments_per_work', 'avg_shares_per_work',
       'appid', 'appkey', 'account_url', 'extra_info', 'platform_user_id', 'status',
     ]
