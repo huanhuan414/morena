@@ -1317,24 +1317,89 @@ async getExecutionProgress(orderId: string) {
         : []
     } catch (_) {}
 
-    // 获取订单素材池中已就绪的素材
+    // 获取订单素材池中已就绪的素材（含等待机制）
     const assignedImages: string[] = []
     let assignedVideoUrl: string | undefined
     try {
       const db2 = getMySQLClient()
-      const readyAssets = await db2.query(
-        'SELECT asset_type, asset_url FROM order_assets WHERE order_id = ? AND status = \'ready\' ORDER BY sort_order ASC',
+      
+      // 第一步：查询是否有任何素材记录（包括generating/pending）
+      const [anyAssets] = await db2.query(
+        'SELECT COUNT(*) as cnt FROM order_assets WHERE order_id = ?',
         [orderId]
       ) as [any[], any]
-      if (readyAssets && readyAssets.length > 0) {
-        for (const asset of readyAssets) {
-          if (asset.asset_type === 'image' && assignedImages.length < 9) {
-            assignedImages.push(asset.asset_url)
-          } else if (asset.asset_type === 'video' && !assignedVideoUrl) {
-            assignedVideoUrl = asset.asset_url
+      const hasAssets = (anyAssets as any)?.[0]?.cnt > 0
+      
+      if (hasAssets) {
+        // 第二步：查已就绪的素材
+        let readyAssets = await db2.query(
+          'SELECT asset_type, asset_url FROM order_assets WHERE order_id = ? AND status = \'ready\' ORDER BY sort_order ASC',
+          [orderId]
+        ) as [any[], any]
+        
+        let readyImageCount = readyAssets?.filter((a: any) => a.asset_type === 'image').length || 0
+        let readyVideoCount = readyAssets?.filter((a: any) => a.asset_type === 'video').length || 0
+        
+        // 第三步：如果还有pending/generating的素材，轮询等待（最多60秒）
+        const hasPending = await db2.query(
+          'SELECT COUNT(*) as cnt FROM order_assets WHERE order_id = ? AND status IN (\'pending\', \'generating\')',
+          [orderId]
+        ) as [any[], any]
+        const pendingCount = (hasPending as any)?.[0]?.cnt || 0
+        
+        if (pendingCount > 0) {
+          // 需要等待的场景：
+          // 1. 没有任何就绪图片/视频
+          // 2. 就绪图片数量不足（默认需要3张）
+          const requiredImageCount = 3
+          const needMoreImages = readyImageCount < requiredImageCount
+          const needMoreVideos = contentType === 'video' && readyVideoCount === 0
+          
+          if (readyImageCount === 0 || needMoreImages || needMoreVideos) {
+            console.log(`[startContentGeneration] 订单${orderId}有${pendingCount}个素材生成中，已就绪${readyImageCount}图${readyVideoCount}视频，等待就绪...`)
+            const maxWaitMs = 60000
+            const pollIntervalMs = 3000
+            const startTime = Date.now()
+            
+            while (Date.now() - startTime < maxWaitMs) {
+              await new Promise(resolve => setTimeout(resolve, pollIntervalMs))
+              
+              readyAssets = await db2.query(
+                'SELECT asset_type, asset_url FROM order_assets WHERE order_id = ? AND status = \'ready\' ORDER BY sort_order ASC',
+                [orderId]
+              ) as [any[], any]
+              
+              readyImageCount = readyAssets?.filter((a: any) => a.asset_type === 'image').length || 0
+              readyVideoCount = readyAssets?.filter((a: any) => a.asset_type === 'video').length || 0
+              
+              // 就绪数量已满足需求，或至少有1张图片时可以提前退出
+              if (readyImageCount >= requiredImageCount || (readyImageCount > 0 && Date.now() - startTime > 15000)) {
+                console.log(`[startContentGeneration] 订单${orderId}素材已就绪: ${readyImageCount}张图片, ${readyVideoCount}个视频 (等待${Math.round((Date.now()-startTime)/1000)}秒)`)
+                break
+              }
+              
+              // 检查是否还有pending的
+              const stillPending = await db2.query(
+                'SELECT COUNT(*) as cnt FROM order_assets WHERE order_id = ? AND status IN (\'pending\', \'generating\')',
+                [orderId]
+              ) as [any[], any]
+              if ((stillPending as any)?.[0]?.cnt === 0) break
+            }
           }
         }
-        console.log(`[startContentGeneration] 订单${orderId}素材池: ${assignedImages.length}张图片, ${assignedVideoUrl ? '有视频' : '无视频'}`)
+        
+        // 第四步：分配就绪素材
+        if (readyAssets && readyAssets.length > 0) {
+          for (const asset of readyAssets) {
+            if (asset.asset_type === 'image' && assignedImages.length < 9) {
+              assignedImages.push(asset.asset_url)
+            } else if (asset.asset_type === 'video' && !assignedVideoUrl) {
+              assignedVideoUrl = asset.asset_url
+            }
+          }
+        }
+        
+        console.log(`[startContentGeneration] 订单${orderId}素材分配结果: ${assignedImages.length}张图片, ${assignedVideoUrl ? '有视频' : '无视频'}`)
       }
     } catch (err: any) {
       console.warn('[startContentGeneration] 获取订单素材失败:', err.message)

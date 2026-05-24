@@ -428,16 +428,27 @@ export class ContentGenerationService implements OnModuleInit {
     if (isArticlePlatform && needText && (needImage || hasAssignedImages)) {
       // ===== 图文文章模式 =====
       try {
-        const imageCount = hasAssignedImages ? assignedImages.length : this.getDefaultImageCount(platform, contentType)
+        const totalImageCount = this.getDefaultImageCount(platform, contentType)
+        const imageCount = hasAssignedImages && assignedImages.length >= totalImageCount ? assignedImages.length : totalImageCount
         await this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
         textContent = await this.generateArticleContent(platform, input, imageCount)
         this.logger.log(`图文文章生成完成: ${textContent.length}字`)
 
-        if (hasAssignedImages) {
-          // 使用预分配的图片，跳过图片生成
+        if (hasAssignedImages && assignedImages.length >= totalImageCount) {
+          // 预分配图片数量足够，完全跳过图片生成
           images = assignedImages
-          this.logger.log(`使用预分配配图: ${images.length}张`)
+          this.logger.log(`使用预分配配图: ${images.length}张（已满足需求${totalImageCount}张）`)
+        } else if (hasAssignedImages && assignedImages.length > 0) {
+          // 预分配图片数量不足，补齐缺失的图片
+          const missingCount = totalImageCount - assignedImages.length
+          images = [...assignedImages]
+          this.logger.log(`预分配${assignedImages.length}张图片，还需AI生成${missingCount}张`)
+          await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
+          const extraImages = await this.generateArticleImages(platform, input, textContent, missingCount, requestId)
+          images = [...images, ...extraImages]
+          this.logger.log(`补齐配图完成: 预分配${assignedImages.length}张 + AI生成${extraImages.length}张 = ${images.length}张`)
         } else {
+          // 没有预分配图片，全部AI生成
           await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
           images = await this.generateArticleImages(platform, input, textContent, imageCount, requestId)
           this.logger.log(`文章配图生成完成: ${images.length}张`)
@@ -487,11 +498,27 @@ export class ContentGenerationService implements OnModuleInit {
           this.logger.warn(`视频脚本生成失败，跳过视频生成`)
         } else {
           if (needImage) {
-            if (hasAssignedImages) {
-              // 使用预分配的图片，跳过图片生成
+            const neededImageCount = this.getDefaultImageCount(platform, contentType)
+            if (hasAssignedImages && assignedImages.length >= neededImageCount) {
+              // 预分配图片数量足够，完全跳过图片生成
               images = assignedImages
-              this.logger.log(`使用预分配配图: ${images.length}张，跳过图片生成`)
+              this.logger.log(`使用预分配配图: ${images.length}张（已满足需求${neededImageCount}张），跳过图片生成`)
               await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
+            } else if (hasAssignedImages && assignedImages.length > 0) {
+              // 预分配图片数量不足，补齐缺失的图片
+              const missingCount = neededImageCount - assignedImages.length
+              images = [...assignedImages]
+              this.logger.log(`预分配${assignedImages.length}张图片，还需AI生成${missingCount}张`)
+              await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
+              try {
+                const extraImages = await this.generateImages(platform, input, textContent, requestId, missingCount)
+                images = [...images, ...extraImages]
+                this.logger.log(`补齐配图完成: 预分配${assignedImages.length}张 + AI生成${extraImages.length}张 = ${images.length}张`)
+                await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
+              } catch (err: any) {
+                this.logger.warn(`补齐图片失败: ${err.message}`)
+                imageFailed = images.length === 0
+              }
             } else {
               try {
                 await this.updateDetailedStatus(requestId, input.orderId, 'generating_images')
@@ -1110,8 +1137,8 @@ ${input.orderDescription}
   /**
    * 生成配图 — 增强版：融合技能图片策略
    */
-  private async generateImages(platform: string, input: any, textContent: string, requestId: string): Promise<string[]> {
-    const quantity = this.getDefaultImageCount(platform, input.contentType || 'image')
+  private async generateImages(platform: string, input: any, textContent: string, requestId: string, overrideCount?: number): Promise<string[]> {
+    const quantity = overrideCount || this.getDefaultImageCount(platform, input.contentType || 'image')
     const imagePrompts = await this.buildImagePrompts(platform, input, textContent, quantity)
 
     // 根据平台选择合适的图片尺寸
@@ -1598,12 +1625,14 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
         this.logger.log(`预览状态已写入数据库: requestId=${requestId}`)
       } else if (status === 'failed' || status === 'partial_failed') {
         await db.query(
-          'UPDATE content_generation_requests SET status = ?, error = ?, content = COALESCE(content, ?), images = COALESCE(images, ?) WHERE id = ?',
+          'UPDATE content_generation_requests SET status = ?, error = ?, content = COALESCE(content, ?), images = COALESCE(images, ?), assigned_images = COALESCE(assigned_images, ?), assigned_video_url = COALESCE(assigned_video_url, ?) WHERE id = ?',
           [
             status,
             errorMessage || (status === 'partial_failed' ? '部分内容生成失败' : '内容生成失败'),
             generatedContent?.content || null,
             generatedContent?.images?.length > 0 ? JSON.stringify(generatedContent.images) : null,
+            generatedContent?.assignedImages?.length > 0 ? JSON.stringify(generatedContent.assignedImages) : null,
+            generatedContent?.assignedVideoUrl || null,
             requestId
           ]
         )
