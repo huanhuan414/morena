@@ -93,33 +93,60 @@ export class StorageService {
    * 上传视频 - 使用对象存储（veImageX不支持视频上传）
    */
   async uploadVideo(videoBuffer: Buffer, fileName: string): Promise<string> {
-    this.logger.log(`[StorageService] 上传视频到对象存储: ${fileName}, 大小: ${videoBuffer.length} bytes`)
+    this.logger.log(`[StorageService] 上传视频: ${fileName}, 大小: ${videoBuffer.length} bytes`)
 
+    // 优先使用 TOS 原生 SDK（S3兼容接口对视频有反序列化问题）
     try {
-      // 🔴 修复：添加更详细的日志和错误处理
-      this.logger.log(`[StorageService] 开始上传文件到 TOS...`)
-      this.logger.log(`[StorageService] endpoint: ${process.env.COZE_BUCKET_ENDPOINT_URL || 'https://tos-cn-guangzhou.volces.com'}`)
-      this.logger.log(`[StorageService] bucket: ${process.env.COZE_BUCKET_NAME || 'morena-ai'}`)
-
-      const key = await this.storage.uploadFile({
-        fileContent: videoBuffer,
-        fileName: `videos/${fileName}`,
-        contentType: 'video/mp4'
+      const TosModule = await import('@volcengine/tos-sdk')
+      const TosClientClass = (TosModule as any).TosClient || (TosModule as any).default?.TosClient || (TosModule as any).default
+      const client = new TosClientClass({
+        accessKeyId: process.env.VOLC_ACCESS_KEY,
+        accessKeySecret: process.env.VOLC_SECRET_KEY,
+        endpoint: process.env.COZE_BUCKET_ENDPOINT_URL || 'tos-cn-guangzhou.volces.com',
+        region: 'cn-guangzhou',
+        bucket: process.env.COZE_BUCKET_NAME || 'morena-ai',
       })
 
-      this.logger.log(`[StorageService] 文件上传成功, key: ${key}`)
+      const key = `videos/${Date.now()}_${fileName}`
+      await client.putObject({
+        bucket: process.env.COZE_BUCKET_NAME || 'morena-ai',
+        key,
+        body: videoBuffer,
+        contentType: 'video/mp4',
+      })
 
-      // 生成预签名URL - 10年有效期，确保内容不会过期
-      const url = await this.storage.generatePresignedUrl({ key, expireTime: 86400 * 365 * 10 })
-      this.logger.log(`[StorageService] 视频上传成功: ${url.substring(0, 80)}...`)
+      // 拼接永久访问 URL
+      const bucketName = process.env.COZE_BUCKET_NAME || 'morena-ai'
+      const endpoint = (process.env.COZE_BUCKET_ENDPOINT_URL || 'https://tos-cn-guangzhou.volces.com').replace('https://', '')
+      const url = `https://${bucketName}.${endpoint}/${key}`
+      this.logger.log(`[StorageService] TOS原生SDK视频上传成功: ${url.substring(0, 80)}...`)
       return url
-    } catch (error: any) {
-      this.logger.error('[StorageService] 视频上传失败:', error)
-      this.logger.error('[StorageService] 错误详情:', error.message)
-      if (error.$response) {
-        this.logger.error('[StorageService] 原始响应:', error.$response)
-      }
-      throw new Error(`视频上传到CDN失败: ${error.message}`)
+    } catch (tosError: any) {
+      this.logger.warn(`[StorageService] TOS原生SDK视频上传失败: ${tosError.message}, 尝试veImageX`)
+    }
+
+    // 降级：火山引擎 veImageX 视频服务
+    try {
+      const result = await this.volcengineService.uploadVideo(videoBuffer, fileName)
+      this.logger.log(`[StorageService] 视频上传veImageX成功: ${result.url.substring(0, 80)}...`)
+      return result.url
+    } catch (veError: any) {
+      this.logger.warn(`[StorageService] veImageX视频上传也失败: ${veError.message}`)
+    }
+
+    // 最终降级：S3兼容接口
+    try {
+      const key = await this.storage.uploadFile({
+        fileContent: videoBuffer,
+        fileName: `videos/${Date.now()}_${fileName}`,
+        contentType: 'video/mp4'
+      })
+      const url = await this.storage.generatePresignedUrl({ key, expireTime: 86400 * 365 * 10 })
+      this.logger.log(`[StorageService] 视频S3兼容上传成功: ${url.substring(0, 80)}...`)
+      return url
+    } catch (s3Error: any) {
+      this.logger.error(`[StorageService] 所有视频上传方式均失败: ${s3Error.message}`)
+      throw new Error(`视频上传到CDN失败，请稍后重试`)
     }
   }
 

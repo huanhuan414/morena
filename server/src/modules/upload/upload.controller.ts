@@ -158,6 +158,41 @@ export class UploadController {
   }
 
   /**
+   * 上传压缩包并解析图片/视频
+   */
+  @Post('zip')
+  @UseInterceptors(FileInterceptor('file', multerOptions))
+  async uploadZip(@UploadedFile() file: Express.Multer.File) {
+    console.log('[UploadController] 接收到压缩包上传请求')
+    console.log('[UploadController] 文件信息:', {
+      originalname: file?.originalname,
+      size: file?.size,
+      mimetype: file?.mimetype,
+      hasBuffer: !!file?.buffer,
+    })
+
+    if (!file) {
+      return { code: 400, message: '未接收到文件' }
+    }
+
+    try {
+      const result = await this.uploadService.uploadZip(file)
+      return {
+        code: 200,
+        message: `解析完成：${result.images.length}张图片, ${result.videos.length}个视频`,
+        data: result,
+      }
+    } catch (error) {
+      console.error('[UploadController] 压缩包上传失败:', error)
+      return {
+        code: 500,
+        message: error.message || '上传失败',
+        error: error.message,
+      }
+    }
+  }
+
+  /**
    * 🔴 通用文件上传接口
    * 根据文件类型自动选择上传服务
    */

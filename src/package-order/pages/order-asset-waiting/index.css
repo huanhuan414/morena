@@ -3,44 +3,10 @@
   background: #F5F3FF;
 }
 
-/* 顶部 */
-.aw-header {
-  background: linear-gradient(135deg, #6366F1, #8B5CF6);
-  padding-bottom: 32rpx;
-  padding-left: 24rpx;
-  padding-right: 24rpx;
-}
-.aw-header-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-}
-.aw-back-btn {
-  width: 64rpx;
-  height: 64rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.aw-header-title {
-  font-size: 34rpx;
-  font-weight: 600;
-  color: #fff;
-}
-.aw-header-action {
-  padding: 8rpx 20rpx;
-  background: rgba(255,255,255,0.2);
-  border-radius: 20rpx;
-}
-.aw-header-action-text {
-  font-size: 24rpx;
-  color: #fff;
-}
+/* 顶部 - 使用原生导航栏，无需自定义 header */
 
 /* 主体 */
 .aw-body {
-  height: calc(100vh - 140rpx);
   padding: 24rpx;
   padding-bottom: 180rpx;
   box-sizing: border-box;

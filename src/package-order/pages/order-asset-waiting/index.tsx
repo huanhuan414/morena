@@ -3,7 +3,7 @@ import Taro, { useRouter } from '@tarojs/taro'
 import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
 import { Network } from '@/network'
 import {
-  ArrowLeft, Loader, PackageOpen, CircleCheck, CircleX,
+  Loader, PackageOpen, CircleCheck, CircleX,
   Users, UserCheck, RefreshCw, Sparkles, ImagePlus, Play,
   ChevronRight, TriangleAlert, FileText
 } from 'lucide-react-taro'
@@ -34,7 +34,7 @@ interface AssetSummary {
 export default function OrderAssetWaiting() {
   const router = useRouter()
   const orderId = router.params.orderId || ''
-  const statusBarHeight = Taro.getSystemInfoSync().statusBarHeight || 0
+
 
   const [assets, setAssets] = useState<AssetItem[]>([])
   const [summary, setSummary] = useState<AssetSummary | null>(null)
@@ -315,16 +315,7 @@ export default function OrderAssetWaiting() {
 
   return (
     <View className="asset-waiting-page">
-      {/* 顶部 */}
-      <View className="aw-header" style={{ paddingTop: `${statusBarHeight + 16}px` }}>
-        <View className="aw-header-row">
-          <View className="aw-back-btn" onClick={() => Taro.navigateBack()}>
-            <ArrowLeft size={20} color="#fff" />
-          </View>
-          <Text className="aw-header-title">素材准备</Text>
-          <View style={{ width: '48px' }} />
-        </View>
-      </View>
+
 
       <ScrollView className="aw-body" scrollY>
         {/* 状态概览卡片 */}
