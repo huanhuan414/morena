@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import Taro from '@tarojs/taro'
-import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Send, Check, ChevronRight, Loader, ArrowLeft,
   Users, Coins, Sparkles, Zap, ShieldCheck, Clock,
   Target, TrendingUp, Lightbulb, ClipboardList,
-  Plus, X
+  Plus, X, Play
 } from 'lucide-react-taro'
 import { Network } from '@/network'
 import {
@@ -780,16 +780,12 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
               {uploadedAssets.map((asset, idx) => (
                 <View key={asset.id + idx} className="asset-preview-item">
                   {asset.type === 'video' ? (
-                    <Video
-                      src={asset.url}
-                      className="asset-preview-video"
-                      muted
-                      showPlayBtn={false}
-                      showCenterPlayBtn={false}
-                      showFullscreenBtn={false}
-                      controls={false}
-                      autoplay={false}
-                    />
+                    <View className="asset-preview-video-wrap">
+                      <Image src={asset.url} className="asset-preview-img" mode="aspectFill" />
+                      <View className="asset-video-play-icon">
+                        <Play size={20} color="#fff" filled />
+                      </View>
+                    </View>
                   ) : (
                     <Image src={asset.url} className="asset-preview-img" mode="aspectFill" />
                   )}
