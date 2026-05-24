@@ -791,69 +791,76 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         </View>
 
         {/* 素材上传（可选） */}
-        {form.contentType !== 'text' && (
-          <View className="section">
-            <View className="section-header">
-              <View className="section-title-row">
-                <View className="title-dot accent" />
-                <Text className="section-title">素材上传</Text>
-              </View>
-              <Text className="section-hint">
-                {uploadedAssets.filter(a => a.type === 'image').length >= requiredImageCount
+        <View className="section">
+          <View className="section-header">
+            <View className="section-title-row">
+              <View className="title-dot accent" />
+              <Text className="section-title">素材上传</Text>
+            </View>
+            <Text className="section-hint">
+              {form.contentType === 'text'
+                ? '上传素材将分配给接单分身'
+                : uploadedAssets.filter(a => a.type === 'image').length >= requiredImageCount
                   ? '图片素材已满足'
                   : `需${requiredImageCount}张图，不足将AI生成`}
-              </Text>
-            </View>
-            {/* 已上传的图片 */}
-            <View className="asset-upload-grid">
-              {uploadedAssets.filter(a => a.type === 'image').map((asset, idx) => (
-                <View key={asset.url + idx} className="asset-preview-item">
-                  <Image src={asset.url} className="asset-preview-img" mode="aspectFill" />
-                  <View
-                    className="asset-remove-btn"
-                    onClick={() => handleRemoveAsset(asset.id)}
-                  >
-                    <X size={12} color="#fff" />
-                  </View>
-                </View>
-              ))}
-              {/* 添加图片按钮 */}
-              {uploadedAssets.filter(a => a.type === 'image').length < 9 && (
-                <View className="asset-add-btn" onClick={handleUploadImage}>
-                  <Plus size={20} color="#999" />
-                  <Text className="asset-add-text">添加图片</Text>
-                </View>
-              )}
-              {/* 上传视频按钮 */}
-              {needVideo && uploadedAssets.filter(a => a.type === 'video').length === 0 && (
-                <View className="asset-add-btn" onClick={handleUploadVideo}>
-                  <Film size={20} color="#999" />
-                  <Text className="asset-add-text">添加视频</Text>
-                </View>
-              )}
-            </View>
-            {/* 已上传的视频 */}
-            {uploadedAssets.filter(a => a.type === 'video').map((asset, idx) => (
-              <View key={asset.url + idx} className="asset-video-item">
-                <Film size={14} color="#6366F1" />
-                <Text className="asset-video-name">{asset.filename}</Text>
-                <View className="asset-remove-btn-small" onClick={() => handleRemoveAsset(asset.id)}>
-                  <X size={12} color="#999" />
+            </Text>
+          </View>
+          {/* 已上传的图片 */}
+          <View className="asset-upload-grid">
+            {uploadedAssets.filter(a => a.type === 'image').map((asset, idx) => (
+              <View key={asset.url + idx} className="asset-preview-item">
+                <Image src={asset.url} className="asset-preview-img" mode="aspectFill" />
+                <View
+                  className="asset-remove-btn"
+                  onClick={() => handleRemoveAsset(asset.id)}
+                >
+                  <X size={12} color="#fff" />
                 </View>
               </View>
             ))}
-            {/* 上传压缩包 */}
-            <View className="asset-zip-row" onClick={handleUploadZip}>
-              <Plus size={14} color="#6366F1" />
-              <Text className="asset-zip-text">上传压缩包批量导入图片/视频</Text>
-            </View>
-            {isUploading && (
-              <View className="asset-uploading">
-                <Text className="asset-uploading-text">上传中...</Text>
+            {/* 添加图片按钮 */}
+            {uploadedAssets.filter(a => a.type === 'image').length < 9 && (
+              <View className="asset-add-btn" onClick={handleUploadImage}>
+                <Plus size={20} color="#999" />
+                <Text className="asset-add-text">添加图片</Text>
+              </View>
+            )}
+            {/* 上传视频按钮 */}
+            {needVideo && uploadedAssets.filter(a => a.type === 'video').length === 0 && (
+              <View className="asset-add-btn" onClick={handleUploadVideo}>
+                <Film size={20} color="#999" />
+                <Text className="asset-add-text">添加视频</Text>
               </View>
             )}
           </View>
-        )}
+          {/* 已上传的视频 */}
+          {uploadedAssets.filter(a => a.type === 'video').map((asset, idx) => (
+            <View key={asset.url + idx} className="asset-video-item">
+              <Film size={14} color="#6366F1" />
+              <Text className="asset-video-name">{asset.filename}</Text>
+              <View className="asset-remove-btn-small" onClick={() => handleRemoveAsset(asset.id)}>
+                <X size={12} color="#999" />
+              </View>
+            </View>
+          ))}
+          {/* 上传压缩包 */}
+          <View className="asset-zip-row" onClick={handleUploadZip}>
+            <Plus size={14} color="#6366F1" />
+            <Text className="asset-zip-text">上传压缩包批量导入图片/视频</Text>
+          </View>
+          {isUploading && (
+            <View className="asset-uploading">
+              <Text className="asset-uploading-text">上传中...</Text>
+            </View>
+          )}
+          {/* AI补齐提示 */}
+          {form.contentType !== 'text' && uploadedAssets.filter(a => a.type === 'image').length < requiredImageCount && (
+            <View className="asset-ai-hint">
+              <Sparkles size={14} color="#8B5CF6" />
+              <Text className="asset-ai-hint-text">不足的图片支付后将由AI自动生成，分身接单时直接分配</Text>
+            </View>
+          )}
+        </View>
 
         {/* 行业领域偏好 */}
         <View className="section">
