@@ -1,4 +1,5 @@
 import { Injectable, Logger, Inject, forwardRef, OnModuleInit } from '@nestjs/common'
+import { v4 as uuidv4 } from 'uuid'
 import { Cron } from '@nestjs/schedule'
 import { getMySQLClient, getPool } from '../../storage/database/mysql-client'
 import { setCache, getCache } from '../../common/shared-cache'
@@ -2034,6 +2035,87 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
           try { await this.syncOrderStatus(row.order_id) } catch (e: any) { /* ignore */ }
         }
       }
+      // 4. 轮询 order_assets 表中预生成视频的状态
+      try {
+        // 超时保护
+        const [timeoutAssets]: any = await pool.execute(
+          `SELECT id, order_id FROM order_assets
+           WHERE asset_type = 'video' AND source = 'ai_generated' AND status = 'generating'
+           AND seedance_task_id IS NOT NULL
+           AND updated_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)`
+        )
+        if (timeoutAssets && timeoutAssets.length > 0) {
+          for (const row of timeoutAssets) {
+            this.logger.warn(`[VideoPoll] order_assets视频超时(>30min): assetId=${row.id}`)
+            await pool.execute(
+              'UPDATE order_assets SET status = ?, seedance_task_id = NULL, updated_at = NOW() WHERE id = ?',
+              ['failed', row.id]
+            )
+          }
+        }
+
+        // 正常轮询
+        const [videoAssets]: any = await pool.execute(
+          `SELECT id, order_id, seedance_task_id FROM order_assets
+           WHERE asset_type = 'video' AND source = 'ai_generated' AND status = 'generating'
+           AND seedance_task_id IS NOT NULL
+           ORDER BY created_at ASC LIMIT 10`
+        )
+        if (videoAssets && videoAssets.length > 0) {
+          for (const asset of videoAssets) {
+            try {
+              this.logger.log(`[VideoPoll] 轮询order_assets视频: assetId=${asset.id}, taskId=${asset.seedance_task_id}`)
+              const videoUrl = await this.pollSeedanceTask(asset.seedance_task_id)
+              if (videoUrl) {
+                // 下载并转存CDN
+                let finalUrl = videoUrl
+                try {
+                  const resp = await fetch(videoUrl)
+                  if (resp.ok) {
+                    const buf = Buffer.from(await resp.arrayBuffer())
+                    const fname = `asset-video/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.mp4`
+                    const uploadRes = await this.volcengineService.uploadVideo(buf, fname)
+                    finalUrl = uploadRes.url
+                  }
+                } catch (dlErr: any) {
+                  this.logger.warn(`[VideoPoll] order_assets视频转存CDN失败: ${dlErr.message}`)
+                }
+                await pool.execute(
+                  'UPDATE order_assets SET status = ?, asset_url = ?, seedance_task_id = NULL, updated_at = NOW() WHERE id = ?',
+                  ['ready', finalUrl, asset.id]
+                )
+                this.logger.log(`[VideoPoll] order_assets视频生成成功: assetId=${asset.id}`)
+              }
+            } catch (err: any) {
+              this.logger.warn(`[VideoPoll] order_assets视频任务失败: assetId=${asset.id}, error=${err.message}`)
+              await pool.execute(
+                'UPDATE order_assets SET status = ?, seedance_task_id = NULL, updated_at = NOW() WHERE id = ?',
+                ['failed', asset.id]
+              )
+            }
+          }
+        }
+
+        // 兜底：无taskId但卡在generating的记录
+        const [stuckAssets]: any = await pool.execute(
+          `SELECT id FROM order_assets
+           WHERE asset_type = 'video' AND source = 'ai_generated' AND status = 'generating'
+           AND seedance_task_id IS NULL
+           AND updated_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE)`
+        )
+        if (stuckAssets && stuckAssets.length > 0) {
+          for (const row of stuckAssets) {
+            this.logger.warn(`[VideoPoll] order_assets视频无taskId卡住: assetId=${row.id}, 标记failed`)
+            await pool.execute(
+              'UPDATE order_assets SET status = ?, updated_at = NOW() WHERE id = ?',
+              ['failed', row.id]
+            )
+          }
+        }
+      } catch (assetErr: any) {
+        this.logger.warn(`[VideoPoll] order_assets视频轮询失败: ${assetErr.message}`)
+      }
+
     } catch (err: any) {
       this.logger.error(`[VideoPoll] 定时任务执行失败: ${err.message}`)
     }
@@ -2223,11 +2305,62 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
     }
   }
 
-  /** AI预生成视频 - 订单创建时不预生成视频，由分身接单后实时生成 */
+  /** AI预生成视频 - 基于订单描述生成视频脚本+Seedance异步任务 */
   private async pregenerateVideo(orderId: string, title: string, description: string, platform: string): Promise<void> {
-    // 视频生成需要文案内容作为上下文，在订单创建时尚无文案
-    // 因此跳过视频预生成，由分身接单后实时生成
-    console.log(`[预生成] 订单 ${orderId} 视频跳过预生成，将在分身接单后实时生成`)
+    const db = getMySQLClient()
+
+    // 1. 创建 order_assets 记录
+    const videoAssetId = uuidv4()
+    await db.query(
+      `INSERT INTO order_assets (id, order_id, asset_type, source, platform, status, prompt)
+       VALUES (?, ?, 'video', 'ai_generated', ?, 'generating', ?)`,
+      [videoAssetId, orderId, platform, description]
+    )
+
+    // 2. 异步生成视频（不阻塞图片生成）
+    ;(async () => {
+      try {
+        console.log(`[预生成] 订单 ${orderId} 开始预生成视频...`)
+
+        // 构建输入上下文（不需要文案，用订单标题+描述即可）
+        const input = {
+          title,
+          description,
+          platform,
+          primarySkill: 'general', // 通用策略
+        }
+        const skillStrategy = getSkillStrategy('general')
+
+        // 3. 生成视频脚本
+        const videoScript = await this.generateVideoScript(platform, input, '', skillStrategy) || ''
+        if (!videoScript) {
+          console.error(`[预生成] 订单 ${orderId} 视频脚本生成失败`)
+          await db.query('UPDATE order_assets SET status = ? WHERE id = ?', ['failed', videoAssetId])
+          return
+        }
+        console.log(`[预生成] 订单 ${orderId} 视频脚本生成完成: ${videoScript.length}字`)
+
+        // 4. 提取视觉prompt
+        const seedancePrompt = await this.extractVisualPrompt(videoScript, input)
+        console.log(`[预生成] 订单 ${orderId} Seedance视觉prompt: ${seedancePrompt.substring(0, 80)}...`)
+
+        // 5. 创建Seedance异步任务
+        const taskId = await this.createSeedanceTask(seedancePrompt)
+        if (taskId) {
+          // 存储 taskId，由 pollPendingVideoTasks 定时任务轮询结果
+          await db.query('UPDATE order_assets SET seedance_task_id = ? WHERE id = ?', [taskId, videoAssetId])
+          console.log(`[预生成] 订单 ${orderId} 视频任务已创建: taskId=${taskId}`)
+        } else {
+          console.error(`[预生成] 订单 ${orderId} Seedance任务创建失败`)
+          await db.query('UPDATE order_assets SET status = ? WHERE id = ?', ['failed', videoAssetId])
+        }
+      } catch (err: any) {
+        console.error(`[预生成] 订单 ${orderId} 视频预生成异常:`, err.message)
+        await db.query('UPDATE order_assets SET status = ? WHERE id = ?', ['failed', videoAssetId])
+      }
+    })().catch(err => {
+      console.error(`[预生成] 视频预生成异常:`, err.message)
+    })
   }
 
   /**
