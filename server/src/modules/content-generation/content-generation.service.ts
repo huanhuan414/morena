@@ -485,7 +485,8 @@ export class ContentGenerationService implements OnModuleInit {
         if (needVideoScript && hasAssignedVideo && !textContent) {
           try {
             await this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
-            textContent = await this.generateVideoCompanionText(platform, input, assignedVideoUrl)
+            const companionSkillStrategy = getSkillStrategy(primarySkill)
+            textContent = await this.generateVideoCompanionText(platform, input, assignedVideoUrl, companionSkillStrategy)
             this.logger.log(`视频配套文案生成完成: ${textContent.length}字`)
             await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_video')
           } catch (err: any) {
