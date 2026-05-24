@@ -2147,6 +2147,14 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
         }
       }
 
+      // 独占模式：每个分身需要独立素材，总素材数 = 分身数 × 每分身素材数
+      const assetDistributeMode = order.assetDistributeMode || order.asset_distribute_mode || 'shared'
+      const avatarCount = Number(order.avatarCount || order.avatar_count || order.expectedQuantity || order.expected_quantity || 1)
+      if (assetDistributeMode === 'exclusive' && avatarCount > 1) {
+        requiredImageCount = requiredImageCount * avatarCount
+        console.log(`[预生成] 独占模式: ${avatarCount}个分身 × ${requiredImageCount / avatarCount}张/分身 = 共需${requiredImageCount}张图片`)
+      }
+
       // 计算缺失
       const missingImages = Math.max(0, requiredImageCount - uploadedImageCount)
       const needVideo = requiredVideo && uploadedVideoCount === 0

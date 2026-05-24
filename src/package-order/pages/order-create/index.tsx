@@ -166,6 +166,27 @@ export default function OrderCreate() {
   }
   const totalOutput = form.quantityPerAvatar * form.avatarCount
 
+  // 计算独占模式下最大分身数量
+  const getMaxAvatarCount = () => {
+    if (form.assetDistributeMode !== 'exclusive') return Infinity
+    // 独占模式：每个分身需要独立素材
+    // 平台默认每分身需要3张图片
+    const perAvatarImageCount = form.contentType === 'video' ? 0 : 3
+    if (perAvatarImageCount === 0) return Infinity // 纯视频不限制
+    const uploadedImages = uploadedAssets.filter(a => a.type === 'image').length
+    // 有上传素材时：最大分身数 = 上传图片数 ÷ 每分身图片数
+    if (uploadedImages > 0) {
+      return Math.floor(uploadedImages / perAvatarImageCount)
+    }
+    // 无上传素材但AI补足开启 或 无上传素材默认AI生成：不限
+    // （AI会按分身数×每分身数量生成足够的素材）
+    if (form.aiAutoFill || uploadedAssets.length === 0) return 99
+    // 无上传+不补足：无法分配素材，分身数为0
+    return 0
+  }
+
+  const maxAvatarCount = getMaxAvatarCount()
+
   const handleAIGenerate = async () => {
     if (aiLoading) return
     if (!form.title.trim()) {
@@ -374,6 +395,11 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
     }
     if (form.platforms.length === 0) {
       Taro.showToast({ title: '请选择发布平台', icon: 'none' })
+      return
+    }
+    // 独占模式校验：分身数不能超过素材数
+    if (form.assetDistributeMode === 'exclusive' && maxAvatarCount > 0 && maxAvatarCount < 99 && form.avatarCount > maxAvatarCount) {
+      Taro.showToast({ title: `独占模式下最多${maxAvatarCount}个分身`, icon: 'none' })
       return
     }
 
@@ -863,7 +889,24 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                   </View>
                   <View
                     className={`asset-distribute-opt ${form.assetDistributeMode === 'exclusive' ? 'active' : ''}`}
-                    onClick={() => setForm(prev => ({ ...prev, assetDistributeMode: 'exclusive' }))}
+                    onClick={() => {
+                      setForm(prev => {
+                        const newForm = { ...prev, assetDistributeMode: 'exclusive' as const }
+                        // 独占模式下，分身数不能超过素材可用数
+                        if (newForm.assetDistributeMode === 'exclusive') {
+                          const uploadedImages = uploadedAssets.filter(a => a.type === 'image').length
+                          const perAvatarImageCount = newForm.contentType === 'video' ? 0 : 3
+                          if (uploadedImages > 0 && perAvatarImageCount > 0) {
+                            const maxAvatars = Math.floor(uploadedImages / perAvatarImageCount)
+                            if (newForm.avatarCount > maxAvatars && maxAvatars > 0) {
+                              newForm.avatarCount = maxAvatars
+                              Taro.showToast({ title: `独占模式下最多${maxAvatars}个分身`, icon: 'none' })
+                            }
+                          }
+                        }
+                        return newForm
+                      })
+                    }}
                   >
                     <Text className={`asset-distribute-opt-text ${form.assetDistributeMode === 'exclusive' ? 'active' : ''}`}>独占</Text>
                   </View>
@@ -876,7 +919,11 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
               )}
               {form.assetDistributeMode === 'exclusive' && (
                 <View className="asset-mode-hint">
-                  <Text className="asset-mode-hint-text">独占模式：每个分身分配不同素材，分身数不能超过素材数</Text>
+                  <Text className="asset-mode-hint-text">
+                    独占模式：每个分身分配不同素材
+                    {maxAvatarCount < 99 && maxAvatarCount > 0 && `，当前最多${maxAvatarCount}个分身`}
+                    {maxAvatarCount === 0 && '，请先上传素材或开启AI补足'}
+                  </Text>
                 </View>
               )}
               {/* AI自动补足开关：仅在有上传素材时显示 */}
@@ -1027,12 +1074,20 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                 <Text className="counter-value">{form.avatarCount}</Text>
                 <View
                   className="counter-btn plus"
-                  onClick={() => setForm(prev => ({ ...prev, avatarCount: prev.avatarCount + 1 }))}
+                  onClick={() => {
+                    const maxCount = getMaxAvatarCount()
+                    if (maxCount > 0 && form.avatarCount >= maxCount) return
+                    setForm(prev => ({ ...prev, avatarCount: prev.avatarCount + 1 }))
+                  }}
                 >
                   <Text>+</Text>
                 </View>
               </View>
-              <Text className="counter-hint">{form.avatarCount}个分身各显特色</Text>
+              <Text className="counter-hint">
+                {form.assetDistributeMode === 'exclusive' && getMaxAvatarCount() > 0
+                  ? `${form.avatarCount}个分身各领不同素材（最多${getMaxAvatarCount()}个）`
+                  : `${form.avatarCount}个分身各显特色`}
+              </Text>
             </View>
             <View className="counter-item">
               <Text className="counter-label">每分身产出</Text>
