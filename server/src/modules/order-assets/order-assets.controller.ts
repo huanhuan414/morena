@@ -8,16 +8,22 @@ export class OrderAssetsController {
   constructor(private readonly orderAssetsService: OrderAssetsService) {}
 
   /**
-   * 获取订单的素材列表
+   * 获取订单的素材列表（支持分页）
    */
   @Get(':orderId')
   async getOrderAssets(
     @Param('orderId') orderId: string,
     @Query('type') type?: 'image' | 'video',
     @Query('source') source?: 'ai_generated' | 'user_uploaded',
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
-    const assets = await this.orderAssetsService.getOrderAssets(orderId, { type, source })
-    return { code: 200, message: '获取成功', data: assets }
+    const pagination = {
+      page: page ? parseInt(page, 10) : 1,
+      pageSize: pageSize ? parseInt(pageSize, 10) : 20,
+    }
+    const result = await this.orderAssetsService.getOrderAssets(orderId, { type, source }, pagination)
+    return { code: 200, message: '获取成功', data: result }
   }
 
   /**

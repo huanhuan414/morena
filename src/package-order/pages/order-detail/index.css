@@ -1237,3 +1237,105 @@
 .od-dialog-close-btn:hover {
   background: rgba(255, 255, 255, 0.35) !important;
 }
+
+/* ===== 素材池卡片样式 ===== */
+.od-section-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+.od-asset-summary {
+  margin-bottom: 16rpx;
+}
+.od-asset-stats {
+  display: flex;
+  flex-direction: row;
+  gap: 24rpx;
+  margin-bottom: 12rpx;
+}
+.od-asset-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 80rpx;
+}
+.od-asset-stat-num {
+  font-size: 32rpx;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.od-asset-stat-label {
+  font-size: 20rpx;
+  color: #9CA3AF;
+  margin-top: 4rpx;
+}
+.od-asset-type-pills {
+  display: flex;
+  flex-direction: row;
+  gap: 12rpx;
+  flex-wrap: wrap;
+}
+.od-asset-pill {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4rpx;
+  background: #F3F4F6;
+  border-radius: 20rpx;
+  padding: 6rpx 16rpx;
+}
+.od-asset-pill-text {
+  font-size: 20rpx;
+  color: #6B7280;
+}
+.od-asset-grid {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+.od-asset-thumb-wrap {
+  width: calc(25% - 9rpx);
+  aspect-ratio: 1;
+  border-radius: 12rpx;
+  overflow: hidden;
+}
+.od-asset-thumb {
+  width: 100%;
+  height: 100%;
+}
+.od-asset-more {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+  padding: 16rpx 0 4rpx;
+}
+.od-asset-more-text {
+  font-size: 22rpx;
+  color: #6366F1;
+}
+.od-asset-generating {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8rpx;
+  padding: 16rpx 0;
+}
+.od-asset-generating-text {
+  font-size: 22rpx;
+  color: #F59E0B;
+}
+.od-asset-failed {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8rpx;
+  padding: 16rpx 0;
+}
+.od-asset-failed-text {
+  font-size: 22rpx;
+  color: #EF4444;
+}

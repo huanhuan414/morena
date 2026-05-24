@@ -31,29 +31,52 @@ export class OrderAssetsService {
   constructor(private readonly volcengineService: VolcengineService) {}
 
   /**
-   * 获取订单素材列表
+   * 获取订单素材列表（支持分页）
    */
   async getOrderAssets(
     orderId: string,
     filter?: { type?: 'image' | 'video'; source?: 'ai_generated' | 'user_uploaded' },
+    pagination?: { page?: number; pageSize?: number },
   ) {
     const pool = getPool()
-    let sql = 'SELECT * FROM order_assets WHERE order_id = ?'
+    const page = Math.max(1, pagination?.page || 1)
+    const pageSize = Math.min(100, Math.max(1, pagination?.pageSize || 20))
+    const offset = (page - 1) * pageSize
+
+    let whereSql = 'WHERE order_id = ?'
     const params: any[] = [orderId]
 
     if (filter?.type) {
-      sql += ' AND asset_type = ?'
+      whereSql += ' AND asset_type = ?'
       params.push(filter.type)
     }
     if (filter?.source) {
-      sql += ' AND source = ?'
+      whereSql += ' AND source = ?'
       params.push(filter.source)
     }
 
-    sql += ' ORDER BY sort_order ASC, created_at ASC'
+    // 查总数
+    const countParams = [...params]
+    const [countRows] = await pool.execute(
+      `SELECT COUNT(*) as total FROM order_assets ${whereSql}`,
+      countParams,
+    )
+    const total = (countRows as any[])[0].total
 
-    const [rows] = await pool.execute(sql, params)
-    return rows
+    // 查分页数据
+    const dataParams = [...params, pageSize, offset]
+    const [rows] = await pool.execute(
+      `SELECT * FROM order_assets ${whereSql} ORDER BY sort_order ASC, created_at ASC LIMIT ? OFFSET ?`,
+      dataParams,
+    )
+
+    return {
+      list: rows,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    }
   }
 
   /**

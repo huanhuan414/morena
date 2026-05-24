@@ -6,7 +6,7 @@ import {
   ArrowLeft, Loader, Users, CircleCheckBig, CircleX, Clock,
   CreditCard, Send, Trash2,
   FileText, CircleDot, Camera, Video, Eye, Image as ImageIcon,
-  ExternalLink, ThumbsUp, MessageCircle, Calendar
+  ExternalLink, ThumbsUp, MessageCircle, Calendar, Package, ChevronDown, TriangleAlert
 } from 'lucide-react-taro'
 import {
   normalizeOrderDetail,
@@ -144,6 +144,12 @@ export default function OrderDetailPage() {
   const [selectedAvatar, setSelectedAvatar] = useState<any>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogTab, setDialogTab] = useState('content')
+  const [assetSummary, setAssetSummary] = useState<{ images: { uploaded: number; aiGenerated: number; pending: number; ready: number; failed: number }; videos: { uploaded: number; aiGenerated: number; pending: number; ready: number; failed: number } } | null>(null)
+  const [assetImages, setAssetImages] = useState<string[]>([])
+  const [assetTotal, setAssetTotal] = useState(0)
+  const [assetPage, setAssetPage] = useState(1)
+  const [assetHasMore, setAssetHasMore] = useState(false)
+  const [assetLoading, setAssetLoading] = useState(false)
   const pollingRef = useRef<any>(null)
   const statusBarHeight = getStatusBarHeight()
 
@@ -173,6 +179,44 @@ export default function OrderDetailPage() {
   }, [orderId])
 
   useEffect(() => { fetchDetail() }, [fetchDetail])
+
+  // ===== 素材池数据 =====
+  const fetchAssetSummary = useCallback(async () => {
+    if (!orderId) return
+    try {
+      const res = await Network.request({ url: `/api/order-assets/${orderId}/summary` })
+      if (res.data?.code === 200 && res.data?.data) {
+        setAssetSummary(res.data.data)
+      }
+    } catch (err) {
+      console.error('[OrderDetail] asset summary error:', err)
+    }
+  }, [orderId])
+
+  const fetchAssetImages = useCallback(async (page: number = 1, append: boolean = false) => {
+    if (!orderId) return
+    setAssetLoading(true)
+    try {
+      const res = await Network.request({ url: `/api/order-assets/${orderId}?type=image&pageSize=12&page=${page}` })
+      if (res.data?.code === 200 && res.data?.data) {
+        const d = res.data.data
+        const urls = (d.list || []).map((a: any) => a.asset_url).filter(Boolean)
+        setAssetImages(prev => append ? [...prev, ...urls] : urls)
+        setAssetTotal(d.total || 0)
+        setAssetPage(page)
+        setAssetHasMore(page * (d.pageSize || 12) < (d.total || 0))
+      }
+    } catch (err) {
+      console.error('[OrderDetail] asset images error:', err)
+    } finally {
+      setAssetLoading(false)
+    }
+  }, [orderId])
+
+  useEffect(() => {
+    fetchAssetSummary()
+    fetchAssetImages(1, false)
+  }, [fetchAssetSummary, fetchAssetImages])
 
   // 如果是从支付跳转过来的，轮询状态
   useEffect(() => {
@@ -442,6 +486,119 @@ export default function OrderDetailPage() {
             </View>
           </View>
         </View>
+
+        {/* 素材池卡 */}
+        {(assetSummary || assetImages.length > 0) && (
+          <View className="od-card">
+            <View className="od-section-header">
+              <Package size={16} color="#6366F1" />
+              <Text className="block od-section-title" style={{ marginLeft: '6rpx' }}>素材池</Text>
+            </View>
+
+            {/* 素材概要统计 */}
+            {assetSummary && (
+              <View className="od-asset-summary">
+                {(() => {
+                  const img = assetSummary.images
+                  const vid = assetSummary.videos
+                  const totalReady = img.ready + vid.ready
+                  const totalPending = img.pending + vid.pending
+                  const totalFailed = img.failed + vid.failed
+                  const totalUploaded = img.uploaded + vid.uploaded
+                  const totalAi = img.aiGenerated + vid.aiGenerated
+                  return (
+                    <View className="od-asset-stats">
+                      <View className="od-asset-stat-item">
+                        <Text className="block od-asset-stat-num" style={{ color: '#10B981' }}>{totalReady}</Text>
+                        <Text className="block od-asset-stat-label">已就绪</Text>
+                      </View>
+                      {totalPending > 0 && (
+                        <View className="od-asset-stat-item">
+                          <Text className="block od-asset-stat-num" style={{ color: '#F59E0B' }}>{totalPending}</Text>
+                          <Text className="block od-asset-stat-label">生成中</Text>
+                        </View>
+                      )}
+                      {totalFailed > 0 && (
+                        <View className="od-asset-stat-item">
+                          <Text className="block od-asset-stat-num" style={{ color: '#EF4444' }}>{totalFailed}</Text>
+                          <Text className="block od-asset-stat-label">失败</Text>
+                        </View>
+                      )}
+                      {totalUploaded > 0 && (
+                        <View className="od-asset-stat-item">
+                          <Text className="block od-asset-stat-num" style={{ color: '#3B82F6' }}>{totalUploaded}</Text>
+                          <Text className="block od-asset-stat-label">已上传</Text>
+                        </View>
+                      )}
+                      {totalAi > 0 && (
+                        <View className="od-asset-stat-item">
+                          <Text className="block od-asset-stat-num" style={{ color: '#8B5CF6' }}>{totalAi}</Text>
+                          <Text className="block od-asset-stat-label">AI生成</Text>
+                        </View>
+                      )}
+                    </View>
+                  )
+                })()}
+                {/* 图片/视频分类小标签 */}
+                {assetSummary && (assetSummary.images.ready > 0 || assetSummary.videos.ready > 0) && (
+                  <View className="od-asset-type-pills">
+                    {assetSummary.images.ready > 0 && (
+                      <View className="od-asset-pill">
+                        <Camera size={12} color="#F59E0B" />
+                        <Text className="block od-asset-pill-text">{assetSummary.images.ready}张图片</Text>
+                      </View>
+                    )}
+                    {assetSummary.videos.ready > 0 && (
+                      <View className="od-asset-pill">
+                        <Video size={12} color="#EC4899" />
+                        <Text className="block od-asset-pill-text">{assetSummary.videos.ready}个视频</Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* 素材缩略图网格 */}
+            {assetImages.length > 0 && (
+              <View className="od-asset-grid">
+                {assetImages.map((url: string, idx: number) => (
+                  <View key={idx} className="od-asset-thumb-wrap" onClick={() => Taro.previewImage({ current: url, urls: assetImages })}>
+                    <Image src={url} className="od-asset-thumb" mode="aspectFill" />
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* 加载更多 */}
+            {assetHasMore && (
+              <View className="od-asset-more" onClick={() => !assetLoading && fetchAssetImages(assetPage + 1, true)}>
+                {assetLoading ? (
+                  <Loader size={14} color="#6366F1" />
+                ) : (
+                  <ChevronDown size={14} color="#6366F1" />
+                )}
+                <Text className="block od-asset-more-text">{assetLoading ? '加载中...' : `加载更多 (已显示${assetImages.length}/${assetTotal})`}</Text>
+              </View>
+            )}
+
+            {/* 无素材但AI正在生成 */}
+            {(!assetSummary || (assetSummary.images.ready === 0 && assetSummary.videos.ready === 0 && assetSummary.images.pending + assetSummary.videos.pending > 0)) && (
+              <View className="od-asset-generating">
+                <Loader size={16} color="#F59E0B" />
+                <Text className="block od-asset-generating-text">AI素材生成中，分身接单时将自动分配...</Text>
+              </View>
+            )}
+
+            {/* 全部失败提示 */}
+            {assetSummary && assetSummary.images.ready === 0 && assetSummary.videos.ready === 0 && assetSummary.images.pending === 0 && assetSummary.videos.pending === 0 && (assetSummary.images.failed + assetSummary.videos.failed > 0) && (
+              <View className="od-asset-failed">
+                <TriangleAlert size={16} color="#EF4444" />
+                <Text className="block od-asset-failed-text">素材生成失败，分身接单时会自动补生成</Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* 分身列表卡 */}
         {order.avatarStats && order.avatarStats.length > 0 && (

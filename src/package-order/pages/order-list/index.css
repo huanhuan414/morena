@@ -466,3 +466,18 @@
   transform: scale(0.9);
   opacity: 0.9;
 }
+
+/* 素材池概要标签 */
+.ol-asset-pill {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4rpx;
+  background: #F0FDF4;
+  border-radius: 16rpx;
+  padding: 4rpx 14rpx;
+}
+.ol-asset-pill-text {
+  font-size: 20rpx;
+  white-space: nowrap;
+}

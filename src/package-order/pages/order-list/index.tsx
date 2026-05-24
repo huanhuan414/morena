@@ -6,7 +6,7 @@ import {
   ArrowLeft, Plus, Loader, Users, ArrowUp,
   CircleCheck, CircleX, TriangleAlert,
   Wallet, FileText, Video, Trash2, CreditCard, Camera,
-  Zap
+  Zap, Package
 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import './index.css'
@@ -399,6 +399,24 @@ export default function OrderListPage() {
                       <Text className="block ol-platform-pill-text">{PLATFORM_MAP[p] || p}</Text>
                     </View>
                   )) : null}
+                  {/* 素材池概要标签 */}
+                  {(() => {
+                    const summary = typeof order.userAssetsSummary === 'string' ? (() => { try { return JSON.parse(order.userAssetsSummary) } catch { return null } })() : order.userAssetsSummary
+                    if (!summary) return null
+                    const imgReady = summary.images?.ready || 0
+                    const vidReady = summary.videos?.ready || 0
+                    const pending = (summary.images?.pending || 0) + (summary.videos?.pending || 0)
+                    const total = imgReady + vidReady
+                    if (total === 0 && pending === 0) return null
+                    return (
+                      <View className="ol-asset-pill">
+                        <Package size={12} color={pending > 0 ? '#F59E0B' : '#10B981'} />
+                        <Text className="block ol-asset-pill-text" style={{ color: pending > 0 ? '#F59E0B' : '#10B981' }}>
+                          {total > 0 ? `${total}素材就绪` : `${pending}生成中`}
+                        </Text>
+                      </View>
+                    )
+                  })()}
                 </View>
 
                 {/* 分身进度条 */}
