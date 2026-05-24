@@ -38,7 +38,11 @@ import * as multer from 'multer'
           'audio/x-wav',
           'audio/webm',
           // 🔴 添加：允许application/octet-stream类型（某些情况下会被误判）
-          'application/octet-stream'
+          'application/octet-stream',
+          // 🔴 添加：允许ZIP压缩包格式
+          'application/zip',
+          'application/x-zip-compressed',
+          'application/x-zip',
         ]
         console.log(`[MulterFileFilter] 检查文件: ${file.originalname}, MIME: ${file.mimetype}`)
         if (allowedMimes.includes(file.mimetype)) {
@@ -70,7 +74,7 @@ import * as multer from 'multer'
           callback(null, true)
         } else {
           console.log(`[MulterFileFilter] 不支持的MIME类型: ${file.mimetype}`)
-          callback(new Error('只支持图片、视频和音频格式（jpg, png, gif, webp, mp4, mov, avi, mp3, wav, ogg）'), false)
+          callback(new Error('只支持图片、视频、音频和ZIP压缩包格式'), false)
         }
       }
     })

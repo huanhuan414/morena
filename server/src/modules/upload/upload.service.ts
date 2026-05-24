@@ -1,7 +1,7 @@
 import { Injectable, Logger, Inject } from '@nestjs/common'
 import { VolcengineService } from './volcengine.service'
 import { StorageService } from '../storage/storage.service'
-import AdmZip from 'adm-zip'
+import * as AdmZip from 'adm-zip'
 
 /** 支持的图片扩展名 */
 const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg']
