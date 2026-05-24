@@ -405,8 +405,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         avatar_count: form.avatarCount,
         quantity_per_avatar: form.quantityPerAvatar,
         total_price: totalPrice.total,
-        requirements: { ...form.optionalRequirements, platformRemarks: form.platformRemarks },
-        ai_auto_fill: form.aiAutoFill,
+        requirements: { ...form.optionalRequirements, platformRemarks: form.platformRemarks, ai_auto_fill: form.aiAutoFill },
         openid,
       }
 

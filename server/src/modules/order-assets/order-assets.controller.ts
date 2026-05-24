@@ -8,6 +8,19 @@ export class OrderAssetsController {
   constructor(private readonly orderAssetsService: OrderAssetsService) {}
 
   /**
+   * 为订单触发AI素材生成（无素材时 / 重新生成全部）
+   */
+  @Post('generate-for-order')
+  async generateForOrder(
+    @Body() body: { orderId: string },
+    @Req() req?: Request,
+  ) {
+    const userId = (req as any).userId
+    const result = await this.orderAssetsService.generateForOrder(body.orderId, userId)
+    return { code: 200, message: 'AI素材生成已提交', data: result }
+  }
+
+  /**
    * 重新生成失败的素材
    */
   @Post('regenerate')

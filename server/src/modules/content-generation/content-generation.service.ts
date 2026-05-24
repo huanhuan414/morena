@@ -2094,14 +2094,14 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
       const db = getMySQLClient()
 
       // 获取订单信息
-      const [orders] = await db.query('SELECT * FROM orders WHERE id = ?', [orderId])
+      const orders = await db.query('SELECT * FROM orders WHERE id = ?', [orderId])
       if (!orders || orders.length === 0) {
         console.warn(`[预生成] 订单 ${orderId} 不存在`)
         return
       }
       const order = orders[0]
       const platforms: string[] = JSON.parse(order.platforms || '[]')
-      const contentType = order.content_type || 'image_text'
+      const contentType = order.contentType || order.content_type || 'image_text'
       const title = order.title || ''
       const description = order.description || ''
 
@@ -2115,12 +2115,12 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
       console.log(`[预生成] 开始为订单 ${orderId} 预生成素材, 平台: ${platforms.join(',')}, 类型: ${contentType}, AI自动补足: ${aiAutoFill}`)
 
       // 查看已有用户上传素材
-      const [existingAssets] = await db.query(
+      const existingAssets = await db.query(
         'SELECT asset_type, COUNT(*) as cnt FROM order_assets WHERE order_id = ? AND status = ? GROUP BY asset_type',
         [orderId, 'ready']
       )
-      const uploadedImageCount = (existingAssets as any[])?.find(a => a.asset_type === 'image')?.cnt || 0
-      const uploadedVideoCount = (existingAssets as any[])?.find(a => a.asset_type === 'video')?.cnt || 0
+      const uploadedImageCount = (existingAssets as any[])?.find(a => a.assetType === 'image')?.cnt || 0
+      const uploadedVideoCount = (existingAssets as any[])?.find(a => a.assetType === 'video')?.cnt || 0
 
       console.log(`[预生成] 订单 ${orderId} 已有素材: 图片${uploadedImageCount}张, 视频${uploadedVideoCount}个`)
 
@@ -2253,30 +2253,30 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
     let videoUrl: string | null = null
 
     // 分配已就绪的图片（按sort_order排序）
-    const [imageRows] = await db.query(
+    const imageRows = await db.query(
       `SELECT asset_url FROM order_assets 
        WHERE order_id = ? AND asset_type = 'image' AND status = 'ready' 
        ORDER BY sort_order ASC`,
       [orderId]
     )
     for (const row of (imageRows as any[])) {
-      if (row.asset_url) images.push(row.asset_url)
+      if (row.assetUrl) images.push(row.assetUrl)
     }
 
     // 分配已就绪的视频
-    const [videoRows] = await db.query(
+    const videoRows = await db.query(
       `SELECT asset_url FROM order_assets 
        WHERE order_id = ? AND asset_type = 'video' AND status = 'ready' 
        LIMIT 1`,
       [orderId]
     )
-    if ((videoRows as any[]).length > 0 && (videoRows as any[])[0].asset_url) {
-      videoUrl = (videoRows as any[])[0].asset_url
+    if ((videoRows as any[]).length > 0 && (videoRows as any[])[0].assetUrl) {
+      videoUrl = (videoRows as any[])[0].assetUrl
     }
 
     // 如果图片还在生成中，短轮询等待（最多30秒）
     if (images.length === 0) {
-      const [pendingImages] = await db.query(
+      const pendingImages = await db.query(
         `SELECT COUNT(*) as cnt FROM order_assets WHERE order_id = ? AND asset_type = 'image' AND status IN ('pending', 'generating')`,
         [orderId]
       )
@@ -2289,7 +2289,7 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
 
     // 如果视频还在生成中，短轮询等待（最多60秒）
     if (!videoUrl) {
-      const [pendingVideos] = await db.query(
+      const pendingVideos = await db.query(
         `SELECT COUNT(*) as cnt FROM order_assets WHERE order_id = ? AND asset_type = 'video' AND status IN ('pending', 'generating')`,
         [orderId]
       )
@@ -2314,14 +2314,14 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
       await new Promise(resolve => setTimeout(resolve, interval))
 
       const db = getMySQLClient()
-      const [rows] = await db.query(
+      const rows = await db.query(
         `SELECT asset_url FROM order_assets 
          WHERE order_id = ? AND asset_type = ? AND status = 'ready' 
          ORDER BY sort_order ASC`,
         [orderId, assetType]
       )
       for (const row of (rows as any[])) {
-        if (row.asset_url) results.push(row.asset_url)
+        if (row.assetUrl) results.push(row.assetUrl)
       }
       if (results.length > 0) break
     }

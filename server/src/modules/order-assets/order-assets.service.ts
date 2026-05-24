@@ -538,4 +538,40 @@ export class OrderAssetsService {
 
     return { success: true, assetId, message: '重新生成已提交' }
   }
+
+  /**
+   * 为订单触发AI素材生成（从素材等待页触发）
+   * 无素材时创建素材记录并生成；有失败素材时重新生成
+   */
+  async generateForOrder(orderId: string, _userId?: string) {
+    console.log(`[OrderAssets] 为订单 ${orderId} 触发AI素材生成`)
+
+    // 查询订单信息
+    const pool = getPool()
+    const [orderRows] = await pool.execute(
+      'SELECT content_type, platforms, requirements FROM orders WHERE id = ?',
+      [orderId]
+    ) as [any[], any]
+    if (!orderRows || orderRows.length === 0) {
+      throw new Error('订单不存在')
+    }
+    const order = orderRows[0]
+
+    if (order.content_type === 'text') {
+      throw new Error('纯文案订单无需生成素材')
+    }
+
+    // 更新订单 requirements 中 ai_auto_fill = true，确保 pregenerateOrderAssets 会执行
+    await pool.execute(
+      'UPDATE orders SET requirements = JSON_SET(COALESCE(requirements, "{}"), "$.ai_auto_fill", true) WHERE id = ?',
+      [orderId]
+    )
+
+    // 触发预生成（会自动检测已有素材、失败素材、缺失素材）
+    this.contentGenService.pregenerateOrderAssets(orderId).catch(err => {
+      console.error(`[OrderAssets] AI素材生成失败: ${err.message}`)
+    })
+
+    return { success: true, orderId, message: 'AI素材生成已提交' }
+  }
 }
