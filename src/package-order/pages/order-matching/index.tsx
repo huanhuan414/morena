@@ -118,21 +118,12 @@ export default function OrderMatchingPage() {
     setLoading(true)
     console.log('[OrderMatching] loadData 开始, orderId:', orderId)
     try {
-      // 并行请求订单信息和推荐列表，提升加载速度
-      const [orderRes, recommendRes] = await Promise.allSettled([
-        Network.request({ url: `/api/order/${orderId}` }),
-        Network.request({ url: `/api/order-dispatch/recommend/${orderId}` })
-      ])
-
-      console.log('[OrderMatching] orderRes status:', orderRes.status, orderRes.status === 'fulfilled' ? 'OK' : String(orderRes.reason))
-      console.log('[OrderMatching] recommendRes status:', recommendRes.status, recommendRes.status === 'fulfilled' ? 'OK' : String(recommendRes.reason))
-
-      // 处理订单信息
-      if (orderRes.status === 'fulfilled') {
-        const payload = orderRes.value?.data
-        console.log('[OrderMatching] order payload code:', payload?.code, 'hasData:', !!payload?.data)
-        if (payload?.code === 200 && payload?.data) {
-          const orderData = payload.data
+      // 先加载订单信息
+      try {
+        const orderRes = await Network.request({ url: `/api/order/${orderId}` })
+        console.log('[OrderMatching] 订单接口返回, code:', orderRes?.data?.code)
+        if (orderRes?.data?.code === 200 && orderRes?.data?.data) {
+          const orderData = orderRes.data.data
           setOrder({
             id: orderData.id,
             title: orderData.title || '未命名订单',
@@ -141,22 +132,24 @@ export default function OrderMatchingPage() {
             requirements: orderData.requirements,
             avatarCount: orderData.avatarCount || orderData.expectedQuantity || orderData.avatar_count || orderData.expected_quantity || 0
           })
-          // 如果订单还在pending_payment状态，启动轮询等待支付回调确认
           if (orderData.status === 'pending_payment') {
             startStatusPolling(orderId)
           }
         }
+      } catch (e) {
+        console.error('[OrderMatching] 订单请求失败:', e)
       }
 
-      // 处理推荐列表
-      if (recommendRes.status === 'fulfilled') {
-        const payload = recommendRes.value?.data
-        console.log('[OrderMatching] recommend payload code:', payload?.code, 'dataLen:', Array.isArray(payload?.data) ? payload.data.length : 'not array')
-        processRecommendations(recommendRes.value)
+      // 再加载推荐列表
+      try {
+        const recommendRes = await Network.request({ url: `/api/order-dispatch/recommend/${orderId}` })
+        console.log('[OrderMatching] 推荐接口返回, code:', recommendRes?.data?.code, 'dataLen:', Array.isArray(recommendRes?.data?.data) ? recommendRes.data.data.length : 'N/A')
+        processRecommendations(recommendRes)
+      } catch (e) {
+        console.error('[OrderMatching] 推荐请求失败:', e)
       }
     } catch (error) {
       console.error('[OrderMatching] loadData 异常:', error)
-      showToast({ title: '加载失败', icon: 'none' })
     } finally {
       console.log('[OrderMatching] loadData 完成, setLoading(false)')
       setLoading(false)
