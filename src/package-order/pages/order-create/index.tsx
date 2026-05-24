@@ -67,53 +67,51 @@ export default function OrderCreate() {
   useEffect(() => { return () => { stopAiPolling() } }, [])
 
   // ========== 素材上传相关 ==========
+  const totalCount = uploadedAssets.length
   const imageCount = uploadedAssets.filter(a => a.type === 'image').length
-  const videoCount = uploadedAssets.filter(a => a.type === 'video').length
   const requiredImageCount = form.contentType !== 'text' ? 3 : 0
-  const needVideo = form.contentType === 'video'
 
-  const handleUploadImage = async () => {
-    if (imageCount >= 9) {
-      Taro.showToast({ title: '最多上传9张图片', icon: 'none' })
+  /** 统一上传入口：选择图片/视频 */
+  const handleUploadAsset = async () => {
+    if (totalCount >= 20) {
+      Taro.showToast({ title: '最多上传20个素材', icon: 'none' })
       return
     }
     try {
-      const res = await Taro.chooseImage({ count: 9 - imageCount, sizeType: ['compressed'], sourceType: ['album', 'camera'] })
+      // chooseMedia 同时支持图片和视频，统一入口
+      const res = await Taro.chooseMedia({
+        count: 9,
+        mediaType: ['image', 'video'],
+        sourceType: ['album', 'camera'],
+        sizeType: ['compressed'],
+        maxDuration: 60,
+      })
       setIsUploading(true)
-      for (const tempPath of res.tempFilePaths) {
+      for (const media of res.tempFiles) {
         try {
-          const uploadRes = await Network.uploadFile({ url: '/api/upload/image', filePath: tempPath, name: 'file' })
+          const isVideo = media.fileType === 'video' || media.tempFilePath.endsWith('.mp4') || media.tempFilePath.endsWith('.mov')
+          const uploadUrl = isVideo ? '/api/upload/video' : '/api/upload/image'
+          const uploadRes = await Network.uploadFile({ url: uploadUrl, filePath: media.tempFilePath, name: 'file' })
           const data = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data
           const url = data?.data?.url || data?.url
           if (url) {
-            setUploadedAssets(prev => [...prev, { id: `img_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, url, type: 'image', filename: tempPath.split('/').pop() || 'image', size: 0, mimeType: 'image/jpeg' }])
+            const assetType = isVideo ? 'video' : 'image'
+            setUploadedAssets(prev => [...prev, {
+              id: `${assetType === 'video' ? 'vid' : 'img'}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+              url,
+              type: assetType,
+              filename: media.tempFilePath.split('/').pop() || (isVideo ? 'video' : 'image'),
+              size: media.size || 0,
+              mimeType: isVideo ? 'video/mp4' : 'image/jpeg',
+            }])
           }
-        } catch (e) { console.error('图片上传失败:', e) }
+        } catch (e) { console.error('素材上传失败:', e) }
       }
     } catch (e) { /* 用户取消选择 */ }
     finally { setIsUploading(false) }
   }
 
-  const handleUploadVideo = async () => {
-    if (videoCount >= 3) {
-      Taro.showToast({ title: '最多上传3个视频', icon: 'none' })
-      return
-    }
-    try {
-      const res = await Taro.chooseVideo({ sourceType: ['album', 'camera'], maxDuration: 60, compressed: true })
-      setIsUploading(true)
-      try {
-        const uploadRes = await Network.uploadFile({ url: '/api/upload/video', filePath: res.tempFilePath, name: 'file' })
-        const data = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data
-        const url = data?.data?.url || data?.url
-        if (url) {
-          setUploadedAssets(prev => [...prev, { id: `vid_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, url, type: 'video', filename: 'video', size: 0, mimeType: 'video/mp4' }])
-        }
-      } catch (e) { console.error('视频上传失败:', e) }
-    } catch (e) { /* 用户取消选择 */ }
-    finally { setIsUploading(false) }
-  }
-
+  /** 上传压缩包批量导入 */
   const handleUploadZip = async () => {
     const env = Taro.getEnv()
     if (env === Taro.ENV_TYPE.WEAPP) {
@@ -761,6 +759,67 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           </View>
         </View>
 
+        {/* 素材上传（可选） */}
+        <View className="section">
+          <View className="section-header">
+            <View className="section-title-row">
+              <View className="title-dot accent" />
+              <Text className="section-title">素材上传</Text>
+            </View>
+            <Text className="section-hint">
+              {totalCount === 0
+                ? '可选，不足将AI生成'
+                : `已选${totalCount}个素材`}
+            </Text>
+          </View>
+          {/* 已上传的素材缩略图网格 */}
+          {uploadedAssets.length > 0 && (
+            <View className="asset-upload-grid">
+              {uploadedAssets.map((asset, idx) => (
+                <View key={asset.id + idx} className="asset-preview-item">
+                  {asset.type === 'video' ? (
+                    <View className="asset-video-thumb">
+                      <Film size={20} color="#fff" />
+                    </View>
+                  ) : (
+                    <Image src={asset.url} className="asset-preview-img" mode="aspectFill" />
+                  )}
+                  <View
+                    className="asset-remove-btn"
+                    onClick={() => handleRemoveAsset(asset.id)}
+                  >
+                    <X size={12} color="#fff" />
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+          {/* 操作按钮行：添加素材 + 上传压缩包 */}
+          <View className="asset-action-row">
+            <View className="asset-add-main" onClick={handleUploadAsset}>
+              <Plus size={16} color="#6366F1" />
+              <Text className="asset-add-main-text">添加图片/视频</Text>
+            </View>
+            <View className="asset-zip-btn" onClick={handleUploadZip}>
+              <Plus size={14} color="#8B5CF6" />
+              <Text className="asset-zip-btn-text">压缩包</Text>
+            </View>
+          </View>
+          {isUploading && (
+            <View className="asset-uploading-bar">
+              <Loader size={14} color="#6366F1" className="ai-loading" />
+              <Text className="asset-uploading-bar-text">上传中...</Text>
+            </View>
+          )}
+          {/* AI补齐提示 */}
+          {form.contentType !== 'text' && imageCount < requiredImageCount && (
+            <View className="asset-ai-hint">
+              <Sparkles size={14} color="#8B5CF6" />
+              <Text className="asset-ai-hint-text">不足的图片支付后将由AI自动生成，分身接单时直接分配</Text>
+            </View>
+          )}
+        </View>
+
         {/* 内容风格偏好 */}
         <View className="section">
           <View className="section-header">
@@ -788,78 +847,6 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
               </View>
             ))}
           </View>
-        </View>
-
-        {/* 素材上传（可选） */}
-        <View className="section">
-          <View className="section-header">
-            <View className="section-title-row">
-              <View className="title-dot accent" />
-              <Text className="section-title">素材上传</Text>
-            </View>
-            <Text className="section-hint">
-              {form.contentType === 'text'
-                ? '上传素材将分配给接单分身'
-                : uploadedAssets.filter(a => a.type === 'image').length >= requiredImageCount
-                  ? '图片素材已满足'
-                  : `需${requiredImageCount}张图，不足将AI生成`}
-            </Text>
-          </View>
-          {/* 已上传的图片 */}
-          <View className="asset-upload-grid">
-            {uploadedAssets.filter(a => a.type === 'image').map((asset, idx) => (
-              <View key={asset.url + idx} className="asset-preview-item">
-                <Image src={asset.url} className="asset-preview-img" mode="aspectFill" />
-                <View
-                  className="asset-remove-btn"
-                  onClick={() => handleRemoveAsset(asset.id)}
-                >
-                  <X size={12} color="#fff" />
-                </View>
-              </View>
-            ))}
-            {/* 添加图片按钮 */}
-            {uploadedAssets.filter(a => a.type === 'image').length < 9 && (
-              <View className="asset-add-btn" onClick={handleUploadImage}>
-                <Plus size={20} color="#999" />
-                <Text className="asset-add-text">添加图片</Text>
-              </View>
-            )}
-            {/* 上传视频按钮 */}
-            {needVideo && uploadedAssets.filter(a => a.type === 'video').length === 0 && (
-              <View className="asset-add-btn" onClick={handleUploadVideo}>
-                <Film size={20} color="#999" />
-                <Text className="asset-add-text">添加视频</Text>
-              </View>
-            )}
-          </View>
-          {/* 已上传的视频 */}
-          {uploadedAssets.filter(a => a.type === 'video').map((asset, idx) => (
-            <View key={asset.url + idx} className="asset-video-item">
-              <Film size={14} color="#6366F1" />
-              <Text className="asset-video-name">{asset.filename}</Text>
-              <View className="asset-remove-btn-small" onClick={() => handleRemoveAsset(asset.id)}>
-                <X size={12} color="#999" />
-              </View>
-            </View>
-          ))}
-          {/* 上传压缩包 */}
-          <View className="asset-zip-row" onClick={handleUploadZip}>
-            <Plus size={14} color="#6366F1" />
-            <Text className="asset-zip-text">上传压缩包批量导入图片/视频</Text>
-          </View>
-          {isUploading && (
-            <View className="asset-uploading">
-              <Text className="asset-uploading-text">上传中...</Text>
-            </View>
-          )}
-          {/* AI补齐提示 */}
-          {form.contentType !== 'text' && uploadedAssets.filter(a => a.type === 'image').length < requiredImageCount && (
-            <View className="asset-ai-hint">
-              <Sparkles size={14} color="#8B5CF6" />
-              <Text className="asset-ai-hint-text">不足的图片支付后将由AI自动生成，分身接单时直接分配</Text>
-            </View>
-          )}
         </View>
 
         {/* 行业领域偏好 */}

@@ -904,42 +904,15 @@
 }
 
 /* 素材上传区域 */
-.asset-upload-section {
-  margin: 0 32rpx 24rpx;
-  padding: 28rpx;
-  background: #fff;
-  border-radius: 20rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
-}
-
-.asset-section-title {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 8rpx;
-  margin-bottom: 20rpx;
-}
-
-.asset-section-title-text {
-  font-size: 28rpx;
-  font-weight: 700;
-  color: #1a1a2e;
-}
-
-.asset-section-optional {
-  font-size: 22rpx;
-  color: #999;
-  font-weight: 400;
-}
-
-.asset-grid {
+.asset-upload-grid {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
   gap: 16rpx;
+  margin-bottom: 16rpx;
 }
 
-.asset-item {
+.asset-preview-item {
   position: relative;
   width: 160rpx;
   height: 160rpx;
@@ -947,22 +920,22 @@
   overflow: hidden;
 }
 
-.asset-item-image {
+.asset-preview-img {
   width: 160rpx;
   height: 160rpx;
 }
 
-.asset-item-video {
+.asset-video-thumb {
   width: 160rpx;
   height: 160rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f0f0f5;
+  background: #1e1e2e;
   border-radius: 12rpx;
 }
 
-.asset-item-delete {
+.asset-remove-btn {
   position: absolute;
   top: 4rpx;
   right: 4rpx;
@@ -975,84 +948,63 @@
   justify-content: center;
 }
 
-.asset-add-btn {
-  width: 160rpx;
-  height: 160rpx;
-  border-radius: 12rpx;
-  border: 2rpx dashed #d0d0d8;
+/* 操作按钮行 */
+.asset-action-row {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  gap: 16rpx;
+  align-items: center;
+}
+
+.asset-add-main {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 6rpx;
-  background: #fafafe;
+  gap: 8rpx;
+  height: 80rpx;
+  border-radius: 16rpx;
+  border: 2rpx dashed #C7D2FE;
+  background: #EEF2FF;
 }
 
-.asset-add-text {
-  font-size: 20rpx;
-  color: #999;
+.asset-add-main-text {
+  font-size: 26rpx;
+  color: #6366F1;
+  font-weight: 500;
 }
 
-.asset-add-zip {
-  width: 160rpx;
-  height: 160rpx;
-  border-radius: 12rpx;
-  border: 2rpx dashed #d0d0d8;
+.asset-zip-btn {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 6rpx;
-  background: #fafafe;
+  gap: 4rpx;
+  height: 80rpx;
+  padding: 0 28rpx;
+  border-radius: 16rpx;
+  border: 2rpx dashed #DDD6FE;
+  background: #F5F3FF;
 }
 
-.asset-add-zip-text {
-  font-size: 20rpx;
-  color: #999;
-}
-
-.asset-tip {
-  margin-top: 16rpx;
-  font-size: 22rpx;
-  color: #888;
-}
-
-.asset-tip-success {
-  color: #52c41a;
-}
-
-.asset-uploading {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(255, 255, 255, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12rpx;
-}
-
-.video-icon-wrap {
-  width: 48rpx;
-  height: 48rpx;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.video-filename {
-  font-size: 20rpx;
-  color: #666;
-  text-align: center;
-  padding: 0 8rpx;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.asset-zip-btn-text {
+  font-size: 24rpx;
+  color: #8B5CF6;
   white-space: nowrap;
-  max-width: 148rpx;
+}
+
+/* 上传中提示 */
+.asset-uploading-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8rpx;
+  margin-top: 12rpx;
+}
+.asset-uploading-bar-text {
+  font-size: 22rpx;
+  color: #6366F1;
 }
 
 /* AI补齐提示 */
