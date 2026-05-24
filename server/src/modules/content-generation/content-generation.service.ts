@@ -480,8 +480,20 @@ export class ContentGenerationService implements OnModuleInit {
       if (textFailed && !textContent) {
         this.logger.warn(`文案生成失败，跳过后续图片/视频生成`)
       } else {
-        // 视频类型：生成视频脚本作为文案内容（分身参考+发布指引）
-        if (needVideoScript && !textContent) {
+        // 视频类型 + 已有预分配视频：只生成配套文案（不是剧本）
+        // 剧本在发单时预生成视频已使用，分身只需生成配文即可
+        if (needVideoScript && hasAssignedVideo && !textContent) {
+          try {
+            await this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
+            textContent = await this.generateVideoCompanionText(platform, input, assignedVideoUrl)
+            this.logger.log(`视频配套文案生成完成: ${textContent.length}字`)
+            await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_video')
+          } catch (err: any) {
+            this.logger.warn(`视频配套文案生成失败: ${err.message}`)
+            textFailed = true
+          }
+        } else if (needVideoScript && !textContent) {
+          // 没有预分配视频：仍需生成视频脚本（用于后续视频生成）
           try {
             await this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
             const skillStrategy = getSkillStrategy(primarySkill)
@@ -1461,6 +1473,70 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
       return response || ''
     } catch (err: any) {
       this.logger.warn(`视频脚本LLM调用失败: ${err.message}`)
+      return ''
+    }
+  }
+
+  /**
+   * 生成视频配套文案（分身接单时使用，已有预生成视频，只需生成发布文案）
+   */
+  private async generateVideoCompanionText(platform: string, input: any, videoUrl: string, skillStrategy: any): Promise<string> {
+    const platformGuide: Record<string, string> = {
+      douyin: `抖音发布文案要求：
+- 开头设置悬念，吸引点击
+- 配合视频内容，不要重复视频口播
+- 引导评论互动
+- 适当使用话题标签`,
+      kuaishou: `快手发布文案要求：
+- 接地气的表达方式
+- 强调真实体验感
+- 引导关注和点赞`,
+      bilibili: `B站发布文案要求：
+- 有深度的文案描述
+- 适当使用梗和二次元元素
+- 引导三连`,
+      xiaohongshu: `小红书发布文案要求：
+- 精致有质感的文案
+- 使用emoji点缀
+- 引导点赞收藏`,
+    }
+
+    const guide = platformGuide[platform] || platformGuide.douyin
+    const skillTextStrategy = skillStrategy?.textStrategy || ''
+
+    const styleInstruction = getStyleInstruction(input.contentStyles || input.preferredStyles || [])
+    const nicheInstruction = getNicheInstruction(input.nicheTags || input.industryTags || [])
+
+    const prompt = `你是一个${platform}平台的资深内容创作者。现在有一个已经制作好的视频，你需要为它撰写发布时的配套文案。
+
+${styleInstruction ? `【创作风格要求】\n${styleInstruction}\n\n` : ''}${nicheInstruction ? `【专业领域要求】\n${nicheInstruction}\n\n` : ''}
+【商单任务 - 视频配套文案创作】
+品牌/产品名：${input.orderTitle}
+详细创作要求：${input.orderDescription}
+目标受众：${input.targetAudience || '年轻用户'}
+
+${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n` : ''}
+【${guide}】
+
+【绝对红线】
+1. 文案必须围绕"${input.orderTitle}"来创作
+2. 文案要与视频内容呼应，但不要写成视频脚本
+3. 禁止出现AI痕迹
+4. 直接输出文案内容
+
+请创作一段发布视频时的配套文案（含标题和正文）：`
+
+    try {
+      const systemPrompt = this.buildEnhancedSystemPrompt(platform, input)
+      const messages = []
+      if (systemPrompt) {
+        messages.push({ role: 'system', content: systemPrompt })
+      }
+      messages.push({ role: 'user', content: prompt })
+      const response = await this.invokeLlm(messages)
+      return response || ''
+    } catch (err: any) {
+      this.logger.warn(`视频配套文案LLM调用失败: ${err.message}`)
       return ''
     }
   }

@@ -26,6 +26,8 @@ export interface PlatformMeta {
   description?: string
   contentTips?: string[]
   requirements?: PlatformRequirement[]
+  imageCount?: number  // 该平台需要的配图数量（默认3）
+  videoCount?: number  // 该平台需要的视频数量（默认1）
 }
 
 export interface PlatformAppConfig {

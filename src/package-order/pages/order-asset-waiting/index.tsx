@@ -49,12 +49,14 @@ export default function OrderAssetWaiting() {
   const [aiAutoFill, setAiAutoFill] = useState(false)
   const [contentType, setContentType] = useState('image_text')
   const [requiredImageCount, setRequiredImageCount] = useState(3)
+  const [requiredVideoCount, setRequiredVideoCount] = useState(1)
   const [autoFillTriggered, setAutoFillTriggered] = useState(false)
 
   const pollUnsubRef = useRef<(() => void) | null>(null)
 
-  // 平台默认图片数量
+  // 平台默认素材数量
   const PLATFORM_DEFAULT_IMAGES = 3
+  const PLATFORM_DEFAULT_VIDEOS = 1
 
   const fetchAssets = async (p = 1, append = false) => {
     if (!orderId) return
@@ -116,14 +118,20 @@ export default function OrderAssetWaiting() {
         setAiAutoFill(autoFill)
 
         // 计算平台需要的素材数
+        const isVideo = (order.contentType || order.content_type) === 'video'
+        const perAvatarImages = isVideo ? 0 : PLATFORM_DEFAULT_IMAGES
+        const perAvatarVideos = isVideo ? PLATFORM_DEFAULT_VIDEOS : 0
+
         if (mode === 'exclusive') {
           const avatarCount = order.avatarCount || order.avatar_count || order.quantityPerAvatar || 1
-          setRequiredImageCount(PLATFORM_DEFAULT_IMAGES * avatarCount)
+          setRequiredImageCount(perAvatarImages * avatarCount)
+          setRequiredVideoCount(perAvatarVideos * avatarCount)
         } else {
-          setRequiredImageCount(PLATFORM_DEFAULT_IMAGES)
+          setRequiredImageCount(perAvatarImages)
+          setRequiredVideoCount(perAvatarVideos)
         }
 
-        console.log('[AssetWaiting] 订单信息:', { mode, autoFill, contentType: order.content_type, requiredImageCount: mode === 'exclusive' ? PLATFORM_DEFAULT_IMAGES * (order.avatar_count || 1) : PLATFORM_DEFAULT_IMAGES })
+        console.log('[AssetWaiting] 订单信息:', { mode, autoFill, contentType: order.content_type, requiredImageCount: perAvatarImages, requiredVideoCount: perAvatarVideos })
       }
     } catch (e) {
       console.error('[AssetWaiting] 获取订单信息失败:', e)
@@ -189,15 +197,16 @@ export default function OrderAssetWaiting() {
 
     const totalReady = summary.ready || 0
     const totalGenerating = summary.generating || 0
-    const needMore = contentType !== 'text' && totalReady + totalGenerating < requiredImageCount
+    const totalNeeded = contentType === 'video' ? requiredVideoCount : requiredImageCount + requiredVideoCount
+    const needMore = contentType !== 'text' && totalReady + totalGenerating < totalNeeded
 
-    console.log('[AssetWaiting] 补足检查:', { totalReady, totalGenerating, requiredImageCount, aiAutoFill, needMore })
+    console.log('[AssetWaiting] 补足检查:', { totalReady, totalGenerating, requiredImageCount, requiredVideoCount, totalNeeded, aiAutoFill, needMore })
 
     if (needMore && aiAutoFill && totalGenerating === 0) {
       // 素材不足 + AI补足开启 + 没有正在生成的 → 自动触发
       triggerAiAutoFill()
     }
-  }, [summary, loading, aiAutoFill, contentType, requiredImageCount, autoFillTriggered])
+  }, [summary, loading, aiAutoFill, contentType, requiredImageCount, requiredVideoCount, autoFillTriggered])
 
   // 重新生成单个素材
   const handleRegenerate = async (assetId: string) => {
@@ -300,7 +309,9 @@ export default function OrderAssetWaiting() {
   // 素材是否充足（达到平台需求）
   const totalReady = summary?.ready || 0
   const isSufficient = contentType === 'text' || totalReady >= requiredImageCount
-  const needMoreCount = contentType !== 'text' ? Math.max(0, requiredImageCount - totalReady - (summary?.generating || 0)) : 0
+  const needMoreImages = contentType !== 'text' ? Math.max(0, requiredImageCount - (summary?.images || 0) - (summary?.generating || 0)) : 0
+  const needMoreVideos = contentType === 'video' ? Math.max(0, requiredVideoCount - (summary?.videos || 0) - (summary?.generating || 0)) : 0
+  const needMoreCount = needMoreImages + needMoreVideos
 
   return (
     <View className="asset-waiting-page">
@@ -381,17 +392,17 @@ export default function OrderAssetWaiting() {
               <Text className="aw-status-failed-title">{summary?.failed}个素材生成失败</Text>
               <Text className="aw-status-failed-desc">点击&ldquo;重新生成&rdquo;重试</Text>
             </View>
-          ) : (
+          ) : summary && needMoreCount > 0 ? (
             /* 素材不足但无生成中 */
             <View className="aw-status-insufficient">
               <TriangleAlert size={32} color="#F59E0B" />
               <Text className="aw-status-insufficient-title">素材不足</Text>
               <Text className="aw-status-insufficient-desc">
-                当前{totalReady}张素材，需要{requiredImageCount}张
+                当前{summary.images}张图片{summary.videos > 0 ? `、${summary.videos}个视频` : ''}，需要{requiredImageCount}张图片{requiredVideoCount > 0 ? `、${requiredVideoCount}个视频` : ''}
                 {aiAutoFill ? '，AI正在补足' : '，可点击下方按钮补足'}
               </Text>
             </View>
-          )}
+          ) : null}
         </View>
 
         {/* 素材概要标签 */}
@@ -424,7 +435,7 @@ export default function OrderAssetWaiting() {
             {needMoreCount > 0 && !hasGenerating && (
               <View className="aw-tag aw-tag-need">
                 <Sparkles size={12} color="#6366F1" />
-                <Text className="aw-tag-text">需补足{needMoreCount}张</Text>
+                <Text className="aw-tag-text">需补足{needMoreImages > 0 ? `${needMoreImages}张图片` : ''}{needMoreImages > 0 && needMoreVideos > 0 ? '+' : ''}{needMoreVideos > 0 ? `${needMoreVideos}个视频` : ''}</Text>
               </View>
             )}
           </View>

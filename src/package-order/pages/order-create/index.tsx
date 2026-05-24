@@ -175,8 +175,8 @@ export default function OrderCreate() {
       // 有上传素材时
       if (form.aiAutoFill) {
         // AI补足开启：最终素材数 = 平台需求总数（上传+AI补足）
-        // 所有平台默认需要3张图片
-        return 3
+        const isVideo = form.contentType === 'video'
+        return isVideo ? 1 : 3 // 视频每平台1个，图文每平台3张
       }
       // 不补足：最大分身数 = 上传素材数
       return uploadedCount
