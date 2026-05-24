@@ -62,7 +62,7 @@ export default function OrderAssetWaiting() {
       const payload = res?.data
       const data = payload?.data
       if (payload?.code === 200 && data) {
-        const items = (data.items || []) as AssetItem[]
+        const items = (data.list || data.items || []) as AssetItem[]
         if (append) {
           setAssets(prev => [...prev, ...items])
         } else {
@@ -98,13 +98,14 @@ export default function OrderAssetWaiting() {
     if (!orderId) return
     try {
       const res = await Network.request({
-        url: `/api/orders/${orderId}`,
+        url: `/api/order/${orderId}`,
         method: 'GET',
       })
       const payload = res?.data
       if (payload?.code === 200 && payload?.data) {
         const order = payload.data
-        setDistributeMode(order.assetDistributeMode || order.asset_distribute_mode || 'shared')
+        const mode = order.assetDistributeMode || order.asset_distribute_mode || order.requirements?.asset_distribute_mode || 'shared'
+        setDistributeMode(mode)
       }
     } catch (e) {
       console.error('[AssetWaiting] 获取订单信息失败:', e)
