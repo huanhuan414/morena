@@ -550,7 +550,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         })
         Taro.showToast({ title: '支付成功', icon: 'success' })
         setTimeout(() => {
-          Taro.navigateTo({ url: `/package-order/pages/order-matching/index?orderId=${orderId}` })
+          Taro.navigateTo({ url: `/package-order/pages/order-asset-waiting/index?orderId=${orderId}` })
         }, 1500)
       } else {
         Taro.showToast({ title: payload?.message || '创建支付失败', icon: 'none' })

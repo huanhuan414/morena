@@ -42,6 +42,7 @@
 .aw-body {
   height: calc(100vh - 140rpx);
   padding: 24rpx;
+  padding-bottom: 180rpx;
   box-sizing: border-box;
 }
 
@@ -195,6 +196,12 @@
 .aw-asset-thumb {
   width: 100%;
   height: 100%;
+}
+.aw-asset-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #E2E8F0;
 }
 .aw-asset-video-wrap {
   width: 100%;

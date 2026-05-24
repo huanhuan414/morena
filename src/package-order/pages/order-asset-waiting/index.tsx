@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Taro from '@tarojs/taro'
-import { View, Text, Image, ScrollView } from '@tarojs/components'
+import { View, Text, Image, Video, ScrollView } from '@tarojs/components'
 import {
   ArrowLeft, RefreshCw, CircleCheck, Loader, CircleX,
   Play, Sparkles, ChevronRight, ImagePlus
@@ -154,10 +154,10 @@ export default function OrderAssetWaiting() {
     }
   }
 
-  // 去订单详情
-  const goToOrderDetail = () => {
+  // 下一步：匹配分身
+  const goToMatching = () => {
     if (!orderId) return
-    Taro.redirectTo({ url: `/package-order/pages/order-detail/index?id=${orderId}` })
+    Taro.redirectTo({ url: `/package-order/pages/order-matching/index?orderId=${orderId}` })
   }
 
   const isAllReady = summary && summary.total > 0 && summary.generating === 0 && summary.failed === 0
@@ -172,8 +172,8 @@ export default function OrderAssetWaiting() {
             <ArrowLeft size={20} color="#fff" />
           </View>
           <Text className="aw-header-title">素材准备</Text>
-          <View className="aw-header-action" onClick={goToOrderDetail}>
-            <Text className="aw-header-action-text">查看订单</Text>
+          <View className="aw-header-action" onClick={goToMatching}>
+            <Text className="aw-header-action-text">跳过</Text>
           </View>
         </View>
       </View>
@@ -259,22 +259,37 @@ export default function OrderAssetWaiting() {
                 <View key={asset.id} className="aw-asset-item">
                   {asset.asset_type === 'video' ? (
                     <View className="aw-asset-video-wrap">
-                      <Image
-                        src={asset.asset_url}
-                        className="aw-asset-thumb"
-                        mode="aspectFill"
-                      />
+                      {asset.status === 'ready' && asset.asset_url ? (
+                        <Video
+                          src={asset.asset_url}
+                          className="aw-asset-thumb"
+                          controls={false}
+                          showPlayBtn={false}
+                          showCenterPlayBtn={false}
+                          showFullscreenBtn={false}
+                          autoplay={false}
+                          muted
+                        />
+                      ) : (
+                        <View className="aw-asset-thumb aw-asset-placeholder">
+                          <Play size={24} color="#94A3B8" />
+                        </View>
+                      )}
                       <View className="aw-video-play-icon">
                         <Play size={16} color="#fff" />
                       </View>
                       <Text className="aw-video-label">视频</Text>
                     </View>
-                  ) : (
+                  ) : asset.status === 'ready' && asset.asset_url ? (
                     <Image
                       src={asset.asset_url}
                       className="aw-asset-thumb"
                       mode="aspectFill"
                     />
+                  ) : (
+                    <View className="aw-asset-thumb aw-asset-placeholder">
+                      <ImagePlus size={24} color="#94A3B8" />
+                    </View>
                   )}
                   {/* 状态标签 */}
                   {asset.status === 'ready' && (
@@ -331,17 +346,18 @@ export default function OrderAssetWaiting() {
         {/* 底部操作 */}
         <View className="aw-bottom-actions">
           {isAllReady ? (
-            <View className="aw-primary-btn" onClick={goToOrderDetail}>
-              <Text className="aw-primary-btn-text">素材已就绪，查看订单</Text>
+            <View className="aw-primary-btn" onClick={goToMatching}>
+              <Text className="aw-primary-btn-text">下一步：匹配分身</Text>
+              <ChevronRight size={16} color="#fff" />
             </View>
           ) : (
             <>
-              <View className="aw-secondary-btn" onClick={goToOrderDetail}>
-                <Text className="aw-secondary-btn-text">稍后查看</Text>
+              <View className="aw-secondary-btn" onClick={goToMatching}>
+                <Text className="aw-secondary-btn-text">跳过等待</Text>
               </View>
-              <View className="aw-primary-btn aw-primary-btn-waiting" onClick={() => {}}>
+              <View className="aw-primary-btn aw-primary-btn-waiting">
                 <Loader size={14} color="#fff" className="aw-spin" />
-                <Text className="aw-primary-btn-text">等待生成完成</Text>
+                <Text className="aw-primary-btn-text">素材生成中...</Text>
               </View>
             </>
           )}
