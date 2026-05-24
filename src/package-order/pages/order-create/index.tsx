@@ -170,18 +170,20 @@ export default function OrderCreate() {
   const getMaxAvatarCount = () => {
     if (form.assetDistributeMode !== 'exclusive') return Infinity
     // 独占模式：每个素材只能分配给一个分身
+    // 每个平台需要: 图文=3张图片, 视频=1个视频
+    const isVideo = form.contentType === 'video'
+    const perAvatarAssets = isVideo ? 1 : 3 // 每个分身需要的素材数
+
     const uploadedCount = uploadedAssets.length
     if (uploadedCount > 0) {
-      // 有上传素材时
       if (form.aiAutoFill) {
         // AI补足开启：最终素材数 = 平台需求总数（上传+AI补足）
-        const isVideo = form.contentType === 'video'
-        return isVideo ? 1 : 3 // 视频每平台1个，图文每平台3张
+        return perAvatarAssets
       }
-      // 不补足：最大分身数 = 上传素材数
-      return uploadedCount
+      // 不补足：最大分身数 = Math.floor(上传素材数 / 每分身需要数)
+      return Math.floor(uploadedCount / perAvatarAssets)
     }
-    // 无上传素材：默认AI生成，按需生成，不限（AI按分身数生成）
+    // 无上传素材：默认AI生成，按分身数生成，不限
     return 99
   }
 

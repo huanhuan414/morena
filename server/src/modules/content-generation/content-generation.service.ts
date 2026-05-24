@@ -2295,30 +2295,39 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
         return
       }
 
-      // 确定需要的素材数量（取各平台最大需求）
-      let requiredImageCount = 0
-      let requiredVideo = false
+      // 确定每个分身需要的素材数量（取各平台最大需求）
+      let perAvatarImages = 0
+      let perAvatarVideos = 0
       for (const platform of platforms) {
         const imgCount = this.getDefaultImageCount(platform, contentType)
-        requiredImageCount = Math.max(requiredImageCount, imgCount)
+        perAvatarImages = Math.max(perAvatarImages, imgCount)
         if (contentType === 'video') {
-          requiredVideo = true
+          perAvatarVideos = 1 // 每个平台都是1个视频
         }
       }
 
-      // 独占模式：每个分身需要独立素材，总素材数 = 分身数 × 每分身素材数
+      // 计算总需求
       const assetDistributeMode = order.assetDistributeMode || order.asset_distribute_mode || 'shared'
       const avatarCount = Number(order.avatarCount || order.avatar_count || order.expectedQuantity || order.expected_quantity || 1)
-      if (assetDistributeMode === 'exclusive' && avatarCount > 1) {
-        requiredImageCount = requiredImageCount * avatarCount
-        console.log(`[预生成] 独占模式: ${avatarCount}个分身 × ${requiredImageCount / avatarCount}张/分身 = 共需${requiredImageCount}张图片`)
+      let requiredImageCount: number
+      let requiredVideoCount: number
+      if (assetDistributeMode === 'exclusive') {
+        // 独占模式：每个分身需要独立素材，总素材数 = 分身数 × 每分身素材数
+        requiredImageCount = perAvatarImages * avatarCount
+        requiredVideoCount = perAvatarVideos * avatarCount
+        console.log(`[预生成] 独占模式: ${avatarCount}个分身 × (图片${perAvatarImages}张 + 视频${perAvatarVideos}个)/分身 = 共需图片${requiredImageCount}张, 视频${requiredVideoCount}个`)
+      } else {
+        // 共享模式：所有分身共享同一套素材
+        requiredImageCount = perAvatarImages
+        requiredVideoCount = perAvatarVideos
+        console.log(`[预生成] 共享模式: 需要图片${requiredImageCount}张, 视频${requiredVideoCount}个`)
       }
 
       // 计算缺失
       const missingImages = Math.max(0, requiredImageCount - uploadedImageCount)
-      const needVideo = requiredVideo && uploadedVideoCount === 0
+      const missingVideos = Math.max(0, requiredVideoCount - uploadedVideoCount)
 
-      console.log(`[预生成] 需要: 图片${requiredImageCount}张(缺${missingImages}), 视频${requiredVideo ? '1个' : '0个'}(缺${needVideo ? 1 : 0}), 来源: ${hasUploadedAssets ? '用户上传+AI补足' : '纯AI生成'}`)
+      console.log(`[预生成] 需要: 图片${requiredImageCount}张(已有${uploadedImageCount},缺${missingImages}), 视频${requiredVideoCount}个(已有${uploadedVideoCount},缺${missingVideos}), 来源: ${hasUploadedAssets ? '用户上传+AI补足' : '纯AI生成'}`)
 
       // AI补齐图片
       if (missingImages > 0) {
@@ -2326,9 +2335,11 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
         await this.pregenerateImages(orderId, prompt, missingImages, platforms[0] || 'wechat')
       }
 
-      // AI补齐视频
-      if (needVideo) {
-        await this.pregenerateVideo(orderId, title, description, platforms[0] || 'wechat')
+      // AI补齐视频（按缺失数量逐个生成）
+      for (let i = 0; i < missingVideos; i++) {
+        await this.pregenerateVideo(orderId, title, description, platforms[0] || 'wechat').catch(err => {
+          console.error(`[预生成] 第${i + 1}个视频生成失败:`, err.message)
+        })
       }
 
       console.log(`[预生成] 订单 ${orderId} 素材预生成完成`)
