@@ -39,7 +39,9 @@ export class OrderAssetsService {
   private volcengineServiceInstance: VolcengineService
 
   constructor() {
+    console.log('[OrderAssetsService] 构造函数被调用 (无参版)')
     this.volcengineServiceInstance = new VolcengineService()
+    console.log('[OrderAssetsService] 实例化完成')
   }
 
   /**

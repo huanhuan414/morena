@@ -1,15 +1,14 @@
-import { Controller, Get, Post, Delete, Body, Param, Query, UseInterceptors, UploadedFile, Req } from '@nestjs/common'
+import { Controller, Get, Post, Delete, Body, Param, Query, UseInterceptors, UploadedFile, Req, Inject, forwardRef } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { OrderAssetsService } from './order-assets.service'
 import { Request } from 'express'
 
 @Controller('order-assets')
 export class OrderAssetsController {
-  private readonly orderAssetsService: OrderAssetsService
-
-  constructor() {
-    // 手动创建 OrderAssetsService 实例（绕过服务器 DI 注入问题）
-    this.orderAssetsService = new OrderAssetsService()
+  constructor(
+    private readonly orderAssetsService: OrderAssetsService,
+  ) {
+    console.log(`[OrderAssetsController] 构造函数被调用, orderAssetsService= ${!!this.orderAssetsService}`)
   }
 
   /**
