@@ -290,7 +290,7 @@ export class ContentGenerationService implements OnModuleInit {
     const primarySkill = this.detectPrimarySkill(input.avatarSkills || [], input.contentType)
     const effectiveContentType = this.resolveContentType(primarySkill, input.contentType)
 
-    this.logger.log(`内容生成: orderId=${input.orderId}, avatarId=${input.avatarId}, primarySkill=${primarySkill}, contentType=${input.contentType}->${effectiveContentType}, skills=${input.avatarSkills?.join(',')}, requestId=${input.requestId || 'new'}`)
+    this.logger.log(`内容生成: orderId=${input.orderId}, avatarId=${input.avatarId}, primarySkill=${primarySkill}, contentType=${input.contentType}->${effectiveContentType}, skills=${input.avatarSkills?.join(',')}, requestId=${input.requestId || 'new'}, assignedImages=${input.assignedImages?.length || 0}, assignedVideoUrl=${input.assignedVideoUrl || 'none'}`)
 
     for (let i = 0; i < input.platforms.length; i++) {
       const platform = input.platforms[i]
@@ -675,6 +675,8 @@ export class ContentGenerationService implements OnModuleInit {
       videos,
       platforms: [platform],
       failedParts,
+      assignedImages: assignedImages.length > 0 ? assignedImages : undefined,
+      assignedVideoUrl,
     }, statusErrorMessage)
 
     this.logger.log(`内容生成结束: requestId=${requestId}, status=${finalStatus}, failedParts=[${failedParts.join(',')}]`)
