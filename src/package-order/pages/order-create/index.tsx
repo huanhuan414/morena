@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Taro from '@tarojs/taro'
-import { View, Text, ScrollView, Image } from '@tarojs/components'
+import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -781,10 +781,21 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                 <View key={asset.id + idx} className="asset-preview-item">
                   {asset.type === 'video' ? (
                     <View className="asset-preview-video-wrap">
-                      <Image src={asset.url} className="asset-preview-img" mode="aspectFill" />
+                      <Video
+                        src={asset.url}
+                        className="asset-preview-video"
+                        muted
+                        autoplay={false}
+                        showPlayBtn={false}
+                        showFullscreenBtn={false}
+                        showCenterPlayBtn={false}
+                        controls={false}
+                        objectFit="cover"
+                      />
                       <View className="asset-video-play-icon">
                         <Play size={20} color="#fff" filled />
                       </View>
+                      <Text className="asset-video-label">视频</Text>
                     </View>
                   ) : (
                     <Image src={asset.url} className="asset-preview-img" mode="aspectFill" />
