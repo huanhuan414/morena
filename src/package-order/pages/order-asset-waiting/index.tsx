@@ -1,13 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
-import Taro from '@tarojs/taro'
-import { View, Text, Image, Video, ScrollView } from '@tarojs/components'
-import {
-  ArrowLeft, RefreshCw, CircleCheck, Loader, CircleX,
-  Play, Sparkles, ChevronRight, ImagePlus, PackageOpen,
-  Users, UserCheck
-} from 'lucide-react-taro'
+import { useState, useEffect, useRef } from 'react'
+import Taro, { useRouter } from '@tarojs/taro'
+import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
 import { Network } from '@/network'
-import { getStatusBarHeight } from '@/utils/safe-area'
+import {
+  ArrowLeft, Loader, PackageOpen, CircleCheck, CircleX,
+  Users, UserCheck, RefreshCw, Sparkles, ImagePlus, Play,
+  ChevronRight, TriangleAlert
+} from 'lucide-react-taro'
 import { subscribePolling } from '@/utils/polling'
 import './index.css'
 
@@ -15,11 +14,10 @@ interface AssetItem {
   id: string
   asset_type: string
   source: string
-  asset_url: string
   status: string
+  asset_url?: string
   original_filename?: string
-  prompt?: string
-  created_at: string
+  assigned_to?: string
 }
 
 interface AssetSummary {
@@ -34,49 +32,54 @@ interface AssetSummary {
 }
 
 export default function OrderAssetWaiting() {
+  const router = useRouter()
+  const orderId = router.params.orderId || ''
+  const statusBarHeight = Taro.getSystemInfoSync().statusBarHeight || 0
+
   const [assets, setAssets] = useState<AssetItem[]>([])
   const [summary, setSummary] = useState<AssetSummary | null>(null)
+  const [distributeMode, setDistributeMode] = useState<'shared' | 'exclusive'>('shared')
   const [loading, setLoading] = useState(true)
-  const [regenerating, setRegenerating] = useState<string[]>([])
-  const [isRegenAll, setIsRegenAll] = useState(false)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
-  const [distributeMode, setDistributeMode] = useState<'shared' | 'exclusive'>('shared')
+  const [regenerating, setRegenerating] = useState<string[]>([])
+  const [isRegenAll, setIsRegenAll] = useState(false)
+
+  // 订单信息：用于判断 AI 补足需求
+  const [aiAutoFill, setAiAutoFill] = useState(false)
+  const [contentType, setContentType] = useState('image_text')
+  const [requiredImageCount, setRequiredImageCount] = useState(3)
+  const [autoFillTriggered, setAutoFillTriggered] = useState(false)
+
   const pollUnsubRef = useRef<(() => void) | null>(null)
-  const statusBarHeight = getStatusBarHeight()
 
-  const orderId = (() => {
-    const inst = Taro.getCurrentInstance()
-    return inst?.router?.params?.orderId || ''
-  })()
+  // 平台默认图片数量
+  const PLATFORM_DEFAULT_IMAGES = 3
 
-  // 加载素材列表
-  const fetchAssets = async (pageNum: number = 1, append: boolean = false) => {
+  const fetchAssets = async (p = 1, append = false) => {
     if (!orderId) return
     try {
       const res = await Network.request({
-        url: `/api/order-assets/${orderId}`,
+        url: `/api/order-assets/${orderId}?page=${p}&pageSize=20`,
         method: 'GET',
-        data: { page: pageNum, pageSize: 20 },
       })
       const payload = res?.data
-      const data = payload?.data
-      if (payload?.code === 200 && data) {
-        const items = (data.list || data.items || []) as AssetItem[]
+      if (payload?.code === 200) {
+        const d = payload.data || {}
+        const list = d.list || d.items || []
         if (append) {
-          setAssets(prev => [...prev, ...items])
+          setAssets(prev => [...prev, ...list])
         } else {
-          setAssets(items)
+          setAssets(list)
         }
-        setTotalPages(data.totalPages || 1)
-        setPage(pageNum)
+        setPage(d.page || p)
+        setTotalPages(d.totalPages || 1)
       }
     } catch (e) {
       console.error('[AssetWaiting] 获取素材列表失败:', e)
     }
   }
 
-  // 加载概要
   const fetchSummary = async () => {
     if (!orderId) return
     try {
@@ -85,15 +88,14 @@ export default function OrderAssetWaiting() {
         method: 'GET',
       })
       const payload = res?.data
-      if (payload?.code === 200 && payload?.data) {
-        setSummary(payload.data as AssetSummary)
+      if (payload?.code === 200) {
+        setSummary(payload.data || {})
       }
     } catch (e) {
-      console.error('[AssetWaiting] 获取概要失败:', e)
+      console.error('[AssetWaiting] 获取素材概要失败:', e)
     }
   }
 
-  // 获取订单分配模式
   const fetchOrderInfo = async () => {
     if (!orderId) return
     try {
@@ -106,9 +108,48 @@ export default function OrderAssetWaiting() {
         const order = payload.data
         const mode = order.assetDistributeMode || order.asset_distribute_mode || order.requirements?.asset_distribute_mode || 'shared'
         setDistributeMode(mode)
+        setContentType(order.contentType || order.content_type || 'image_text')
+
+        // 读取 AI 补足开关
+        const reqs = order.requirements || {}
+        const autoFill = reqs.ai_auto_fill !== undefined ? reqs.ai_auto_fill : true
+        setAiAutoFill(autoFill)
+
+        // 计算平台需要的素材数
+        if (mode === 'exclusive') {
+          const avatarCount = order.avatarCount || order.avatar_count || order.quantityPerAvatar || 1
+          setRequiredImageCount(PLATFORM_DEFAULT_IMAGES * avatarCount)
+        } else {
+          setRequiredImageCount(PLATFORM_DEFAULT_IMAGES)
+        }
+
+        console.log('[AssetWaiting] 订单信息:', { mode, autoFill, contentType: order.content_type, requiredImageCount: mode === 'exclusive' ? PLATFORM_DEFAULT_IMAGES * (order.avatar_count || 1) : PLATFORM_DEFAULT_IMAGES })
       }
     } catch (e) {
       console.error('[AssetWaiting] 获取订单信息失败:', e)
+    }
+  }
+
+  // 自动触发 AI 补足
+  const triggerAiAutoFill = async () => {
+    if (!orderId || autoFillTriggered) return
+    console.log('[AssetWaiting] 自动触发AI补足')
+    setAutoFillTriggered(true)
+    try {
+      const res = await Network.request({
+        url: '/api/order-assets/generate-for-order',
+        method: 'POST',
+        data: { orderId },
+      })
+      const payload = res?.data
+      console.log('[AssetWaiting] AI补足结果:', payload)
+      if (payload?.code === 200) {
+        // 刷新素材列表
+        await fetchAssets(1)
+        await fetchSummary()
+      }
+    } catch (e) {
+      console.error('[AssetWaiting] AI补足触发失败:', e)
     }
   }
 
@@ -142,6 +183,22 @@ export default function OrderAssetWaiting() {
     }
   }, [orderId])
 
+  // 检查是否需要 AI 补足并自动触发
+  useEffect(() => {
+    if (loading || !summary || autoFillTriggered) return
+
+    const totalReady = summary.ready || 0
+    const totalGenerating = summary.generating || 0
+    const needMore = contentType !== 'text' && totalReady + totalGenerating < requiredImageCount
+
+    console.log('[AssetWaiting] 补足检查:', { totalReady, totalGenerating, requiredImageCount, aiAutoFill, needMore })
+
+    if (needMore && aiAutoFill && totalGenerating === 0) {
+      // 素材不足 + AI补足开启 + 没有正在生成的 → 自动触发
+      triggerAiAutoFill()
+    }
+  }, [summary, loading, aiAutoFill, contentType, requiredImageCount, autoFillTriggered])
+
   // 重新生成单个素材
   const handleRegenerate = async (assetId: string) => {
     if (regenerating.includes(assetId)) return
@@ -168,36 +225,23 @@ export default function OrderAssetWaiting() {
     }
   }
 
-  // 重新生成全部失败素材 / 无素材时AI生成
+  // 重新生成全部失败素材 / AI补足 / 无素材时AI生成
   const handleRegenerateAll = async () => {
     if (isRegenAll) return
-    const failedAssets = assets.filter(a => a.status === 'failed')
     setIsRegenAll(true)
     try {
-      if (!hasAssets || failedAssets.length === 0) {
-        // 无素材或全部生成中：触发 AI 为订单生成素材
-        const res = await Network.request({
-          url: '/api/order-assets/generate-for-order',
-          method: 'POST',
-          data: { orderId },
-        })
-        const payload = res?.data
-        if (payload?.code === 200) {
-          Taro.showToast({ title: 'AI素材生成已提交', icon: 'success' })
-        } else {
-          Taro.showToast({ title: payload?.msg || '操作失败', icon: 'none' })
-        }
+      // 统一调用 generate-for-order，后端会自动判断需要补多少
+      const res = await Network.request({
+        url: '/api/order-assets/generate-for-order',
+        method: 'POST',
+        data: { orderId },
+      })
+      const payload = res?.data
+      if (payload?.code === 200) {
+        Taro.showToast({ title: 'AI素材生成已提交', icon: 'success' })
+        setAutoFillTriggered(false) // 重置，允许再次检查
       } else {
-        // 有失败素材：逐个重新生成
-        const ids = failedAssets.map(a => a.id)
-        for (const id of ids) {
-          await Network.request({
-            url: '/api/order-assets/regenerate',
-            method: 'POST',
-            data: { assetId: id },
-          }).catch(() => {})
-        }
-        Taro.showToast({ title: '已提交重新生成', icon: 'success' })
+        Taro.showToast({ title: payload?.msg || '操作失败', icon: 'none' })
       }
       await fetchAssets(1)
       await fetchSummary()
@@ -227,6 +271,11 @@ export default function OrderAssetWaiting() {
   const hasFailed = (summary?.failed || 0) > 0
   const hasGenerating = (summary?.generating || 0) > 0
 
+  // 素材是否充足（达到平台需求）
+  const totalReady = summary?.ready || 0
+  const isSufficient = contentType === 'text' || totalReady >= requiredImageCount
+  const needMoreCount = contentType !== 'text' ? Math.max(0, requiredImageCount - totalReady - (summary?.generating || 0)) : 0
+
   return (
     <View className="asset-waiting-page">
       {/* 顶部 */}
@@ -254,10 +303,13 @@ export default function OrderAssetWaiting() {
               <PackageOpen size={48} color="#94A3B8" />
               <Text className="aw-status-empty-title">暂无素材</Text>
               <Text className="aw-status-empty-desc">
-                没有上传素材且未开启AI自动补足{'\n'}可以点击下方&ldquo;重新生成&rdquo;让AI生成素材
+                {aiAutoFill
+                  ? 'AI将自动为您生成素材，点击下方按钮开始'
+                  : '没有上传素材且未开启AI补足，点击下方按钮生成'}
               </Text>
             </View>
-          ) : isAllReady ? (
+          ) : isSufficient && isAllReady ? (
+            /* 素材充足且全部就绪 */
             <View className="aw-status-done">
               <CircleCheck size={32} color="#10B981" />
               <Text className="aw-status-done-title">素材已就绪</Text>
@@ -275,31 +327,43 @@ export default function OrderAssetWaiting() {
               {distributeMode === 'shared' && hasAssets && (
                 <View className="aw-distribute-badge">
                   <Users size={14} color="#10B981" />
-                  <Text className="aw-distribute-badge-text">共享模式 · 所有分身使用相同素材</Text>
+                  <Text className="aw-status-badge-text">共享模式 · 所有分身使用相同素材</Text>
                 </View>
               )}
             </View>
-          ) : hasFailed && !hasGenerating ? (
-            <View className="aw-status-failed">
-              <CircleX size={32} color="#EF4444" />
-              <Text className="aw-status-failed-title">{summary?.failed}个素材生成失败</Text>
-              <Text className="aw-status-failed-desc">点击&ldquo;重新生成&rdquo;重试</Text>
-            </View>
-          ) : (
+          ) : hasGenerating ? (
+            /* AI生成中 */
             <View className="aw-status-generating">
               <Loader size={32} color="#6366F1" className="aw-spin" />
               <Text className="aw-status-gen-title">AI素材生成中...</Text>
               <Text className="aw-status-gen-desc">
-                已就绪 {summary?.ready || 0}/{summary?.total || 0}，生成中 {summary?.generating || 0}
+                已就绪 {summary?.ready || 0}/{requiredImageCount}，生成中 {summary?.generating || 0}
                 {summary?.failed ? `，失败 ${summary.failed}` : ''}
               </Text>
               {/* 进度条 */}
               <View className="aw-progress-bar">
                 <View
                   className="aw-progress-fill"
-                  style={{ width: summary?.total ? `${((summary?.ready || 0) / summary.total) * 100}%` : '0%' }}
+                  style={{ width: `${Math.min(100, ((summary?.ready || 0) / requiredImageCount) * 100)}%` }}
                 />
               </View>
+            </View>
+          ) : hasFailed && !hasGenerating ? (
+            /* 有失败素材 */
+            <View className="aw-status-failed">
+              <CircleX size={32} color="#EF4444" />
+              <Text className="aw-status-failed-title">{summary?.failed}个素材生成失败</Text>
+              <Text className="aw-status-failed-desc">点击&ldquo;重新生成&rdquo;重试</Text>
+            </View>
+          ) : (
+            /* 素材不足但无生成中 */
+            <View className="aw-status-insufficient">
+              <TriangleAlert size={32} color="#F59E0B" />
+              <Text className="aw-status-insufficient-title">素材不足</Text>
+              <Text className="aw-status-insufficient-desc">
+                当前{totalReady}张素材，需要{requiredImageCount}张
+                {aiAutoFill ? '，AI正在补足' : '，可点击下方按钮补足'}
+              </Text>
             </View>
           )}
         </View>
@@ -329,6 +393,12 @@ export default function OrderAssetWaiting() {
               <View className="aw-tag aw-tag-failed">
                 <CircleX size={12} color="#EF4444" />
                 <Text className="aw-tag-text">{summary.failed}个失败</Text>
+              </View>
+            )}
+            {needMoreCount > 0 && !hasGenerating && (
+              <View className="aw-tag aw-tag-need">
+                <Sparkles size={12} color="#6366F1" />
+                <Text className="aw-tag-text">需补足{needMoreCount}张</Text>
               </View>
             )}
           </View>
@@ -427,46 +497,64 @@ export default function OrderAssetWaiting() {
           </View>
         )}
 
-        {/* 底部操作 - 固定在底部 */}
-        <View className="aw-bottom-actions">
-          {isAllReady ? (
-            <View className="aw-primary-btn" onClick={goToMatching}>
-              <Text className="aw-primary-btn-text">下一步：匹配分身</Text>
-              <ChevronRight size={16} color="#fff" />
-            </View>
-          ) : hasFailed && !hasGenerating ? (
-            <>
-              <View className="aw-secondary-btn" onClick={goToMatching}>
-                <Text className="aw-secondary-btn-text">直接匹配分身</Text>
-              </View>
-              <View className="aw-primary-btn" onClick={handleRegenerateAll}>
-                {isRegenAll ? <Loader size={14} color="#fff" className="aw-spin" /> : <RefreshCw size={14} color="#fff" />}
-                <Text className="aw-primary-btn-text">重新生成</Text>
-              </View>
-            </>
-          ) : !hasAssets ? (
-            <>
-              <View className="aw-secondary-btn" onClick={goToMatching}>
-                <Text className="aw-secondary-btn-text">跳过</Text>
-              </View>
-              <View className="aw-primary-btn" onClick={handleRegenerateAll}>
-                {isRegenAll ? <Loader size={14} color="#fff" className="aw-spin" /> : <Sparkles size={14} color="#fff" />}
-                <Text className="aw-primary-btn-text">AI生成素材</Text>
-              </View>
-            </>
-          ) : (
-            <>
-              <View className="aw-secondary-btn" onClick={goToMatching}>
-                <Text className="aw-secondary-btn-text">跳过等待</Text>
-              </View>
-              <View className="aw-primary-btn aw-primary-btn-waiting">
-                <Loader size={14} color="#fff" className="aw-spin" />
-                <Text className="aw-primary-btn-text">素材生成中...</Text>
-              </View>
-            </>
-          )}
-        </View>
+        {/* 底部占位 - 避免固定底栏遮挡内容 */}
+        <View style={{ height: '100px' }} />
       </ScrollView>
+
+      {/* 底部操作 - 固定在底部 */}
+      <View className="aw-bottom-actions">
+        {isSufficient && isAllReady ? (
+          /* 素材充足且全部就绪 → 下一步 */
+          <View className="aw-primary-btn" onClick={goToMatching}>
+            <Text className="aw-primary-btn-text">下一步：匹配分身</Text>
+            <ChevronRight size={16} color="#fff" />
+          </View>
+        ) : hasGenerating ? (
+          /* AI生成中 → 等待 + 重新生成 */
+          <>
+            <View className="aw-secondary-btn" onClick={goToMatching}>
+              <Text className="aw-secondary-btn-text">跳过等待</Text>
+            </View>
+            <View className="aw-primary-btn aw-primary-btn-waiting">
+              <Loader size={14} color="#fff" className="aw-spin" />
+              <Text className="aw-primary-btn-text">素材生成中...</Text>
+            </View>
+          </>
+        ) : hasFailed && !hasGenerating ? (
+          /* 有失败素材 → 重新生成 */
+          <>
+            <View className="aw-secondary-btn" onClick={goToMatching}>
+              <Text className="aw-secondary-btn-text">直接匹配分身</Text>
+            </View>
+            <View className="aw-primary-btn" onClick={handleRegenerateAll}>
+              {isRegenAll ? <Loader size={14} color="#fff" className="aw-spin" /> : <RefreshCw size={14} color="#fff" />}
+              <Text className="aw-primary-btn-text">重新生成</Text>
+            </View>
+          </>
+        ) : !hasAssets ? (
+          /* 无素材 → AI生成 */
+          <>
+            <View className="aw-secondary-btn" onClick={goToMatching}>
+              <Text className="aw-secondary-btn-text">跳过</Text>
+            </View>
+            <View className="aw-primary-btn" onClick={handleRegenerateAll}>
+              {isRegenAll ? <Loader size={14} color="#fff" className="aw-spin" /> : <Sparkles size={14} color="#fff" />}
+              <Text className="aw-primary-btn-text">AI生成素材</Text>
+            </View>
+          </>
+        ) : (
+          /* 素材不足 → 补足 */
+          <>
+            <View className="aw-secondary-btn" onClick={goToMatching}>
+              <Text className="aw-secondary-btn-text">跳过</Text>
+            </View>
+            <View className="aw-primary-btn" onClick={handleRegenerateAll}>
+              {isRegenAll ? <Loader size={14} color="#fff" className="aw-spin" /> : <Sparkles size={14} color="#fff" />}
+              <Text className="aw-primary-btn-text">AI补足素材（还需{needMoreCount}张）</Text>
+            </View>
+          </>
+        )}
+      </View>
     </View>
   )
 }
