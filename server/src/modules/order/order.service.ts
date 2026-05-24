@@ -670,6 +670,10 @@ export class OrderService {
         AND o.status IN ('open', 'pending_dispatch', 'pending', 'in_progress', 
                          'awaiting_acceptance', 'submitted', 'auto_cancelled',
                          'pending_acceptance', 'created', 'assigned', 'pending_payment')
+        AND NOT EXISTS (
+          SELECT 1 FROM order_assets oa 
+          WHERE oa.order_id COLLATE utf8mb4_general_ci = o.id AND oa.status NOT IN ('ready', 'failed')
+        )
       )${platformClause}
     `
 

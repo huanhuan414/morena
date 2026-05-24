@@ -93,11 +93,15 @@ export default function OrderMatchingPage() {
   useLoad(() => {
     if (orderId) {
       loadData()
+    } else {
+      // 没有 orderId 时不应停留在 loading 状态
+      setLoading(false)
+      showToast({ title: '缺少订单ID', icon: 'none' })
     }
   })
 
   useDidShow(() => {
-    if (orderId && !loading) {
+    if (orderId && !loading && recommendations.length === 0) {
       loadRecommendations()
     }
   })
@@ -105,13 +109,15 @@ export default function OrderMatchingPage() {
   const loadData = async () => {
     setLoading(true)
     try {
-      // 获取订单信息
-      const orderRes = await Network.request({
-        url: `/api/order/${orderId}`
-      })
-      
-      if (orderRes.data?.code === 200 && orderRes.data?.data) {
-        const orderData = orderRes.data.data
+      // 并行请求订单信息和推荐列表，提升加载速度
+      const [orderRes, recommendRes] = await Promise.allSettled([
+        Network.request({ url: `/api/order/${orderId}` }),
+        Network.request({ url: `/api/order-dispatch/recommend/${orderId}` })
+      ])
+
+      // 处理订单信息
+      if (orderRes.status === 'fulfilled' && orderRes.value.data?.code === 200 && orderRes.value.data?.data) {
+        const orderData = orderRes.value.data.data
         setOrder({
           id: orderData.id,
           title: orderData.title || '未命名订单',
@@ -125,9 +131,11 @@ export default function OrderMatchingPage() {
           startStatusPolling(orderId)
         }
       }
-      
-      // 加载推荐
-      await loadRecommendations()
+
+      // 处理推荐列表
+      if (recommendRes.status === 'fulfilled') {
+        processRecommendations(recommendRes.value)
+      }
     } catch (error) {
       console.error('加载数据失败:', error)
       showToast({ title: '加载失败', icon: 'none' })
@@ -136,12 +144,8 @@ export default function OrderMatchingPage() {
     }
   }
 
-  const loadRecommendations = async () => {
+  const processRecommendations = (res: any) => {
     try {
-      const res = await Network.request({
-        url: `/api/order-dispatch/recommend/${orderId}`
-      })
-      
       console.log('[推荐接口] 响应:', res.data)
       
       if (res.data?.code === 200) {
@@ -194,6 +198,17 @@ export default function OrderMatchingPage() {
       } else {
         console.log('[推荐接口] 返回错误:', res.data)
       }
+    } catch (error) {
+      console.error('处理推荐数据失败:', error)
+    }
+  }
+
+  const loadRecommendations = async () => {
+    try {
+      const res = await Network.request({
+        url: `/api/order-dispatch/recommend/${orderId}`
+      })
+      processRecommendations(res)
     } catch (error) {
       console.error('加载推荐失败:', error)
     }

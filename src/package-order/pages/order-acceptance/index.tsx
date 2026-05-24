@@ -212,16 +212,46 @@ export default function OrderAcceptance() {
 
   if (loading) {
     return (
-      <View className="od-page od-loading">
-        <Text className="block od-loading-text">加载中...</Text>
+      <View className="od-page">
+        <View className="od-header">
+          <View className="od-header-deco1" />
+          <View className="od-header-deco2" />
+          <View className="od-header-bar" style={{ paddingTop: `${statusBarHeight + 12}px` }}>
+            <View className="od-back-btn" onClick={() => navigateBack()}>
+              <ArrowLeft size={18} color="#fff" />
+            </View>
+            <View className="od-header-center">
+              <Text className="block od-header-title">验收中</Text>
+            </View>
+            <View className="od-header-right" />
+          </View>
+        </View>
+        <View className="od-loading">
+          <Text className="block od-loading-text">加载中...</Text>
+        </View>
       </View>
     )
   }
 
   if (!hasPermission) {
     return (
-      <View className="od-page od-loading">
-        <Text className="block od-loading-text">无权限验收此订单</Text>
+      <View className="od-page">
+        <View className="od-header">
+          <View className="od-header-deco1" />
+          <View className="od-header-deco2" />
+          <View className="od-header-bar" style={{ paddingTop: `${statusBarHeight + 12}px` }}>
+            <View className="od-back-btn" onClick={() => navigateBack()}>
+              <ArrowLeft size={18} color="#fff" />
+            </View>
+            <View className="od-header-center">
+              <Text className="block od-header-title">验收中</Text>
+            </View>
+            <View className="od-header-right" />
+          </View>
+        </View>
+        <View className="od-loading">
+          <Text className="block od-loading-text">无权限验收此订单</Text>
+        </View>
       </View>
     )
   }
