@@ -1,7 +1,15 @@
-import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common'
+import { Injectable, Logger } from '@nestjs/common'
 import { VolcengineService } from '../upload/volcengine.service'
-import { ContentGenerationService } from '../content-generation/content-generation.service'
 import { getPool } from '../../storage/database/mysql-client'
+
+// 延迟获取 ContentGenerationService 实例（避免循环依赖）
+let contentGenServiceInstance: any = null
+export function setContentGenerationService(instance: any) {
+  contentGenServiceInstance = instance
+}
+function getContentGenerationService(): any {
+  return contentGenServiceInstance
+}
 
 // 媒体文件扩展名白名单
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp']
@@ -28,12 +36,11 @@ export interface CreateAssetInput {
 @Injectable()
 export class OrderAssetsService {
   private readonly logger = new Logger(OrderAssetsService.name)
+  private volcengineServiceInstance: VolcengineService
 
-  constructor(
-    private readonly volcengineService: VolcengineService,
-    @Inject(forwardRef(() => ContentGenerationService))
-    private readonly contentGenService: ContentGenerationService,
-  ) {}
+  constructor() {
+    this.volcengineServiceInstance = new VolcengineService()
+  }
 
   /**
    * 获取订单素材列表（支持分页）
@@ -99,10 +106,10 @@ export class OrderAssetsService {
     // 上传到TOS
     let assetUrl: string
     if (assetType === 'image') {
-      const result = await this.volcengineService.uploadImage(file)
+      const result = await this.volcengineServiceInstance.uploadImage(file)
       assetUrl = result.url
     } else {
-      const result = await this.volcengineService.uploadVideo(file.buffer, file.originalname)
+      const result = await this.volcengineServiceInstance.uploadVideo(file.buffer, file.originalname)
       assetUrl = result.url
     }
 
@@ -191,7 +198,7 @@ export class OrderAssetsService {
             size: buffer.length,
           } as Express.Multer.File
 
-          const uploadResult = await this.volcengineService.uploadImage(mockFile)
+          const uploadResult = await this.volcengineServiceInstance.uploadImage(mockFile)
           const asset = await this.createAsset(orderId, {
             assetType: 'image',
             assetUrl: uploadResult.url,
@@ -212,7 +219,7 @@ export class OrderAssetsService {
             size: buffer.length,
           } as Express.Multer.File
 
-          const uploadResult = await this.volcengineService.uploadVideo(buffer, basename)
+          const uploadResult = await this.volcengineServiceInstance.uploadVideo(buffer, basename)
           const asset = await this.createAsset(orderId, {
             assetType: 'video',
             assetUrl: uploadResult.url,
@@ -247,6 +254,7 @@ export class OrderAssetsService {
   /**
    * 创建单个素材记录
    */
+
   async createAsset(orderId: string, input: CreateAssetInput): Promise<any> {
     const pool = getPool()
     const id = `asset_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
@@ -531,10 +539,15 @@ export class OrderAssetsService {
       [assetId],
     )
 
-    // 通过ContentGenerationService重新生成
-    this.contentGenService.regenerateAssetImage(assetId, prompt, asset.order_id, asset.asset_type).catch((err: any) => {
-      this.logger.error(`素材重新生成失败 assetId=${assetId}:`, err.message)
-    })
+    // 通过ContentGenerationService重新生成（延迟获取避免循环依赖）
+    const contentGenService = getContentGenerationService()
+    if (contentGenService) {
+      contentGenService.regenerateAssetImage(assetId, prompt, asset.order_id, asset.asset_type).catch((err: any) => {
+        this.logger.error(`素材重新生成失败 assetId=${assetId}:`, err.message)
+      })
+    } else {
+      this.logger.error(`素材重新生成失败: ContentGenerationService 未初始化`)
+    }
 
     return { success: true, assetId, message: '重新生成已提交' }
   }
@@ -567,10 +580,15 @@ export class OrderAssetsService {
       [orderId]
     )
 
-    // 触发预生成（会自动检测已有素材、失败素材、缺失素材）
-    this.contentGenService.pregenerateOrderAssets(orderId).catch(err => {
-      console.error(`[OrderAssets] AI素材生成失败: ${err.message}`)
-    })
+    // 触发预生成（延迟获取避免循环依赖）
+    const contentGenService = getContentGenerationService()
+    if (contentGenService) {
+      contentGenService.pregenerateOrderAssets(orderId).catch(err => {
+        console.error(`[OrderAssets] AI素材生成失败: ${err.message}`)
+      })
+    } else {
+      console.error('[OrderAssets] AI素材生成失败: ContentGenerationService 未初始化')
+    }
 
     return { success: true, orderId, message: 'AI素材生成已提交' }
   }

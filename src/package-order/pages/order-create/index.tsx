@@ -476,14 +476,17 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
               mimeType: a.mimeType,
               sortOrder: idx,
             }))
-            await Network.request({
+            const bindRes = await Network.request({
               url: '/api/order-assets/batch',
               method: 'POST',
               data: { orderId, assets: assetData },
             })
-            console.log('[OrderCreate] 素材绑定成功:', assetData.length, '个')
+            console.log('[OrderCreate] 素材绑定成功:', assetData.length, '个, res=', bindRes)
           } catch (assetErr) {
-            console.warn('[OrderCreate] 素材绑定失败（不影响订单）:', assetErr)
+            console.error('[OrderCreate] 素材绑定失败:', assetErr)
+            Taro.showToast({ title: '素材上传失败，请重试', icon: 'none' })
+            setIsSubmitting(false)
+            return
           }
         }
 

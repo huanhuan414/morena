@@ -5,7 +5,12 @@ import { Request } from 'express'
 
 @Controller('order-assets')
 export class OrderAssetsController {
-  constructor(private readonly orderAssetsService: OrderAssetsService) {}
+  private readonly orderAssetsService: OrderAssetsService
+
+  constructor() {
+    // 手动创建 OrderAssetsService 实例（绕过服务器 DI 注入问题）
+    this.orderAssetsService = new OrderAssetsService()
+  }
 
   /**
    * 为订单触发AI素材生成（无素材时 / 重新生成全部）

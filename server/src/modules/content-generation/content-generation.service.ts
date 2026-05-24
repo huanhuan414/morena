@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { Cron } from '@nestjs/schedule'
 import { getMySQLClient, getPool } from '../../storage/database/mysql-client'
 import { setCache, getCache } from '../../common/shared-cache'
+import { setContentGenerationService } from '../order-assets/order-assets.service'
 import { OrderService } from '../order/order.service'
 import { StorageService } from '../storage/storage.service'
 import { VolcengineService } from '../upload/volcengine.service'
@@ -109,6 +110,8 @@ export class ContentGenerationService implements OnModuleInit {
       this.volcengineServiceInstance = new VolcengineService()
     }
     this.logger.log('ContentGenerationService 初始化，使用 ARK API 直连')
+    // 将自身实例注册到全局，供 OrderAssetsService 延迟获取（避免循环依赖）
+    setContentGenerationService(this)
   }
 
   /**
@@ -2266,6 +2269,9 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
    */
   async pregenerateOrderAssets(orderId: string): Promise<void> {
     try {
+      // 等待1秒，确保素材绑定完成（前端可能在支付回调前才完成绑定）
+      await new Promise(r => setTimeout(r, 1500))
+
       const db = getMySQLClient()
 
       // 获取订单信息
@@ -2289,15 +2295,20 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
 
       console.log(`[预生成] 开始为订单 ${orderId} 预生成素材, 平台: ${platforms.join(',')}, 类型: ${contentType}, AI自动补足: ${aiAutoFill}`)
 
-      // 查看已有用户上传素材
-      const existingAssets = await db.query(
-        'SELECT asset_type, COUNT(*) as cnt FROM order_assets WHERE order_id = ? AND status = ? GROUP BY asset_type',
-        [orderId, 'ready']
-      )
-      const uploadedImageCount = (existingAssets as any[])?.find(a => a.assetType === 'image')?.cnt || 0
-      const uploadedVideoCount = (existingAssets as any[])?.find(a => a.assetType === 'video')?.cnt || 0
-
-      console.log(`[预生成] 订单 ${orderId} 已有素材: 图片${uploadedImageCount}张, 视频${uploadedVideoCount}个`)
+      // 查看已有用户上传素材（带重试，因素材绑定可能还在写入）
+      let uploadedImageCount = 0
+      let uploadedVideoCount = 0
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const existingAssets = await db.query(
+          'SELECT asset_type, COUNT(*) as cnt FROM order_assets WHERE order_id = ? AND status = ? GROUP BY asset_type',
+          [orderId, 'ready']
+        ) as any[]
+        uploadedImageCount = existingAssets?.find(a => a.assetType === 'image')?.cnt || 0
+        uploadedVideoCount = existingAssets?.find(a => a.assetType === 'video')?.cnt || 0
+        console.log(`[预生成] 订单 ${orderId} 已有素材(第${attempt + 1}次查询): 图片${uploadedImageCount}张, 视频${uploadedVideoCount}个`)
+        if (uploadedImageCount > 0 || uploadedVideoCount > 0) break
+        if (attempt < 2) await new Promise(r => setTimeout(r, 2000))
+      }
 
       // 素材来源决策：
       // 1. 没有上传素材 → 始终AI生成（不受aiAutoFill开关影响）
