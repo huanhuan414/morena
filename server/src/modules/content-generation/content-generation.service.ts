@@ -2105,7 +2105,14 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
       const title = order.title || ''
       const description = order.description || ''
 
-      console.log(`[预生成] 开始为订单 ${orderId} 预生成素材, 平台: ${platforms.join(',')}, 类型: ${contentType}`)
+      // 检查 ai_auto_fill 开关
+      let requirements: any = {}
+      try {
+        requirements = typeof order.requirements === 'string' ? JSON.parse(order.requirements) : (order.requirements || {})
+      } catch { requirements = {} }
+      const aiAutoFill = requirements?.ai_auto_fill !== false // 默认 true（兼容旧数据）
+
+      console.log(`[预生成] 开始为订单 ${orderId} 预生成素材, 平台: ${platforms.join(',')}, 类型: ${contentType}, AI自动补足: ${aiAutoFill}`)
 
       // 查看已有用户上传素材
       const [existingAssets] = await db.query(
@@ -2116,6 +2123,12 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
       const uploadedVideoCount = (existingAssets as any[])?.find(a => a.asset_type === 'video')?.cnt || 0
 
       console.log(`[预生成] 订单 ${orderId} 已有素材: 图片${uploadedImageCount}张, 视频${uploadedVideoCount}个`)
+
+      // 如果关闭了AI自动补足，跳过生成
+      if (!aiAutoFill) {
+        console.log(`[预生成] 订单 ${orderId} AI自动补足已关闭，跳过生成`)
+        return
+      }
 
       // 确定需要的素材数量（取各平台最大需求）
       let requiredImageCount = 0
@@ -2201,6 +2214,36 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
     // 视频生成需要文案内容作为上下文，在订单创建时尚无文案
     // 因此跳过视频预生成，由分身接单后实时生成
     console.log(`[预生成] 订单 ${orderId} 视频跳过预生成，将在分身接单后实时生成`)
+  }
+
+  /**
+   * 重新生成单个失败素材（供 OrderAssetsService 调用）
+   */
+  async regenerateAssetImage(assetId: string, prompt: string, orderId: string, assetType: string): Promise<void> {
+    const db = getMySQLClient()
+
+    this.imageLimiter.run(async () => {
+      try {
+        console.log(`[重新生成] 素材 ${assetId} 开始生成, type=${assetType}`)
+        if (assetType === 'image') {
+          const imageUrl = await this.generateImageViaHttp(prompt)
+          await db.query(
+            'UPDATE order_assets SET asset_url = ?, status = ? WHERE id = ?',
+            [imageUrl, 'ready', assetId],
+          )
+          console.log(`[重新生成] 素材 ${assetId} 生成成功`)
+        } else {
+          // 视频暂不支持重新生成，标记为failed
+          await db.query('UPDATE order_assets SET status = ? WHERE id = ?', ['failed', assetId])
+          console.log(`[重新生成] 素材 ${assetId} 视频暂不支持重新生成`)
+        }
+      } catch (err: any) {
+        console.error(`[重新生成] 素材 ${assetId} 生成失败:`, err.message)
+        await db.query('UPDATE order_assets SET status = ? WHERE id = ?', ['failed', assetId])
+      }
+    }).catch(err => {
+      console.error(`[重新生成] 素材生成异常:`, err.message)
+    })
   }
 
   /** 从 order_assets 为请求分配素材 */

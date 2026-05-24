@@ -8,6 +8,19 @@ export class OrderAssetsController {
   constructor(private readonly orderAssetsService: OrderAssetsService) {}
 
   /**
+   * 重新生成失败的素材
+   */
+  @Post('regenerate')
+  async regenerateAsset(
+    @Body() body: { assetId: string },
+    @Req() req?: Request,
+  ) {
+    const userId = (req as any).userId
+    const result = await this.orderAssetsService.regenerateAsset(body.assetId, userId)
+    return { code: 200, message: '重新生成已提交', data: result }
+  }
+
+  /**
    * 获取订单的素材列表（支持分页）
    */
   @Get(':orderId')

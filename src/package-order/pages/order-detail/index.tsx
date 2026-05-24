@@ -144,7 +144,7 @@ export default function OrderDetailPage() {
   const [selectedAvatar, setSelectedAvatar] = useState<any>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogTab, setDialogTab] = useState('content')
-  const [assetSummary, setAssetSummary] = useState<{ images: { uploaded: number; aiGenerated: number; pending: number; ready: number; failed: number }; videos: { uploaded: number; aiGenerated: number; pending: number; ready: number; failed: number } } | null>(null)
+  const [assetSummary, setAssetSummary] = useState<{ total: number; ready: number; generating: number; failed: number; images: number; videos: number; user_uploaded: number; ai_generated: number } | null>(null)
   const [assetImages, setAssetImages] = useState<string[]>([])
   const [assetTotal, setAssetTotal] = useState(0)
   const [assetPage, setAssetPage] = useState(1)
@@ -499,40 +499,34 @@ export default function OrderDetailPage() {
             {assetSummary && (
               <View className="od-asset-summary">
                 {(() => {
-                  const img = assetSummary.images
-                  const vid = assetSummary.videos
-                  const totalReady = img.ready + vid.ready
-                  const totalPending = img.pending + vid.pending
-                  const totalFailed = img.failed + vid.failed
-                  const totalUploaded = img.uploaded + vid.uploaded
-                  const totalAi = img.aiGenerated + vid.aiGenerated
+                  const s = assetSummary
                   return (
                     <View className="od-asset-stats">
                       <View className="od-asset-stat-item">
-                        <Text className="block od-asset-stat-num" style={{ color: '#10B981' }}>{totalReady}</Text>
+                        <Text className="block od-asset-stat-num" style={{ color: '#10B981' }}>{s.ready}</Text>
                         <Text className="block od-asset-stat-label">已就绪</Text>
                       </View>
-                      {totalPending > 0 && (
+                      {s.generating > 0 && (
                         <View className="od-asset-stat-item">
-                          <Text className="block od-asset-stat-num" style={{ color: '#F59E0B' }}>{totalPending}</Text>
+                          <Text className="block od-asset-stat-num" style={{ color: '#F59E0B' }}>{s.generating}</Text>
                           <Text className="block od-asset-stat-label">生成中</Text>
                         </View>
                       )}
-                      {totalFailed > 0 && (
+                      {s.failed > 0 && (
                         <View className="od-asset-stat-item">
-                          <Text className="block od-asset-stat-num" style={{ color: '#EF4444' }}>{totalFailed}</Text>
+                          <Text className="block od-asset-stat-num" style={{ color: '#EF4444' }}>{s.failed}</Text>
                           <Text className="block od-asset-stat-label">失败</Text>
                         </View>
                       )}
-                      {totalUploaded > 0 && (
+                      {s.user_uploaded > 0 && (
                         <View className="od-asset-stat-item">
-                          <Text className="block od-asset-stat-num" style={{ color: '#3B82F6' }}>{totalUploaded}</Text>
+                          <Text className="block od-asset-stat-num" style={{ color: '#3B82F6' }}>{s.user_uploaded}</Text>
                           <Text className="block od-asset-stat-label">已上传</Text>
                         </View>
                       )}
-                      {totalAi > 0 && (
+                      {s.ai_generated > 0 && (
                         <View className="od-asset-stat-item">
-                          <Text className="block od-asset-stat-num" style={{ color: '#8B5CF6' }}>{totalAi}</Text>
+                          <Text className="block od-asset-stat-num" style={{ color: '#8B5CF6' }}>{s.ai_generated}</Text>
                           <Text className="block od-asset-stat-label">AI生成</Text>
                         </View>
                       )}
@@ -540,18 +534,18 @@ export default function OrderDetailPage() {
                   )
                 })()}
                 {/* 图片/视频分类小标签 */}
-                {assetSummary && (assetSummary.images.ready > 0 || assetSummary.videos.ready > 0) && (
+                {assetSummary && (assetSummary.images > 0 || assetSummary.videos > 0) && (
                   <View className="od-asset-type-pills">
-                    {assetSummary.images.ready > 0 && (
+                    {assetSummary.images > 0 && (
                       <View className="od-asset-pill">
                         <Camera size={12} color="#F59E0B" />
-                        <Text className="block od-asset-pill-text">{assetSummary.images.ready}张图片</Text>
+                        <Text className="block od-asset-pill-text">{assetSummary.images}张图片</Text>
                       </View>
                     )}
-                    {assetSummary.videos.ready > 0 && (
+                    {assetSummary.videos > 0 && (
                       <View className="od-asset-pill">
                         <Video size={12} color="#EC4899" />
-                        <Text className="block od-asset-pill-text">{assetSummary.videos.ready}个视频</Text>
+                        <Text className="block od-asset-pill-text">{assetSummary.videos}个视频</Text>
                       </View>
                     )}
                   </View>
@@ -583,7 +577,7 @@ export default function OrderDetailPage() {
             )}
 
             {/* 无素材但AI正在生成 */}
-            {(!assetSummary || (assetSummary.images.ready === 0 && assetSummary.videos.ready === 0 && assetSummary.images.pending + assetSummary.videos.pending > 0)) && (
+            {(!assetSummary || (assetSummary.ready === 0 && assetSummary.generating > 0)) && (
               <View className="od-asset-generating">
                 <Loader size={16} color="#F59E0B" />
                 <Text className="block od-asset-generating-text">AI素材生成中，分身接单时将自动分配...</Text>
@@ -591,7 +585,7 @@ export default function OrderDetailPage() {
             )}
 
             {/* 全部失败提示 */}
-            {assetSummary && assetSummary.images.ready === 0 && assetSummary.videos.ready === 0 && assetSummary.images.pending === 0 && assetSummary.videos.pending === 0 && (assetSummary.images.failed + assetSummary.videos.failed > 0) && (
+            {assetSummary && assetSummary.ready === 0 && assetSummary.generating === 0 && assetSummary.failed > 0 && (
               <View className="od-asset-failed">
                 <TriangleAlert size={16} color="#EF4444" />
                 <Text className="block od-asset-failed-text">素材生成失败，分身接单时会自动补生成</Text>

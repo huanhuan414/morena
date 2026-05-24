@@ -1,0 +1,356 @@
+.asset-waiting-page {
+  min-height: 100vh;
+  background: #F5F3FF;
+}
+
+/* 顶部 */
+.aw-header {
+  background: linear-gradient(135deg, #6366F1, #8B5CF6);
+  padding-bottom: 32rpx;
+  padding-left: 24rpx;
+  padding-right: 24rpx;
+}
+.aw-header-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+.aw-back-btn {
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.aw-header-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #fff;
+}
+.aw-header-action {
+  padding: 8rpx 20rpx;
+  background: rgba(255,255,255,0.2);
+  border-radius: 20rpx;
+}
+.aw-header-action-text {
+  font-size: 24rpx;
+  color: #fff;
+}
+
+/* 主体 */
+.aw-body {
+  height: calc(100vh - 140rpx);
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+
+/* 状态卡片 */
+.aw-status-card {
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 40rpx 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(99,102,241,0.08);
+}
+.aw-status-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16rpx;
+}
+.aw-status-loading-text {
+  font-size: 28rpx;
+  color: #6B7280;
+}
+.aw-status-done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+}
+.aw-status-done-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #10B981;
+}
+.aw-status-done-desc {
+  font-size: 24rpx;
+  color: #6B7280;
+}
+.aw-status-failed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+}
+.aw-status-failed-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #EF4444;
+}
+.aw-status-failed-desc {
+  font-size: 24rpx;
+  color: #6B7280;
+}
+.aw-status-generating {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+}
+.aw-status-gen-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #6366F1;
+}
+.aw-status-gen-desc {
+  font-size: 24rpx;
+  color: #6B7280;
+}
+.aw-progress-bar {
+  width: 100%;
+  height: 12rpx;
+  background: #E5E7EB;
+  border-radius: 6rpx;
+  margin-top: 8rpx;
+  overflow: hidden;
+}
+.aw-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366F1, #8B5CF6);
+  border-radius: 6rpx;
+  transition: width 0.3s;
+}
+
+/* 概要标签 */
+.aw-summary-tags {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-bottom: 24rpx;
+}
+.aw-tag {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6rpx;
+  padding: 8rpx 16rpx;
+  border-radius: 16rpx;
+}
+.aw-tag-text {
+  font-size: 22rpx;
+  font-weight: 500;
+}
+.aw-tag-image {
+  background: #EEF2FF;
+}
+.aw-tag-image .aw-tag-text {
+  color: #6366F1;
+}
+.aw-tag-video {
+  background: #F5F3FF;
+}
+.aw-tag-video .aw-tag-text {
+  color: #8B5CF6;
+}
+.aw-tag-generating {
+  background: #FFFBEB;
+}
+.aw-tag-generating .aw-tag-text {
+  color: #F59E0B;
+}
+.aw-tag-failed {
+  background: #FEF2F2;
+}
+.aw-tag-failed .aw-tag-text {
+  color: #EF4444;
+}
+
+/* 素材列表 */
+.aw-assets-section {
+  margin-bottom: 120rpx;
+}
+.aw-section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1F2937;
+  margin-bottom: 16rpx;
+}
+.aw-assets-grid {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+.aw-asset-item {
+  width: calc(33.33% - 12rpx);
+  aspect-ratio: 1;
+  border-radius: 16rpx;
+  overflow: hidden;
+  position: relative;
+  background: #F3F4F6;
+}
+.aw-asset-thumb {
+  width: 100%;
+  height: 100%;
+}
+.aw-asset-video-wrap {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+.aw-video-play-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.aw-video-label {
+  position: absolute;
+  top: 8rpx;
+  left: 8rpx;
+  font-size: 18rpx;
+  color: #fff;
+  background: rgba(0,0,0,0.5);
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
+  pointer-events: none;
+}
+
+/* 状态角标 */
+.aw-asset-status {
+  position: absolute;
+  top: 8rpx;
+  right: 8rpx;
+  width: 32rpx;
+  height: 32rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.aw-status-ready {
+  background: rgba(16,185,129,0.2);
+}
+.aw-status-gen {
+  background: rgba(245,158,11,0.2);
+}
+.aw-status-fail {
+  background: rgba(239,68,68,0.2);
+}
+
+/* 重新生成按钮 */
+.aw-regenerate-btn {
+  position: absolute;
+  bottom: 8rpx;
+  left: 8rpx;
+  right: 8rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 4rpx;
+  padding: 6rpx 0;
+  background: rgba(99,102,241,0.85);
+  border-radius: 8rpx;
+}
+.aw-regenerate-text {
+  font-size: 18rpx;
+  color: #fff;
+}
+
+/* 来源标签 */
+.aw-source-tag {
+  position: absolute;
+  bottom: 8rpx;
+  right: 8rpx;
+  padding: 2rpx 8rpx;
+  background: rgba(0,0,0,0.45);
+  border-radius: 6rpx;
+}
+.aw-source-text {
+  font-size: 16rpx;
+  color: #fff;
+}
+
+/* 加载更多 */
+.aw-load-more {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 4rpx;
+  padding: 20rpx 0;
+  margin-top: 16rpx;
+}
+.aw-load-more-text {
+  font-size: 24rpx;
+  color: #94A3B8;
+}
+
+/* 底部操作栏 */
+.aw-bottom-actions {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: row;
+  gap: 16rpx;
+  padding: 20rpx 24rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  background: #fff;
+  border-top: 1rpx solid #E5E7EB;
+  z-index: 100;
+}
+.aw-primary-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  padding: 20rpx 0;
+  background: linear-gradient(135deg, #6366F1, #8B5CF6);
+  border-radius: 16rpx;
+}
+.aw-primary-btn-waiting {
+  opacity: 0.8;
+}
+.aw-primary-btn-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
+}
+.aw-secondary-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20rpx 32rpx;
+  background: #F3F4F6;
+  border-radius: 16rpx;
+}
+.aw-secondary-btn-text {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #6B7280;
+}
+
+/* 旋转动画 */
+@keyframes aw-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.aw-spin {
+  animation: aw-spin 1s linear infinite;
+}

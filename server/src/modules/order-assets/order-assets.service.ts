@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common'
 import { VolcengineService } from '../upload/volcengine.service'
+import { ContentGenerationService } from '../content-generation/content-generation.service'
 import { getPool } from '../../storage/database/mysql-client'
 
 // 媒体文件扩展名白名单
@@ -28,7 +29,11 @@ export interface CreateAssetInput {
 export class OrderAssetsService {
   private readonly logger = new Logger(OrderAssetsService.name)
 
-  constructor(private readonly volcengineService: VolcengineService) {}
+  constructor(
+    private readonly volcengineService: VolcengineService,
+    @Inject(forwardRef(() => ContentGenerationService))
+    private readonly contentGenService: ContentGenerationService,
+  ) {}
 
   /**
    * 获取订单素材列表（支持分页）
@@ -345,28 +350,28 @@ export class OrderAssetsService {
     const pool = getPool()
 
     const [rows] = await pool.execute(
-      `SELECT asset_type, source, status, COUNT(*) as count 
-       FROM order_assets 
-       WHERE order_id = ? 
+      `SELECT asset_type, source, status, COUNT(*) as count
+       FROM order_assets
+       WHERE order_id = ?
        GROUP BY asset_type, source, status`,
       [orderId],
     )
 
-    const summary = {
-      images: { uploaded: 0, aiGenerated: 0, pending: 0, ready: 0, failed: 0 },
-      videos: { uploaded: 0, aiGenerated: 0, pending: 0, ready: 0, failed: 0 },
-    }
+    let total = 0, ready = 0, generating = 0, failed = 0
+    let images = 0, videos = 0, userUploaded = 0, aiGenerated = 0
 
     for (const row of rows as any[]) {
-      const target = row.asset_type === 'image' ? summary.images : summary.videos
-      if (row.source === 'user_uploaded') target.uploaded += row.count
-      if (row.source === 'ai_generated') target.aiGenerated += row.count
-      if (row.status === 'pending' || row.status === 'generating' || row.status === 'uploading') target.pending += row.count
-      if (row.status === 'ready') target.ready += row.count
-      if (row.status === 'failed') target.failed += row.count
+      total += row.count
+      if (row.asset_type === 'image') images += row.count
+      if (row.asset_type === 'video') videos += row.count
+      if (row.source === 'user_uploaded') userUploaded += row.count
+      if (row.source === 'ai_generated') aiGenerated += row.count
+      if (row.status === 'ready') ready += row.count
+      if (row.status === 'pending' || row.status === 'generating' || row.status === 'uploading') generating += row.count
+      if (row.status === 'failed') failed += row.count
     }
 
-    return summary
+    return { total, ready, generating, failed, images, videos, user_uploaded: userUploaded, ai_generated: aiGenerated }
   }
 
   /**
@@ -376,7 +381,7 @@ export class OrderAssetsService {
     const pool = getPool()
 
     const summary = await this.getAssetsSummary(orderId)
-    const hasUserAssets = summary.images.uploaded > 0 || summary.videos.uploaded > 0
+    const hasUserAssets = summary.user_uploaded > 0
 
     await pool.execute(
       `UPDATE orders SET has_user_assets = ?, user_assets_summary = ? WHERE id = ?`,
@@ -483,11 +488,54 @@ export class OrderAssetsService {
 
     // 超时，返回已就绪的
     const [rows] = await pool.execute(
-      `SELECT asset_url FROM order_assets 
-       WHERE order_id = ? AND asset_type = ? AND status = 'ready' 
+      `SELECT asset_url FROM order_assets
+       WHERE order_id = ? AND asset_type = ? AND status = 'ready'
        ORDER BY sort_order ASC, created_at ASC`,
       [orderId, assetType],
     )
     return (rows as any[]).map(r => r.asset_url)
+  }
+
+  /**
+   * 重新生成失败的AI素材
+   */
+  async regenerateAsset(assetId: string, userId?: string): Promise<{ success: boolean; assetId: string; message: string }> {
+    const pool = getPool()
+    const [rows] = await pool.execute(
+      `SELECT id, order_id, asset_type, source, prompt, status FROM order_assets WHERE id = ?`,
+      [assetId],
+    )
+    const asset = (rows as any[])[0]
+
+    if (!asset) {
+      return { success: false, assetId, message: '素材不存在' }
+    }
+    if (asset.source !== 'ai_generated') {
+      return { success: false, assetId, message: '只能重新生成AI素材' }
+    }
+    if (asset.status === 'generating') {
+      return { success: false, assetId, message: '素材正在生成中，请稍候' }
+    }
+
+    // 获取订单信息用于构造prompt
+    const [orderRows] = await pool.execute(
+      `SELECT title, description, platforms FROM orders WHERE id = ?`,
+      [asset.order_id],
+    )
+    const order = (orderRows as any[])[0]
+    const prompt = asset.prompt || `为订单"${order?.title || ''}"生成配图`
+
+    // 更新状态为generating
+    await pool.execute(
+      `UPDATE order_assets SET status = 'generating', asset_url = '' WHERE id = ?`,
+      [assetId],
+    )
+
+    // 通过ContentGenerationService重新生成
+    this.contentGenService.regenerateAssetImage(assetId, prompt, asset.order_id, asset.asset_type).catch((err: any) => {
+      this.logger.error(`素材重新生成失败 assetId=${assetId}:`, err.message)
+    })
+
+    return { success: true, assetId, message: '重新生成已提交' }
   }
 }

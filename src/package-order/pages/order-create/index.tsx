@@ -36,12 +36,15 @@ export default function OrderCreate() {
     title: '',
     description: '',
     contentType: 'text',
+    platform: '' as string,
     platforms: [] as string[],
     preferredStyle: '',
     preferredNiche: '',
     optionalRequirements: {} as Record<string, string>,
+    platformRemarks: {} as Record<string, string>,
     avatarCount: 1,
     quantityPerAvatar: 1,
+    aiAutoFill: false,
   })
   const [uploadedAssets, setUploadedAssets] = useState<{ id: string; url: string; type: 'image' | 'video'; filename: string; size: number; mimeType: string }[]>([])
   const [isUploading, setIsUploading] = useState(false)
@@ -326,18 +329,20 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
   const handlePlatformToggle = (platformId: string) => {
     const canonicalId = canonicalizePlatform(platformId)
     setForm(prev => {
-      const platforms = prev.platforms.includes(canonicalId)
-        ? prev.platforms.filter(p => p !== canonicalId)
-        : [...prev.platforms, canonicalId]
-      const newReqs = { ...prev.optionalRequirements }
-      if (!platforms.includes(canonicalId)) {
-        Object.keys(newReqs).forEach(key => {
-          if (key.startsWith(canonicalId + '_')) {
-            delete newReqs[key]
-          }
+      // 单选：再次点击取消选中
+      const newPlatform = prev.platform === canonicalId ? '' : canonicalId
+      const platforms = newPlatform ? [newPlatform] : []
+      // 清除其他平台的备注
+      const newRemarks = { ...prev.platformRemarks }
+      if (newPlatform) {
+        // 只保留当前平台的备注
+        Object.keys(newRemarks).forEach(key => {
+          if (key !== newPlatform) delete newRemarks[key]
         })
+      } else {
+        Object.keys(newRemarks).forEach(key => delete newRemarks[key])
       }
-      return { ...prev, platforms, optionalRequirements: newReqs }
+      return { ...prev, platform: newPlatform, platforms, platformRemarks: newRemarks }
     })
   }
 
@@ -347,6 +352,16 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
       optionalRequirements: {
         ...prev.optionalRequirements,
         [`${platformId}_${reqId}`]: value
+      }
+    }))
+  }
+
+  const handlePlatformRemarkChange = (platformId: string, value: string) => {
+    setForm(prev => ({
+      ...prev,
+      platformRemarks: {
+        ...prev.platformRemarks,
+        [platformId]: value
       }
     }))
   }
@@ -390,6 +405,8 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         avatar_count: form.avatarCount,
         quantity_per_avatar: form.quantityPerAvatar,
         total_price: totalPrice.total,
+        requirements: { ...form.optionalRequirements, platformRemarks: form.platformRemarks },
+        ai_auto_fill: form.aiAutoFill,
         openid,
       }
 
@@ -451,7 +468,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
             // 支付成功
             Taro.showToast({ title: '支付成功', icon: 'success' })
             setTimeout(() => {
-              Taro.navigateTo({ url: `/package-order/pages/order-matching/index?orderId=${orderId}` })
+              Taro.navigateTo({ url: `/package-order/pages/order-asset-waiting/index?orderId=${orderId}` })
             }, 1500)
           } catch (payErr: any) {
             console.warn('[OrderCreate] 支付结果:', payErr)
@@ -491,7 +508,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           }
         } else {
           // 无需支付（金额为0或支付创建失败），直接跳转
-          Taro.navigateTo({ url: `/package-order/pages/order-matching/index?orderId=${orderId}` })
+          Taro.navigateTo({ url: `/package-order/pages/order-asset-waiting/index?orderId=${orderId}` })
         }
       } else {
         const msg = Network.getMsg(payloadObj, '创建订单失败')
@@ -547,14 +564,6 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
     } finally {
       repayInFlightRef.current = false
     }
-  }
-
-  const getSelectedPlatformReqs = () => {
-    return canonicalizePlatforms(form.platforms).map(platformId => ({
-      platformId,
-      platform: PLATFORM_META_MAP[platformId as keyof typeof PLATFORM_META_MAP],
-      requirements: PLATFORM_META_MAP[platformId as keyof typeof PLATFORM_META_MAP]?.requirements || []
-    }))
   }
 
   return (
@@ -687,7 +696,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                   <Text className="platform-emoji">{config.icon}</Text>
                 </View>
                 <Text className="platform-name">{config.name}</Text>
-                {form.platforms.includes(config.id) && (
+                {form.platform === config.id && (
                   <View className="platform-check">
                     <Check size={10} color="#fff" />
                   </View>
@@ -696,34 +705,43 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
             ))}
           </View>
 
-          {form.platforms.length > 0 && (
-            <View className="platform-requirements">
-              <View className="req-header" onClick={() => setShowPlatformReq(!showPlatformReq)}>
-                <Text className="req-title">平台要求（可选）</Text>
-                <ChevronRight size={14} color="#94A3B8" className={`req-arrow ${showPlatformReq ? 'open' : ''}`} />
-              </View>
-              {showPlatformReq && (
-                <View className="req-content">
-                  {getSelectedPlatformReqs().map(({ platformId, platform, requirements }) => (
-                    <View key={platformId} className="platform-req-section">
-                      <Text className="platform-req-title">{platform?.icon} {platform?.name} 要求</Text>
-                      {requirements.map(req => (
-                        <View key={req.id} className="req-item">
-                          <Text className="req-label">{req.label}</Text>
-                          <Input
-                            className="req-input"
-                            placeholder={req.placeholder}
-                            value={form.optionalRequirements[`${platformId}_${req.id}`] || ''}
-                            onInput={e => handleRequirementChange(platformId, req.id, e.detail.value)}
-                          />
-                        </View>
-                      ))}
-                    </View>
-                  ))}
+          {form.platform && (() => {
+            const selectedPlatform = PLATFORM_META_MAP[form.platform as keyof typeof PLATFORM_META_MAP]
+            const reqs = selectedPlatform?.requirements || []
+            return (
+              <View className="platform-requirements">
+                <View className="req-header" onClick={() => setShowPlatformReq(!showPlatformReq)}>
+                  <Text className="req-title">{selectedPlatform?.icon} {selectedPlatform?.name} 平台要求（可选）</Text>
+                  <ChevronRight size={14} color="#94A3B8" className={`req-arrow ${showPlatformReq ? 'open' : ''}`} />
                 </View>
-              )}
-            </View>
-          )}
+                {showPlatformReq && (
+                  <View className="req-content">
+                    {reqs.map(req => (
+                      <View key={req.id} className="req-item">
+                        <Text className="req-label">{req.label}</Text>
+                        <Input
+                          className="req-input"
+                          placeholder={req.placeholder}
+                          value={form.optionalRequirements[`${form.platform}_${req.id}`] || ''}
+                          onInput={e => handleRequirementChange(form.platform, req.id, e.detail.value)}
+                        />
+                      </View>
+                    ))}
+                    {/* 平台备注输入 */}
+                    <View className="req-item">
+                      <Text className="req-label">备注</Text>
+                      <Input
+                        className="req-input"
+                        placeholder="特殊要求、商品链接、团购链接等"
+                        value={form.platformRemarks[form.platform] || ''}
+                        onInput={e => handlePlatformRemarkChange(form.platform, e.detail.value)}
+                      />
+                    </View>
+                  </View>
+                )}
+              </View>
+            )
+          })()}
         </View>
 
         {/* 内容类型 */}
@@ -770,7 +788,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
             </View>
             <Text className="section-hint">
               {totalCount === 0
-                ? '可选，不足将AI生成'
+                ? '可选，上传自定义素材'
                 : `已选${totalCount}个素材`}
             </Text>
           </View>
@@ -827,8 +845,22 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
               <Text className="asset-uploading-bar-text">上传中...</Text>
             </View>
           )}
-          {/* AI补齐提示 */}
-          {form.contentType !== 'text' && imageCount < requiredImageCount && (
+          {/* AI自动补足开关 */}
+          {form.contentType !== 'text' && totalCount > 0 && (
+            <View className="asset-ai-toggle-row">
+              <View className="asset-ai-toggle-left">
+                <Sparkles size={14} color="#8B5CF6" />
+                <Text className="asset-ai-toggle-label">AI自动补足素材</Text>
+              </View>
+              <View
+                className={`asset-ai-switch ${form.aiAutoFill ? 'active' : ''}`}
+                onClick={() => setForm(prev => ({ ...prev, aiAutoFill: !prev.aiAutoFill }))}
+              >
+                <View className={`asset-ai-switch-dot ${form.aiAutoFill ? 'active' : ''}`} />
+              </View>
+            </View>
+          )}
+          {form.aiAutoFill && form.contentType !== 'text' && imageCount < requiredImageCount && (
             <View className="asset-ai-hint">
               <Sparkles size={14} color="#8B5CF6" />
               <Text className="asset-ai-hint-text">不足的图片支付后将由AI自动生成，分身接单时直接分配</Text>
