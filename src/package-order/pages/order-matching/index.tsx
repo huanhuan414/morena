@@ -98,6 +98,14 @@ export default function OrderMatchingPage() {
       setLoading(false)
       showToast({ title: '缺少订单ID', icon: 'none' })
     }
+    // 安全兜底：10秒后强制关闭 loading，防止卡死
+    const timer = setTimeout(() => {
+      setLoading(prev => {
+        if (prev) console.log('[OrderMatching] loading 超时，强制关闭')
+        return false
+      })
+    }, 10000)
+    return () => clearTimeout(timer)
   })
 
   useDidShow(() => {
@@ -108,6 +116,7 @@ export default function OrderMatchingPage() {
 
   const loadData = async () => {
     setLoading(true)
+    console.log('[OrderMatching] loadData 开始, orderId:', orderId)
     try {
       // 并行请求订单信息和推荐列表，提升加载速度
       const [orderRes, recommendRes] = await Promise.allSettled([
@@ -115,42 +124,59 @@ export default function OrderMatchingPage() {
         Network.request({ url: `/api/order-dispatch/recommend/${orderId}` })
       ])
 
+      console.log('[OrderMatching] orderRes status:', orderRes.status, orderRes.status === 'fulfilled' ? 'OK' : String(orderRes.reason))
+      console.log('[OrderMatching] recommendRes status:', recommendRes.status, recommendRes.status === 'fulfilled' ? 'OK' : String(recommendRes.reason))
+
       // 处理订单信息
-      if (orderRes.status === 'fulfilled' && orderRes.value.data?.code === 200 && orderRes.value.data?.data) {
-        const orderData = orderRes.value.data.data
-        setOrder({
-          id: orderData.id,
-          title: orderData.title || '未命名订单',
-          budget: orderData.budget,
-          contentType: orderData.contentType || orderData.content_type,
-          requirements: orderData.requirements,
-          avatarCount: orderData.avatarCount || orderData.expectedQuantity || orderData.avatar_count || orderData.expected_quantity || 0
-        })
-        // 如果订单还在pending_payment状态，启动轮询等待支付回调确认
-        if (orderData.status === 'pending_payment') {
-          startStatusPolling(orderId)
+      if (orderRes.status === 'fulfilled') {
+        const payload = orderRes.value?.data
+        console.log('[OrderMatching] order payload code:', payload?.code, 'hasData:', !!payload?.data)
+        if (payload?.code === 200 && payload?.data) {
+          const orderData = payload.data
+          setOrder({
+            id: orderData.id,
+            title: orderData.title || '未命名订单',
+            budget: orderData.budget,
+            contentType: orderData.contentType || orderData.content_type,
+            requirements: orderData.requirements,
+            avatarCount: orderData.avatarCount || orderData.expectedQuantity || orderData.avatar_count || orderData.expected_quantity || 0
+          })
+          // 如果订单还在pending_payment状态，启动轮询等待支付回调确认
+          if (orderData.status === 'pending_payment') {
+            startStatusPolling(orderId)
+          }
         }
       }
 
       // 处理推荐列表
       if (recommendRes.status === 'fulfilled') {
+        const payload = recommendRes.value?.data
+        console.log('[OrderMatching] recommend payload code:', payload?.code, 'dataLen:', Array.isArray(payload?.data) ? payload.data.length : 'not array')
         processRecommendations(recommendRes.value)
       }
     } catch (error) {
-      console.error('加载数据失败:', error)
+      console.error('[OrderMatching] loadData 异常:', error)
       showToast({ title: '加载失败', icon: 'none' })
     } finally {
+      console.log('[OrderMatching] loadData 完成, setLoading(false)')
       setLoading(false)
     }
   }
 
   const processRecommendations = (res: any) => {
     try {
-      console.log('[推荐接口] 响应:', res.data)
+      // Network.request 返回 Taro.request 结果，res.data 是 HTTP 响应体
+      const payload = res?.data
+      console.log('[OrderMatching] processRecommendations payload:', JSON.stringify(payload)?.substring(0, 200))
       
-      if (res.data?.code === 200) {
-        const data = res.data.data || []
-        console.log('[推荐接口] 数据条数:', data.length)
+      if (payload?.code === 200) {
+        const data = payload.data || []
+        console.log('[OrderMatching] 推荐数据条数:', Array.isArray(data) ? data.length : 'not array')
+        
+        if (!Array.isArray(data) || data.length === 0) {
+          console.log('[OrderMatching] 推荐数据为空')
+          return
+        }
         
         // 转换数据格式（统一使用 order-dispatch 推荐接口）
         const avatars = data.map((item: any) => {
@@ -169,6 +195,14 @@ export default function OrderMatchingPage() {
             ? Math.round(stats.accepted / stats.total * 100) 
             : (item.matchScore || 80)
           
+          // 安全解析 platforms
+          let platforms: string[] = []
+          try {
+            platforms = typeof item.platforms === 'string' 
+              ? JSON.parse(item.platforms || '[]') 
+              : (Array.isArray(item.platforms) ? item.platforms : [])
+          } catch { platforms = [] }
+
           return {
             id: item.id,
             name: item.name || '未知分身',
@@ -177,11 +211,11 @@ export default function OrderMatchingPage() {
             personality: item.personality,
             exp: item.exp || 0,
             completionRate,
-            avgRating: (4 + Math.random()).toFixed(1),
+            avgRating: parseFloat((4 + Math.random()).toFixed(1)),
             completedTasks: stats.accepted || 0,
             matchReason,
             matchScore: item.matchScore || 0,
-            platforms: typeof item.platforms === 'string' ? JSON.parse(item.platforms || '[]') : (item.platforms || []),
+            platforms,
             contentTypes: []
           }
         })
@@ -189,17 +223,17 @@ export default function OrderMatchingPage() {
         // 按匹配度从高到低排序
         avatars.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0))
         
-        console.log('[推荐接口] 转换后数据:', avatars)
+        console.log('[OrderMatching] 转换后数据条数:', avatars.length)
         setRecommendations(avatars)
         
         if (avatars.length > 0) {
           setStep(2)
         }
       } else {
-        console.log('[推荐接口] 返回错误:', res.data)
+        console.log('[OrderMatching] 推荐接口返回错误:', payload?.code, payload?.msg)
       }
     } catch (error) {
-      console.error('处理推荐数据失败:', error)
+      console.error('[OrderMatching] 处理推荐数据异常:', error)
     }
   }
 
