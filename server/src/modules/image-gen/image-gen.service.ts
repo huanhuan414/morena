@@ -24,7 +24,7 @@ interface ImageGenResult {
 export class ImageGenService {
   private readonly baseUrl = process.env.IMAGE_GEN_API_BASE_URL || 'https://api.aaigc.top';
   private readonly apiKey = process.env.IMAGE_GEN_API_KEY || 'sk-z1CFQbVdKI6x7ciJLwQkp1vPJPp8P9lQWW0jJGQWUdkSuQsK';
-  private readonly model = process.env.IMAGE_GEN_MODEL || 'gpt-image-2-all';
+  private readonly model = process.env.IMAGE_GEN_MODEL || 'gpt-image-2';
 
   constructor(
     @Inject(VolcengineService) private readonly volcengineService: VolcengineService,

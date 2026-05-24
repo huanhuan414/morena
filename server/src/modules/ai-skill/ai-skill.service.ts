@@ -18,7 +18,7 @@ const SKILL_PROMPTS: Record<SkillType, string> = {
 
 const IMAGE_GEN_BASE_URL = process.env.IMAGE_GEN_API_BASE_URL || 'https://api.aaigc.top';
 const IMAGE_GEN_API_KEY = process.env.IMAGE_GEN_API_KEY || 'sk-z1CFQbVdKI6x7ciJLwQkp1vPJPp8P9lQWW0jJGQWUdkSuQsK';
-const IMAGE_GEN_MODEL = process.env.IMAGE_GEN_MODEL || 'gpt-image-2-all';
+const IMAGE_GEN_MODEL = process.env.IMAGE_GEN_MODEL || 'gpt-image-2';
 
 @Injectable()
 export class AiSkillService {

@@ -318,7 +318,7 @@ export default function PalmReadingPage() {
                   <View style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden' }}>
                     <Image
                       src={inputImageUrl}
-                      style={{ width: '100%', maxHeight: '240px' }}
+                      style={{ width: '100%', height: '200px' }}
                       mode="aspectFit"
                       onClick={() => handlePreviewImage(inputImageUrl)}
                     />

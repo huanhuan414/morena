@@ -49,6 +49,7 @@ export default function OrderCreate() {
   })
   const [uploadedAssets, setUploadedAssets] = useState<{ id: string; url: string; type: 'image' | 'video'; filename: string; size: number; mimeType: string }[]>([])
   const [isUploading, setIsUploading] = useState(false)
+  const [zipProgress, setZipProgress] = useState<{ status: string; message: string; totalFiles: number; processedFiles: number } | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPlatformReq, setShowPlatformReq] = useState(false)
@@ -115,16 +116,63 @@ export default function OrderCreate() {
     finally { setIsUploading(false) }
   }
 
-  /** 上传压缩包批量导入 */
+  /** 上传压缩包批量导入（带实时进度） */
   const handleUploadZip = async () => {
     const env = Taro.getEnv()
-    if (env === Taro.ENV_TYPE.WEAPP) {
+    if (env === Taro.ENV_TYPE.WEAPP || env === Taro.ENV_TYPE.TT) {
       try {
         const res = await Taro.chooseMessageFile({ count: 1, type: 'file', extension: ['.zip', '.rar', '.7z'] })
         setIsUploading(true)
-        Taro.showLoading({ title: '上传解压中...' })
+        setZipProgress({ status: 'uploading', message: '正在上传压缩包...', totalFiles: 0, processedFiles: 0 })
+
+        // 生成taskId用于追踪进度
+        const taskId = `zip_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
+
         try {
-          const uploadRes = await Network.uploadFile({ url: '/api/upload/zip', filePath: res.tempFiles[0].path, name: 'file' })
+          // 开始上传，同时启动进度轮询
+          const uploadPromise = Network.uploadFile({
+            url: '/api/upload/zip',
+            filePath: res.tempFiles[0].path,
+            name: 'file',
+            formData: { taskId },
+          })
+
+          // 轮询进度
+          let pollTimer: ReturnType<typeof setInterval> | null = null
+          const startPolling = () => {
+            // 延迟1秒后开始轮询（等文件上传到服务器后才开始处理）
+            setTimeout(() => {
+              pollTimer = setInterval(async () => {
+                try {
+                  const progressRes = await Network.request({
+                    url: `/api/upload/zip-progress/${taskId}`,
+                  })
+                  const progress = progressRes.data?.data
+                  if (progress) {
+                    setZipProgress({
+                      status: progress.status,
+                      message: progress.message,
+                      totalFiles: progress.totalFiles,
+                      processedFiles: progress.processedFiles,
+                    })
+                    if (progress.status === 'completed' || progress.status === 'failed') {
+                      if (pollTimer) clearInterval(pollTimer)
+                    }
+                  }
+                } catch (e) {
+                  // 轮询失败不影响主流程
+                }
+              }, 1000)
+            }, 1500)
+          }
+
+          startPolling()
+
+          const uploadRes = await uploadPromise
+
+          // 停止轮询
+          if (pollTimer) clearInterval(pollTimer)
+
           const data = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data
           const extracted = data?.data
           if (extracted) {
@@ -142,7 +190,7 @@ export default function OrderCreate() {
           console.error('压缩包上传失败:', e)
           Taro.showToast({ title: '上传失败', icon: 'none' })
         }
-        Taro.hideLoading()
+        setZipProgress(null)
       } catch (e) { /* 用户取消 */ }
       finally { setIsUploading(false) }
     } else {
@@ -877,7 +925,10 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           {isUploading && (
             <View className="asset-uploading-bar">
               <Loader size={14} color="#6366F1" className="ai-loading" />
-              <Text className="asset-uploading-bar-text">上传中...</Text>
+              <Text className="asset-uploading-bar-text">
+                {zipProgress?.message || '上传中...'}
+                {zipProgress && zipProgress.totalFiles > 0 ? ` (${zipProgress.processedFiles}/${zipProgress.totalFiles})` : ''}
+              </Text>
             </View>
           )}
           {/* 素材分配模式 + AI自动补足开关 */}

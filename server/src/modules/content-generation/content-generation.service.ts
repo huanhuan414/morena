@@ -85,7 +85,7 @@ export class ContentGenerationService implements OnModuleInit {
   // 图片生成：直接 HTTP 调用 api.aaigc.top（coze SDK ImageGenerationClient 线上报 Invalid URL）
   private readonly imageGenBaseUrl = process.env.IMAGE_GEN_API_BASE_URL || 'https://api.aaigc.top'
   private readonly imageGenApiKey = process.env.IMAGE_GEN_API_KEY || 'sk-z1CFQbVdKI6x7ciJLwQkp1vPJPp8P9lQWW0jJGQWUdkSuQsK'
-  private readonly imageGenModel = process.env.IMAGE_GEN_MODEL || 'gpt-image-2-all'
+  private readonly imageGenModel = process.env.IMAGE_GEN_MODEL || 'gpt-image-2'
 
   // 视频生成：直接 HTTP 调用火山引擎 Seedance API（coze SDK VideoGenerationClient 线上报 Invalid URL）
   private readonly seedanceApiKey = process.env.SEEDANCE_API_KEY || '0a6405d5-b7ae-4afa-88e3-c707ae379a47'

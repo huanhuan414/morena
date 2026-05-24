@@ -1,4 +1,4 @@
-import { Inject, Controller, Post, UseInterceptors, UploadedFile, Body } from '@nestjs/common'
+import { Inject, Controller, Post, Get, Param, UseInterceptors, UploadedFile, Body } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { UploadService } from './upload.service'
 
@@ -159,24 +159,27 @@ export class UploadController {
 
   /**
    * 上传压缩包并解析图片/视频
+   * 支持 taskId 参数，前端可传入用于轮询进度
    */
   @Post('zip')
   @UseInterceptors(FileInterceptor('file', multerOptions))
-  async uploadZip(@UploadedFile() file: Express.Multer.File) {
+  async uploadZip(@UploadedFile() file: Express.Multer.File, @Body() body: any) {
     console.log('[UploadController] 接收到压缩包上传请求')
     console.log('[UploadController] 文件信息:', {
       originalname: file?.originalname,
       size: file?.size,
       mimetype: file?.mimetype,
       hasBuffer: !!file?.buffer,
+      taskId: body?.taskId,
     })
 
     if (!file) {
       return { code: 400, message: '未接收到文件' }
     }
 
+    const taskId = body?.taskId || ''
     try {
-      const result = await this.uploadService.uploadZip(file)
+      const result = await this.uploadService.uploadZip(file, taskId)
       return {
         code: 200,
         message: `解析完成：${result.images.length}张图片, ${result.videos.length}个视频`,
@@ -190,6 +193,21 @@ export class UploadController {
         error: error.message,
       }
     }
+  }
+
+  /**
+   * 查询ZIP上传处理进度
+   */
+  @Get('zip-progress/:taskId')
+  async getZipProgress(@Param('taskId') taskId: string) {
+    if (!taskId) {
+      return { code: 400, message: '缺少taskId', data: null }
+    }
+    const progress = await this.uploadService.getZipProgress(taskId)
+    if (!progress) {
+      return { code: 404, message: '未找到进度信息（可能已过期或任务未开始）', data: null }
+    }
+    return { code: 200, message: 'ok', data: progress }
   }
 
   /**

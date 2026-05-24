@@ -1133,7 +1133,7 @@ export class AvatarService {
     try {
       const imageApiKey = process.env.IMAGE_API_KEY || 'sk-z1CFQbVdKI6x7ciJLwQkp1vPJPp8P9lQWW0jJGQWUdkSuQsK'
       const imageApiUrl = process.env.IMAGE_API_URL || 'https://api.aaigc.top/v1/images/generations'
-      const imageModel = process.env.IMAGE_MODEL || 'gpt-image-2-all'
+      const imageModel = process.env.IMAGE_MODEL || 'gpt-image-2'
 
       const prompt = `微信公众号文章封面图，简约大气的设计风格，渐变蓝色背景，中央有装饰性几何图形，无文字，尺寸900x383像素，专业杂志风格`
 
