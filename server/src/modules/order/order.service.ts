@@ -123,7 +123,15 @@ export class OrderService {
       } else if (allContentSubmitted) {
         newStatus = 'awaiting_acceptance'
         if (allContentStatuses.some(s => ['published', 'completed'].includes(s)) && !allContentStatuses.some(s => s === 'awaiting_acceptance')) {
-          newStatus = 'submitted'
+          // 只有所有需要的分身都已完成时，才设为 submitted
+          // 否则还有分身未接单/未完成，应保持 in_progress 或 pending_acceptance
+          if (!hasPending && completedDispatchCount >= requiredAvatarCount) {
+            newStatus = 'submitted'
+          } else if (hasPending) {
+            newStatus = 'pending_acceptance'
+          } else {
+            newStatus = 'in_progress'
+          }
         }
       } else if (hasProcessing) {
         newStatus = 'in_progress'
@@ -871,10 +879,9 @@ export class OrderService {
 
   async submitOrderResult(orderId: string, result: Record<string, any>) {
     const db = getMySQLClient()
-    // 写入DB → snake_case
+    // 先写入结果，再通过 recalculateOrderStatus 重新计算状态
     const payload = {
       result: JSON.stringify(result || {}),
-      status: 'submitted',
       updated_at: new Date()
     }
     const setClause = Object.keys(payload).map((key) => `${key} = ?`).join(', ')
