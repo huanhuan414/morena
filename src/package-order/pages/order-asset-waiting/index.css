@@ -75,6 +75,20 @@
   font-weight: 600;
   color: #10B981;
 }
+.aw-distribute-badge {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8rpx;
+  margin-top: 12rpx;
+  padding: 8rpx 20rpx;
+  border-radius: 24rpx;
+  background: rgba(99, 102, 241, 0.08);
+}
+.aw-distribute-badge-text {
+  font-size: 22rpx;
+  color: #6366F1;
+}
 .aw-status-done-desc {
   font-size: 24rpx;
   color: #6B7280;

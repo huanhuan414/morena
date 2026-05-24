@@ -832,6 +832,30 @@ async getExecutionProgress(orderId: string) {
       console.log(`[acceptOrder] Redis计数器初始化: orderId=${orderId}, required=${requiredCount}, currentAccepted=${currentAccepted}`)
     }
 
+    // 独占模式校验：分身数不能超过可用素材数
+    let effectiveRequired = requiredCount
+    try {
+      const orderInfoRows = await db.query('SELECT asset_distribute_mode FROM orders WHERE id = ?', [orderId])
+      const orderDistributeMode = (orderInfoRows as any[])?.[0]?.assetDistributeMode || (orderInfoRows as any[])?.[0]?.asset_distribute_mode || 'shared'
+      if (orderDistributeMode === 'exclusive') {
+        const assetCountRows = await db.query(
+          `SELECT asset_type, COUNT(*) as cnt FROM order_assets WHERE order_id = ? AND status = 'ready' GROUP BY asset_type`,
+          [orderId]
+        )
+        const readyImageCount = (assetCountRows as any[])?.find((a: any) => a.assetType === 'image' || a.asset_type === 'image')?.cnt || 0
+        const readyVideoCount = (assetCountRows as any[])?.find((a: any) => a.assetType === 'video' || a.asset_type === 'video')?.cnt || 0
+        const maxAvatarsByAssets = readyImageCount + readyVideoCount
+        if (maxAvatarsByAssets > 0 && maxAvatarsByAssets < effectiveRequired) {
+          effectiveRequired = maxAvatarsByAssets
+          console.log(`[acceptOrder] 独占模式: 限制分身数为${effectiveRequired}（可用素材${maxAvatarsByAssets}个）`)
+          // 更新Redis中的required计数
+          await this.redisService.getClient().set(redisKeyRequired, String(effectiveRequired), 'EX', OrderDispatchService.REDIS_TTL_SECONDS)
+        }
+      }
+    } catch (err: any) {
+      console.warn(`[acceptOrder] 独占模式校验失败:`, err.message)
+    }
+
     // 1.3 原子占位：INCR递增已接单计数
     // INCR是原子操作，返回递增后的值。如果超过名额，立即DECR回滚并拒绝
     // 这确保了即使100个请求同时到达，也只有requiredCount个能通过
@@ -1320,6 +1344,7 @@ async getExecutionProgress(orderId: string) {
     // 获取订单素材池中已就绪的素材（含等待机制）
     const assignedImages: string[] = []
     let assignedVideoUrl: string | undefined
+    const assetDistributeMode = order.assetDistributeMode || order.asset_distribute_mode || 'shared'
     try {
       const db2 = getMySQLClient()
       
@@ -1388,13 +1413,29 @@ async getExecutionProgress(orderId: string) {
           }
         }
         
-        // 第四步：分配就绪素材
+        // 第四步：分配就绪素材（根据分配模式）
         if (readyAssets && readyAssets.length > 0) {
-          for (const asset of readyAssets) {
-            if (asset.asset_type === 'image' && assignedImages.length < 9) {
-              assignedImages.push(asset.asset_url)
-            } else if (asset.asset_type === 'video' && !assignedVideoUrl) {
-              assignedVideoUrl = asset.asset_url
+          if (assetDistributeMode === 'exclusive') {
+            // 独占模式：每个素材只能分配给一个分身，排除已被分配的
+            const unassignedAssets = readyAssets.filter((a: any) => !a.assigned_to && !a.assignedTo)
+            for (const asset of unassignedAssets) {
+              if (asset.asset_type === 'image' && assignedImages.length < 9) {
+                assignedImages.push(asset.asset_url)
+                // 标记已分配给此请求
+                await db2.query('UPDATE order_assets SET assigned_to = ? WHERE id = ?', [requestId, asset.id])
+              } else if (asset.asset_type === 'video' && !assignedVideoUrl) {
+                assignedVideoUrl = asset.asset_url
+                await db2.query('UPDATE order_assets SET assigned_to = ? WHERE id = ?', [requestId, asset.id])
+              }
+            }
+          } else {
+            // 共享模式：所有分身拿到同样素材
+            for (const asset of readyAssets) {
+              if (asset.asset_type === 'image' && assignedImages.length < 9) {
+                assignedImages.push(asset.asset_url)
+              } else if (asset.asset_type === 'video' && !assignedVideoUrl) {
+                assignedVideoUrl = asset.asset_url
+              }
             }
           }
         }

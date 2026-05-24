@@ -45,6 +45,7 @@ export default function OrderCreate() {
     avatarCount: 1,
     quantityPerAvatar: 1,
     aiAutoFill: false,
+    assetDistributeMode: 'shared' as 'shared' | 'exclusive',
   })
   const [uploadedAssets, setUploadedAssets] = useState<{ id: string; url: string; type: 'image' | 'video'; filename: string; size: number; mimeType: string }[]>([])
   const [isUploading, setIsUploading] = useState(false)
@@ -405,7 +406,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         avatar_count: form.avatarCount,
         quantity_per_avatar: form.quantityPerAvatar,
         total_price: totalPrice.total,
-        requirements: { ...form.optionalRequirements, platformRemarks: form.platformRemarks, ai_auto_fill: form.aiAutoFill },
+        requirements: { ...form.optionalRequirements, platformRemarks: form.platformRemarks, ai_auto_fill: form.aiAutoFill, asset_distribute_mode: form.assetDistributeMode },
         openid,
       }
 
@@ -844,26 +845,69 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
               <Text className="asset-uploading-bar-text">上传中...</Text>
             </View>
           )}
-          {/* AI自动补足开关 */}
-          {form.contentType !== 'text' && totalCount > 0 && (
-            <View className="asset-ai-toggle-row">
-              <View className="asset-ai-toggle-left">
-                <Sparkles size={14} color="#8B5CF6" />
-                <Text className="asset-ai-toggle-label">AI自动补足素材</Text>
+          {/* 素材分配模式 + AI自动补足开关 */}
+          {form.contentType !== 'text' && (
+            <>
+              {/* 素材分配模式 */}
+              <View className="asset-ai-toggle-row">
+                <View className="asset-ai-toggle-left">
+                  <Users size={14} color="#1890ff" />
+                  <Text className="asset-ai-toggle-label">素材分配</Text>
+                </View>
+                <View className="asset-distribute-toggle">
+                  <View
+                    className={`asset-distribute-opt ${form.assetDistributeMode === 'shared' ? 'active' : ''}`}
+                    onClick={() => setForm(prev => ({ ...prev, assetDistributeMode: 'shared' }))}
+                  >
+                    <Text className={`asset-distribute-opt-text ${form.assetDistributeMode === 'shared' ? 'active' : ''}`}>共享</Text>
+                  </View>
+                  <View
+                    className={`asset-distribute-opt ${form.assetDistributeMode === 'exclusive' ? 'active' : ''}`}
+                    onClick={() => setForm(prev => ({ ...prev, assetDistributeMode: 'exclusive' }))}
+                  >
+                    <Text className={`asset-distribute-opt-text ${form.assetDistributeMode === 'exclusive' ? 'active' : ''}`}>独占</Text>
+                  </View>
+                </View>
               </View>
-              <View
-                className={`asset-ai-switch ${form.aiAutoFill ? 'active' : ''}`}
-                onClick={() => setForm(prev => ({ ...prev, aiAutoFill: !prev.aiAutoFill }))}
-              >
-                <View className={`asset-ai-switch-dot ${form.aiAutoFill ? 'active' : ''}`} />
-              </View>
-            </View>
-          )}
-          {form.aiAutoFill && form.contentType !== 'text' && imageCount < requiredImageCount && (
-            <View className="asset-ai-hint">
-              <Sparkles size={14} color="#8B5CF6" />
-              <Text className="asset-ai-hint-text">不足的图片支付后将由AI自动生成，分身接单时直接分配</Text>
-            </View>
+              {form.assetDistributeMode === 'shared' && (
+                <View className="asset-mode-hint">
+                  <Text className="asset-mode-hint-text">共享模式：所有分身使用相同的素材</Text>
+                </View>
+              )}
+              {form.assetDistributeMode === 'exclusive' && (
+                <View className="asset-mode-hint">
+                  <Text className="asset-mode-hint-text">独占模式：每个分身分配不同素材，分身数不能超过素材数</Text>
+                </View>
+              )}
+              {/* AI自动补足开关：仅在有上传素材时显示 */}
+              {totalCount > 0 && (
+                <View className="asset-ai-toggle-row" style={{ marginTop: '8px' }}>
+                  <View className="asset-ai-toggle-left">
+                    <Sparkles size={14} color="#8B5CF6" />
+                    <Text className="asset-ai-toggle-label">AI自动补足素材</Text>
+                  </View>
+                  <View
+                    className={`asset-ai-switch ${form.aiAutoFill ? 'active' : ''}`}
+                    onClick={() => setForm(prev => ({ ...prev, aiAutoFill: !prev.aiAutoFill }))}
+                  >
+                    <View className={`asset-ai-switch-dot ${form.aiAutoFill ? 'active' : ''}`} />
+                  </View>
+                </View>
+              )}
+              {totalCount > 0 && form.aiAutoFill && imageCount < requiredImageCount && (
+                <View className="asset-ai-hint">
+                  <Sparkles size={14} color="#8B5CF6" />
+                  <Text className="asset-ai-hint-text">不足的图片支付后将由AI自动生成，分身接单时直接分配</Text>
+                </View>
+              )}
+              {/* 无上传素材时的AI生成提示 */}
+              {totalCount === 0 && (
+                <View className="asset-ai-hint">
+                  <Sparkles size={14} color="#8B5CF6" />
+                  <Text className="asset-ai-hint-text">未上传素材，支付后将根据平台需求AI自动生成</Text>
+                </View>
+              )}
+            </>
           )}
         </View>
 

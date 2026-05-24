@@ -1099,6 +1099,46 @@
 .asset-ai-switch-dot.active {
   transform: translateX(36rpx);
 }
+
+.asset-distribute-toggle {
+  display: flex;
+  flex-direction: row;
+  background: #F1F5F9;
+  border-radius: 12rpx;
+  overflow: hidden;
+}
+
+.asset-distribute-opt {
+  padding: 8rpx 24rpx;
+  border-radius: 12rpx;
+  transition: all 0.2s;
+}
+
+.asset-distribute-opt.active {
+  background: #1890ff;
+}
+
+.asset-distribute-opt-text {
+  font-size: 24rpx;
+  color: #64748B;
+}
+
+.asset-distribute-opt-text.active {
+  color: #fff;
+  font-weight: 500;
+}
+
+.asset-mode-hint {
+  padding: 12rpx 16rpx;
+  background: #EFF6FF;
+  border-radius: 12rpx;
+  margin-top: 8rpx;
+}
+
+.asset-mode-hint-text {
+  font-size: 22rpx;
+  color: #3B82F6;
+}
 .req-item .req-label {
   white-space: nowrap;
   flex-shrink: 0;

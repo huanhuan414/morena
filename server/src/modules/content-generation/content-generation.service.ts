@@ -2124,9 +2124,15 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
 
       console.log(`[预生成] 订单 ${orderId} 已有素材: 图片${uploadedImageCount}张, 视频${uploadedVideoCount}个`)
 
-      // 如果关闭了AI自动补足，跳过生成
-      if (!aiAutoFill) {
-        console.log(`[预生成] 订单 ${orderId} AI自动补足已关闭，跳过生成`)
+      // 素材来源决策：
+      // 1. 没有上传素材 → 始终AI生成（不受aiAutoFill开关影响）
+      // 2. 有上传素材但不足 → aiAutoFill开关控制是否AI补足
+      // 3. 有上传素材且已足 → 不需要AI生成
+      const hasUploadedAssets = uploadedImageCount > 0 || uploadedVideoCount > 0
+      const needAiGenerate = !hasUploadedAssets || aiAutoFill
+
+      if (!needAiGenerate) {
+        console.log(`[预生成] 订单 ${orderId} 有用户素材且AI补足已关闭，跳过生成`)
         return
       }
 
@@ -2145,7 +2151,7 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
       const missingImages = Math.max(0, requiredImageCount - uploadedImageCount)
       const needVideo = requiredVideo && uploadedVideoCount === 0
 
-      console.log(`[预生成] 需要: 图片${requiredImageCount}张(缺${missingImages}), 视频${requiredVideo ? '1个' : '0个'}(缺${needVideo ? 1 : 0})`)
+      console.log(`[预生成] 需要: 图片${requiredImageCount}张(缺${missingImages}), 视频${requiredVideo ? '1个' : '0个'}(缺${needVideo ? 1 : 0}), 来源: ${hasUploadedAssets ? '用户上传+AI补足' : '纯AI生成'}`)
 
       // AI补齐图片
       if (missingImages > 0) {
@@ -2247,31 +2253,51 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
   }
 
   /** 从 order_assets 为请求分配素材 */
-  async assignAssetsToRequest(orderId: string): Promise<{ images: string[]; videoUrl: string | null }> {
+  async assignAssetsToRequest(orderId: string, distributeMode: 'shared' | 'exclusive' = 'shared', requestId?: string): Promise<{ images: string[]; videoUrl: string | null }> {
     const db = getMySQLClient()
     const images: string[] = []
     let videoUrl: string | null = null
 
+    // 获取订单的分配模式
+    const mode = distributeMode || 'shared'
+
     // 分配已就绪的图片（按sort_order排序）
+    // 独占模式：只分配未被其他请求占用的素材
+    const imageWhere = mode === 'exclusive'
+      ? `WHERE order_id = ? AND asset_type = 'image' AND status = 'ready' AND (assigned_to IS NULL OR assigned_to = ?)`
+      : `WHERE order_id = ? AND asset_type = 'image' AND status = 'ready'`
+    const imageParams = mode === 'exclusive' ? [orderId, requestId || ''] : [orderId]
+
     const imageRows = await db.query(
-      `SELECT asset_url FROM order_assets 
-       WHERE order_id = ? AND asset_type = 'image' AND status = 'ready' 
-       ORDER BY sort_order ASC`,
-      [orderId]
+      `SELECT id, asset_url FROM order_assets ${imageWhere} ORDER BY sort_order ASC`,
+      imageParams
     )
     for (const row of (imageRows as any[])) {
-      if (row.assetUrl) images.push(row.assetUrl)
+      if (row.assetUrl) {
+        images.push(row.assetUrl)
+        // 独占模式：标记素材已分配给该请求
+        if (mode === 'exclusive' && requestId && !row.assignedTo) {
+          await db.query('UPDATE order_assets SET assigned_to = ? WHERE id = ?', [requestId, row.id])
+        }
+      }
     }
 
     // 分配已就绪的视频
+    const videoWhere = mode === 'exclusive'
+      ? `WHERE order_id = ? AND asset_type = 'video' AND status = 'ready' AND (assigned_to IS NULL OR assigned_to = ?)`
+      : `WHERE order_id = ? AND asset_type = 'video' AND status = 'ready'`
+    const videoParams = mode === 'exclusive' ? [orderId, requestId || ''] : [orderId]
+
     const videoRows = await db.query(
-      `SELECT asset_url FROM order_assets 
-       WHERE order_id = ? AND asset_type = 'video' AND status = 'ready' 
-       LIMIT 1`,
-      [orderId]
+      `SELECT id, asset_url FROM order_assets ${videoWhere} LIMIT 1`,
+      videoParams
     )
     if ((videoRows as any[]).length > 0 && (videoRows as any[])[0].assetUrl) {
       videoUrl = (videoRows as any[])[0].assetUrl
+      // 独占模式：标记视频已分配
+      if (mode === 'exclusive' && requestId && !(videoRows as any[])[0].assignedTo) {
+        await db.query('UPDATE order_assets SET assigned_to = ? WHERE id = ?', [requestId, (videoRows as any[])[0].id])
+      }
     }
 
     // 如果图片还在生成中，短轮询等待（最多30秒）

@@ -3,7 +3,8 @@ import Taro from '@tarojs/taro'
 import { View, Text, Image, Video, ScrollView } from '@tarojs/components'
 import {
   ArrowLeft, RefreshCw, CircleCheck, Loader, CircleX,
-  Play, Sparkles, ChevronRight, ImagePlus, PackageOpen
+  Play, Sparkles, ChevronRight, ImagePlus, PackageOpen,
+  Users, UserCheck
 } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
@@ -40,6 +41,7 @@ export default function OrderAssetWaiting() {
   const [isRegenAll, setIsRegenAll] = useState(false)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [distributeMode, setDistributeMode] = useState<'shared' | 'exclusive'>('shared')
   const pollUnsubRef = useRef<(() => void) | null>(null)
   const statusBarHeight = getStatusBarHeight()
 
@@ -91,11 +93,29 @@ export default function OrderAssetWaiting() {
     }
   }
 
+  // 获取订单分配模式
+  const fetchOrderInfo = async () => {
+    if (!orderId) return
+    try {
+      const res = await Network.request({
+        url: `/api/orders/${orderId}`,
+        method: 'GET',
+      })
+      const payload = res?.data
+      if (payload?.code === 200 && payload?.data) {
+        const order = payload.data
+        setDistributeMode(order.assetDistributeMode || order.asset_distribute_mode || 'shared')
+      }
+    } catch (e) {
+      console.error('[AssetWaiting] 获取订单信息失败:', e)
+    }
+  }
+
   // 初始加载 + 轮询
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true)
-      await Promise.all([fetchAssets(1), fetchSummary()])
+      await Promise.all([fetchAssets(1), fetchSummary(), fetchOrderInfo()])
       setLoading(false)
     }
     loadAll()
@@ -245,6 +265,18 @@ export default function OrderAssetWaiting() {
                 {summary?.user_uploaded ? ` · ${summary.user_uploaded}个已上传` : ''}
                 {summary?.ai_generated ? ` · ${summary.ai_generated}个AI生成` : ''}
               </Text>
+              {distributeMode === 'exclusive' && (
+                <View className="aw-distribute-badge">
+                  <UserCheck size={14} color="#6366F1" />
+                  <Text className="aw-distribute-badge-text">独占模式 · 可供{summary?.ready || 0}个分身各领不同素材</Text>
+                </View>
+              )}
+              {distributeMode === 'shared' && hasAssets && (
+                <View className="aw-distribute-badge">
+                  <Users size={14} color="#10B981" />
+                  <Text className="aw-distribute-badge-text">共享模式 · 所有分身使用相同素材</Text>
+                </View>
+              )}
             </View>
           ) : hasFailed && !hasGenerating ? (
             <View className="aw-status-failed">
