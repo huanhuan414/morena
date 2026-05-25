@@ -27,6 +27,7 @@ const Login: React.FC = () => {
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [profileSaving, setProfileSaving] = useState(false)
   const [loginResult, setLoginResult] = useState<any>(null)
+  const [showAuthConfirm, setShowAuthConfirm] = useState(false)
   const { setUserInfo, setToken } = useUserStore(state => state)
 
   useEffect(() => {
@@ -129,6 +130,10 @@ const Login: React.FC = () => {
   }
 
   const handleLogin = async () => {
+    if (!agreed) {
+      Taro.showToast({ title: '请先同意用户协议', icon: 'none' })
+      return
+    }
     if (!phone || phone.length !== 11) {
       Taro.showToast({ title: '请输入正确的手机号', icon: 'none' })
       return
@@ -233,6 +238,19 @@ const Login: React.FC = () => {
   const handleSkipProfile = () => {
     setShowProfilePanel(false)
     navigateAfterLogin(loginResult)
+  }
+
+  const handleAuthConfirmCancel = () => {
+    setShowAuthConfirm(false)
+    Taro.switchTab({ url: '/pages/index/index' })
+  }
+
+  const handleAuthConfirm = () => {
+    if (!agreed) {
+      Taro.showToast({ title: '请先同意用户协议', icon: 'none' })
+      return
+    }
+    setShowAuthConfirm(true)
   }
 
   const handleGetPhoneNumber = async (e: any) => {
@@ -389,9 +407,9 @@ const Login: React.FC = () => {
             <UIButton
               variant="default"
               size="lg"
-              disabled={loading || !agreed}
+              disabled={loading}
               onClick={handleLogin}
-              className="login-submit-btn"
+              className={`login-submit-btn ${!agreed ? 'btn-disabled' : ''}`}
             >
               <Text className="login-submit-btn-text">{loading ? '登录中...' : '登录'}</Text>
             </UIButton>
@@ -420,14 +438,12 @@ const Login: React.FC = () => {
               </View>
             </View>
 
-            <WeappButton
-              className="login-wechat-phone-btn"
-              open-type="getPhoneNumber"
-              onGetPhoneNumber={handleGetPhoneNumber}
-              disabled={wechatLoading || !agreed}
+            <View
+              className={`login-wechat-phone-btn ${wechatLoading || !agreed ? 'disabled' : ''}`}
+              onClick={handleAuthConfirm}
             >
-              {wechatLoading ? '授权中...' : '授权登录'}
-            </WeappButton>
+              <Text className="login-wechat-phone-btn-text">{wechatLoading ? '授权中...' : '授权登录'}</Text>
+            </View>
 
             {renderAgreement()}
           </View>
@@ -484,6 +500,35 @@ const Login: React.FC = () => {
                   <Text className="profile-skip-text">跳过</Text>
                 </View>
               </View>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {showAuthConfirm && (
+        <View className="auth-confirm-mask" onClick={() => setShowAuthConfirm(false)}>
+          <View className="auth-confirm-panel" onClick={(e) => e.stopPropagation()}>
+            <View className="auth-confirm-header">
+              <Text className="auth-confirm-title">授权确认</Text>
+            </View>
+            <View className="auth-confirm-body">
+              <Text className="auth-confirm-desc">是否授权登录？</Text>
+              {/* <Text className="auth-confirm-hint">确定后将获取您的手机号进行登录</Text> */}
+            </View>
+            <View className="auth-confirm-actions">
+              <View className="auth-confirm-cancel" onClick={handleAuthConfirmCancel}>
+                <Text className="auth-confirm-cancel-text">取消</Text>
+              </View>
+              <WeappButton
+                className="auth-confirm-confirm"
+                open-type="getPhoneNumber"
+                onGetPhoneNumber={(e: any) => {
+                  setShowAuthConfirm(false)
+                  handleGetPhoneNumber(e)
+                }}
+              >
+                <Text className="auth-confirm-confirm-text">确定</Text>
+              </WeappButton>
             </View>
           </View>
         </View>
