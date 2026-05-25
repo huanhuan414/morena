@@ -336,6 +336,67 @@
   color: #fff;
 }
 
+/* 按钮组布局 */
+.login-btn-group {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+  margin-top: 48rpx;
+}
+
+.login-primary-btn {
+  width: 100% !important;
+  height: 100rpx !important;
+  border-radius: 24rpx !important;
+  background: linear-gradient(135deg, #07c160 0%, #2dc84d 100%) !important;
+  border: none !important;
+}
+
+.login-primary-btn::after {
+  border: none !important;
+}
+
+.login-primary-btn.btn-disabled {
+  background: #ccc !important;
+  opacity: 0.6;
+}
+
+.login-primary-btn[disabled] {
+  background: #ccc !important;
+  opacity: 0.6;
+}
+
+.login-secondary-btn {
+  width: 100% !important;
+  height: 100rpx !important;
+  border-radius: 24rpx !important;
+  border: 2rpx solid #e5e7eb !important;
+  background: #fff !important;
+}
+
+.login-secondary-btn::after {
+  border: none !important;
+}
+
+.login-secondary-btn.btn-disabled,
+.login-secondary-btn[disabled] {
+  border-color: #d1d5db !important;
+  opacity: 0.6;
+}
+
+.login-btn-text {
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.login-primary-btn .login-btn-text {
+  color: #fff;
+}
+
+.login-secondary-btn .login-btn-text {
+  color: #666666;
+}
+
 .profile-panel-mask {
   position: fixed;
   top: 0;

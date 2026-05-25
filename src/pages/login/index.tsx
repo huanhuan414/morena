@@ -19,6 +19,7 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [codeLoading, setCodeLoading] = useState(false)
   const [wechatLoading, setWechatLoading] = useState(false)
+  const [guestLoading, setGuestLoading] = useState(false)
   const [agreed, setAgreed] = useState(false)
   const [showProfilePanel, setShowProfilePanel] = useState(false)
   const [profileNickname, setProfileNickname] = useState('')
@@ -252,7 +253,11 @@ const Login: React.FC = () => {
     }
     setShowAuthConfirm(true)
   }
-
+  const handleAuthConfirm_fk = () => {
+    if (guestLoading) return
+    setGuestLoading(true)
+    handleAuthConfirmCancel()
+  }
   const handleGetPhoneNumber = async (e: any) => {
     if (!agreed) {
       Taro.showToast({ title: '请先同意用户协议', icon: 'none' })
@@ -438,11 +443,26 @@ const Login: React.FC = () => {
               </View>
             </View>
 
-            <View
-              className={`login-wechat-phone-btn ${wechatLoading || !agreed ? 'disabled' : ''}`}
-              onClick={handleAuthConfirm}
-            >
-              <Text className="login-wechat-phone-btn-text">{wechatLoading ? '授权中...' : '授权登录'}</Text>
+            <View className="login-btn-group">
+              <UIButton
+                variant="default"
+                size="lg"
+                disabled={wechatLoading}
+                onClick={handleAuthConfirm}
+                className={`login-primary-btn ${!agreed ? 'btn-disabled' : ''}`}
+              >
+                <Text className="login-btn-text">{wechatLoading ? '授权中...' : '授权登录'}</Text>
+              </UIButton>
+
+              <UIButton
+                variant="outline"
+                size="lg"
+                disabled={guestLoading}
+                onClick={handleAuthConfirm_fk}
+                className="login-secondary-btn"
+              >
+                <Text className="login-btn-text">{guestLoading ? '加载中...' : '游客登录'}</Text>
+              </UIButton>
             </View>
 
             {renderAgreement()}
