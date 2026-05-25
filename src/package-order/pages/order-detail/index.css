@@ -320,6 +320,10 @@
 .od-action-primary {
   background: linear-gradient(135deg, #6366F1, #8B5CF6);
 }
+.od-actions .od-action-btn.od-action-primary.od-action-disabled {
+  background: #ccc !important;
+  opacity: 0.6 !important;
+}
 .od-action-secondary {
   background: #EEF2FF;
 }

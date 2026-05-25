@@ -69,7 +69,7 @@ export default function OrderAcceptance() {
   const [showApprove, setShowApprove] = useState(false)
   const [showReject, setShowReject] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
-  const [generatedContent, setGeneratedContent] = useState<{ content?: string; images?: string[]; videos?: string[] } | null>(null)
+  const [generatedContent, setGeneratedContent] = useState<{ content?: string; images?: string[]; videos?: string[]; status?: string } | null>(null)
   const [hasPermission, setHasPermission] = useState(true)
   const statusBarHeight = getStatusBarHeight()
 
@@ -113,7 +113,8 @@ export default function OrderAcceptance() {
           setGeneratedContent({
             content: data.content || data.textContent || '',
             images: Array.isArray(data.images) ? data.images : [],
-            videos: Array.isArray(data.videos) ? data.videos : (Array.isArray(data.videoUrl) ? data.videoUrl : (data.videoUrl ? [data.videoUrl] : []))
+            videos: Array.isArray(data.videos) ? data.videos : (Array.isArray(data.videoUrl) ? data.videoUrl : (data.videoUrl ? [data.videoUrl] : [])),
+            status: data.status
           })
         }
       } catch (error) {
@@ -284,11 +285,11 @@ export default function OrderAcceptance() {
                   </View>
                   <Text className="block od-status-desc">
                     {isAwaiting ? '请检查分身提交的内容并确认验收' :
-                     st === 'completed' ? '此分身内容已验收通过' :
-                     st === 'generating' || st === 'accepted' ? '分身正在创作内容，请耐心等待' :
-                     st === 'rejected' ? '此分身已拒绝接单' :
-                     st === 'pending' ? '等待分身确认接单' :
-                     '分身状态：' + label}
+                      st === 'completed' ? '此分身内容已验收通过' :
+                        st === 'generating' || st === 'accepted' ? '分身正在创作内容，请耐心等待' :
+                          st === 'rejected' ? '此分身已拒绝接单' :
+                            st === 'pending' ? '等待分身确认接单' :
+                              '分身状态：' + label}
                   </Text>
                 </>
               )
@@ -444,7 +445,7 @@ export default function OrderAcceptance() {
                   <Text className="block od-section-title">
                     {platform === 'xiaohongshu' ? '小红书' : platform === 'wechat_mp' ? '微信公众号' : platform}
                   </Text>
-                  
+
                   {feedback.link && (
                     <View className="od-link-item" onClick={() => handleLinkClick(feedback.link)}>
                       <View className="od-link-icon">
@@ -507,10 +508,23 @@ export default function OrderAcceptance() {
               <CircleAlert size={16} color="#EF4444" />
               <Text className="block od-action-text" style={{ color: '#EF4444' }}>驳回</Text>
             </View>
-            <View className="od-action-btn od-action-primary" onClick={() => setShowApprove(true)}>
-              <CircleCheckBig size={16} color="#fff" />
-              <Text className="block od-action-text" style={{ color: '#fff' }}>验收通过</Text>
-            </View>
+            {(() => {
+              const isPublished = generatedContent?.status === 'awaiting_acceptance'
+              return isPublished ? (
+                <View className="od-action-btn od-action-primary" onClick={() => setShowApprove(true)}>
+                  <CircleCheckBig size={16} color="#fff" />
+                  <Text className="block od-action-text" style={{ color: '#fff' }}>验收通过</Text>
+                </View>
+              ) : (
+                <View
+                  className="od-action-btn od-action-primary od-action-disabled"
+                  onClick={() => showToast({ title: '请等待分身发布内容后再验收', icon: 'none' })}
+                >
+                  <CircleCheckBig size={16} color="#fff" />
+                  <Text className="block od-action-text" style={{ color: '#fff' }}>验收通过</Text>
+                </View>
+              )
+            })()}
           </View>
         )}
 
