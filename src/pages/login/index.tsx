@@ -414,7 +414,8 @@ const Login: React.FC = () => {
               size="lg"
               disabled={loading}
               onClick={handleLogin}
-              className={`login-submit-btn ${!agreed ? 'btn-disabled' : ''}`}
+              // className={`login-submit-btn ${!agreed ? 'btn-disabled' : ''}`}
+              className="login-submit-btn"
             >
               <Text className="login-submit-btn-text">{loading ? '登录中...' : '登录'}</Text>
             </UIButton>
@@ -449,7 +450,8 @@ const Login: React.FC = () => {
                 size="lg"
                 disabled={wechatLoading}
                 onClick={handleAuthConfirm}
-                className={`login-primary-btn ${!agreed ? 'btn-disabled' : ''}`}
+                // className={`login-primary-btn ${!agreed ? 'btn-disabled' : ''}`}
+                className="login-primary-btn"
               >
                 <Text className="login-btn-text">{wechatLoading ? '授权中...' : '授权登录'}</Text>
               </UIButton>

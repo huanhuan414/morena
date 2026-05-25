@@ -371,7 +371,7 @@
   height: 100rpx !important;
   border-radius: 24rpx !important;
   border: 2rpx solid #e5e7eb !important;
-  background: #fff !important;
+  background: #b3b4b6 !important;
 }
 
 .login-secondary-btn::after {
@@ -394,7 +394,7 @@
 }
 
 .login-secondary-btn .login-btn-text {
-  color: #666666;
+  color: #fff;
 }
 
 .profile-panel-mask {
