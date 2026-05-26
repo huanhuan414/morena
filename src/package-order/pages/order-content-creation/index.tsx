@@ -383,11 +383,11 @@ export default function OrderContentCreation() {
   const stepStates = getStepStates(currentStep, steps.length)
   // 生成中的状态集合 —— 只有这些状态算"还在生成"
   const GENERATING_STATUSES = ['pending', 'processing', 'generating_text', 'generating_images', 'generating_video']
-  // simple_task的ready状态不算"已完成"，而是"待执行"
-  const SIMPLE_TASK_EXECUTING_STATUSES = ['ready']
   const isPartialFailed = rawStatus === 'partial_failed'
   const isSimpleTask = contentType === 'simple_task'
-  const isGenerating = GENERATING_STATUSES.includes(rawStatus) || (isSimpleTask && SIMPLE_TASK_EXECUTING_STATUSES.includes(rawStatus))
+  // simple_task的ready状态：任务已就绪，不算"生成中"，算"任务待执行"
+  const isSimpleTaskReady = isSimpleTask && rawStatus === 'ready'
+  const isGenerating = GENERATING_STATUSES.includes(rawStatus) || (isSimpleTask && ['pending', 'processing'].includes(rawStatus))
   const isRejected = rawStatus === 'rejected'
   const rejectReason = processingData?.publishFeedback?.rejectReason || ''
 
@@ -782,6 +782,60 @@ export default function OrderContentCreation() {
                 </View>
               </View>
             )}
+          </View>
+        )}
+
+        {/* 简单任务 - 任务就绪，引导执行 */}
+        {isSimpleTaskReady && (
+          <View className="cc-content-section">
+            <View className="cc-done-banner" style={{ background: '#EFF6FF' }}>
+              <CircleCheck size={20} color="#2563EB" />
+              <Text className="block cc-done-text" style={{ color: '#2563EB' }}>任务已就绪，请按要求执行任务并上传截图反馈</Text>
+            </View>
+
+            {/* 任务描述 */}
+            {textContent && (
+              <View className="cc-content-card">
+                <View className="cc-card-header">
+                  <FileText size={16} color="#6366F1" />
+                  <Text className="cc-card-title">任务要求</Text>
+                </View>
+                <View className="cc-markdown-body">
+                  <MarkdownRenderer content={textContent} />
+                </View>
+              </View>
+            )}
+
+            {/* 参考素材 */}
+            {displayImages.length > 0 && (
+              <View className="cc-content-card">
+                <View className="cc-card-header">
+                  <ImageIcon size={16} color="#6366F1" />
+                  <Text className="cc-card-title">参考素材 ({displayImages.length})</Text>
+                </View>
+                <View className="cc-images-grid">
+                  {displayImages.map((img, i) => (
+                    <View className="cc-image-item" key={i}>
+                      <TaroImage className="cc-image-preview" src={img} mode="aspectFill" onClick={() => { Taro.previewImage({ urls: displayImages, current: img }) }} />
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* 去上传截图按钮 */}
+            <View style={{ marginTop: '24rpx', padding: '0 16rpx' }}>
+              <Button
+                className="w-full"
+                onClick={() => {
+                  if (processingData?.requestId && orderId) {
+                    Taro.navigateTo({ url: `/package-order/pages/order-publish-feedback/index?requestId=${processingData.requestId}&orderId=${orderId}` })
+                  }
+                }}
+              >
+                <Text>上传截图反馈</Text>
+              </Button>
+            </View>
           </View>
         )}
 
