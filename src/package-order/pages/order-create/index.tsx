@@ -217,13 +217,12 @@ export default function OrderCreate() {
   // 计算独占模式下最大分身数量
   const getMaxAvatarCount = () => {
     if (form.assetDistributeMode !== 'exclusive') return Infinity
-    // 独占模式：素材按顺序平均分配给每个分身，每个分身至少1张
-    // 最大分身数 = 素材数量（每个分身至少分到1张素材，不够的由AI补足）
+    // 独占模式：每个分身至少分到1张素材，最大分身数 = 素材数量
     const uploadedCount = uploadedAssets.length
     if (uploadedCount > 0) {
       return uploadedCount
     }
-    // 无上传素材：默认AI生成，按分身数生成，不限
+    // 无上传素材时不限
     return 99
   }
 
