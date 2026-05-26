@@ -314,11 +314,17 @@ export default function OrderAssetWaiting() {
   const hasGenerating = (summary?.generating || 0) > 0
 
   // 素材是否充足
-  // 逻辑：不开AI补齐 → 有素材就充足；开AI补齐 → 达到requiredImageCount才充足
   const totalReady = summary?.ready || 0
-  const isSufficient = contentType === 'text' || (aiAutoFill ? totalReady >= requiredImageCount : totalReady > 0)
-  const needMoreImages = (contentType !== 'text' && aiAutoFill) ? Math.max(0, requiredImageCount - (summary?.images || 0) - (summary?.generating || 0)) : 0
-  const needMoreVideos = (contentType === 'video' && aiAutoFill) ? Math.max(0, requiredVideoCount - (summary?.videos || 0) - (summary?.generating || 0)) : 0
+  const readyImages = summary?.images || 0
+  const readyVideos = summary?.videos || 0
+  // 纯文字类型始终充足
+  // 不开AI补齐：有素材即可（图片>0 或 视频>0）
+  // 开AI补齐：图片达到requiredImageCount 且 视频达到requiredVideoCount
+  const isSufficient = contentType === 'text' || (aiAutoFill
+    ? (readyImages >= requiredImageCount && readyVideos >= requiredVideoCount)
+    : (readyImages > 0 || readyVideos > 0))
+  const needMoreImages = (contentType !== 'text' && contentType !== 'video' && aiAutoFill) ? Math.max(0, requiredImageCount - readyImages - (summary?.generating || 0)) : 0
+  const needMoreVideos = (contentType === 'video' && aiAutoFill) ? Math.max(0, requiredVideoCount - readyVideos - (summary?.generating || 0)) : 0
   const needMoreCount = needMoreImages + needMoreVideos
 
   return (
@@ -373,7 +379,7 @@ export default function OrderAssetWaiting() {
               <Loader size={32} color="#6366F1" className="aw-spin" />
               <Text className="aw-status-gen-title">AI素材生成中...</Text>
               <Text className="aw-status-gen-desc">
-                已就绪 {summary?.ready || 0}{aiAutoFill && requiredImageCount > 0 ? `/${requiredImageCount}` : ''}，生成中 {summary?.generating || 0}
+                已就绪 {totalReady}{aiAutoFill ? `/${requiredImageCount + requiredVideoCount}` : ''}，生成中 {summary?.generating || 0}
                 {summary?.failed ? `，失败 ${summary.failed}` : ''}
               </Text>
               {/* 进度条 */}
