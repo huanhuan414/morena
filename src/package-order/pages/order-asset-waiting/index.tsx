@@ -130,7 +130,7 @@ export default function OrderAssetWaiting() {
         const perAvatarVideos = isVideo ? PLATFORM_DEFAULT_VIDEOS : 0
         const avatarCount = order.avatarCount || order.avatar_count || order.quantityPerAvatar || 1
 
-        if (aiAutoFill) {
+        if (autoFill) {
           // AI补齐模式：需要计算目标数量
           if (mode === 'exclusive') {
             setRequiredImageCount(perAvatarImages * avatarCount)
