@@ -503,6 +503,24 @@ export class ContentGenerationController {
   /**
    * 清除订单的内容生成记录（重新生成时调用）
    */
+  @Delete('content/:contentId')
+  async deleteContent(@Param('contentId') contentId: string) {
+    try {
+      const pool = await getMySQLClient()
+      const result: any = await getMySQLClient().query(
+        'DELETE FROM content_generation_requests WHERE id = ?',
+        [contentId]
+      )
+      const affected = result?.affectedRows || 0
+      if (affected === 0) {
+        return { code: 404, message: '内容不存在' }
+      }
+      return { code: 200, message: '删除成功' }
+    } catch (error: any) {
+      return { code: 500, message: '删除失败', error: error.message }
+    }
+  }
+
   @Delete('clear/:orderId')
   async clearGeneration(@Param('orderId') orderId: string) {
     try {
