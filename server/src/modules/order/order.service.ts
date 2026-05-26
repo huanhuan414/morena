@@ -312,7 +312,7 @@ export class OrderService {
        FROM order_dispatch_requests odr
        LEFT JOIN avatars a ON COALESCE(odr.avatar_id, odr.target_avatar_id) = a.id
        LEFT JOIN users u ON a.user_id = u.id
-       WHERE odr.order_id = ?
+       WHERE odr.order_id = ? AND odr.status NOT IN ('expired', 'cancelled')
        ORDER BY odr.created_at DESC`,
       [orderId]
     )
