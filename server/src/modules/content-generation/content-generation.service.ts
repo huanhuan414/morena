@@ -1365,14 +1365,20 @@ ${input.orderDescription}
     const skillStrategy = getSkillStrategy(primarySkill)
 
     // 1. 如果没有现成的脚本，先生成视频脚本
+    // 注意：自定义文案无论长度都应该被尊重，不做长度检查
+    const isCustomCopywriting = input.useCustomCopywriting && input.customCopywriting
     let videoScript = textContent
-    if (!videoScript || videoScript.length < 50) {
+    if (!videoScript) {
       this.logger.log(`无现成脚本，先生成视频脚本: skill=${primarySkill}, platform=${platform}`)
       videoScript = await this.generateVideoScript(platform, input, textContent, skillStrategy) || ''
       if (!videoScript) {
         this.logger.warn('视频脚本生成失败，跳过视频生成')
         return []
       }
+    } else if (!isCustomCopywriting && videoScript.length < 50) {
+      // 非自定义文案且太短，补充生成视频脚本
+      this.logger.log(`文案过短(${videoScript.length}字)，补充生成视频脚本: skill=${primarySkill}, platform=${platform}`)
+      videoScript = await this.generateVideoScript(platform, input, textContent, skillStrategy) || videoScript
     }
 
     this.logger.log(`视频脚本准备完成: ${videoScript.length}字`)

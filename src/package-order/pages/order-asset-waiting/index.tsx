@@ -317,14 +317,15 @@ export default function OrderAssetWaiting() {
   const hasFailed = (summary?.failed || 0) > 0
   const hasGenerating = (summary?.generating || 0) > 0
 
+  // 纯文字/纯文案类型不需要素材，始终可以下一步
+  const noAssetNeeded = contentType === 'text'
   // 素材是否充足
   const totalReady = summary?.ready || 0
   const readyImages = summary?.images || 0
   const readyVideos = summary?.videos || 0
-  // 纯文字类型始终充足
   // 不开AI补齐：有素材即可（图片>0 或 视频>0）
   // 开AI补齐：图片达到requiredImageCount 且 视频达到requiredVideoCount
-  const isSufficient = contentType === 'text' || (aiAutoFill
+  const isSufficient = noAssetNeeded || (aiAutoFill
     ? (readyImages >= requiredImageCount && readyVideos >= requiredVideoCount)
     : (readyImages > 0 || readyVideos > 0))
   const needMoreImages = (contentType !== 'text' && contentType !== 'video' && aiAutoFill) ? Math.max(0, requiredImageCount - readyImages - (summary?.generating || 0)) : 0
@@ -571,7 +572,7 @@ export default function OrderAssetWaiting() {
 
       {/* 底部操作 - 固定在底部 */}
       <View className="aw-bottom-actions">
-        {isSufficient && isAllReady ? (
+        {(noAssetNeeded || (isSufficient && isAllReady)) ? (
           /* 素材充足且全部就绪 → 下一步 */
           <View className="aw-primary-btn" onClick={goToMatching}>
             <Text className="aw-primary-btn-text">下一步：匹配分身</Text>
