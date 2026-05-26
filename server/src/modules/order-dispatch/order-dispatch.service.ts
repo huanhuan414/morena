@@ -1372,7 +1372,7 @@ async getExecutionProgress(orderId: string) {
         // 素材等待逻辑：
         // - 不开AI补齐：有就绪素材即可（等最多15秒），不需要凑满默认数量
         // - 开AI补齐：需要凑满默认数量
-        const defaultImageCount = orderContentType === 'video' ? 0 : this.contentGenerationService.getDefaultImageCount(orderPlatforms[0] || 'wechat', orderContentType)
+        const defaultImageCount = orderContentType === 'video' ? 0 : this.contentGenerationService.getDefaultImageCount(normalizedPlatforms[0] || 'wechat', orderContentType)
         const defaultVideoCount = orderContentType === 'video' ? 1 : 0
         
         if (pendingCount > 0) {
@@ -1470,6 +1470,14 @@ async getExecutionProgress(orderId: string) {
     }
 
     // 调用内容生成服务
+    // 读取自定义文案配置
+    let orderRequirements: any = {}
+    try {
+      orderRequirements = typeof order.requirements === 'string' ? JSON.parse(order.requirements) : (order.requirements || {})
+    } catch { orderRequirements = {} }
+    const useCustomCopywriting = !!orderRequirements?.use_custom_copywriting
+    const customCopywriting = orderRequirements?.custom_copywriting || ''
+
     await this.contentGenerationService.generateContent({
       orderId,
       avatarId,
@@ -1489,6 +1497,8 @@ async getExecutionProgress(orderId: string) {
       requestId: effectiveRequestId,
       assignedImages: assignedImages.length > 0 ? assignedImages : undefined,
       assignedVideoUrl,
+      useCustomCopywriting,
+      customCopywriting,
     })
 
   }

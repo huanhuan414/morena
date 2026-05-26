@@ -287,13 +287,15 @@ export class ContentGenerationService implements OnModuleInit {
     requestId?: string
     assignedImages?: string[]
     assignedVideoUrl?: string
+    useCustomCopywriting?: boolean
+    customCopywriting?: string
   }): Promise<any[]> {
     const results: any[] = []
 
     const primarySkill = this.detectPrimarySkill(input.avatarSkills || [], input.contentType)
     const effectiveContentType = this.resolveContentType(primarySkill, input.contentType)
 
-    this.logger.log(`内容生成: orderId=${input.orderId}, avatarId=${input.avatarId}, primarySkill=${primarySkill}, contentType=${input.contentType}->${effectiveContentType}, skills=${input.avatarSkills?.join(',')}, requestId=${input.requestId || 'new'}, assignedImages=${input.assignedImages?.length || 0}, assignedVideoUrl=${input.assignedVideoUrl || 'none'}`)
+    this.logger.log(`内容生成: orderId=${input.orderId}, avatarId=${input.avatarId}, primarySkill=${primarySkill}, contentType=${input.contentType}->${effectiveContentType}, skills=${input.avatarSkills?.join(',')}, requestId=${input.requestId || 'new'}, assignedImages=${input.assignedImages?.length || 0}, assignedVideoUrl=${input.assignedVideoUrl || 'none'}, useCustomCopywriting=${input.useCustomCopywriting || false}`)
 
     for (let i = 0; i < input.platforms.length; i++) {
       const platform = input.platforms[i]
@@ -422,6 +424,12 @@ export class ContentGenerationService implements OnModuleInit {
     // 视频类型也需要生成视频脚本作为文案内容
     const needVideoScript = contentType === 'video'
 
+    // 检查是否有自定义文案（发单者预设文案）
+    const useCustomCopywriting = !!input.useCustomCopywriting && !!input.customCopywriting
+    if (useCustomCopywriting) {
+      this.logger.log(`使用预设文案（${input.customCopywriting?.length || 0}字），跳过AI文案生成`)
+    }
+
     this.logger.log(`开始后台生成: requestId=${requestId}, platform=${platform}, contentType=${contentType}, primarySkill=${primarySkill}`)
 
     // 检查是否有预分配的素材（来自order_assets素材池）
@@ -448,9 +456,16 @@ export class ContentGenerationService implements OnModuleInit {
       try {
         // 图片数量以预分配为准（AI补齐已在pregenerateOrderAssets阶段完成，assignedImages已包含补齐的图片）
         const imageCount = hasAssignedImages ? assignedImages.length : this.getDefaultImageCount(platform, contentType)
-        await this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
-        textContent = await this.generateArticleContent(platform, input, imageCount)
-        this.logger.log(`图文文章生成完成: ${textContent.length}字`)
+
+        if (useCustomCopywriting) {
+          // 使用预设文案，跳过AI文案生成
+          textContent = input.customCopywriting
+          this.logger.log(`使用预设文案（图文文章模式）: ${textContent.length}字，跳过AI文案生成`)
+        } else {
+          await this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
+          textContent = await this.generateArticleContent(platform, input, imageCount)
+          this.logger.log(`图文文章生成完成: ${textContent.length}字`)
+        }
 
         if (hasAssignedImages) {
           // 有预分配图片 → 直接使用（AI补齐已在支付后pregenerateOrderAssets阶段完成）
@@ -473,10 +488,10 @@ export class ContentGenerationService implements OnModuleInit {
     } else {
       // ===== 传统模式：文案 + 配图分离 =====
       if (needText) {
-        try {
-          await this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
-          textContent = await this.generateTextContent(platform, input)
-          this.logger.log(`文案生成完成: ${textContent.length}字`)
+        if (useCustomCopywriting) {
+          // 使用预设文案，跳过AI文案生成
+          textContent = input.customCopywriting
+          this.logger.log(`使用预设文案（传统模式）: ${textContent.length}字，跳过AI文案生成`)
           // 如果不需要图片，或有预分配图片，直接进preview
           if (!needImage || hasAssignedImages) {
             images = hasAssignedImages ? assignedImages : images
@@ -485,9 +500,23 @@ export class ContentGenerationService implements OnModuleInit {
             // 需要图片但没有预分配（兜底场景），后续生成
             await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
           }
-        } catch (err: any) {
-          this.logger.warn(`文案生成失败: ${err.message}`)
-          textFailed = true
+        } else {
+          try {
+            await this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
+            textContent = await this.generateTextContent(platform, input)
+            this.logger.log(`文案生成完成: ${textContent.length}字`)
+            // 如果不需要图片，或有预分配图片，直接进preview
+            if (!needImage || hasAssignedImages) {
+              images = hasAssignedImages ? assignedImages : images
+              await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'preview')
+            } else {
+              // 需要图片但没有预分配（兜底场景），后续生成
+              await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
+            }
+          } catch (err: any) {
+            this.logger.warn(`文案生成失败: ${err.message}`)
+            textFailed = true
+          }
         }
       }
 
@@ -496,29 +525,41 @@ export class ContentGenerationService implements OnModuleInit {
         this.logger.warn(`文案生成失败，跳过后续图片/视频生成`)
       } else {
         // 视频类型 + 已有预分配视频：只生成配套文案（不是剧本）
-        // 剧本在发单时预生成视频已使用，分身只需生成配文即可
+        // 但如果已有预设文案（useCustomCopywriting），则跳过
         if (needVideoScript && hasAssignedVideo && !textContent) {
-          try {
-            await this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
-            const companionSkillStrategy = getSkillStrategy(primarySkill)
-            textContent = await this.generateVideoCompanionText(platform, input, assignedVideoUrl, companionSkillStrategy)
-            this.logger.log(`视频配套文案生成完成: ${textContent.length}字`)
+          if (useCustomCopywriting) {
+            textContent = input.customCopywriting
+            this.logger.log(`使用预设文案（视频配套）: ${textContent.length}字`)
             await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_video')
-          } catch (err: any) {
-            this.logger.warn(`视频配套文案生成失败: ${err.message}`)
-            textFailed = true
+          } else {
+            try {
+              await this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
+              const companionSkillStrategy = getSkillStrategy(primarySkill)
+              textContent = await this.generateVideoCompanionText(platform, input, assignedVideoUrl, companionSkillStrategy)
+              this.logger.log(`视频配套文案生成完成: ${textContent.length}字`)
+              await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_video')
+            } catch (err: any) {
+              this.logger.warn(`视频配套文案生成失败: ${err.message}`)
+              textFailed = true
+            }
           }
         } else if (needVideoScript && !textContent) {
           // 没有预分配视频：仍需生成视频脚本（用于后续视频生成）
-          try {
-            await this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
-            const skillStrategy = getSkillStrategy(primarySkill)
-            textContent = await this.generateVideoScript(platform, input, '', skillStrategy) || ''
-            this.logger.log(`视频脚本生成完成: ${textContent.length}字`)
+          if (useCustomCopywriting) {
+            textContent = input.customCopywriting
+            this.logger.log(`使用预设文案（视频脚本）: ${textContent.length}字`)
             await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_video')
-          } catch (err: any) {
-            this.logger.warn(`视频脚本生成失败: ${err.message}`)
-            textFailed = true
+          } else {
+            try {
+              await this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
+              const skillStrategy = getSkillStrategy(primarySkill)
+              textContent = await this.generateVideoScript(platform, input, '', skillStrategy) || ''
+              this.logger.log(`视频脚本生成完成: ${textContent.length}字`)
+              await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_video')
+            } catch (err: any) {
+              this.logger.warn(`视频脚本生成失败: ${err.message}`)
+              textFailed = true
+            }
           }
         }
 

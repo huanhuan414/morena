@@ -51,6 +51,7 @@ export default function OrderAssetWaiting() {
   const [requiredImageCount, setRequiredImageCount] = useState(3)
   const [requiredVideoCount, setRequiredVideoCount] = useState(1)
   const [autoFillTriggered, setAutoFillTriggered] = useState(false)
+  const [useCustomCopywriting, setUseCustomCopywriting] = useState(false)
 
   const pollUnsubRef = useRef<(() => void) | null>(null)
 
@@ -116,6 +117,9 @@ export default function OrderAssetWaiting() {
         const reqs = order.requirements || {}
         const autoFill = reqs.ai_auto_fill !== undefined ? reqs.ai_auto_fill : true
         setAiAutoFill(autoFill)
+
+        // 读取自定义文案开关
+        setUseCustomCopywriting(!!reqs.use_custom_copywriting && !!reqs.custom_copywriting)
 
         // 计算素材需求数量
         // 逻辑：
@@ -450,10 +454,17 @@ export default function OrderAssetWaiting() {
         )}
 
         {/* 文案生成提示 */}
-        <View className="aw-copywriting-hint">
-          <FileText size={14} color="#94A3B8" />
-          <Text className="aw-copywriting-hint-text">文案由分身接单时根据订单内容具体生成</Text>
-        </View>
+        {useCustomCopywriting ? (
+          <View className="aw-copywriting-hint aw-copywriting-ready">
+            <FileText size={14} color="#10B981" />
+            <Text className="aw-copywriting-hint-text" style={{ color: '#10B981' }}>文案已就绪（自定义文案，分身将直接使用）</Text>
+          </View>
+        ) : (
+          <View className="aw-copywriting-hint">
+            <FileText size={14} color="#94A3B8" />
+            <Text className="aw-copywriting-hint-text">文案由分身接单时根据订单内容具体生成</Text>
+          </View>
+        )}
 
         {/* 素材网格 */}
         {assets.length > 0 && (

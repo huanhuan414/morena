@@ -7,7 +7,7 @@ import {
   Send, Check, ChevronRight, Loader, ArrowLeft,
   Users, Coins, Sparkles, Zap, ShieldCheck, Clock,
   Target, TrendingUp, Lightbulb, ClipboardList,
-  Plus, X, Play
+  Plus, X, Play, FileText
 } from 'lucide-react-taro'
 import { Network } from '@/network'
 import {
@@ -46,6 +46,8 @@ export default function OrderCreate() {
     quantityPerAvatar: 1,
     aiAutoFill: false,
     assetDistributeMode: 'shared' as 'shared' | 'exclusive',
+    useCustomCopywriting: false,
+    customCopywriting: '',
   })
   const [uploadedAssets, setUploadedAssets] = useState<{ id: string; url: string; type: 'image' | 'video'; filename: string; size: number; mimeType: string }[]>([])
   const [isUploading, setIsUploading] = useState(false)
@@ -447,6 +449,11 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
       }
       return
     }
+    // 自定义文案校验
+    if (form.useCustomCopywriting && !form.customCopywriting.trim()) {
+      Taro.showToast({ title: '请输入文案内容', icon: 'none' })
+      return
+    }
 
     setIsSubmitting(true)
     try {
@@ -477,7 +484,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         avatar_count: form.avatarCount,
         quantity_per_avatar: form.quantityPerAvatar,
         total_price: totalPrice.total,
-        requirements: { ...form.optionalRequirements, platformRemarks: form.platformRemarks, ai_auto_fill: form.aiAutoFill, asset_distribute_mode: form.assetDistributeMode },
+        requirements: { ...form.optionalRequirements, platformRemarks: form.platformRemarks, ai_auto_fill: form.aiAutoFill, asset_distribute_mode: form.assetDistributeMode, use_custom_copywriting: form.useCustomCopywriting, custom_copywriting: form.customCopywriting },
         openid,
       }
 
@@ -1098,6 +1105,55 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
             </View>
             <Text className="char-count">{form.description.length}/2000</Text>
           </View>
+        </View>
+
+        {/* 自定义文案 */}
+        <View className="section">
+          <View className="section-header">
+            <View className="section-title-row">
+              <View className="title-dot accent" />
+              <FileText size={16} color="#6366F1" />
+              <Text className="section-title">文案设置</Text>
+            </View>
+            <View
+              className={`asset-ai-switch ${form.useCustomCopywriting ? 'active' : ''}`}
+              onClick={() => setForm(prev => ({ ...prev, useCustomCopywriting: !prev.useCustomCopywriting }))}
+            >
+              <View className={`asset-ai-switch-dot ${form.useCustomCopywriting ? 'active' : ''}`} />
+            </View>
+          </View>
+          <View className="asset-ai-toggle-row" style={{ marginTop: '8px', marginBottom: '8px' }}>
+            <View className="asset-ai-toggle-left">
+              <Sparkles size={14} color="#8B5CF6" />
+              <Text className="asset-ai-toggle-label">
+                {form.useCustomCopywriting ? '自定义文案' : 'AI生成文案'}
+              </Text>
+            </View>
+            <Text className="section-hint" style={{ fontSize: '12px' }}>
+              {form.useCustomCopywriting ? '分身将使用您输入的文案' : '分身接单时AI自动生成'}
+            </Text>
+          </View>
+          {form.useCustomCopywriting && (
+            <View>
+              <View className="textarea-wrapper">
+                <Textarea
+                  className="desc-textarea"
+                  style={{ height: '200px' }}
+                  placeholder="请输入文案内容，分身将直接使用此文案发布..."
+                  value={form.customCopywriting}
+                  onInput={e => setForm(prev => ({ ...prev, customCopywriting: e.detail.value }))}
+                  maxlength={5000}
+                />
+              </View>
+              <View className="desc-footer">
+                <View className="ai-hint">
+                  <Lightbulb size={12} color="#8B5CF6" />
+                  <Text className="ai-hint-text">每个分身将直接使用此文案，不再AI生成</Text>
+                </View>
+                <Text className="char-count">{form.customCopywriting.length}/5000</Text>
+              </View>
+            </View>
+          )}
         </View>
 
         {/* 分身设置 - 增加价值说明 */}
