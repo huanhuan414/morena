@@ -9,9 +9,10 @@ import { OrderProcessingModule } from '../order-processing/order-processing.modu
 import { ReverseGeocodingService } from '../../services/reverse-geocoding.service';
 import { PaymentModule } from '../payment/payment.module';
 import { ContentGenerationModule } from '../content-generation/content-generation.module';
+import { RedisModule } from '../redis/redis.module';
 
 @Module({
-  imports: [OrderDispatchModule, EarningModule, NotificationModule, forwardRef(() => OrderProcessingModule), forwardRef(() => PaymentModule), forwardRef(() => ContentGenerationModule)],
+  imports: [RedisModule, OrderDispatchModule, EarningModule, NotificationModule, forwardRef(() => OrderProcessingModule), forwardRef(() => PaymentModule), forwardRef(() => ContentGenerationModule)],
   controllers: [OrderController],
   providers: [
     OrderService,

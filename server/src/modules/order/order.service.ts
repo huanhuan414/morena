@@ -7,6 +7,7 @@ import { NotificationService } from '../notification/notification.service'
 import { OrderDispatchService } from '../order-dispatch/order-dispatch.service'
 import { WechatPayService } from '../payment/wechat-pay.service'
 import { ContentGenerationService } from '../content-generation/content-generation.service'
+import { RedisService } from '../redis/redis.service'
 
 /**
  * 字段命名规则说明：
@@ -23,6 +24,7 @@ export class OrderService {
     @Inject(forwardRef(() => OrderDispatchService)) private readonly dispatchService: OrderDispatchService,
     @Inject(forwardRef(() => WechatPayService)) private readonly wechatPayService: WechatPayService,
     @Inject(forwardRef(() => ContentGenerationService)) private readonly contentGenService: ContentGenerationService,
+    @Inject(RedisService) private readonly redisService: RedisService,
   ) {}
 
   private safeParseJson<T>(value: any, fallback: T): T {
@@ -940,15 +942,25 @@ export class OrderService {
     if (order.userId !== userId) {
       throw new Error('无权操作此订单')
     }
-    const deletableStatuses = ['cancelled', 'auto_cancelled', 'completed', 'expired']
+    const deletableStatuses = ['cancelled', 'auto_cancelled', 'completed', 'expired', 'pending_payment']
     if (!deletableStatuses.includes(order.status)) {
-      throw new Error('只有已完成或已取消的订单才能删除')
+      throw new Error('只有已完成、已取消或待支付的订单才能删除')
     }
     const db = getMySQLClient()
     await db.query('DELETE FROM order_dispatch_requests WHERE order_id = ?', [orderId])
     await db.query('DELETE FROM content_generation_requests WHERE order_id = ?', [orderId])
     await db.query('DELETE FROM order_results WHERE order_id = ?', [orderId])
     await db.query('DELETE FROM order_events WHERE order_id = ?', [orderId])
+    // 清理Redis接单计数器
+    try {
+      const redisClient = this.redisService?.getClient()
+      if (redisClient) {
+        await redisClient.del(`order:accept:count:${orderId}`)
+        await redisClient.del(`order:accept:required:${orderId}`)
+      }
+    } catch (e) {
+      console.warn('删除订单Redis计数器失败:', e?.message || e)
+    }
     await db.query('DELETE FROM orders WHERE id = ?', [orderId])
     return { success: true, orderId }
   }

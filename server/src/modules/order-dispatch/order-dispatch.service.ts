@@ -909,6 +909,19 @@ async getExecutionProgress(orderId: string) {
         }
       }
 
+      // 检查该分身是否曾被踢出（expired），被踢出的分身不能再接此订单
+      const [kickedDispatchRows] = await conn.query(
+        `SELECT COUNT(*) as count
+         FROM order_dispatch_requests
+         WHERE order_id = ? AND (avatar_id = ? OR target_avatar_id = ?)
+           AND status = 'expired' AND reject_reason IS NULL`,
+        [orderId, avatarId, avatarId]
+      )
+      const kickedCount = Number((kickedDispatchRows as any[])?.[0]?.count || 0)
+      if (kickedCount > 0) {
+        throw new ConflictException('该分身已被踢出，不能再接此订单')
+      }
+
       if (!request) {
         const [acceptOrderRows] = await conn.query(
           `SELECT id, title, user_id as owner_user_id, description, platforms, budget, expected_quantity, quantity_per_avatar, target_audience, status
@@ -1729,7 +1742,7 @@ async getExecutionProgress(orderId: string) {
 
   /**
    * 踢出超时分身（发单者操作）
-   * 条件：分身已接单超过1小时且未提交反馈
+   * 条件：分身已接单超过5分钟且未提交反馈
    */
   async kickAvatar(orderId: string, avatarId: string, operatorUserId: string) {
     const db = getMySQLClient()
@@ -1754,7 +1767,7 @@ async getExecutionProgress(orderId: string) {
       return { success: false, message: '该分身未接单或已不在接单状态' }
     }
 
-    // 3. 检查是否超过1小时（优先用 accepted_at，备选 updated_at / created_at）
+    // 3. 检查是否超过5分钟（优先用 accepted_at，备选 updated_at / created_at）
     const acceptedTimeStr = dispatch.acceptedAt || dispatch.updatedAt || dispatch.createdAt
     const acceptedAt = acceptedTimeStr ? new Date(acceptedTimeStr) : null
     if (!acceptedAt || isNaN(acceptedAt.getTime())) {
@@ -1762,9 +1775,9 @@ async getExecutionProgress(orderId: string) {
       console.log(`[kickAvatar] 分身 ${avatarId} 的 accepted_at 为空，视为可踢出`)
     } else {
       const now = new Date()
-      const hoursElapsed = (now.getTime() - acceptedAt.getTime()) / (1000 * 60 * 60)
-      if (hoursElapsed < 1) {
-        return { success: false, message: `接单未满1小时（已${Math.floor(hoursElapsed * 60)}分钟），无法踢出` }
+      const minutesElapsed = (now.getTime() - acceptedAt.getTime()) / (1000 * 60)
+      if (minutesElapsed < 5) {
+        return { success: false, message: `接单未满5分钟（已${Math.floor(minutesElapsed)}分钟），无法踢出` }
       }
     }
 
