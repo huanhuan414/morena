@@ -1362,15 +1362,25 @@ async getExecutionProgress(orderId: string) {
         const pendingCount = (hasPendingRows as any[])?.[0]?.cnt || 0
         
         const orderContentType = order.contentType || order.content_type || 'image_text'
-        const defaultImageCount = orderContentType === 'video' ? 0 : 3
+        // 读取 AI 补足开关
+        let orderRequirements: any = {}
+        try {
+          orderRequirements = typeof order.requirements === 'string' ? JSON.parse(order.requirements) : (order.requirements || {})
+        } catch { orderRequirements = {} }
+        const orderAiAutoFill = orderRequirements?.ai_auto_fill !== false
+
+        // 素材等待逻辑：
+        // - 不开AI补齐：有就绪素材即可（等最多15秒），不需要凑满默认数量
+        // - 开AI补齐：需要凑满默认数量
+        const defaultImageCount = orderContentType === 'video' ? 0 : this.contentGenerationService.getDefaultImageCount(orderPlatforms[0] || 'wechat', orderContentType)
         const defaultVideoCount = orderContentType === 'video' ? 1 : 0
         
         if (pendingCount > 0) {
           // 需要等待的场景：
           // 1. 没有任何就绪图片/视频
-          // 2. 就绪素材数量不足
-          const needMoreImages = readyImageCount < defaultImageCount
-          const needMoreVideos = orderContentType === 'video' && readyVideoCount < defaultVideoCount
+          // 2. 开AI补齐且就绪素材数量不足默认数量
+          const needMoreImages = orderAiAutoFill && readyImageCount < defaultImageCount
+          const needMoreVideos = orderAiAutoFill && orderContentType === 'video' && readyVideoCount < defaultVideoCount
           
           if (readyImageCount === 0 || needMoreImages || needMoreVideos) {
             const maxWaitMs = 60000
@@ -1388,9 +1398,11 @@ async getExecutionProgress(orderId: string) {
               readyImageCount = readyAssets?.filter((a: any) => a.assetType === 'image').length || 0
               readyVideoCount = readyAssets?.filter((a: any) => a.assetType === 'video').length || 0
               
-              // 就绪数量已满足需求，或至少有1张素材时可以提前退出
-              const imagesEnough = readyImageCount >= defaultImageCount
-              const videosEnough = orderContentType !== 'video' || readyVideoCount >= defaultVideoCount
+              // 退出条件：
+              // - 开AI补齐：就绪数量已满足默认需求
+              // - 不开AI补齐：有至少1张就绪素材且已等超过15秒（给pending素材留准备时间）
+              const imagesEnough = !orderAiAutoFill || readyImageCount >= defaultImageCount
+              const videosEnough = orderContentType !== 'video' || !orderAiAutoFill || readyVideoCount >= defaultVideoCount
               if ((imagesEnough && videosEnough) || ((readyImageCount > 0 || readyVideoCount > 0) && Date.now() - startTime > 15000)) {
                 break
               }

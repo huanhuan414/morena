@@ -719,7 +719,7 @@ export class ContentGenerationService implements OnModuleInit {
    * - 文章类平台（公众号/头条/知乎）：需要多张配图穿插文中，增强阅读体验
    * - 所有平台统一3张配图
    */
-  private getDefaultImageCount(platform: string, contentType: string): number {
+  getDefaultImageCount(platform: string, contentType: string): number {
     const isVideo = contentType === 'video' || contentType === 'video_text'
     // 视频类型不需要生成配图（由视频生成环节处理）
     if (isVideo) return 0

@@ -54,7 +54,7 @@ export default function OrderAssetWaiting() {
 
   const pollUnsubRef = useRef<(() => void) | null>(null)
 
-  // 平台默认素材数量
+  // 平台默认素材数量（仅在AI补齐时用于计算补齐目标）
   const PLATFORM_DEFAULT_IMAGES = 3
   const PLATFORM_DEFAULT_VIDEOS = 1
 
@@ -117,18 +117,29 @@ export default function OrderAssetWaiting() {
         const autoFill = reqs.ai_auto_fill !== undefined ? reqs.ai_auto_fill : true
         setAiAutoFill(autoFill)
 
-        // 计算平台需要的素材数
+        // 计算素材需求数量
+        // 逻辑：
+        // - 不开AI补齐：用户上传多少算多少，不需要"达标"到默认数量
+        // - 开AI补齐：需要补齐到默认数量（独占模式 × 分身数）
         const isVideo = (order.contentType || order.content_type) === 'video'
         const perAvatarImages = isVideo ? 0 : PLATFORM_DEFAULT_IMAGES
         const perAvatarVideos = isVideo ? PLATFORM_DEFAULT_VIDEOS : 0
+        const avatarCount = order.avatarCount || order.avatar_count || order.quantityPerAvatar || 1
 
-        if (mode === 'exclusive') {
-          const avatarCount = order.avatarCount || order.avatar_count || order.quantityPerAvatar || 1
-          setRequiredImageCount(perAvatarImages * avatarCount)
-          setRequiredVideoCount(perAvatarVideos * avatarCount)
+        if (aiAutoFill) {
+          // AI补齐模式：需要计算目标数量
+          if (mode === 'exclusive') {
+            setRequiredImageCount(perAvatarImages * avatarCount)
+            setRequiredVideoCount(perAvatarVideos * avatarCount)
+          } else {
+            setRequiredImageCount(perAvatarImages)
+            setRequiredVideoCount(perAvatarVideos)
+          }
         } else {
-          setRequiredImageCount(perAvatarImages)
-          setRequiredVideoCount(perAvatarVideos)
+          // 非AI补齐模式：用户上传多少就算多少，不需要达标
+          // requiredImageCount 设为 0 表示不限制最低数量
+          setRequiredImageCount(0)
+          setRequiredVideoCount(0)
         }
 
       }
@@ -302,11 +313,12 @@ export default function OrderAssetWaiting() {
   const hasFailed = (summary?.failed || 0) > 0
   const hasGenerating = (summary?.generating || 0) > 0
 
-  // 素材是否充足（达到平台需求）
+  // 素材是否充足
+  // 逻辑：不开AI补齐 → 有素材就充足；开AI补齐 → 达到requiredImageCount才充足
   const totalReady = summary?.ready || 0
-  const isSufficient = contentType === 'text' || totalReady >= requiredImageCount
-  const needMoreImages = contentType !== 'text' ? Math.max(0, requiredImageCount - (summary?.images || 0) - (summary?.generating || 0)) : 0
-  const needMoreVideos = contentType === 'video' ? Math.max(0, requiredVideoCount - (summary?.videos || 0) - (summary?.generating || 0)) : 0
+  const isSufficient = contentType === 'text' || (aiAutoFill ? totalReady >= requiredImageCount : totalReady > 0)
+  const needMoreImages = (contentType !== 'text' && aiAutoFill) ? Math.max(0, requiredImageCount - (summary?.images || 0) - (summary?.generating || 0)) : 0
+  const needMoreVideos = (contentType === 'video' && aiAutoFill) ? Math.max(0, requiredVideoCount - (summary?.videos || 0) - (summary?.generating || 0)) : 0
   const needMoreCount = needMoreImages + needMoreVideos
 
   return (
@@ -361,16 +373,18 @@ export default function OrderAssetWaiting() {
               <Loader size={32} color="#6366F1" className="aw-spin" />
               <Text className="aw-status-gen-title">AI素材生成中...</Text>
               <Text className="aw-status-gen-desc">
-                已就绪 {summary?.ready || 0}/{requiredImageCount}，生成中 {summary?.generating || 0}
+                已就绪 {summary?.ready || 0}{aiAutoFill && requiredImageCount > 0 ? `/${requiredImageCount}` : ''}，生成中 {summary?.generating || 0}
                 {summary?.failed ? `，失败 ${summary.failed}` : ''}
               </Text>
               {/* 进度条 */}
+              {aiAutoFill && requiredImageCount > 0 && (
               <View className="aw-progress-bar">
                 <View
                   className="aw-progress-fill"
                   style={{ width: `${Math.min(100, ((summary?.ready || 0) / requiredImageCount) * 100)}%` }}
                 />
               </View>
+              )}
             </View>
           ) : hasFailed && !hasGenerating ? (
             /* 有失败素材 */
@@ -385,7 +399,8 @@ export default function OrderAssetWaiting() {
               <TriangleAlert size={32} color="#F59E0B" />
               <Text className="aw-status-insufficient-title">素材不足</Text>
               <Text className="aw-status-insufficient-desc">
-                当前{summary.images}张图片{summary.videos > 0 ? `、${summary.videos}个视频` : ''}，需要{requiredImageCount}张图片{requiredVideoCount > 0 ? `、${requiredVideoCount}个视频` : ''}
+                当前{summary.images}张图片{summary.videos > 0 ? `、${summary.videos}个视频` : ''}
+                {aiAutoFill && requiredImageCount > 0 ? `，需要${requiredImageCount}张图片${requiredVideoCount > 0 ? `、${requiredVideoCount}个视频` : ''}` : ''}
                 {aiAutoFill ? '，AI正在补足' : '，可点击下方按钮补足'}
               </Text>
             </View>

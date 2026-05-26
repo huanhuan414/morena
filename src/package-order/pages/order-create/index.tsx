@@ -74,7 +74,8 @@ export default function OrderCreate() {
   // ========== 素材上传相关 ==========
   const totalCount = uploadedAssets.length
   const imageCount = uploadedAssets.filter(a => a.type === 'image').length
-  const requiredImageCount = form.contentType !== 'text' ? 3 : 0
+  // 独占模式：每个分身1张素材即可；共享/无分配：不需要固定数量
+  const requiredImageCount = form.contentType !== 'text' && form.assetDistributeMode === 'exclusive' ? form.avatarCount : 0
 
   /** 统一上传入口：选择图片/视频 */
   const handleUploadAsset = async () => {
@@ -942,10 +943,10 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                         // 独占模式下，分身数不能超过素材可用数
                         if (newForm.assetDistributeMode === 'exclusive') {
                           const uploadedImages = uploadedAssets.filter(a => a.type === 'image').length
-                          const perAvatarImageCount = newForm.contentType === 'video' ? 0 : 3
-                          if (uploadedImages > 0 && perAvatarImageCount > 0) {
-                            const maxAvatars = Math.floor(uploadedImages / perAvatarImageCount)
-                            if (newForm.avatarCount > maxAvatars && maxAvatars > 0) {
+                          // 独占模式：最大分身数 = 素材数量（由getMaxAvatarCount计算）
+                          if (uploadedImages > 0) {
+                            const maxAvatars = uploadedImages
+                            if (newForm.avatarCount > maxAvatars) {
                               newForm.avatarCount = maxAvatars
                               Taro.showToast({ title: `独占模式下最多${maxAvatars}个分身`, icon: 'none' })
                             }
@@ -989,10 +990,10 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                   </View>
                 </View>
               )}
-              {totalCount > 0 && form.aiAutoFill && imageCount < requiredImageCount && (
+              {totalCount > 0 && form.aiAutoFill && requiredImageCount > 0 && imageCount < requiredImageCount && (
                 <View className="asset-ai-hint">
                   <Sparkles size={14} color="#8B5CF6" />
-                  <Text className="asset-ai-hint-text">不足的图片支付后将由AI自动生成，分身接单时直接分配</Text>
+                  <Text className="asset-ai-hint-text">不足的{requiredImageCount - imageCount}张图片支付后将由AI自动生成，分身接单时直接分配</Text>
                 </View>
               )}
               {/* 无上传素材时的AI生成提示 */}
