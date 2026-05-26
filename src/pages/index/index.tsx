@@ -949,33 +949,41 @@ const Index: React.FC = () => {
 
                     {/* 操作按钮 */}
                     <View className="po-card-actions">
-                      <View
-                        className="po-btn po-btn-accept"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (!order.isAcceptedByMe && !acceptingOrderIds[order.id]) {
-                            handleAcceptOrder(order.id)
-                          }
-                        }}
-                      >
-                        {acceptingOrderIds[order.id] ? (
+                      {deadlineInfo?.text === '已截止' ? (
+                        <View className="po-btn po-btn-disabled">
                           <>
-                            <View className="po-btn-mini-spinner" />
-                            <Text className="po-btn-label po-btn-label-primary">接单中...</Text>
+                            <Text className="po-btn-label po-btn-label-primary">已截止</Text>
                           </>
-                        ) : order.isAcceptedByMe ? (
-                          <>
-                            <CircleCheckBig size={16} color="#fff" />
-                            <Text className="po-btn-label po-btn-label-primary">已接单</Text>
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles size={16} color="#fff" />
-                            <Text className="po-btn-label po-btn-label-primary">接单赚¥{order.estimatedEarning.toFixed(2)}</Text>
-                            <ChevronRight size={14} color="rgba(255,255,255,0.7)" />
-                          </>
-                        )}
-                      </View>
+
+                        </View>
+                      ) : (
+                        <View
+                          className="po-btn po-btn-accept"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (!order.isAcceptedByMe && !acceptingOrderIds[order.id]) {
+                              handleAcceptOrder(order.id)
+                            }
+                          }}
+                        >
+                          {acceptingOrderIds[order.id] ? (
+                            <>
+                              <View className="po-btn-mini-spinner" />
+                              <Text className="po-btn-label po-btn-label-primary">接单中...</Text>
+                            </>
+                          ) : order.isAcceptedByMe ? (
+                            <>
+                              <CircleCheckBig size={16} color="#fff" />
+                              <Text className="po-btn-label po-btn-label-primary">已接单</Text>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles size={16} color="#fff" />
+                              <Text className="po-btn-label po-btn-label-primary">接单赚¥{order.estimatedEarning.toFixed(2)}</Text>
+                              <ChevronRight size={14} color="rgba(255,255,255,0.7)" />
+                            </>
+                          )}
+                        </View>)}
                     </View>
                   </View>
                 )

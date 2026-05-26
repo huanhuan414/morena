@@ -872,6 +872,17 @@
   border-radius: 40rpx;
   flex: 1;
 }
+.po-btn-disabled {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  background: linear-gradient(135deg, #9e9ea0, #a6a6a8);
+  padding: 18rpx 0;
+  border-radius: 40rpx;
+  flex: 1;
+}
 .po-btn-accept:active {
   opacity: 0.85;
 }
