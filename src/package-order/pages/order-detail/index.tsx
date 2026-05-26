@@ -686,7 +686,7 @@ export default function OrderDetailPage() {
                       )}
                       {isOrderOwner && !['pending', 'expired', 'cancelled', 'submitted', 'settled', 'completed'].includes(avatarStatus) && (() => {
                         const kickTime = avatar.acceptedAt || avatar.updatedAt || avatar.createdAt
-                        return kickTime && (Date.now() - new Date(kickTime).getTime() > 3600000)
+                        return kickTime && (Date.now() - new Date(kickTime).getTime() > 5 * 60 * 1000)
                       })() && (
                         <View
                           style={{ marginTop: '6px', padding: '2px 8px', backgroundColor: '#FEF2F2', borderRadius: '10px', border: '1px solid #FECACA' }}
