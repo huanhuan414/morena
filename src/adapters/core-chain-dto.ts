@@ -32,6 +32,9 @@ export interface AvatarStatDto {
   videoUrls: string[]
   contentUpdatedAt: string | null
   publishFeedback: Record<string, AvatarPublishFeedbackDto>
+  createdAt: string
+  updatedAt: string | null
+  acceptedAt: string | null
 }
 
 export interface OrderSummaryStatsDto {
@@ -150,6 +153,9 @@ function normalizeAvatarStat(raw: any): AvatarStatDto {
     videoUrls: parseStringArray(source.videoUrls || source.videoUrl || source.video_url),
     contentUpdatedAt: source.contentUpdatedAt || source.content_updated_at || null,
     publishFeedback: normalizePublishFeedback(source.publishFeedback || source.publish_feedback),
+    createdAt: source.createdAt || source.created_at || '',
+    updatedAt: source.updatedAt || source.updated_at || null,
+    acceptedAt: source.acceptedAt || source.accepted_at || null,
   }
 }
 

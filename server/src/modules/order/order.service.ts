@@ -307,7 +307,7 @@ export class OrderService {
     
     // SQL别名 avatar_id → 返回值为 avatarId
     const avatarRows = await db.query(
-      `SELECT odr.id, COALESCE(odr.avatar_id, odr.target_avatar_id) as avatar_id, odr.status, odr.platform, odr.reject_reason, odr.created_at,
+      `SELECT odr.id, COALESCE(odr.avatar_id, odr.target_avatar_id) as avatar_id, odr.status, odr.platform, odr.reject_reason, odr.created_at, odr.accepted_at,
               a.name as nickname, a.avatar_url, u.phone
        FROM order_dispatch_requests odr
        LEFT JOIN avatars a ON COALESCE(odr.avatar_id, odr.target_avatar_id) = a.id
@@ -358,7 +358,8 @@ export class OrderService {
         videoUrl: this.safeParseJson<string[]>(processing?.videoUrl, []),
         contentUpdatedAt: processing?.updatedAt ? new Date(processing.updatedAt).toISOString() : null,
         publishFeedback: this.safeParseJson(processing?.publishFeedback, {}),
-        createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : new Date().toISOString()
+        createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : new Date().toISOString(),
+        acceptedAt: row.acceptedAt ? new Date(row.acceptedAt).toISOString() : (row.updatedAt ? new Date(row.updatedAt).toISOString() : null)
       }
     })
 

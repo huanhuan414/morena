@@ -1726,4 +1726,107 @@ async getExecutionProgress(orderId: string) {
     
     return { count: notifiedCount, smsSentCount }
   }
+
+  /**
+   * 踢出超时分身（发单者操作）
+   * 条件：分身已接单超过1小时且未提交反馈
+   */
+  async kickAvatar(orderId: string, avatarId: string, operatorUserId: string) {
+    const db = getMySQLClient()
+
+    // 1. 验证订单存在且操作者是发单方
+    const orders = await db.query('SELECT id, user_id, status FROM orders WHERE id = ?', [orderId])
+    const order = orders?.[0]
+    if (!order) {
+      return { success: false, message: '订单不存在' }
+    }
+    if (order.userId !== operatorUserId) {
+      return { success: false, message: '只有发单方可以踢出分身' }
+    }
+
+    // 2. 验证该分身确实已接单
+    const dispatchRows = await db.query(
+      `SELECT id, status, accepted_at, updated_at, created_at, target_avatar_id FROM order_dispatch_requests WHERE order_id = ? AND (target_avatar_id = ? OR avatar_id = ?) AND status = 'accepted'`,
+      [orderId, avatarId, avatarId]
+    )
+    const dispatch = dispatchRows?.[0]
+    if (!dispatch) {
+      return { success: false, message: '该分身未接单或已不在接单状态' }
+    }
+
+    // 3. 检查是否超过1小时（优先用 accepted_at，备选 updated_at / created_at）
+    const acceptedTimeStr = dispatch.acceptedAt || dispatch.updatedAt || dispatch.createdAt
+    const acceptedAt = acceptedTimeStr ? new Date(acceptedTimeStr) : null
+    if (!acceptedAt || isNaN(acceptedAt.getTime())) {
+      // accepted_at 为空且无备选，视为数据异常，允许踢出
+      console.log(`[kickAvatar] 分身 ${avatarId} 的 accepted_at 为空，视为可踢出`)
+    } else {
+      const now = new Date()
+      const hoursElapsed = (now.getTime() - acceptedAt.getTime()) / (1000 * 60 * 60)
+      if (hoursElapsed < 1) {
+        return { success: false, message: `接单未满1小时（已${Math.floor(hoursElapsed * 60)}分钟），无法踢出` }
+      }
+    }
+
+    // 4. 检查是否已提交反馈（submitted/settled 状态不允许踢出）
+    const cgrRows = await db.query(
+      `SELECT id, status FROM content_generation_requests WHERE order_id = ? AND avatar_id = ? AND status IN ('submitted', 'settled')`,
+      [orderId, avatarId]
+    )
+    if (cgrRows?.length > 0) {
+      return { success: false, message: '该分身已提交反馈，无法踢出' }
+    }
+
+    // 5. 执行踢出：更新 dispatch_request 状态为 expired
+    await db.query(
+      `UPDATE order_dispatch_requests SET status = 'expired', updated_at = NOW() WHERE id = ?`,
+      [dispatch.id]
+    )
+
+    // 6. 取消该分身的内容生成请求
+    await db.query(
+      `UPDATE content_generation_requests SET status = 'cancelled', updated_at = NOW() WHERE order_id = ? AND avatar_id = ? AND status NOT IN ('submitted', 'settled')`,
+      [orderId, avatarId]
+    )
+
+    // 7. 释放该分身占用的素材（独占模式下 assigned_to 指向 content_generation_request.id）
+    const cgrRecords = await db.query(
+      `SELECT id FROM content_generation_requests WHERE order_id = ? AND avatar_id = ? LIMIT 1`,
+      [orderId, avatarId]
+    )
+    const cgrId = cgrRecords?.[0]?.id
+    if (cgrId) {
+      const releaseResult = await db.query(
+        `UPDATE order_assets SET assigned_to = NULL WHERE order_id = ? AND assigned_to = ?`,
+        [orderId, cgrId]
+      )
+      this.logger.log(`释放素材: orderId=${orderId}, cgrId=${cgrId}, 释放${(releaseResult as any)?.affectedRows || 0}条素材`)
+    }
+
+    this.logger.log(`踢出分身: orderId=${orderId}, avatarId=${avatarId}`)
+
+    // 7. 检查是否有 pending 状态的分身可以自动接单
+    const pendingDispatches = await db.query(
+      `SELECT id, target_avatar_id FROM order_dispatch_requests WHERE order_id = ? AND status = 'pending' ORDER BY created_at ASC LIMIT 1`,
+      [orderId]
+    )
+
+    let autoAcceptedAvatar = null
+    if (pendingDispatches?.length > 0) {
+      const pending = pendingDispatches[0]
+      // 将 pending 分身自动接单
+      await db.query(
+        `UPDATE order_dispatch_requests SET status = 'accepted', accepted_at = NOW(), updated_at = NOW() WHERE id = ?`,
+        [pending.id]
+      )
+      autoAcceptedAvatar = pending.targetAvatarId
+      this.logger.log(`自动接单: avatarId=${autoAcceptedAvatar}, orderId=${orderId}`)
+    }
+
+    return {
+      success: true,
+      message: autoAcceptedAvatar ? '已踢出超时分身，等待中的分身已自动接单' : '已踢出超时分身，名额已释放',
+      autoAcceptedAvatar,
+    }
+  }
 }

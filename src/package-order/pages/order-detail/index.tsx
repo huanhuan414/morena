@@ -313,6 +313,36 @@ export default function OrderDetailPage() {
     } catch { Taro.showToast({ title: '删除失败', icon: 'none' }) }
   }, [orderId])
 
+  const handleKickAvatar = useCallback(async (avatarId: string, avatarName: string) => {
+    try {
+      const { confirm } = await Taro.showModal({
+        title: '踢出分身',
+        content: `确定踢出分身"${avatarName}"吗？踢出后名额将释放给其他分身接单。`,
+        confirmText: '确定踢出',
+        confirmColor: '#DC2626',
+        cancelText: '取消'
+      })
+      if (!confirm) return
+      Taro.showLoading({ title: '处理中...' })
+      const res = await Network.request({
+        url: `/api/order-dispatch/${orderId}/kick/${avatarId}`,
+        method: 'POST'
+      })
+      Taro.hideLoading()
+      console.log('踢出分身结果:', res.data)
+      if (res.data?.code === 200 || res.data?.data) {
+        Taro.showToast({ title: '已踢出', icon: 'success' })
+        fetchDetail()
+      } else {
+        Taro.showToast({ title: res.data?.msg || '踢出失败', icon: 'none' })
+      }
+    } catch (err) {
+      Taro.hideLoading()
+      console.error('踢出分身失败:', err)
+      Taro.showToast({ title: '操作失败', icon: 'none' })
+    }
+  }, [orderId, fetchDetail])
+
   const handleVerify = useCallback(() => {
     Taro.navigateTo({ url: `/package-order/pages/order-acceptance/index?orderId=${orderId}` })
   }, [orderId])
@@ -652,6 +682,17 @@ export default function OrderDetailPage() {
                       {hasContent && (
                         <View className="od-av-view-hint">
                           <Eye size={14} color="#6366F1" />
+                        </View>
+                      )}
+                      {isOrderOwner && !['pending', 'expired', 'cancelled', 'submitted', 'settled', 'completed'].includes(avatarStatus) && (() => {
+                        const kickTime = avatar.acceptedAt || avatar.updatedAt || avatar.createdAt
+                        return kickTime && (Date.now() - new Date(kickTime).getTime() > 3600000)
+                      })() && (
+                        <View
+                          style={{ marginTop: '6px', padding: '2px 8px', backgroundColor: '#FEF2F2', borderRadius: '10px', border: '1px solid #FECACA' }}
+                          onClick={(e) => { e.stopPropagation(); handleKickAvatar(avatar.avatarId, avatar.avatarName || `分身${idx + 1}`) }}
+                        >
+                          <Text style={{ fontSize: '11px', color: '#DC2626' }}>踢出</Text>
                         </View>
                       )}
                     </View>

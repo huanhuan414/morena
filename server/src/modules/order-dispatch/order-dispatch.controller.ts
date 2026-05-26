@@ -292,6 +292,24 @@ export class OrderDispatchController {
   }
 
   /**
+   * 踢出超时分身（发单者操作）
+   * 条件：分身已接单超过1小时且未提交反馈
+   */
+  @Post(':orderId/kick/:avatarId')
+  async kickAvatar(
+    @Param('orderId') orderId: string,
+    @Param('avatarId') avatarId: string,
+    @Headers('x-user-id') userId: string,
+  ) {
+    const result = await this.dispatchService.kickAvatar(orderId, avatarId, userId)
+    return {
+      code: result.success ? 200 : 400,
+      data: result,
+      message: result.message,
+    }
+  }
+
+  /**
    * 手动重新分配超时订单
    */
   @Post(':orderId/reassign')
