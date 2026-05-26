@@ -225,8 +225,9 @@ export default function OrderCreate() {
     const uploadedCount = uploadedAssets.length
     if (uploadedCount > 0) {
       if (form.aiAutoFill) {
-        // AI补足开启：最终素材数 = 平台需求总数（上传+AI补足）
-        return perAvatarAssets
+        // AI补足开启：每张上传素材作为1个分身的"种子"，AI补足每个分身缺少的素材
+        // 最大分身数 = 上传素材数（与素材数量一致）
+        return uploadedCount
       }
       // 不补足：最大分身数 = Math.floor(上传素材数 / 每分身需要数)
       return Math.floor(uploadedCount / perAvatarAssets)
