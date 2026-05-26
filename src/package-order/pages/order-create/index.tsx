@@ -857,6 +857,148 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           </View>
         </View>
 
+        {/* 内容风格偏好 */}
+        <View className="section">
+          <View className="section-header">
+            <View className="section-title-row">
+              <View className="title-dot accent" />
+              <Text className="section-title">风格偏好</Text>
+            </View>
+            <Text className="section-hint">精准匹配擅长此风格的分身</Text>
+          </View>
+          <View className="style-opts">
+            <View
+              className={`style-opt ${form.preferredStyle === '' ? 'active' : ''}`}
+              onClick={() => setForm(prev => ({ ...prev, preferredStyle: '' }))}
+            >
+              <Text className={`style-opt-text ${form.preferredStyle === '' ? 'active' : ''}`}>不限</Text>
+            </View>
+            {CONTENT_STYLES.map(style => (
+              <View
+                key={style.key}
+                className={`style-opt ${form.preferredStyle === style.key ? 'active' : ''}`}
+                onClick={() => setForm(prev => ({ ...prev, preferredStyle: style.key }))}
+              >
+                <View className="style-opt-dot" style={{ background: style.color }} />
+                <Text className={`style-opt-text ${form.preferredStyle === style.key ? 'active' : ''}`}>{style.name}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* 行业领域偏好 */}
+        <View className="section">
+          <View className="section-header">
+            <View className="section-title-row">
+              <View className="title-dot accent" />
+              <Text className="section-title">领域偏好</Text>
+            </View>
+            <Text className="section-hint">匹配该领域的专业分身</Text>
+          </View>
+          <View className="niche-opts">
+            <View
+              className={`niche-opt ${form.preferredNiche === '' ? 'active' : ''}`}
+              onClick={() => setForm(prev => ({ ...prev, preferredNiche: '' }))}
+            >
+              <Text className={`niche-opt-text ${form.preferredNiche === '' ? 'active' : ''}`}>不限</Text>
+            </View>
+            {NICHE_TAGS.map(niche => (
+              <View
+                key={niche.key}
+                className={`niche-opt ${form.preferredNiche === niche.key ? 'active' : ''}`}
+                onClick={() => setForm(prev => ({ ...prev, preferredNiche: niche.key }))}
+              >
+                <Text className="niche-opt-icon">{niche.icon}</Text>
+                <Text className={`niche-opt-text ${form.preferredNiche === niche.key ? 'active' : ''}`}>{niche.name}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* 任务描述 */}
+        <View className="section">
+          <View className="section-header">
+            <View className="section-title-row">
+              <View className="title-dot" />
+              <Text className="section-title">任务描述</Text>
+            </View>
+            <View className="ai-button" onClick={handleAIGenerate}>
+              {aiLoading ? (
+                <Loader size={12} color="#fff" className="ai-loading" />
+              ) : (
+                <Sparkles size={12} color="#fff" />
+              )}
+              <Text className="ai-text">{aiLoading ? 'AI生成中...' : 'AI帮写'}</Text>
+            </View>
+          </View>
+          <View className="textarea-wrapper">
+            <Textarea
+              className="desc-textarea"
+              style={{ height: '240px' }}
+              placeholder="详细描述任务要求，如：产品特点、推广重点、禁忌词等..."
+              value={form.description}
+              onInput={e => setForm(prev => ({ ...prev, description: e.detail.value }))}
+              maxlength={2000}
+            />
+          </View>
+          <View className="desc-footer">
+            <View className="ai-hint">
+              <Lightbulb size={12} color="#8B5CF6" />
+              <Text className="ai-hint-text">不知道怎么写？点击AI帮写，一键生成专业任务描述</Text>
+            </View>
+            <Text className="char-count">{form.description.length}/2000</Text>
+          </View>
+        </View>
+
+        {/* 自定义文案 */}
+        <View className="section">
+          <View className="section-header">
+            <View className="section-title-row">
+              <View className="title-dot accent" />
+              <FileText size={16} color="#6366F1" />
+              <Text className="section-title">文案设置</Text>
+            </View>
+            <View
+              className={`asset-ai-switch ${form.useCustomCopywriting ? 'active' : ''}`}
+              onClick={() => setForm(prev => ({ ...prev, useCustomCopywriting: !prev.useCustomCopywriting }))}
+            >
+              <View className={`asset-ai-switch-dot ${form.useCustomCopywriting ? 'active' : ''}`} />
+            </View>
+          </View>
+          <View className="asset-ai-toggle-row" style={{ marginTop: '8px', marginBottom: '8px' }}>
+            <View className="asset-ai-toggle-left">
+              <Sparkles size={14} color="#8B5CF6" />
+              <Text className="asset-ai-toggle-label">
+                {form.useCustomCopywriting ? '自定义文案' : 'AI生成文案'}
+              </Text>
+            </View>
+            <Text className="section-hint" style={{ fontSize: '12px' }}>
+              {form.useCustomCopywriting ? '分身将使用您输入的文案' : '分身接单时AI自动生成'}
+            </Text>
+          </View>
+          {form.useCustomCopywriting && (
+            <View>
+              <View className="textarea-wrapper">
+                <Textarea
+                  className="desc-textarea"
+                  style={{ height: '200px' }}
+                  placeholder="请输入文案内容，分身将直接使用此文案发布..."
+                  value={form.customCopywriting}
+                  onInput={e => setForm(prev => ({ ...prev, customCopywriting: e.detail.value }))}
+                  maxlength={5000}
+                />
+              </View>
+              <View className="desc-footer">
+                <View className="ai-hint">
+                  <Lightbulb size={12} color="#8B5CF6" />
+                  <Text className="ai-hint-text">每个分身将直接使用此文案，不再AI生成</Text>
+                </View>
+                <Text className="char-count">{form.customCopywriting.length}/5000</Text>
+              </View>
+            </View>
+          )}
+        </View>
+
         {/* 素材上传（可选） */}
         <View className="section">
           <View className="section-header">
@@ -1011,148 +1153,6 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                 </View>
               )}
             </>
-          )}
-        </View>
-
-        {/* 内容风格偏好 */}
-        <View className="section">
-          <View className="section-header">
-            <View className="section-title-row">
-              <View className="title-dot accent" />
-              <Text className="section-title">风格偏好</Text>
-            </View>
-            <Text className="section-hint">精准匹配擅长此风格的分身</Text>
-          </View>
-          <View className="style-opts">
-            <View
-              className={`style-opt ${form.preferredStyle === '' ? 'active' : ''}`}
-              onClick={() => setForm(prev => ({ ...prev, preferredStyle: '' }))}
-            >
-              <Text className={`style-opt-text ${form.preferredStyle === '' ? 'active' : ''}`}>不限</Text>
-            </View>
-            {CONTENT_STYLES.map(style => (
-              <View
-                key={style.key}
-                className={`style-opt ${form.preferredStyle === style.key ? 'active' : ''}`}
-                onClick={() => setForm(prev => ({ ...prev, preferredStyle: style.key }))}
-              >
-                <View className="style-opt-dot" style={{ background: style.color }} />
-                <Text className={`style-opt-text ${form.preferredStyle === style.key ? 'active' : ''}`}>{style.name}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* 行业领域偏好 */}
-        <View className="section">
-          <View className="section-header">
-            <View className="section-title-row">
-              <View className="title-dot accent" />
-              <Text className="section-title">领域偏好</Text>
-            </View>
-            <Text className="section-hint">匹配该领域的专业分身</Text>
-          </View>
-          <View className="niche-opts">
-            <View
-              className={`niche-opt ${form.preferredNiche === '' ? 'active' : ''}`}
-              onClick={() => setForm(prev => ({ ...prev, preferredNiche: '' }))}
-            >
-              <Text className={`niche-opt-text ${form.preferredNiche === '' ? 'active' : ''}`}>不限</Text>
-            </View>
-            {NICHE_TAGS.map(niche => (
-              <View
-                key={niche.key}
-                className={`niche-opt ${form.preferredNiche === niche.key ? 'active' : ''}`}
-                onClick={() => setForm(prev => ({ ...prev, preferredNiche: niche.key }))}
-              >
-                <Text className="niche-opt-icon">{niche.icon}</Text>
-                <Text className={`niche-opt-text ${form.preferredNiche === niche.key ? 'active' : ''}`}>{niche.name}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* 任务描述 */}
-        <View className="section">
-          <View className="section-header">
-            <View className="section-title-row">
-              <View className="title-dot" />
-              <Text className="section-title">任务描述</Text>
-            </View>
-            <View className="ai-button" onClick={handleAIGenerate}>
-              {aiLoading ? (
-                <Loader size={12} color="#fff" className="ai-loading" />
-              ) : (
-                <Sparkles size={12} color="#fff" />
-              )}
-              <Text className="ai-text">{aiLoading ? 'AI生成中...' : 'AI帮写'}</Text>
-            </View>
-          </View>
-          <View className="textarea-wrapper">
-            <Textarea
-              className="desc-textarea"
-              style={{ height: '240px' }}
-              placeholder="详细描述任务要求，如：产品特点、推广重点、禁忌词等..."
-              value={form.description}
-              onInput={e => setForm(prev => ({ ...prev, description: e.detail.value }))}
-              maxlength={2000}
-            />
-          </View>
-          <View className="desc-footer">
-            <View className="ai-hint">
-              <Lightbulb size={12} color="#8B5CF6" />
-              <Text className="ai-hint-text">不知道怎么写？点击AI帮写，一键生成专业任务描述</Text>
-            </View>
-            <Text className="char-count">{form.description.length}/2000</Text>
-          </View>
-        </View>
-
-        {/* 自定义文案 */}
-        <View className="section">
-          <View className="section-header">
-            <View className="section-title-row">
-              <View className="title-dot accent" />
-              <FileText size={16} color="#6366F1" />
-              <Text className="section-title">文案设置</Text>
-            </View>
-            <View
-              className={`asset-ai-switch ${form.useCustomCopywriting ? 'active' : ''}`}
-              onClick={() => setForm(prev => ({ ...prev, useCustomCopywriting: !prev.useCustomCopywriting }))}
-            >
-              <View className={`asset-ai-switch-dot ${form.useCustomCopywriting ? 'active' : ''}`} />
-            </View>
-          </View>
-          <View className="asset-ai-toggle-row" style={{ marginTop: '8px', marginBottom: '8px' }}>
-            <View className="asset-ai-toggle-left">
-              <Sparkles size={14} color="#8B5CF6" />
-              <Text className="asset-ai-toggle-label">
-                {form.useCustomCopywriting ? '自定义文案' : 'AI生成文案'}
-              </Text>
-            </View>
-            <Text className="section-hint" style={{ fontSize: '12px' }}>
-              {form.useCustomCopywriting ? '分身将使用您输入的文案' : '分身接单时AI自动生成'}
-            </Text>
-          </View>
-          {form.useCustomCopywriting && (
-            <View>
-              <View className="textarea-wrapper">
-                <Textarea
-                  className="desc-textarea"
-                  style={{ height: '200px' }}
-                  placeholder="请输入文案内容，分身将直接使用此文案发布..."
-                  value={form.customCopywriting}
-                  onInput={e => setForm(prev => ({ ...prev, customCopywriting: e.detail.value }))}
-                  maxlength={5000}
-                />
-              </View>
-              <View className="desc-footer">
-                <View className="ai-hint">
-                  <Lightbulb size={12} color="#8B5CF6" />
-                  <Text className="ai-hint-text">每个分身将直接使用此文案，不再AI生成</Text>
-                </View>
-                <Text className="char-count">{form.customCopywriting.length}/5000</Text>
-              </View>
-            </View>
           )}
         </View>
 
