@@ -29,6 +29,7 @@ const BACKEND_STATUS_TO_TAB: Record<string, string> = {
   done: 'completed',
   failed: 'failed',
   rejected: 'rejected',
+  cancelled: 'cancelled',
 }
 
 // 生成中的子阶段文案映射（用于进度提示）
@@ -50,6 +51,7 @@ const CONTENT_STATUS_MAP: Record<string, { label: string; color: string; bgColor
   completed: { label: '已完成', color: '#10B981', bgColor: '#D1FAE5' },
   failed: { label: '生成失败', color: '#EF4444', bgColor: '#FEE2E2' },
   rejected: { label: '已驳回', color: '#EF4444', bgColor: '#FEE2E2' },
+  cancelled: { label: '已取消', color: '#94A3B8', bgColor: '#F1F5F9' },
 }
 
 // Tab 状态筛选
@@ -62,6 +64,7 @@ const STATUS_TABS = [
   { key: 'completed', label: '已完成' },
   { key: 'rejected', label: '已驳回' },
   { key: 'failed', label: '生成失败' },
+  { key: 'cancelled', label: '已取消' },
 ]
 
 // 安全解析 JSON
@@ -351,6 +354,10 @@ export default function GeneratedContentPage() {
       case 'rejected':
         return [
           { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
+        ]
+      case 'cancelled':
+        return [
+          { key: 'delete', label: '删除', icon: Trash2, type: 'danger' },
         ]
       default:
         return [{ key: 'view', label: '查看详情', icon: Eye, type: 'default' }]
