@@ -478,7 +478,8 @@ export class ContentGenerationService implements OnModuleInit {
         }
 
         textContent = this.replaceImagePlaceholders(textContent, images)
-        await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
+        // 所有图片已就绪（预分配或AI补齐完成），直接进preview
+        await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'preview')
       } catch (err: any) {
         this.logger.warn(`图文文章生成失败: ${err.message}`)
         textFailed = !textContent
@@ -491,7 +492,13 @@ export class ContentGenerationService implements OnModuleInit {
           await this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
           textContent = await this.generateTextContent(platform, input)
           this.logger.log(`文案生成完成: ${textContent.length}字`)
-          await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
+          // 如果不需要图片（纯文字类型）或有预分配图片且不开补齐，直接进preview
+          if (!needImage || (hasAssignedImages && !aiAutoFill)) {
+            images = hasAssignedImages ? assignedImages : images
+            await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'preview')
+          } else {
+            await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
+          }
         } catch (err: any) {
           this.logger.warn(`文案生成失败: ${err.message}`)
           textFailed = true
@@ -549,14 +556,19 @@ export class ContentGenerationService implements OnModuleInit {
                 // 未开AI补齐 或 预分配已足够 → 直接使用预分配图片
                 images = assignedImages
                 this.logger.log(`使用预分配配图: ${images.length}张，跳过AI图片生成`)
+                // 图片已就绪，直接设为preview
+                await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'preview')
               }
-              await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
+              // AI补齐模式下，补齐完成后更新为preview
+              if (aiAutoFill && assignedImages.length < defaultImageCount) {
+                await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'preview')
+              }
             } else {
               try {
                 await this.updateDetailedStatus(requestId, input.orderId, 'generating_images')
                 images = await this.generateImages(platform, input, textContent, requestId)
                 this.logger.log(`图片生成完成: ${images.length}张`)
-                await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
+                await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'preview')
               } catch (err: any) {
                 this.logger.warn(`图片生成失败: ${err.message}`)
                 imageFailed = true
