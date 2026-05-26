@@ -28,6 +28,7 @@ const BACKEND_STATUS_TO_TAB: Record<string, string> = {
   settled: 'completed',
   done: 'completed',
   failed: 'failed',
+  partial_failed: 'failed',
   rejected: 'rejected',
   cancelled: 'cancelled',
 }

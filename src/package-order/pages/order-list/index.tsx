@@ -377,7 +377,7 @@ export default function OrderListPage() {
             const phaseText = getPhaseText(order)
             const isPayable = order.status === 'pending_payment'
             const isCancellable = ['pending_payment', 'pending'].includes(order.status)
-            const isDeletable = ['cancelled', 'auto_cancelled', 'timeout', 'expired', 'completed'].includes(order.status)
+            const isDeletable = ['cancelled', 'auto_cancelled', 'timeout', 'expired', 'completed', 'pending_payment'].includes(order.status)
             const isAbnormal = ['publish_failed', 'publish_timeout'].includes(order.status)
             const budget = order.budget || order.totalPrice || 0
 
