@@ -287,7 +287,6 @@ export class ContentGenerationService implements OnModuleInit {
     requestId?: string
     assignedImages?: string[]
     assignedVideoUrl?: string
-    aiAutoFill?: boolean
   }): Promise<any[]> {
     const results: any[] = []
 
@@ -430,7 +429,6 @@ export class ContentGenerationService implements OnModuleInit {
     const assignedVideoUrl: string | undefined = input.assignedVideoUrl
     const hasAssignedImages = assignedImages.length > 0
     const hasAssignedVideo = !!assignedVideoUrl
-    const aiAutoFill = input.aiAutoFill !== false // 默认true（兼容旧数据）
     if (hasAssignedImages || hasAssignedVideo) {
       this.logger.log(`使用预分配素材: ${assignedImages.length}张图片, ${assignedVideoUrl ? '有视频' : '无视频'}`)
     }
@@ -448,37 +446,24 @@ export class ContentGenerationService implements OnModuleInit {
     if (isArticlePlatform && needText && (needImage || hasAssignedImages)) {
       // ===== 图文文章模式 =====
       try {
-        // 有预分配图片时，用预分配数量；否则用默认数量
-        const defaultImageCount = this.getDefaultImageCount(platform, contentType)
-        const totalImageCount = hasAssignedImages ? assignedImages.length : defaultImageCount
-        const imageCount = totalImageCount
+        // 图片数量以预分配为准（AI补齐已在pregenerateOrderAssets阶段完成，assignedImages已包含补齐的图片）
+        const imageCount = hasAssignedImages ? assignedImages.length : this.getDefaultImageCount(platform, contentType)
         await this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
         textContent = await this.generateArticleContent(platform, input, imageCount)
         this.logger.log(`图文文章生成完成: ${textContent.length}字`)
 
         if (hasAssignedImages) {
-          if (aiAutoFill && assignedImages.length < defaultImageCount) {
-            // 开启AI补齐 + 预分配图片不够 → 补齐到默认数量
-            const supplementCount = defaultImageCount - assignedImages.length
-            this.logger.log(`AI补齐: 预分配${assignedImages.length}张，默认需${defaultImageCount}张，补齐${supplementCount}张`)
-            await this.updatePartialContent(requestId, input.orderId, textContent, assignedImages, videos, 'generating_images')
-            const supplementImages = await this.generateArticleImages(platform, input, textContent, supplementCount, requestId)
-            images = [...assignedImages, ...supplementImages]
-            this.logger.log(`配图完成: 预分配${assignedImages.length}张 + AI补齐${supplementImages.length}张`)
-          } else {
-            // 未开AI补齐 或 预分配已足够 → 直接使用预分配图片
-            images = assignedImages
-            this.logger.log(`使用预分配配图: ${images.length}张，跳过AI图片生成`)
-          }
+          // 有预分配图片 → 直接使用（AI补齐已在支付后pregenerateOrderAssets阶段完成）
+          images = assignedImages
+          this.logger.log(`使用预分配配图: ${images.length}张，跳过AI图片生成`)
         } else {
-          // 没有预分配图片，全部AI生成
+          // 没有预分配图片（兜底），全部AI生成
           await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
           images = await this.generateArticleImages(platform, input, textContent, imageCount, requestId)
           this.logger.log(`文章配图生成完成: ${images.length}张`)
         }
 
         textContent = this.replaceImagePlaceholders(textContent, images)
-        // 所有图片已就绪（预分配或AI补齐完成），直接进preview
         await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'preview')
       } catch (err: any) {
         this.logger.warn(`图文文章生成失败: ${err.message}`)
@@ -492,11 +477,12 @@ export class ContentGenerationService implements OnModuleInit {
           await this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
           textContent = await this.generateTextContent(platform, input)
           this.logger.log(`文案生成完成: ${textContent.length}字`)
-          // 如果不需要图片（纯文字类型）或有预分配图片且不开补齐，直接进preview
-          if (!needImage || (hasAssignedImages && !aiAutoFill)) {
+          // 如果不需要图片，或有预分配图片，直接进preview
+          if (!needImage || hasAssignedImages) {
             images = hasAssignedImages ? assignedImages : images
             await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'preview')
           } else {
+            // 需要图片但没有预分配（兜底场景），后续生成
             await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
           }
         } catch (err: any) {
@@ -542,28 +528,15 @@ export class ContentGenerationService implements OnModuleInit {
         } else {
           if (needImage) {
             if (hasAssignedImages) {
-              const defaultImageCount = this.getDefaultImageCount(platform, contentType)
-              if (aiAutoFill && assignedImages.length < defaultImageCount) {
-                // 开启AI补齐 + 预分配图片不够 → 补齐到默认数量
-                const supplementCount = defaultImageCount - assignedImages.length
-                this.logger.log(`AI补齐: 预分配${assignedImages.length}张，默认需${defaultImageCount}张，补齐${supplementCount}张`)
-                images = [...assignedImages]
-                await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
-                const supplementImages = await this.generateImages(platform, input, textContent, requestId, supplementCount)
-                images = [...assignedImages, ...supplementImages]
-                this.logger.log(`配图完成: 预分配${assignedImages.length}张 + AI补齐${supplementImages.length}张`)
-              } else {
-                // 未开AI补齐 或 预分配已足够 → 直接使用预分配图片
-                images = assignedImages
-                this.logger.log(`使用预分配配图: ${images.length}张，跳过AI图片生成`)
-                // 图片已就绪，直接设为preview
-                await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'preview')
-              }
-              // AI补齐模式下，补齐完成后更新为preview
-              if (aiAutoFill && assignedImages.length < defaultImageCount) {
+              // 有预分配图片 → 直接使用（AI补齐已在pregenerateOrderAssets阶段完成）
+              images = assignedImages
+              this.logger.log(`使用预分配配图: ${images.length}张，跳过AI图片生成`)
+              // 如果文案阶段没有更新为preview，这里更新
+              if (requestId) {
                 await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'preview')
               }
             } else {
+              // 没有预分配图片（兜底场景），AI生成
               try {
                 await this.updateDetailedStatus(requestId, input.orderId, 'generating_images')
                 images = await this.generateImages(platform, input, textContent, requestId)
@@ -648,8 +621,9 @@ export class ContentGenerationService implements OnModuleInit {
       this.logger.warn(`视频生成返回空结果且无后台任务，标记为失败`)
     }
 
-    const expectedImageCount = needImage ? this.getDefaultImageCount(platform, input.contentType || 'image') : 0
-    const imageIncomplete = needImage && !imageFailed && images.length > 0 && images.length < expectedImageCount
+    // 有预分配图片时，不需要检查数量是否"完整"（用户上传多少就用多少）
+    const expectedImageCount = needImage && !hasAssignedImages ? this.getDefaultImageCount(platform, input.contentType || 'image') : 0
+    const imageIncomplete = expectedImageCount > 0 && !imageFailed && images.length > 0 && images.length < expectedImageCount
     if (imageIncomplete) {
       this.logger.warn(`配图生成不完整: 预期${expectedImageCount}张，实际${images.length}张`)
     }
