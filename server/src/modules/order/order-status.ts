@@ -70,6 +70,7 @@ export function normalizeFulfillmentStatus(status?: string): FulfillmentStatus {
     return 'generating'
   }
   if (['completed'].includes(value)) return 'preview'
+  if (value === 'submitted') return 'awaiting_acceptance'
   if (value === 'publishing') return 'publishing'
   if (value === 'published') return 'published'
   if (value === 'feedback_submitted') return 'awaiting_acceptance'
@@ -87,6 +88,7 @@ export function isDispatchAccepted(status?: string): boolean {
   const value = String(status || '').trim().toLowerCase()
   return [
     'accepted',
+    'submitted',
     'generating',
     'preview',
     'publishing',

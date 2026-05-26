@@ -342,7 +342,7 @@ export default function OrderDetailPage() {
 
   const avatarStats = order.avatarStats || []
   const hasAwaitingAcceptance = avatarStats.some((a: any) =>
-    ['awaiting_acceptance', 'feedback_submitted', 'preview'].includes(a.status)
+    ['submitted', 'awaiting_acceptance', 'feedback_submitted', 'preview'].includes(a.status)
   )
   const isAllVerified = avatarStats.length > 0 && avatarStats.every((a: any) =>
     ['completed', 'rejected'].includes(a.status)
@@ -598,6 +598,7 @@ export default function OrderDetailPage() {
                 accepted: { label: '已接单', color: '#3B82F6', icon: '✅' },
                 generating: { label: '内容生成中', color: '#8B5CF6', icon: '🎨' },
                 preview: { label: '内容已生成', color: '#F59E0B', icon: '📝' },
+                submitted: { label: '待验收', color: '#8B5CF6', icon: '🔍' },
                 publishing: { label: '发布中', color: '#6366F1', icon: '📤' },
                 published: { label: '已发布', color: '#059669', icon: '📡' },
                 awaiting_acceptance: { label: '待验收', color: '#EF4444', icon: '🔍' },
@@ -607,7 +608,7 @@ export default function OrderDetailPage() {
                 expired: { label: '已过期', color: '#9CA3AF', icon: '⏰' },
               }
               const cfg = statusConfig[avatarStatus] || statusConfig.pending
-              const hasContent = ['preview', 'publishing', 'published', 'awaiting_acceptance', 'feedback_submitted', 'completed'].includes(avatarStatus)
+              const hasContent = ['preview', 'publishing', 'submitted', 'published', 'awaiting_acceptance', 'feedback_submitted', 'completed'].includes(avatarStatus)
               const contentTypeLabel = avatar.contentType === 'image_text' || avatar.contentType === 'image' ? '图文' : avatar.contentType === 'video' ? '视频' : avatar.contentType === 'text' ? '纯文案' : avatar.contentType
 
               return (
@@ -672,7 +673,7 @@ export default function OrderDetailPage() {
             {selectedAvatar && (() => {
               const av = selectedAvatar
               const avatarStatus = av.status || 'pending'
-              const hasContent = ['preview', 'publishing', 'published', 'awaiting_acceptance', 'feedback_submitted', 'completed'].includes(avatarStatus)
+              const hasContent = ['preview', 'publishing', 'submitted', 'published', 'awaiting_acceptance', 'feedback_submitted', 'completed'].includes(avatarStatus)
               const avatarImages: string[] = Array.isArray(av.images) ? av.images : []
               const avatarVideoUrls = av.videoUrls
               const publishFeedback = av.publishFeedback || {}
