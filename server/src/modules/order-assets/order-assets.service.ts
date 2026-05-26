@@ -573,11 +573,16 @@ export class OrderAssetsService {
       throw new Error('纯文案订单无需生成素材')
     }
 
-    // 更新订单 requirements 中 ai_auto_fill = true，确保 pregenerateOrderAssets 会执行
-    await pool.execute(
-      'UPDATE orders SET requirements = JSON_SET(COALESCE(requirements, "{}"), "$.ai_auto_fill", true) WHERE id = ?',
-      [orderId]
-    )
+    // 触发预生成（延迟获取避免循环依赖）
+    // 注意：pregenerateOrderAssets 内部会根据 ai_auto_fill 开关决定是否补足
+    // 如果用户未开AI补足但手动点击"AI生成"，则强制开启
+    const reqs = typeof order.requirements === 'string' ? JSON.parse(order.requirements || '{}') : (order.requirements || {})
+    if (reqs.ai_auto_fill !== true) {
+      await pool.execute(
+        'UPDATE orders SET requirements = JSON_SET(COALESCE(requirements, "{}"), "$.ai_auto_fill", true) WHERE id = ?',
+        [orderId]
+      )
+    }
 
     // 触发预生成（延迟获取避免循环依赖）
     const contentGenService = getContentGenerationService()

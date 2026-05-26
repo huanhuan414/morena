@@ -2299,7 +2299,17 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
    * 2. 根据平台需求计算缺失的素材数量
    * 3. AI补齐缺失的图片/视频
    */
+  // 防重入锁：避免 pregenerateOrderAssets 对同一订单重复执行
+  private pregenerateLocks = new Set<string>()
+
   async pregenerateOrderAssets(orderId: string): Promise<void> {
+    // 防重入：如果该订单正在预生成，跳过
+    if (this.pregenerateLocks.has(orderId)) {
+      console.log(`[预生成] 订单 ${orderId} 已有预生成任务执行中，跳过`)
+      return
+    }
+    this.pregenerateLocks.add(orderId)
+
     try {
       // 等待1秒，确保素材绑定完成（前端可能在支付回调前才完成绑定）
       await new Promise(r => setTimeout(r, 1500))
@@ -2326,17 +2336,20 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
       const aiAutoFill = requirements?.ai_auto_fill !== false // 默认 true（兼容旧数据）
 
 
-      // 查看已有用户上传素材（带重试，因素材绑定可能还在写入）
-      let uploadedImageCount = 0
-      let uploadedVideoCount = 0
+      // 查看已有素材（包含 ready 和 generating 状态，避免重复补足）
+      let existingImageCount = 0
+      let existingVideoCount = 0
       for (let attempt = 0; attempt < 3; attempt++) {
         const existingAssets = await db.query(
-          'SELECT asset_type, COUNT(*) as cnt FROM order_assets WHERE order_id = ? AND status = ? GROUP BY asset_type',
-          [orderId, 'ready']
+          'SELECT asset_type, status, COUNT(*) as cnt FROM order_assets WHERE order_id = ? AND status IN (?) GROUP BY asset_type, status',
+          [orderId, ['ready', 'generating']]
         ) as any[]
-        uploadedImageCount = existingAssets?.find(a => a.assetType === 'image')?.cnt || 0
-        uploadedVideoCount = existingAssets?.find(a => a.assetType === 'video')?.cnt || 0
-        if (uploadedImageCount > 0 || uploadedVideoCount > 0) break
+        // 汇总 ready + generating 的数量
+        for (const row of existingAssets) {
+          if (row.assetType === 'image') existingImageCount += row.cnt
+          if (row.assetType === 'video') existingVideoCount += row.cnt
+        }
+        if (existingImageCount > 0 || existingVideoCount > 0) break
         if (attempt < 2) await new Promise(r => setTimeout(r, 2000))
       }
 
@@ -2344,10 +2357,11 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
       // 1. 没有上传素材 → 始终AI生成（不受aiAutoFill开关影响）
       // 2. 有上传素材但不足 → aiAutoFill开关控制是否AI补足
       // 3. 有上传素材且已足 → 不需要AI生成
-      const hasUploadedAssets = uploadedImageCount > 0 || uploadedVideoCount > 0
+      const hasUploadedAssets = existingImageCount > 0 || existingVideoCount > 0
       const needAiGenerate = !hasUploadedAssets || aiAutoFill
 
       if (!needAiGenerate) {
+        console.log(`[预生成] 订单 ${orderId} 已有素材(${existingImageCount}图${existingVideoCount}视频)且未开AI补足，跳过`)
         return
       }
 
@@ -2377,10 +2391,11 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
         requiredVideoCount = perAvatarVideos
       }
 
-      // 计算缺失
-      const missingImages = Math.max(0, requiredImageCount - uploadedImageCount)
-      const missingVideos = Math.max(0, requiredVideoCount - uploadedVideoCount)
+      // 计算缺失（用 existingXxxCount 而非 uploadedXxxCount，包含 generating 状态避免重复补足）
+      const missingImages = Math.max(0, requiredImageCount - existingImageCount)
+      const missingVideos = Math.max(0, requiredVideoCount - existingVideoCount)
 
+      console.log(`[预生成] 订单 ${orderId}: 已有${existingImageCount}图${existingVideoCount}视频(generating含), 需${requiredImageCount}图${requiredVideoCount}视频, 缺${missingImages}图${missingVideos}视频`)
 
       // AI补齐图片
       if (missingImages > 0) {
@@ -2398,6 +2413,9 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
     } catch (err: any) {
       console.error(`[预生成] 订单 ${orderId} 素材预生成失败:`, err.message)
       // 预生成失败不影响主流程，分身接单时会回退到实时生成
+    } finally {
+      // 执行完毕后释放锁
+      this.pregenerateLocks.delete(orderId)
     }
   }
 

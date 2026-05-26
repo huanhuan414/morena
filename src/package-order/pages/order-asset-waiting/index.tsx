@@ -204,17 +204,19 @@ export default function OrderAssetWaiting() {
   }, [orderId])
 
   // 检查是否需要 AI 补足并自动触发
+  // 支付回调后端会自动触发 pregenerateOrderAssets，但前端也做兜底检查
+  // 后端有防重入锁，重复触发不会重复生成
   useEffect(() => {
     if (loading || !summary || autoFillTriggered) return
+    if (contentType === 'text' || !aiAutoFill) return
 
     const totalReady = summary.ready || 0
     const totalGenerating = summary.generating || 0
     const totalNeeded = contentType === 'video' ? requiredVideoCount : requiredImageCount + requiredVideoCount
-    const needMore = contentType !== 'text' && totalReady + totalGenerating < totalNeeded
+    const needMore = totalReady + totalGenerating < totalNeeded
 
-
-    if (needMore && aiAutoFill && totalGenerating === 0) {
-      // 素材不足 + AI补足开启 + 没有正在生成的 → 自动触发
+    if (needMore && totalGenerating === 0) {
+      // 素材不足 + 没有正在生成的 → 自动触发（后端有防重入锁，安全）
       triggerAiAutoFill()
     }
   }, [summary, loading, aiAutoFill, contentType, requiredImageCount, requiredVideoCount, autoFillTriggered])
