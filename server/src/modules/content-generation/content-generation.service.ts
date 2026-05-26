@@ -366,7 +366,20 @@ export class ContentGenerationService implements OnModuleInit {
         status: 'processing'
       })
 
-      // 3. 后台异步执行生成（不 await，让接口立即返回）
+      // 3. 简单任务直接标记完成，不走AI生成
+      if (input.contentType === 'simple_task') {
+        this.logger.log(`简单任务，跳过AI生成: ${requestId}`)
+        this.updateStatus(requestId, input.orderId, 'ready', {
+          copywriting: '',
+          images: null,
+          video_url: null,
+        }).catch(err => {
+          this.logger.error(`简单任务状态更新失败: ${err.message}`, err.stack)
+        })
+        continue
+      }
+
+      // 4. 后台异步执行生成（不 await，让接口立即返回）
       this.executeGeneration(requestId, platform, {
         ...input,
         contentType: effectiveContentType,

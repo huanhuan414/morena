@@ -152,8 +152,14 @@ const STEPS_VIDEO: StepDef[] = [
   { key: 'done', label: '内容完成', icon: 'done', estTime: '', longEstTime: '' },
 ]
 
+const STEPS_SIMPLE: StepDef[] = [
+  { key: 'queued', label: '准备中', icon: 'clock', estTime: '约5秒', longEstTime: '约5秒' },
+  { key: 'done', label: '执行任务', icon: 'done', estTime: '', longEstTime: '' },
+]
+
 // 获取当前步骤列表
 function getSteps(contentType?: string): StepDef[] {
+  if (contentType === 'simple_task') return STEPS_SIMPLE
   if (contentType === 'video' || contentType === 'video_text') return STEPS_VIDEO
   if (contentType === 'text') return STEPS_TEXT
   return STEPS_IMAGE

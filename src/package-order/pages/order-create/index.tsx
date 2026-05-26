@@ -22,6 +22,7 @@ import { subscribePolling } from '@/utils/polling'
 import './index.css'
 
 const CONTENT_TYPES = [
+  { id: 'simple', label: '简单任务', icon: '✅', basePrice: 0.5, contentPrice: 0, desc: '关注/点赞/转发等', output: '个任务' },
   { id: 'text', label: '纯文案', icon: '📝', basePrice: 2, contentPrice: 0, desc: '文字内容创作', output: '篇原创文案' },
   { id: 'image', label: '图文笔记', icon: '🖼️', basePrice: 3, contentPrice: 1, desc: '图文搭配呈现', output: '篇图文笔记' },
   { id: 'video', label: '短视频', icon: '🎬', basePrice: 5, contentPrice: 20, desc: 'AI生成真实视频', output: '条短视频' },
@@ -77,7 +78,7 @@ export default function OrderCreate() {
   const totalCount = uploadedAssets.length
   const imageCount = uploadedAssets.filter(a => a.type === 'image').length
   // 独占模式：每个分身1张素材即可；共享/无分配：不需要固定数量
-  const requiredImageCount = form.contentType !== 'text' && form.assetDistributeMode === 'exclusive' ? form.avatarCount : 0
+  const requiredImageCount = form.contentType !== 'text' && form.contentType !== 'simple' && form.assetDistributeMode === 'exclusive' ? form.avatarCount : 0
 
   /** 统一上传入口：选择图片/视频 */
   const handleUploadAsset = async () => {
@@ -298,7 +299,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         data: {
           prompt,
           platforms: form.platforms,
-          contentType: form.contentType === 'text' ? 'copywriting' : form.contentType === 'video' ? 'video_script' : 'copywriting',
+          contentType: form.contentType === 'text' ? 'copywriting' : form.contentType === 'video' ? 'video_script' : form.contentType === 'simple' ? 'simple_task' : 'copywriting',
         },
       })
 
@@ -950,7 +951,8 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           </View>
         </View>
 
-        {/* 自定义文案 */}
+        {/* 自定义文案 - 简单任务不需要 */}
+        {form.contentType !== 'simple' && (
         <View className="section">
           <View className="section-header">
             <View className="section-title-row">
@@ -998,6 +1000,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
             </View>
           )}
         </View>
+        )}
 
         {/* 素材上传（可选） */}
         <View className="section">
@@ -1124,8 +1127,8 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                   </Text>
                 </View>
               )}
-              {/* AI自动补足开关：仅在有上传素材时显示 */}
-              {totalCount > 0 && (
+              {/* AI自动补足开关：仅在有上传素材且非简单任务时显示 */}
+              {totalCount > 0 && form.contentType !== 'simple' && (
                 <View className="asset-ai-toggle-row" style={{ marginTop: '8px' }}>
                   <View className="asset-ai-toggle-left">
                     <Sparkles size={14} color="#8B5CF6" />

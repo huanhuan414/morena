@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
-import { ArrowLeft, Clock, FileText, ImagePlus, Play, Eye, Send, MessageSquare, Bell, Trash2, RefreshCw } from 'lucide-react-taro'
+import { ArrowLeft, Clock, FileText, ImagePlus, Play, Eye, Send, MessageSquare, Bell, Trash2, RefreshCw, CircleCheckBig } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import { canonicalizePlatform, getPlatformLabel, getPlatformMeta } from '@/constants/publish-platform'
@@ -83,6 +83,7 @@ function getContentTypeInfo(type: string): { icon: any; name: string } {
   switch (type) {
     case 'text': return { icon: FileText, name: '图文文章' }
     case 'video_text': case 'video_script': case 'video': return { icon: Play, name: '视频' }
+    case 'simple_task': return { icon: CircleCheckBig, name: '简单任务' }
     default: return { icon: ImagePlus, name: '文案+配图' }
   }
 }
