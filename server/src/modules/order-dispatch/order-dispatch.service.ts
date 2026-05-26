@@ -1804,9 +1804,9 @@ async getExecutionProgress(orderId: string) {
     }
 
     // 6.5 释放Redis已接单计数器
-    const redisKeyAccepted = `order:accepted:${orderId}`
+    const redisKeyAccepted = `order:accept:count:${orderId}`
     try {
-      const currentCount = await this.redis.decr(redisKeyAccepted)
+      const currentCount = await this.redisService.getClient().decr(redisKeyAccepted)
       this.logger.log(`Redis DECR: key=${redisKeyAccepted}, 释放后计数=${currentCount}`)
     } catch (redisErr) {
       this.logger.warn(`Redis DECR失败(可忽略): ${(redisErr as Error).message}`)
@@ -1830,7 +1830,7 @@ async getExecutionProgress(orderId: string) {
       )
       // 自动接单也需要 INCR Redis 计数器
       try {
-        await this.redis.incr(redisKeyAccepted)
+        await this.redisService.getClient().incr(redisKeyAccepted)
         this.logger.log(`自动接单 Redis INCR: key=${redisKeyAccepted}`)
       } catch (redisErr2) {
         this.logger.warn(`自动接单 Redis INCR失败(可忽略): ${(redisErr2 as Error).message}`)
