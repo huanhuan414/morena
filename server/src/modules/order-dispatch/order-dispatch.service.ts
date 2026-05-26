@@ -1803,6 +1803,15 @@ async getExecutionProgress(orderId: string) {
       this.logger.log(`释放素材: orderId=${orderId}, cgrId=${cgrId}, 释放${(releaseResult as any)?.affectedRows || 0}条素材`)
     }
 
+    // 6.5 释放Redis已接单计数器
+    const redisKeyAccepted = `order:accepted:${orderId}`
+    try {
+      const currentCount = await this.redis.decr(redisKeyAccepted)
+      this.logger.log(`Redis DECR: key=${redisKeyAccepted}, 释放后计数=${currentCount}`)
+    } catch (redisErr) {
+      this.logger.warn(`Redis DECR失败(可忽略): ${(redisErr as Error).message}`)
+    }
+
     this.logger.log(`踢出分身: orderId=${orderId}, avatarId=${avatarId}`)
 
     // 7. 检查是否有 pending 状态的分身可以自动接单
@@ -1819,6 +1828,13 @@ async getExecutionProgress(orderId: string) {
         `UPDATE order_dispatch_requests SET status = 'accepted', accepted_at = NOW(), updated_at = NOW() WHERE id = ?`,
         [pending.id]
       )
+      // 自动接单也需要 INCR Redis 计数器
+      try {
+        await this.redis.incr(redisKeyAccepted)
+        this.logger.log(`自动接单 Redis INCR: key=${redisKeyAccepted}`)
+      } catch (redisErr2) {
+        this.logger.warn(`自动接单 Redis INCR失败(可忽略): ${(redisErr2 as Error).message}`)
+      }
       autoAcceptedAvatar = pending.targetAvatarId
       this.logger.log(`自动接单: avatarId=${autoAcceptedAvatar}, orderId=${orderId}`)
     }
