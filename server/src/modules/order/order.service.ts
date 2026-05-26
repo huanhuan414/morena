@@ -307,9 +307,10 @@ export class OrderService {
     // SQL别名 avatar_id → 返回值为 avatarId
     const avatarRows = await db.query(
       `SELECT odr.id, COALESCE(odr.avatar_id, odr.target_avatar_id) as avatar_id, odr.status, odr.platform, odr.reject_reason, odr.created_at,
-              a.name as nickname, a.avatar_url
+              a.name as nickname, a.avatar_url, u.phone
        FROM order_dispatch_requests odr
        LEFT JOIN avatars a ON COALESCE(odr.avatar_id, odr.target_avatar_id) = a.id
+       LEFT JOIN users u ON a.user_id = u.id
        WHERE odr.order_id = ?
        ORDER BY odr.created_at DESC`,
       [orderId]
@@ -344,6 +345,7 @@ export class OrderService {
         avatarName: row.nickname || '未知分身',
         nickname: row.nickname || '未知分身',
         avatarUrl: row.avatarUrl,
+        phone: row.phone || null,
         platform: row.platform || 'unknown',
         status: normalizedStatus,
         dispatchStatus: row.status,

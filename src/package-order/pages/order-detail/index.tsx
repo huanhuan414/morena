@@ -6,7 +6,7 @@ import {
   ArrowLeft, Loader, Users, CircleCheckBig, CircleX, Clock,
   CreditCard, Send, Trash2,
   FileText, CircleDot, Camera, Video, Eye, Image as ImageIcon,
-  ExternalLink, ThumbsUp, MessageCircle, Calendar, Package, ChevronDown, TriangleAlert
+  ExternalLink, ThumbsUp, MessageCircle, Calendar, Package, ChevronDown, TriangleAlert, Phone
 } from 'lucide-react-taro'
 import {
   normalizeOrderDetail,
@@ -622,6 +622,18 @@ export default function OrderDetailPage() {
                     )}
                     <View className="od-av-info">
                       <Text className="block od-av-name">{avatar.avatarName || `分身${idx + 1}`}</Text>
+                      {avatar.phone && (
+                        <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '4px', marginTop: '2px' }} onClick={(e) => { e.stopPropagation() }}>
+                          <Phone size={12} color="#6B7280" />
+                          <Text className="block" style={{ fontSize: '12px', color: '#6B7280' }}>{avatar.phone}</Text>
+                          <View
+                            style={{ marginLeft: '4px', padding: '1px 8px', backgroundColor: '#EEF2FF', borderRadius: '10px' }}
+                            onClick={(e) => { e.stopPropagation(); Taro.makePhoneCall({ phoneNumber: avatar.phone }) }}
+                          >
+                            <Text style={{ fontSize: '11px', color: '#4F46E5' }}>拨打</Text>
+                          </View>
+                        </View>
+                      )}
                       {avatar.rejectReason && (
                         <Text className="block od-av-reason">拒绝原因: {avatar.rejectReason}</Text>
                       )}
@@ -692,6 +704,18 @@ export default function OrderDetailPage() {
                           <View className="od-dialog-status-dot" style={{ backgroundColor: avatarStatusCfg.color }} />
                           <Text className="block od-dialog-status-text" style={{ color: avatarStatusCfg.color }}>{avatarStatusCfg.label}</Text>
                         </View>
+                        {av.phone && (
+                          <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
+                            <Phone size={13} color="#6B7280" />
+                            <Text style={{ fontSize: '13px', color: '#374151' }}>{av.phone}</Text>
+                            <View
+                              style={{ padding: '2px 10px', backgroundColor: '#4F46E5', borderRadius: '12px' }}
+                              onClick={() => Taro.makePhoneCall({ phoneNumber: av.phone })}
+                            >
+                              <Text style={{ fontSize: '12px', color: '#fff' }}>一键拨打</Text>
+                            </View>
+                          </View>
+                        )}
                       </View>
                     </View>
                   </View>
