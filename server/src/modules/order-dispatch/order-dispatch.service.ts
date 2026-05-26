@@ -1477,6 +1477,7 @@ async getExecutionProgress(orderId: string) {
       requestId: effectiveRequestId,
       assignedImages: assignedImages.length > 0 ? assignedImages : undefined,
       assignedVideoUrl,
+      aiAutoFill: order.requirements ? (typeof order.requirements === 'string' ? JSON.parse(order.requirements) : order.requirements)?.ai_auto_fill !== false : true,
     })
 
   }

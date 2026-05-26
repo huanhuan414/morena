@@ -287,6 +287,7 @@ export class ContentGenerationService implements OnModuleInit {
     requestId?: string
     assignedImages?: string[]
     assignedVideoUrl?: string
+    aiAutoFill?: boolean
   }): Promise<any[]> {
     const results: any[] = []
 
@@ -429,6 +430,7 @@ export class ContentGenerationService implements OnModuleInit {
     const assignedVideoUrl: string | undefined = input.assignedVideoUrl
     const hasAssignedImages = assignedImages.length > 0
     const hasAssignedVideo = !!assignedVideoUrl
+    const aiAutoFill = input.aiAutoFill !== false // 默认true（兼容旧数据）
     if (hasAssignedImages || hasAssignedVideo) {
       this.logger.log(`使用预分配素材: ${assignedImages.length}张图片, ${assignedVideoUrl ? '有视频' : '无视频'}`)
     }
@@ -447,16 +449,27 @@ export class ContentGenerationService implements OnModuleInit {
       // ===== 图文文章模式 =====
       try {
         // 有预分配图片时，用预分配数量；否则用默认数量
-        const totalImageCount = hasAssignedImages ? assignedImages.length : this.getDefaultImageCount(platform, contentType)
+        const defaultImageCount = this.getDefaultImageCount(platform, contentType)
+        const totalImageCount = hasAssignedImages ? assignedImages.length : defaultImageCount
         const imageCount = totalImageCount
         await this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
         textContent = await this.generateArticleContent(platform, input, imageCount)
         this.logger.log(`图文文章生成完成: ${textContent.length}字`)
 
         if (hasAssignedImages) {
-          // 有预分配图片时，直接使用预分配图片，不再用AI生成额外配图
-          images = assignedImages
-          this.logger.log(`使用预分配配图: ${images.length}张，跳过AI图片生成`)
+          if (aiAutoFill && assignedImages.length < defaultImageCount) {
+            // 开启AI补齐 + 预分配图片不够 → 补齐到默认数量
+            const supplementCount = defaultImageCount - assignedImages.length
+            this.logger.log(`AI补齐: 预分配${assignedImages.length}张，默认需${defaultImageCount}张，补齐${supplementCount}张`)
+            await this.updatePartialContent(requestId, input.orderId, textContent, assignedImages, videos, 'generating_images')
+            const supplementImages = await this.generateArticleImages(platform, input, textContent, supplementCount, requestId)
+            images = [...assignedImages, ...supplementImages]
+            this.logger.log(`配图完成: 预分配${assignedImages.length}张 + AI补齐${supplementImages.length}张`)
+          } else {
+            // 未开AI补齐 或 预分配已足够 → 直接使用预分配图片
+            images = assignedImages
+            this.logger.log(`使用预分配配图: ${images.length}张，跳过AI图片生成`)
+          }
         } else {
           // 没有预分配图片，全部AI生成
           await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
@@ -522,10 +535,21 @@ export class ContentGenerationService implements OnModuleInit {
         } else {
           if (needImage) {
             if (hasAssignedImages) {
-              // 有预分配图片时，直接使用预分配图片，不再用AI生成额外配图
-              // 用户上传素材的意图就是用这些图片作为配图，不应再补充AI图片
-              images = assignedImages
-              this.logger.log(`使用预分配配图: ${images.length}张，跳过AI图片生成`)
+              const defaultImageCount = this.getDefaultImageCount(platform, contentType)
+              if (aiAutoFill && assignedImages.length < defaultImageCount) {
+                // 开启AI补齐 + 预分配图片不够 → 补齐到默认数量
+                const supplementCount = defaultImageCount - assignedImages.length
+                this.logger.log(`AI补齐: 预分配${assignedImages.length}张，默认需${defaultImageCount}张，补齐${supplementCount}张`)
+                images = [...assignedImages]
+                await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
+                const supplementImages = await this.generateImages(platform, input, textContent, requestId, supplementCount)
+                images = [...assignedImages, ...supplementImages]
+                this.logger.log(`配图完成: 预分配${assignedImages.length}张 + AI补齐${supplementImages.length}张`)
+              } else {
+                // 未开AI补齐 或 预分配已足够 → 直接使用预分配图片
+                images = assignedImages
+                this.logger.log(`使用预分配配图: ${images.length}张，跳过AI图片生成`)
+              }
               await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
             } else {
               try {
