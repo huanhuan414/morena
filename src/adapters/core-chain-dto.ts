@@ -23,6 +23,7 @@ export interface AvatarStatDto {
   avatarId: string
   avatarName: string
   avatarUrl: string
+  phone: string | null
   status: string
   rejectReason: string | null
   contentType: string
@@ -140,6 +141,7 @@ function normalizeAvatarStat(raw: any): AvatarStatDto {
     avatarId: source.avatarId || source.avatar_id || '',
     avatarName: source.avatarName || source.avatar_name || source.nickname || '',
     avatarUrl: source.avatarUrl || source.avatar_url || '',
+    phone: source.phone || null,
     status: source.status || 'pending',
     rejectReason: source.rejectReason || source.reject_reason || null,
     contentType: source.contentType || source.content_type || 'image_text',

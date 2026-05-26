@@ -456,9 +456,10 @@ export class OrderService {
       const placeholders = orderIds.map(() => '?').join(', ')
       const dispatchRows = await db.query(
         `SELECT d.order_id, d.target_avatar_id as avatar_id, d.status, d.responded_at, d.expires_at,
-                a.name as avatar_name, a.avatar_url
+                a.name as avatar_name, a.avatar_url, u.phone
          FROM order_dispatch_requests d
          LEFT JOIN avatars a ON d.target_avatar_id = a.id
+         LEFT JOIN users u ON a.user_id = u.id
          WHERE d.order_id IN (${placeholders})
          ORDER BY d.created_at ASC`,
         orderIds
@@ -489,6 +490,7 @@ export class OrderService {
           avatarId: row.avatarId,
           avatarName: row.avatarName,
           avatarUrl: row.avatarUrl,
+          phone: row.phone || null,
           status: normalizedStatus,
           dispatchStatus: row.status,
           contentStatus: contentRecord?.status || null,
