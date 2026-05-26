@@ -160,8 +160,7 @@ export class OrderProcessingController {
     @Headers('x-user-id') currentUserId: string
   ) {
     try {
-      // 校验：只有发单方可以提交反馈
-      await this.processingService.verifyOrderOwner(id, currentUserId)
+      // submitFeedback 是分身提交成果的操作，不需要校验发单方身份
 
       const result = await this.processingService.submitFeedback(id, feedback || {})
       return {
