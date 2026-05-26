@@ -289,6 +289,7 @@ export class ContentGenerationService implements OnModuleInit {
     assignedVideoUrl?: string
     useCustomCopywriting?: boolean
     customCopywriting?: string
+    skipGeneration?: boolean
   }): Promise<any[]> {
     const results: any[] = []
 
@@ -369,6 +370,11 @@ export class ContentGenerationService implements OnModuleInit {
       // 3. 简单任务直接标记完成，不走AI生成
       if (input.contentType === 'simple_task') {
         this.logger.log(`简单任务，跳过AI生成: ${requestId}`)
+        // 先更新content字段为订单描述，让分身能看到任务要求
+        try {
+          const db = getMySQLClient()
+          await db.query('UPDATE content_generation_requests SET content = ? WHERE id = ?', [input.orderDescription || input.orderTitle || '', requestId])
+        } catch {}
         this.updateStatus(requestId, input.orderId, 'ready', {
           copywriting: '',
           images: null,
@@ -408,6 +414,10 @@ export class ContentGenerationService implements OnModuleInit {
    * 根据技能确定内容类型
    */
   private resolveContentType(primarySkill: string, orderContentType: string): string {
+    // 简单任务不需要AI生成，直接返回原类型
+    if (orderContentType === 'simple_task') {
+      return orderContentType
+    }
     const skillStrategy = getSkillStrategy(primarySkill)
     if (skillStrategy) {
       const allowedTypes = skillStrategy.contentTypes
@@ -1781,6 +1791,21 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
           ]
         )
         this.logger.log(`${status === 'partial_failed' ? '部分失败' : '失败'}状态已写入数据库: requestId=${requestId}`)
+      } else {
+        // ready / processing 等其他状态
+        await db.query(
+          'UPDATE content_generation_requests SET status = ?, content = COALESCE(content, ?), images = COALESCE(images, ?), video_url = COALESCE(video_url, ?), assigned_images = COALESCE(assigned_images, ?), assigned_video_url = COALESCE(assigned_video_url, ?), error = NULL WHERE id = ?',
+          [
+            status,
+            generatedContent?.copywriting || generatedContent?.content || null,
+            generatedContent?.images?.length > 0 ? JSON.stringify(generatedContent.images) : null,
+            generatedContent?.videos?.length > 0 ? JSON.stringify(generatedContent.videos) : (generatedContent?.video_url || null),
+            generatedContent?.assignedImages?.length > 0 ? JSON.stringify(generatedContent.assignedImages) : null,
+            generatedContent?.assignedVideoUrl || null,
+            requestId
+          ]
+        )
+        this.logger.log(`${status}状态已写入数据库: requestId=${requestId}`)
       }
     } catch (err: any) {
       this.logger.warn(`更新最终状态失败: ${err.message}`)

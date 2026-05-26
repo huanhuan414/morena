@@ -475,10 +475,12 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         console.warn('[OrderCreate] 获取openid失败:', e)
       }
 
+      // simple -> simple_task 映射：前端用short id，后端存full id
+      const backendContentType = form.contentType === 'simple' ? 'simple_task' : form.contentType
       const orderData = {
         title: form.title,
         description: form.description,
-        content_type: form.contentType,
+        content_type: backendContentType,
         platforms: canonicalizePlatforms(form.platforms),
         preferred_style: form.preferredStyle,
         preferred_niche: form.preferredNiche,

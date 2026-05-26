@@ -28,6 +28,7 @@ const BACKEND_STATUS_TO_TAB: Record<string, string> = {
   settled: 'completed',
   done: 'completed',
   failed: 'failed',
+  ready: 'preview',
   partial_failed: 'failed',
   rejected: 'rejected',
   cancelled: 'cancelled',
@@ -324,8 +325,15 @@ export default function GeneratedContentPage() {
   const getCardActions = (rawStatus: string, contentType?: string) => {
     const status = BACKEND_STATUS_TO_TAB[rawStatus] || rawStatus
     const isVideo = ['video_text', 'video_script', 'video'].includes(contentType || '')
+    const isSimpleTask = contentType === 'simple_task'
     switch (status) {
       case 'preview':
+        if (isSimpleTask) {
+          return [
+            { key: 'feedback', label: '上传截图', icon: ImagePlus, type: 'primary' },
+            { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
+          ]
+        }
         return [
           { key: 'publish', label: '发布', icon: Send, type: 'primary' },
           { key: 'view', label: '查看详情', icon: Eye, type: 'default' },

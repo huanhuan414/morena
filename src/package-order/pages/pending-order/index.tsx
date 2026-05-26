@@ -52,7 +52,7 @@ interface PendingOrder {
 
 // 内容类型配置
 const CONTENT_TYPE_MAP: Record<string, { label: string; icon: any; color: string; effort: string }> = {
-  simple: { label: '简单任务', icon: CircleCheckBig, color: '#06B6D4', effort: '约5分钟' },
+  simple_task: { label: '简单任务', icon: CircleCheckBig, color: '#06B6D4', effort: '约5分钟' },
   image_text: { label: '图文笔记', icon: FileText, color: '#6366F1', effort: '约15分钟' },
   article: { label: '长篇文章', icon: FileText, color: '#8B5CF6', effort: '约30分钟' },
   image: { label: '图片内容', icon: ImageIcon, color: '#10B981', effort: '约10分钟' },

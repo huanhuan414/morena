@@ -1358,7 +1358,6 @@ async getExecutionProgress(orderId: string) {
       
       if (hasAssets) {
         // 第二步：查已就绪的素材（包含id和assigned_to用于独占模式）
-        // db2.query 返回的行已转为 camelCase: asset_type → assetType, asset_url → assetUrl, assigned_to → assignedTo
         let readyAssets = await db2.query(
           'SELECT id, asset_type, asset_url, assigned_to FROM order_assets WHERE order_id = ? AND status = \'ready\' ORDER BY sort_order ASC',
           [orderId]
@@ -1374,8 +1373,7 @@ async getExecutionProgress(orderId: string) {
         )
         const pendingCount = (hasPendingRows as any[])?.[0]?.cnt || 0
         
-        const orderContentType = order.contentType || order.content_type || 'image_text'
-        // 读取 AI 补足开关
+        const orderContentType = order.content_type || order.contentType || 'image_text'
         let orderRequirements: any = {}
         try {
           orderRequirements = typeof order.requirements === 'string' ? JSON.parse(order.requirements) : (order.requirements || {})
@@ -1497,7 +1495,9 @@ async getExecutionProgress(orderId: string) {
       orderTitle: request.order_title || order.title || '内容生成',
       orderDescription: request.description || order.description || '',
       platforms: normalizedPlatforms,
-      contentType: order.contentType || order.content_type || 'image_text',
+      contentType: order.content_type || order.contentType || 'image_text',
+      // simple_task类型不需要AI生成内容，直接标记ready
+      skipGeneration: (order.content_type || order.contentType) === 'simple_task',
       targetAudience: request.target_audience || order.targetAudience || '年轻用户',
       contentQuantity: request.quantityPerAvatar || request.quantity_per_avatar || order.quantityPerAvatar || order.quantity_per_avatar || 1,
       avatarName,

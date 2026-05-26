@@ -166,11 +166,15 @@ function getSteps(contentType?: string): StepDef[] {
 }
 
 // rawStatus → 当前步骤索引 (0-based)
-function getStepIndex(rawStatus: string): number {
+function getStepIndex(rawStatus: string, contentType?: string): number {
+  const isSimpleTask = contentType === 'simple_task'
   switch (rawStatus) {
     case 'pending':
     case 'processing':
       return 0
+    case 'ready':
+      // 简单任务：ready = 执行任务步骤
+      return isSimpleTask ? 1 : 0
     case 'generating_text':
       return 1
     case 'generating_images':
@@ -186,7 +190,7 @@ function getStepIndex(rawStatus: string): number {
     case 'preview':
     case 'partial_failed':
     case 'rejected':
-      return 3
+      return isSimpleTask ? 1 : 3
     default:
       return 0
   }
@@ -211,10 +215,13 @@ function getStepHint(rawStatus: string, contentType?: string, isTimeout?: boolea
   if (queueHint) return queueHint
   const isVideo = contentType === 'video' || contentType === 'video_text'
   const isTextOnly = contentType === 'text'
+  const isSimpleTask = contentType === 'simple_task'
   switch (rawStatus) {
     case 'pending':
     case 'processing':
-      return '正在分配生成任务，请稍候...'
+      return isSimpleTask ? '正在准备任务，请稍候...' : '正在分配生成任务，请稍候...'
+    case 'ready':
+      return isSimpleTask ? '请按照要求完成任务操作并上传截图反馈' : '准备就绪'
     case 'generating_text':
       return 'AI正在创作文案，根据您的风格和领域偏好定制内容...'
     case 'generating_images':
@@ -321,7 +328,9 @@ export default function OrderContentCreation() {
 
         const terminalStatuses = ['completed', 'published', 'awaiting_acceptance', 'feedback_submitted', 'settled', 'done', 'preview', 'failed', 'partial_failed', 'rejected']
         const reachedTerminal = terminalStatuses.includes(data.rawStatus) || terminalStatuses.includes(data.status)
-        if (!reachedTerminal) return
+        // simple_task的ready状态也是终端状态（任务准备就绪，等待分身执行）
+        const isSimpleTaskReady = (data.rawStatus === 'ready' || data.status === 'ready') && (data.contentType === 'simple_task')
+        if (!reachedTerminal && !isSimpleTaskReady) return
 
         if (timerRef.current) clearInterval(timerRef.current)
 
@@ -370,12 +379,15 @@ export default function OrderContentCreation() {
   const contentType = processingData?.contentType || orderInfo?.contentType || 'image_text'
   const isVideo = contentType === 'video' || contentType === 'video_text'
   const steps = getSteps(contentType)
-  const currentStep = getStepIndex(rawStatus)
+  const currentStep = getStepIndex(rawStatus, contentType)
   const stepStates = getStepStates(currentStep, steps.length)
   // 生成中的状态集合 —— 只有这些状态算"还在生成"
   const GENERATING_STATUSES = ['pending', 'processing', 'generating_text', 'generating_images', 'generating_video']
+  // simple_task的ready状态不算"已完成"，而是"待执行"
+  const SIMPLE_TASK_EXECUTING_STATUSES = ['ready']
   const isPartialFailed = rawStatus === 'partial_failed'
-  const isGenerating = GENERATING_STATUSES.includes(rawStatus)
+  const isSimpleTask = contentType === 'simple_task'
+  const isGenerating = GENERATING_STATUSES.includes(rawStatus) || (isSimpleTask && SIMPLE_TASK_EXECUTING_STATUSES.includes(rawStatus))
   const isRejected = rawStatus === 'rejected'
   const rejectReason = processingData?.publishFeedback?.rejectReason || ''
 
@@ -426,7 +438,8 @@ export default function OrderContentCreation() {
   const videoEmpty = needVideo && displayVideos.length === 0
   const isPreviewWithMissing = rawStatus === 'preview' && (imageEmpty || videoEmpty)
   const effectiveIsPartialFailed = isPartialFailed || isPreviewWithMissing
-  const isCompleted = !GENERATING_STATUSES.includes(rawStatus) && rawStatus !== 'failed' && !effectiveIsPartialFailed && !isRejected
+  // simple_task的ready状态不算完成（等待执行），其他类型的ready状态实际上不会出现
+  const isCompleted = !GENERATING_STATUSES.includes(rawStatus) && rawStatus !== 'failed' && !effectiveIsPartialFailed && !isRejected && !(rawStatus === 'ready' && isSimpleTask)
 
   // 完成状态文案
   const getCompletedLabel = useCallback((status: string) => {
@@ -476,9 +489,9 @@ export default function OrderContentCreation() {
             <ArrowLeft size={20} color="#fff" />
           </View>
           <View className="cc-header-center">
-            <Text className="cc-header-title">内容生成</Text>
+            <Text className="cc-header-title">{isSimpleTask ? '任务执行' : '内容生成'}</Text>
             <Text className="cc-header-desc">
-              {isCompleted ? '内容已生成完成' : effectiveIsPartialFailed ? '部分内容生成失败' : 'AI正在为你创作内容'}
+              {isCompleted ? '内容已生成完成' : effectiveIsPartialFailed ? '部分内容生成失败' : isSimpleTask && rawStatus === 'ready' ? '请完成任务操作' : 'AI正在为你创作内容'}
             </Text>
           </View>
           <View className="cc-header-placeholder" />
@@ -491,10 +504,10 @@ export default function OrderContentCreation() {
           <View className="cc-order-card">
             <View className="cc-order-row">
               <View className="cc-order-badge" style={{ background: isCompleted ? '#22C55E' : effectiveIsPartialFailed ? '#EF4444' : '#6366F1' }}>
-                <Text className="cc-order-badge-text">{isCompleted ? '已完成' : effectiveIsPartialFailed ? '部分失败' : '生成中'}</Text>
+                <Text className="cc-order-badge-text">{isCompleted ? '已完成' : effectiveIsPartialFailed ? '部分失败' : isSimpleTask ? '待执行' : '生成中'}</Text>
               </View>
               <View className="cc-order-type">
-                <Text className="cc-order-type-text">{isVideo ? '视频' : '图文'}</Text>
+                <Text className="cc-order-type-text">{isSimpleTask ? '简单任务' : isVideo ? '视频' : '图文'}</Text>
               </View>
             </View>
             <Text className="cc-order-title">{orderInfo.title}</Text>
