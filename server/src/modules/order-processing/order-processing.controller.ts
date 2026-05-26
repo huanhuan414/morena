@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Controller, Get, Post, Put, Param, Body, Headers, Query, Inject } from '@nestjs/common'
+import { Controller, Get, Post, Put, Param, Body, Headers, Query, Inject, Req } from '@nestjs/common'
 import { OrderProcessingService } from './order-processing.service'
 import { LinkValidationService } from './link-validation.service'
 
@@ -150,15 +150,19 @@ export class OrderProcessingController {
   }
 
   /**
-   * 提交发布反馈
+   * 提交发布反馈（仅发单方可操作）
    * 支持 requestId / orderId
    */
   @Post('feedback/:id')
   async submitFeedback(
     @Param('id') id: string,
-    @Body('feedback') feedback: Record<string, any>
+    @Body('feedback') feedback: Record<string, any>,
+    @Headers('x-user-id') currentUserId: string
   ) {
     try {
+      // 校验：只有发单方可以提交反馈
+      await this.processingService.verifyOrderOwner(id, currentUserId)
+
       const result = await this.processingService.submitFeedback(id, feedback || {})
       return {
         code: 200,
@@ -167,7 +171,7 @@ export class OrderProcessingController {
       }
     } catch (error: any) {
       return {
-        code: 500,
+        code: 403,
         data: null,
         message: error.message || '反馈提交失败'
       }
@@ -175,12 +179,19 @@ export class OrderProcessingController {
   }
 
   /**
-   * 验收通过
+   * 验收通过（仅发单方可操作）
    * 支持 requestId / orderId
+   * 接单方不能验收自己接的单
    */
   @Put('accept/:id')
-  async acceptContent(@Param('id') id: string) {
+  async acceptContent(
+    @Param('id') id: string,
+    @Headers('x-user-id') currentUserId: string
+  ) {
     try {
+      // 校验：只有发单方可以验收
+      await this.processingService.verifyOrderOwner(id, currentUserId)
+
       const result = await this.processingService.acceptProcessing(id)
       return {
         code: 200,
@@ -188,9 +199,8 @@ export class OrderProcessingController {
         message: result ? '验收成功' : '记录不存在'
       }
     } catch (error: any) {
-      console.error(`[OrderProcessingController] 验收失败:`, error)
       return {
-        code: 500,
+        code: 403,
         data: null,
         message: error.message || '验收失败'
       }
@@ -295,15 +305,19 @@ export class OrderProcessingController {
   }
 
   /**
-   * 请求修改
+   * 请求修改（仅发单方可操作）
    * 支持 requestId / orderId
    */
   @Post('revision/:id')
   async requestRevision(
     @Param('id') id: string,
-    @Body('feedback') feedback: Record<string, any>
+    @Body('feedback') feedback: Record<string, any>,
+    @Headers('x-user-id') currentUserId: string
   ) {
     try {
+      // 校验：只有发单方可以请求修改
+      await this.processingService.verifyOrderOwner(id, currentUserId)
+
       const result = await this.processingService.requestRevision(id, feedback || {})
       return {
         code: 200,
@@ -312,7 +326,7 @@ export class OrderProcessingController {
       }
     } catch (error: any) {
       return {
-        code: 500,
+        code: 403,
         data: null,
         message: error.message || '发起修改失败'
       }

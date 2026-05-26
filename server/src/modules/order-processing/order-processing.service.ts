@@ -20,6 +20,37 @@ export class OrderProcessingService {
     private readonly orderService: OrderService
   ) {}
 
+  /**
+   * 校验当前用户是否是订单的发单方
+   * 接单方（分身的 user_id）不能验收/反馈/修改自己接的单
+   */
+  async verifyOrderOwner(id: string, currentUserId: string): Promise<void> {
+    const db = getMySQLClient()
+
+    // 先从 processing 记录找到 order_id
+    const processing = await this.getProcessingStatus(id) || await this.getProcessingByRequestId(id)
+    if (!processing) {
+      throw new Error('记录不存在')
+    }
+
+    const orderId = processing.orderId || processing.order_id
+    if (!orderId) {
+      throw new Error('无法确定订单')
+    }
+
+    // 查询订单的发单方
+    const orders = await db.query('orders', { id: orderId })
+    const order = Array.isArray(orders) ? orders[0] : orders
+    if (!order) {
+      throw new Error('订单不存在')
+    }
+
+    // 校验当前用户是否是发单方
+    if ((order.userId || order.user_id) !== currentUserId) {
+      throw new Error('无权操作，只有发单方可以验收/反馈/修改')
+    }
+  }
+
   private async ensureDisputesTable() {
     if (this.disputesTableReady) return
     const db = getMySQLClient()
@@ -678,13 +709,44 @@ export class OrderProcessingService {
     return { success: true }
   }
 
-  async acceptProcessing(identifier: string): Promise<any> {
+  async acceptProcessing(identifier: string, currentUserId?: string): Promise<any> {
     const current = await this.findRecordByIdentifier(identifier)
     if (!current) return null
     const currentNormalized = this.normalizeRecord(current)
     const blocked = await this.hasOpenDispute(currentNormalized.orderId)
     if (blocked) {
       throw new Error('订单存在未处理争议，暂不可验收')
+    }
+
+    // 校验验收权限：只有发单方可以验收，接单方不能验收自己接的单
+    if (currentUserId && currentNormalized.orderId) {
+      const db = getMySQLClient()
+      const orderRows = await db.query(
+        `SELECT user_id FROM orders WHERE id = ? LIMIT 1`,
+        [currentNormalized.orderId]
+      )
+      const orderRow = Array.isArray(orderRows) ? orderRows[0] : (orderRows as any)?.data?.[0]
+      const orderOwnerId = orderRow?.user_id || orderRow?.userId
+
+      if (orderOwnerId && currentUserId === orderOwnerId) {
+        // 发单方验收 - 允许
+      } else {
+        // 非发单方 - 检查是否是接单方
+        const avatarRows = await db.query(
+          `SELECT user_id FROM avatars WHERE id = ? LIMIT 1`,
+          [currentNormalized.avatarId]
+        )
+        const avatarRow = Array.isArray(avatarRows) ? avatarRows[0] : (avatarRows as any)?.data?.[0]
+        const avatarUserId = avatarRow?.user_id || avatarRow?.userId
+
+        if (avatarUserId && currentUserId === avatarUserId) {
+          throw new Error('接单方不能验收自己接的单，只能由发单方验收')
+        }
+        // 其他用户也不能验收
+        if (orderOwnerId) {
+          throw new Error('只有发单方可以验收订单')
+        }
+      }
     }
 
     const record = await this.updateRecordByIdentifier(identifier, {
