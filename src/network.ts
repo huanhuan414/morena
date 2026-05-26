@@ -262,7 +262,7 @@ const createUrl = (url: string) => {
   if (url.startsWith('http://') || url.startsWith('https://')) {
     return url
   }
-  const domain = typeof PROJECT_DOMAIN !== 'undefined' ? PROJECT_DOMAIN : ''
+  const domain = PROJECT_DOMAIN || ''
   return `${domain}${url}`
 }
 
