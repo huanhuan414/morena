@@ -217,20 +217,11 @@ export default function OrderCreate() {
   // 计算独占模式下最大分身数量
   const getMaxAvatarCount = () => {
     if (form.assetDistributeMode !== 'exclusive') return Infinity
-    // 独占模式：每个素材只能分配给一个分身
-    // 每个平台需要: 图文=3张图片, 视频=1个视频
-    const isVideo = form.contentType === 'video'
-    const perAvatarAssets = isVideo ? 1 : 3 // 每个分身需要的素材数
-
+    // 独占模式：素材按顺序平均分配给每个分身，每个分身至少1张
+    // 最大分身数 = 素材数量（每个分身至少分到1张素材，不够的由AI补足）
     const uploadedCount = uploadedAssets.length
     if (uploadedCount > 0) {
-      if (form.aiAutoFill) {
-        // AI补足开启：每张上传素材作为1个分身的"种子"，AI补足每个分身缺少的素材
-        // 最大分身数 = 上传素材数（与素材数量一致）
-        return uploadedCount
-      }
-      // 不补足：最大分身数 = Math.floor(上传素材数 / 每分身需要数)
-      return Math.floor(uploadedCount / perAvatarAssets)
+      return uploadedCount
     }
     // 无上传素材：默认AI生成，按分身数生成，不限
     return 99
