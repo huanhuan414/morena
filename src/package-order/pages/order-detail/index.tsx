@@ -867,10 +867,11 @@ export default function OrderDetailPage() {
                                           <Text
                                             className="block od-dialog-feedback-val od-dialog-feedback-link"
                                             onClick={() => {
-                                              const isMiniApp = ([Taro.ENV_TYPE.WEAPP, Taro.ENV_TYPE.TT] as string[]).includes(Taro.getEnv())
-                                              if (isMiniApp) {
-                                                Taro.setClipboardData({ data: pf.publishUrl })
-                                              }
+                                              Taro.setClipboardData({ data: pf.publishUrl }).then(() => {
+                                                Taro.showToast({ title: '链接已复制', icon: 'success', duration: 1500 })
+                                              }).catch(() => {
+                                                Taro.showToast({ title: '复制失败', icon: 'none', duration: 1500 })
+                                              })
                                             }}
                                           >
                                             {pf.publishUrl}
