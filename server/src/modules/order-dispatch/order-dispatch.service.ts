@@ -563,7 +563,34 @@ async getExecutionProgress(orderId: string) {
 
   async rejectDispatch(requestId: string, avatarId: string) {
     const db = getMySQLClient()
+
+    // 先查出orderId，用于Redis计数器修正
+    const [record] = await db.query('SELECT order_id, status FROM order_dispatch_requests WHERE id = ?', [requestId])
+    const orderId = record?.order_id
+
     await db.update('order_dispatch_requests', { status: 'rejected' }, { id: requestId })
+
+    // 如果之前是accepted状态，需要Redis DECR（分身接单时INCR了，拒绝时必须减回来）
+    if (record?.status === 'accepted' && orderId) {
+      try {
+        const redisKey = `order:accept:count:${orderId}`
+        await this.redisService.getClient().decr(redisKey)
+        // 校验补偿：比对Redis与DB
+        const [orderRow] = await db.query(
+          `SELECT GREATEST(COALESCE(NULLIF(avatar_count, 0), NULLIF(expected_quantity, 0), 1), 1) as required_count FROM orders WHERE id = ?`,
+          [orderId]
+        )
+        const redisVal = parseInt(await this.redisService.getClient().get(redisKey) || '0', 10)
+        const dbCount = await this.getDbAcceptCount(orderId)
+        if (redisVal !== dbCount) {
+          console.warn(`[Redis校验] 拒绝分身后不一致 orderId=${orderId} redis=${redisVal} db=${dbCount}, 修正`)
+          await this.redisService.getClient().set(redisKey, String(dbCount), 'EX', OrderDispatchService.REDIS_TTL_SECONDS)
+        }
+      } catch (err) {
+        console.warn('[Redis] 拒绝分身DECR失败:', err.message)
+      }
+    }
+
     return { success: true }
   }
 
