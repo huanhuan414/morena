@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { View, Text, Image, ScrollView } from '@tarojs/components'
+import { View, Text, Image, ScrollView, Picker } from '@tarojs/components'
 import Taro, { useLoad } from '@tarojs/taro'
 import { Input } from '@/components/ui/input'
 import { Network } from '@/network'
@@ -21,10 +21,30 @@ import {
   Zap,
   ArrowRight,
   Target,
+  Calendar,
+  ChevronDown,
+  MapPin,
 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import { CONTENT_STYLES, NICHE_TAGS } from '@/constants/avatar-tags'
 import './index.css'
+
+// 性别选项
+const GENDER_OPTIONS = [
+  { key: 'male', name: '男', icon: '👨' },
+  { key: 'female', name: '女', icon: '👩' },
+]
+
+// 身份选项
+const IDENTITY_OPTIONS = [
+  { key: 'office_worker', name: '上班族', icon: '💼' },
+  { key: 'mom', name: '宝妈', icon: '👶' },
+  { key: 'student', name: '学生', icon: '📚' },
+  { key: 'teacher', name: '老师', icon: '🎓' },
+  { key: 'freelancer', name: '自由职业', icon: '🎨' },
+  { key: 'entrepreneur', name: '创业者', icon: '🚀' },
+  { key: 'other', name: '其他', icon: '✨' },
+]
 
 // 分身技能列表（来自技能广场）
 const AVATAR_SKILLS = [
@@ -60,10 +80,19 @@ export default function AvatarCreate() {
     photo: '',
     photoUrl: '',
     name: '',
-    contentStyles: [] as string[],   // 内容风格 (替代原personality tags)
-    niches: [] as string[],           // 专业领域
+    gender: '',
+    birthday: '',
+    identity: '',
+    location: '',
+    latitude: 0,
+    longitude: 0,
+    contentStyles: [] as string[],
+    niches: [] as string[],
     skills: [] as string[],
   })
+
+  const [showGenderPicker, setShowGenderPicker] = useState(false)
+  const [showIdentityPicker, setShowIdentityPicker] = useState(false)
 
   // 提交状态
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -116,6 +145,12 @@ export default function AvatarCreate() {
               photo: '',
               photoUrl: '',
               name: '',
+              gender: '',
+              birthday: '',
+              identity: '',
+              location: '',
+              latitude: 0,
+              longitude: 0,
               contentStyles: [],
               niches: [],
               skills: [],
@@ -170,6 +205,68 @@ export default function AvatarCreate() {
   // 更新表单数据
   const updateFormData = (key: string, value: any) => {
     setFormData(prev => ({ ...prev, [key]: value }))
+  }
+
+  // 性别选择
+  const selectGender = (key: string) => {
+    updateFormData('gender', key)
+    setShowGenderPicker(false)
+  }
+
+  const getGenderDisplay = () => {
+    if (!formData.gender) return ''
+    const option = GENDER_OPTIONS.find(o => o.key === formData.gender)
+    return option ? `${option.icon} ${option.name}` : ''
+  }
+
+  // 身份选择
+  const selectIdentity = (key: string) => {
+    updateFormData('identity', key)
+    setShowIdentityPicker(false)
+  }
+
+  const getIdentityDisplay = () => {
+    if (!formData.identity) return ''
+    const option = IDENTITY_OPTIONS.find(o => o.key === formData.identity)
+    return option ? `${option.icon} ${option.name}` : ''
+  }
+
+  // 计算年龄
+  const calculateAge = (birthday: string) => {
+    if (!birthday) return ''
+    const birthDate = new Date(birthday)
+    const today = new Date()
+    let age = today.getFullYear() - birthDate.getFullYear()
+    const monthDiff = today.getMonth() - birthDate.getMonth()
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--
+    }
+    return age > 0 ? `${age}岁` : ''
+  }
+
+  // 选择位置
+  const handleGetLocation = () => {
+    // updateFormData('latitude', 31.2304)
+    // updateFormData('longitude', 121.4737)
+    // updateFormData('location', '上海市黄浦区')
+    Taro.chooseLocation({
+      success: (res) => {
+        updateFormData('latitude', res.latitude)
+        updateFormData('longitude', res.longitude)
+        updateFormData('location', res.address || res.name)
+      },
+      fail: (err: any) => {
+        console.error('选择位置失败:', err)
+        const errMsg = err?.errMsg || err?.message || ''
+        if (errMsg && !errMsg.includes('cancel')) {
+          Taro.showModal({
+            title: '选择位置失败',
+            content: '请确保已授权位置权限',
+            showCancel: false,
+          })
+        }
+      },
+    })
   }
 
   // 图片上传
@@ -317,6 +414,22 @@ export default function AvatarCreate() {
       Taro.showToast({ title: '请输入分身昵称', icon: 'none' })
       return
     }
+    if (!formData.gender) {
+      Taro.showToast({ title: '请选择性别', icon: 'none' })
+      return
+    }
+    if (!formData.birthday) {
+      Taro.showToast({ title: '请选择年龄', icon: 'none' })
+      return
+    }
+    if (!formData.identity) {
+      Taro.showToast({ title: '请选择职业', icon: 'none' })
+      return
+    }
+    if (!formData.location) {
+      Taro.showToast({ title: '请选择位置', icon: 'none' })
+      return
+    }
 
     // 后端权益校验 — 检查分身数量限制
     try {
@@ -365,8 +478,13 @@ export default function AvatarCreate() {
           return acc
         }, {} as Record<string, boolean>),
         abilities: { chat: true, reading: true, analysis: true },
+        gender: formData.gender,
+        birthday: formData.birthday,
+        identity: formData.identity,
+        location: formData.location,
+        latitude: formData.latitude,
+        longitude: formData.longitude,
       }
-
 
       const res = await Network.request({
         url: '/api/avatar',
@@ -389,6 +507,12 @@ export default function AvatarCreate() {
           photo: '',
           photoUrl: '',
           name: '',
+          gender: '',
+          birthday: '',
+          identity: '',
+          location: '',
+          latitude: 0,
+          longitude: 0,
           contentStyles: [],
           niches: [],
           skills: [],
@@ -512,6 +636,152 @@ export default function AvatarCreate() {
         </View>
         <Text className="input-sub-hint">好名字让分身更有辨识度，更容易被用户关注</Text>
       </View>
+
+      {/* 性别选择 */}
+      <View className="form-section">
+        <Text className="section-title">
+          性别
+          <Text className="title-hint">（必填）</Text>
+        </Text>
+        <View
+          className="form-picker-trigger"
+          onClick={() => setShowGenderPicker(true)}
+        >
+          <Text className={`form-picker-text ${formData.gender ? 'has-value' : ''}`}>
+            {getGenderDisplay() || '请选择性别'}
+          </Text>
+          <ChevronDown size={18} color="#94A3B8" />
+        </View>
+      </View>
+
+      {/* 年龄 */}
+      <View className="form-section">
+        <Text className="section-title">
+          年龄
+          <Text className="title-hint">（必填）</Text>
+        </Text>
+        <Picker
+          mode="date"
+          value={formData.birthday || '2000-01-01'}
+          start="1950-01-01"
+          end={new Date().toISOString().split('T')[0]}
+          onChange={(e) => updateFormData('birthday', e.detail.value)}
+        >
+          <View className="form-picker-trigger">
+            <Calendar size={18} color="#8B5CF6" />
+            <Text className={`form-picker-text ${formData.birthday ? 'has-value' : ''}`}>
+              {formData.birthday ? calculateAge(formData.birthday) : '请选择出生日期'}
+            </Text>
+            <ChevronDown size={18} color="#94A3B8" />
+          </View>
+        </Picker>
+      </View>
+
+      {/* 职业 */}
+      <View className="form-section">
+        <Text className="section-title">
+          职业
+          <Text className="title-hint">（必填）</Text>
+        </Text>
+        <View
+          className="form-picker-trigger"
+          onClick={() => setShowIdentityPicker(true)}
+        >
+          <Text className={`form-picker-text ${formData.identity ? 'has-value' : ''}`}>
+            {getIdentityDisplay() || '请选择职业'}
+          </Text>
+          <ChevronDown size={18} color="#94A3B8" />
+        </View>
+      </View>
+
+      {/* 所在地址 */}
+      <View className="form-section">
+        <Text className="section-title">
+          所在地址
+          <Text className="title-hint">（必填）</Text>
+        </Text>
+        <View className="location-picker">
+          <View
+            className="location-input-wrap"
+            onClick={handleGetLocation}
+          >
+            <MapPin size={18} color="#8B5CF6" />
+            <Text className={`location-text ${formData.location ? 'has-value' : ''}`}>
+              {formData.location || '点击选择位置'}
+            </Text>
+          </View>
+          {formData.location && (
+            <View
+              className="location-clear-btn"
+              onClick={() => {
+                updateFormData('location', '')
+                updateFormData('latitude', 0)
+                updateFormData('longitude', 0)
+              }}
+            >
+              <Text className="location-clear-text">清除</Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      {/* 性别选择弹窗 */}
+      {showGenderPicker && (
+        <View className="picker-mask" onClick={() => setShowGenderPicker(false)}>
+          <View className="picker-panel" onClick={(e) => e.stopPropagation()}>
+            <View className="picker-header">
+              <Text className="picker-title">选择性别</Text>
+              <View className="picker-close" onClick={() => setShowGenderPicker(false)}>
+                <Text className="picker-close-text">✕</Text>
+              </View>
+            </View>
+            <View className="picker-options">
+              {GENDER_OPTIONS.map(option => (
+                <View
+                  key={option.key}
+                  className={`picker-option ${formData.gender === option.key ? 'selected' : ''}`}
+                  onClick={() => selectGender(option.key)}
+                >
+                  <Text className="picker-option-icon">{option.icon}</Text>
+                  <Text className="picker-option-name">{option.name}</Text>
+                  {formData.gender === option.key && (
+                    <Check size={16} color="#8B5CF6" />
+                  )}
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* 身份选择弹窗 */}
+      {showIdentityPicker && (
+        <View className="picker-mask" onClick={() => setShowIdentityPicker(false)}>
+          <View className="picker-panel" onClick={(e) => e.stopPropagation()}>
+            <View className="picker-header">
+              <Text className="picker-title">选择职业</Text>
+              <View className="picker-close" onClick={() => setShowIdentityPicker(false)}>
+                <Text className="picker-close-text">✕</Text>
+              </View>
+            </View>
+            <View className="picker-options">
+              {IDENTITY_OPTIONS.map(option => (
+                <View
+                  key={option.key}
+                  className={`picker-option ${formData.identity === option.key ? 'selected' : ''}`}
+                  onClick={() => selectIdentity(option.key)}
+                >
+                  <Text className="picker-option-icon">{option.icon}</Text>
+                  <Text className="picker-option-name">{option.name}</Text>
+                  {formData.identity === option.key && (
+                    <Check size={16} color="#8B5CF6" />
+                  )}
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   )
 
@@ -596,7 +866,7 @@ export default function AvatarCreate() {
           {formData.niches.length > 0
             ? `已选领域：${formData.niches.map(k => NICHE_TAGS.find(n => n.key === k)?.name).join('、')}，对应商单将优先派给你`
             : '选择领域后，相关商单会优先匹配给你'
-        }
+          }
         </Text>
       </View>
     </View>

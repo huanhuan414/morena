@@ -802,11 +802,153 @@
 
 .preview-name {
   font-size: 30rpx;
-  font-weight: 600;
-  color: #fff;
-  display: block;
 }
 
+/* 表单选择器触发器 */
+.form-picker-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 28rpx;
+  background: #f8fafc;
+  border-radius: 16rpx;
+  border: 2rpx solid #e2e8f0;
+}
+
+.form-picker-text {
+  font-size: 28rpx;
+  color: #94a3b8;
+  flex: 1;
+}
+
+.form-picker-text.has-value {
+  color: #1e293b;
+}
+
+/* 地址选择器 */
+.location-picker {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.location-input-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 24rpx 28rpx;
+  background: #f8fafc;
+  border-radius: 16rpx;
+  border: 2rpx solid #e2e8f0;
+}
+
+.location-text {
+  font-size: 28rpx;
+  color: #94a3b8;
+  flex: 1;
+}
+
+.location-text.has-value {
+  color: #1e293b;
+}
+
+.location-clear-btn {
+  padding: 16rpx 24rpx;
+  background: #fef2f2;
+  border-radius: 12rpx;
+}
+
+.location-clear-text {
+  font-size: 24rpx;
+  color: #ef4444;
+}
+
+/* 选择弹窗 */
+.picker-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.picker-panel {
+  width: 100%;
+  background: #fff;
+  border-radius: 32rpx 32rpx 0 0;
+  padding: 32rpx;
+  padding-bottom: calc(32rpx + env(safe-area-inset-bottom));
+}
+
+.picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+}
+
+.picker-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.picker-close {
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  border-radius: 50%;
+}
+
+.picker-close-text {
+  font-size: 28rpx;
+  color: #64748b;
+}
+
+.picker-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.picker-option {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 20rpx 24rpx;
+  background: #f8fafc;
+  border-radius: 16rpx;
+  border: 2rpx solid transparent;
+  min-width: calc(50% - 8rpx);
+  box-sizing: border-box;
+}
+
+.picker-option.selected {
+  background: #faf5ff;
+  border-color: #c4b5fd;
+}
+
+.picker-option-icon {
+  font-size: 32rpx;
+}
+
+.picker-option-name {
+  font-size: 28rpx;
+  color: #1e293b;
+  flex: 1;
+  font-weight: 600;
+  display: block;
+}
+ 
 .preview-skills-row {
   display: flex;
   flex-wrap: wrap;

@@ -151,6 +151,53 @@ const MindChat: React.FC = () => {
     }
   }
 
+  const getIdentityName = (identity: string) => {
+    const identityMap: Record<string, string> = {
+      office_worker: '上班族',
+      mom: '宝妈',
+      student: '学生',
+      teacher: '老师',
+      freelancer: '自由职业',
+      entrepreneur: '创业者',
+      other: '其他',
+    }
+    return identityMap[identity] || identity
+  }
+
+  const getGenderName = (gender: string) => {
+    return gender === 'male' ? '男' : gender === 'female' ? '女' : ''
+  }
+
+  const calculateAge = (birthday: string) => {
+    if (!birthday) return ''
+    const birthDate = new Date(birthday)
+    const today = new Date()
+    let age = today.getFullYear() - birthDate.getFullYear()
+    const monthDiff = today.getMonth() - birthDate.getMonth()
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--
+    }
+    return age > 0 ? `${age}岁` : ''
+  }
+
+  const formatLocation = (location: string) => {
+    if (!location) return ''
+    const parts = location.split(/[省市区县]/)
+    if (parts.length > 0) {
+      return parts[0]
+    }
+    return location
+  }
+
+  const getProfileInfo = (clone: any) => {
+    const parts: string[] = []
+    if (clone.identity) parts.push(getIdentityName(clone.identity))
+    if (clone.gender) parts.push(getGenderName(clone.gender))
+    if (clone.birthday) parts.push(calculateAge(clone.birthday))
+    if (clone.location) parts.push(formatLocation(clone.location))
+    return parts.join(' · ')
+  }
+
   const loadMyClones = useCallback(async () => {
     try {
       setLoading(true)
@@ -165,7 +212,7 @@ const MindChat: React.FC = () => {
         method: 'GET',
         dedupKey: 'avatar:my-list',
       })
-      
+
       if (res.data?.code === 200 && res.data?.data) {
         const rawData = res.data.data
         const data = Array.isArray(rawData) ? rawData : []
@@ -176,7 +223,7 @@ const MindChat: React.FC = () => {
           const { tags, abilities } = parsePersonality(item.personality)
           let roleLabel = '通用助手'
           if (tags.length) roleLabel = tags.slice(0, 3).join('·')
-          
+
           return {
             id: item.id || '',
             name: item.name || '未命名分身',
@@ -199,6 +246,10 @@ const MindChat: React.FC = () => {
             avatarSkills: skillsResults[idx] || [],
             contentStyles: Array.isArray(item.contentStyles) ? item.contentStyles : (typeof item.contentStyles === 'string' ? JSON.parse(item.contentStyles || '[]') : []),
             nicheTags: Array.isArray(item.nicheTags) ? item.nicheTags : (typeof item.nicheTags === 'string' ? JSON.parse(item.nicheTags || '[]') : []),
+            gender: item.gender || '',
+            birthday: item.birthday || '',
+            identity: item.identity || '',
+            location: item.locationText || '',
             parsedSkills: (() => {
               try {
                 const s = typeof item.skills === 'string' ? JSON.parse(item.skills) : item.skills
@@ -235,16 +286,16 @@ const MindChat: React.FC = () => {
         method: 'GET',
         data: { page, pageSize }
       })
-      
+
       if (res.data?.code === 200) {
         const result = res.data?.data
         const listData = result?.data?.list || result?.list || []
         const total = result?.data?.total || result?.total || listData.length
+
         const avatars = listData.map((item: any) => {
           const { tags, abilities } = parsePersonality(item.personality)
           let roleLabel = '通用助手'
           if (tags.length) roleLabel = tags.slice(0, 3).join('·')
-          
           return {
             id: item.id || '',
             name: item.name || '未命名分身',
@@ -260,7 +311,11 @@ const MindChat: React.FC = () => {
             task: '待命中',
             hosting: false,
             totalEarnings: 0,
-            todayEarnings: 0
+            todayEarnings: 0,
+            gender: item.gender || '',
+            birthday: item.birthday || '',
+            identity: item.identity || '',
+            location: item.locationText || '',
           }
         })
         let nextLength = 0
@@ -462,7 +517,7 @@ const MindChat: React.FC = () => {
           <View className="decoration-circle circle-1" />
           <View className="decoration-circle circle-2" />
         </View>
-        
+
         {/* Tab切换 */}
         <View className="header-tabs">
           <View
@@ -495,7 +550,7 @@ const MindChat: React.FC = () => {
             />
           </View>
           {activeTab === 'my' && (
-            <View 
+            <View
               className="add-button"
               onClick={() => Taro.navigateTo({ url: '/package-avatar/pages/avatar-create/index' })}
             >
@@ -507,10 +562,10 @@ const MindChat: React.FC = () => {
       </View>
 
       {/* 内容区域 */}
-      <ScrollView 
-        className="content-scroll" 
-        scrollY 
-        scrollWithAnimation 
+      <ScrollView
+        className="content-scroll"
+        scrollY
+        scrollWithAnimation
         scrollIntoView={scrollIntoView}
         onScrollToLower={activeTab === 'square' ? onSquareScrollToLower : undefined}
       >
@@ -558,7 +613,7 @@ const MindChat: React.FC = () => {
                 {!searchValue && isLoggedIn && (
                   <View className="onboarding-guide">
                     <Text className="onboarding-guide-title">AI分身能为你做什么？</Text>
-                    
+
                     <View className="guide-step">
                       <View className="guide-step-icon" style={{ background: 'rgba(99,102,241,0.1)' }}>
                         <Bot size={20} color="#6366f1" />
@@ -633,7 +688,7 @@ const MindChat: React.FC = () => {
                       <View className="clone-cover">
                         <Image className="cover-image" src={clone.image} mode="aspectFill" />
                         <View className="cover-gradient" />
-                        
+
                         {/* 等级标签 */}
                         <View className="level-badge" style={{ background: levelInfo.color }}>
                           <Crown size={11} color="#ffffff" />
@@ -658,6 +713,9 @@ const MindChat: React.FC = () => {
                             <Image className="profile-avatar" src={clone.image} />
                             <View className="profile-info">
                               <Text className="profile-name">{clone.name}</Text>
+                              {getProfileInfo(clone) && (
+                                <Text className="profile-detail">{getProfileInfo(clone)}</Text>
+                              )}
                               <Text className="profile-total-earn">累计 ¥{(clone.totalEarnings || 0).toFixed(2)}</Text>
                             </View>
                           </View>
@@ -670,12 +728,12 @@ const MindChat: React.FC = () => {
                           <Sparkles size={13} color="#8b5cf6" />
                           <Text className="skills-title">技能</Text>
                           {clone.parsedSkills.length === 0 && (
-                            <View 
+                            <View
                               className="add-skill-btn"
                               onClick={() => Taro.navigateTo({ url: `/package-skill/pages/skills-square/index?avatarId=${clone.id}` })}
                             >
                               <Plus size={11} color="#8b5cf6" />
-                            <Text className="add-skill-text">添加技能</Text>
+                              <Text className="add-skill-text">添加技能</Text>
                             </View>
                           )}
                         </View>
@@ -696,21 +754,21 @@ const MindChat: React.FC = () => {
                                   <Text className="skill-tag-text" style={{ color: '#94a3b8' }}>+{clone.parsedSkills.length - 4}</Text>
                                 </View>
                               )}
-                              <View 
+                              <View
                                 className="skill-tag add-skill-tag"
                                 onClick={() => Taro.navigateTo({ url: `/package-skill/pages/skills-square/index?avatarId=${clone.id}` })}
                               >
                                 <Plus size={10} color="#8b5cf6" />
-                              <Text className="skill-tag-text" style={{ color: '#8b5cf6' }}>添加</Text>
+                                <Text className="skill-tag-text" style={{ color: '#8b5cf6' }}>添加</Text>
                               </View>
                             </>
                           ) : (
-                            <View 
+                            <View
                               className="skill-tag add-skill-tag"
                               onClick={() => Taro.navigateTo({ url: `/package-skill/pages/skills-square/index?avatarId=${clone.id}` })}
                             >
                               <Plus size={10} color="#8b5cf6" />
-                            <Text className="skill-tag-text" style={{ color: '#8b5cf6' }}>添加技能</Text>
+                              <Text className="skill-tag-text" style={{ color: '#8b5cf6' }}>添加技能</Text>
                             </View>
                           )}
                         </View>
@@ -845,7 +903,7 @@ const MindChat: React.FC = () => {
                         <View className="avatar-online-dot" />
                       </View>
                       <Text className="square-card-name">{clone.name}</Text>
-                      
+
                       {/* 技能标签 */}
                       <View className="square-card-tags">
                         {(clone.parsedSkills || []).slice(0, 2).map((skillKey) => {
@@ -904,7 +962,7 @@ const MindChat: React.FC = () => {
             )}
           </View>
         )}
-        
+
         <View className="bottom-spacer" />
       </ScrollView>
 

@@ -125,6 +125,12 @@ export class AvatarService {
       config: '{}',
       voice_id: avatarData.preset_voice_id || avatarData.voice_type || 'preset',
       status: avatarData.voice_type === 'clone' ? 'training' : 'active',
+      gender: avatarData.gender,
+      birthday: avatarData.birthday,
+      identity: avatarData.identity,
+      location_text: avatarData.location,
+      latitude: avatarData.latitude,
+      longitude: avatarData.longitude,
       created_at: now,
       updated_at: now
     }
@@ -171,6 +177,12 @@ export class AvatarService {
         config: '{}',
         voice_id: avatarData.preset_voice_id || avatarData.voice_type || 'preset',
         status: avatarData.voice_type === 'clone' ? 'training' : 'active',
+        gender: avatarData.gender,
+        birthday: avatarData.birthday,
+        identity: avatarData.identity,
+        location_text: avatarData.location,
+        latitude: avatarData.latitude,
+        longitude: avatarData.longitude,
       }
 
       const columns = await this.getAvatarTableColumns()
@@ -178,7 +190,6 @@ export class AvatarService {
         Object.entries(insertData)
           .filter(([key, value]) => value !== undefined && columns.has(String(key).toLowerCase()))
       )
-
       const result = await db.insert('avatars', filteredInsertData)
       
 

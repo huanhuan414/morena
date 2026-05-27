@@ -377,6 +377,13 @@
   letter-spacing: 0.5rpx;
 }
 
+.profile-detail {
+  font-size: 20rpx;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 4rpx;
+  margin-bottom: 4rpx;
+}
+
 .profile-total-earn {
   font-size: 20rpx;
   color: #34d399;
