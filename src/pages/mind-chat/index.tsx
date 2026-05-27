@@ -113,7 +113,9 @@ const MindChat: React.FC = () => {
   const activeTabRef = useRef<CloneType>('my')
   const [squarePage, setSquarePage] = useState(1)
   const [hasMoreSquare, setHasMoreSquare] = useState(true)
+  const [loadingMoreSquare, setLoadingMoreSquare] = useState(false)
   const squareLoadingRef = useRef(false)
+  const scrollTimerRef = useRef<any>(null)
 
   const loadAvatarSkills = async (avatarId: string): Promise<AvatarSkill[]> => {
     try {
@@ -279,8 +281,9 @@ const MindChat: React.FC = () => {
     }
     try {
       squareLoadingRef.current = true
-      if (!append) setLoading(true)
-      const pageSize = 10
+      if (append) setLoadingMoreSquare(true)
+      else setLoading(true)
+      const pageSize = 20
       const res = await Network.request({
         url: '/api/avatar/list',
         method: 'GET',
@@ -318,14 +321,20 @@ const MindChat: React.FC = () => {
             location: item.locationText || '',
           }
         })
-        let nextLength = 0
-        setSquareClones(prev => {
-          const next = append ? [...prev, ...avatars] : avatars
-          nextLength = next.length
-          return next
-        })
+
+        if (append) {
+          setSquareClones(prev => {
+            const existingIds = new Set(prev.map(a => a.id))
+            const newAvatars = avatars.filter(a => !existingIds.has(a.id))
+            return [...prev, ...newAvatars]
+          })
+        } else {
+          setSquareClones(avatars)
+        }
+
         setSquarePage(page)
-        const hasMore = nextLength < total
+        const loadedCount = page * pageSize
+        const hasMore = loadedCount < total
         setHasMoreSquare(hasMore)
       } else {
         if (!append) setSquareClones([])
@@ -335,6 +344,7 @@ const MindChat: React.FC = () => {
       if (!append) setSquareClones([])
     } finally {
       setLoading(false)
+      setLoadingMoreSquare(false)
       squareLoadingRef.current = false
     }
   }, [])
@@ -348,13 +358,34 @@ const MindChat: React.FC = () => {
   }, [loadMyClones, loadSquareClones])
 
   const onSquareScrollToLower = useCallback(async () => {
-    if (!hasMoreSquare || squareLoadingRef.current) return
-    await loadSquareClones(squarePage + 1, true)
+    // 防抖：如果正在加载或没有更多数据，直接返回
+    if (!hasMoreSquare || squareLoadingRef.current) {
+      return
+    }
+
+    // 清除之前的定时器
+    if (scrollTimerRef.current) {
+      clearTimeout(scrollTimerRef.current)
+    }
+
+    // 防抖延迟 300ms，防止滚动过快触发多次
+    scrollTimerRef.current = setTimeout(async () => {
+      await loadSquareClones(squarePage + 1, true)
+    }, 300)
   }, [hasMoreSquare, squarePage, loadSquareClones])
 
   useEffect(() => {
     activeTabRef.current = activeTab
   }, [activeTab])
+
+  useEffect(() => {
+    return () => {
+      // 组件卸载时清理定时器
+      if (scrollTimerRef.current) {
+        clearTimeout(scrollTimerRef.current)
+      }
+    }
+  }, [])
 
   useDidShow(() => {
     void (async () => {
@@ -567,6 +598,7 @@ const MindChat: React.FC = () => {
         scrollY
         scrollWithAnimation
         scrollIntoView={scrollIntoView}
+        lowerThreshold={100}
         onScrollToLower={activeTab === 'square' ? onSquareScrollToLower : undefined}
       >
         {loading ? (
@@ -950,7 +982,12 @@ const MindChat: React.FC = () => {
             )}
             {activeTab === 'square' && squareClones.length > 0 && (
               <View className="load-more-tip">
-                {hasMoreSquare ? (
+                {loadingMoreSquare ? (
+                  <>
+                    <Loader size={14} className="animate-spin" />
+                    <Text className="load-more-text">正在加载...</Text>
+                  </>
+                ) : hasMoreSquare ? (
                   <>
                     <Loader size={14} className="animate-spin" />
                     <Text className="load-more-text">上拉加载更多</Text>
