@@ -522,6 +522,13 @@ export default function GeneratedContentPage() {
                   </View>
                 </View>
 
+                {/* 订单标题 */}
+                {content.orderTitle || content.order_title ? (
+                  <View className="order-title">
+                    <Text className="order-title-text">{content.orderTitle || content.order_title}</Text>
+                  </View>
+                ) : null}
+
                 {/* 内容类型标签 */}
                 <View className="type-tag">
                   <TypeIcon size={12} color="#6366F1" />

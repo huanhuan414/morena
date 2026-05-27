@@ -296,6 +296,18 @@
   line-height: 1.4;
 }
 
+/* 订单标题 */
+.order-title {
+  margin-bottom: 12rpx;
+}
+
+.order-title-text {
+  font-size: 28rpx;
+  color: #1e293b;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
 /* 内容类型标签 */
 .type-tag {
   display: flex;
