@@ -45,3 +45,4 @@ key/
 server/cert/*.pem
 server/cert/*.key
 .trae/skills/**/local/*
+.cozeproj/reduction
