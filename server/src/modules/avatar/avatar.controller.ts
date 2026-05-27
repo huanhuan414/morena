@@ -21,6 +21,11 @@ export class AvatarController {
       description?: string;
       gender?: string;
       age?: number;
+      birthday?: string;
+      identity?: string;
+      location?: string;
+      latitude?: number;
+      longitude?: number;
     }
   ) {
     try {
@@ -34,7 +39,12 @@ export class AvatarController {
         abilities: body.abilities || { chat: true, reading: true, analysis: false },
         description: body.description || '',
         gender: body.gender,
-        age: body.age
+        age: body.age,
+        birthday: body.birthday,
+        identity: body.identity,
+        location: body.location,
+        latitude: body.latitude,
+        longitude: body.longitude,
       })
       return { code: 200, msg: 'success', data: avatar }
     } catch (err) {
