@@ -858,6 +858,22 @@ async getExecutionProgress(orderId: string) {
     if (slotNumber > redisRequiredCount && redisRequiredCount > 0) {
       // 超出名额，回滚占位
       await this.redisService.getClient().decr(redisKeyAccepted)
+
+      // 校验补偿：回滚后比对Redis与DB，不一致则修正
+      try {
+        const [dbCheckResult] = await pool.query(
+          `SELECT COUNT(DISTINCT CASE WHEN status IN ('accepted','completed') THEN avatar_id END) as cnt FROM order_dispatch_requests WHERE order_id = ?`,
+          [orderId]
+        )
+        const dbCnt = (dbCheckResult as any)?.cnt ?? (dbCheckResult as any)?.[0]?.cnt ?? 0
+        const currentRedis = await this.redisService.getClient().get(redisKeyAccepted)
+        const currentRedisNum = parseInt(currentRedis || '0', 10)
+        if (currentRedisNum !== dbCnt) {
+          this.logger.warn(`接单占位回滚后Redis不一致，修正: key=${redisKeyAccepted}, redis=${currentRedisNum}, db=${dbCnt}`)
+          await this.redisService.getClient().set(redisKeyAccepted, String(dbCnt), 'EX', OrderDispatchService.REDIS_TTL_SECONDS)
+        }
+      } catch (e) { /* 校验失败不影响主流程 */ }
+
       throw new ConflictException('名额已满，请抢其他订单')
     }
 
@@ -1816,11 +1832,22 @@ async getExecutionProgress(orderId: string) {
       this.logger.log(`释放素材: orderId=${orderId}, cgrId=${cgrId}, 释放${(releaseResult as any)?.affectedRows || 0}条素材`)
     }
 
-    // 6.5 释放Redis已接单计数器
+    // 6.5 释放Redis已接单计数器（含校验补偿）
     const redisKeyAccepted = `order:accept:count:${orderId}`
     try {
       const currentCount = await this.redisService.getClient().decr(redisKeyAccepted)
       this.logger.log(`Redis DECR: key=${redisKeyAccepted}, 释放后计数=${currentCount}`)
+
+      // 校验补偿：DECR后比对Redis与DB，不一致则修正
+      const [dbCountResult] = await db.query(
+        `SELECT COUNT(DISTINCT CASE WHEN status IN ('accepted','completed') THEN avatar_id END) as cnt FROM order_dispatch_requests WHERE order_id = ?`,
+        [orderId]
+      )
+      const dbCount = dbCountResult?.cnt ?? dbCountResult?.[0]?.cnt ?? 0
+      if (currentCount !== dbCount) {
+        this.logger.warn(`Redis计数不一致，修正: key=${redisKeyAccepted}, redis=${currentCount}, db=${dbCount}`)
+        await this.redisService.getClient().set(redisKeyAccepted, String(dbCount), 'EX', OrderDispatchService.REDIS_TTL_SECONDS)
+      }
     } catch (redisErr) {
       this.logger.warn(`Redis DECR失败(可忽略): ${(redisErr as Error).message}`)
     }
@@ -1841,10 +1868,21 @@ async getExecutionProgress(orderId: string) {
         `UPDATE order_dispatch_requests SET status = 'accepted', accepted_at = NOW(), updated_at = NOW() WHERE id = ?`,
         [pending.id]
       )
-      // 自动接单也需要 INCR Redis 计数器
+      // 自动接单也需要 INCR Redis 计数器（含校验补偿）
       try {
-        await this.redisService.getClient().incr(redisKeyAccepted)
-        this.logger.log(`自动接单 Redis INCR: key=${redisKeyAccepted}`)
+        const afterIncr = await this.redisService.getClient().incr(redisKeyAccepted)
+        this.logger.log(`自动接单 Redis INCR: key=${redisKeyAccepted}, 计数=${afterIncr}`)
+
+        // 校验补偿：INCR后比对Redis与DB，不一致则修正
+        const [dbCountResult2] = await db.query(
+          `SELECT COUNT(DISTINCT CASE WHEN status IN ('accepted','completed') THEN avatar_id END) as cnt FROM order_dispatch_requests WHERE order_id = ?`,
+          [orderId]
+        )
+        const dbCount2 = dbCountResult2?.cnt ?? dbCountResult2?.[0]?.cnt ?? 0
+        if (afterIncr !== dbCount2) {
+          this.logger.warn(`自动接单后Redis计数不一致，修正: key=${redisKeyAccepted}, redis=${afterIncr}, db=${dbCount2}`)
+          await this.redisService.getClient().set(redisKeyAccepted, String(dbCount2), 'EX', OrderDispatchService.REDIS_TTL_SECONDS)
+        }
       } catch (redisErr2) {
         this.logger.warn(`自动接单 Redis INCR失败(可忽略): ${(redisErr2 as Error).message}`)
       }
