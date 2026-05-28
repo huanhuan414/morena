@@ -156,20 +156,21 @@ export default function ProfilePage() {
                 </View>
               </>
             ) : (
-              <View className="user-avatar-wrap" onClick={() => navigateTo({ url: '/pages/login/index?redirect=/pages/profile/index' })}>
-                <Image src={logoImage} className="user-avatar" mode="aspectFill" />
-                <Text className="login-text">去登录</Text>
-              </View>
-            </View>
-            <View className="user-text-info">
-              <Text className="user-name">{userInfo?.nickname || '探索者'}</Text>
-              <Text className="user-id">ID: {userInfo?.id?.slice(-8) || 'guest'}</Text>
-              <View className="user-coin-row">
-                <Coins size={14} color="#F59E0B" />
-                <Text className="user-coin-text">{coinBalance.toLocaleString()} 币</Text>
-              </View>
-            </View>
-          </View>
+              <>
+                <View className="user-avatar-wrap" onClick={() => navigateTo({ url: '/pages/login/index?redirect=/pages/profile/index' })}>
+                  <Image src={logoImage} className="user-avatar" mode="aspectFill" />
+                  <Text className="login-text">去登录</Text>
+                </View>
+                <View className="user-text-info">
+                  <Text className="user-name">{userInfo?.nickname || '探索者'}</Text>
+                  <Text className="user-id">ID: {userInfo?.id?.slice(-8) || 'guest'}</Text>
+                  <View className="user-coin-row">
+                    <Coins size={14} color="#F59E0B" />
+                    <Text className="user-coin-text">{coinBalance.toLocaleString()} 币</Text>
+                  </View>
+                </View>
+              </>
+            )}
 
           <View className="card-actions">
             <View className="action-btn-light" onClick={() => navigateTo({ url: '/package-profile/pages/notifications/index' })}>
