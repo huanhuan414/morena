@@ -19,7 +19,7 @@ interface SettingItem {
 }
 
 export default function SettingsPage() {
-  const { logout } = useUserStore()
+  const { logout, isLoggedIn } = useUserStore()
   const statusBarHeight = getStatusBarHeight()
 
   const handleBack = () => {
@@ -179,12 +179,13 @@ export default function SettingsPage() {
         {renderSettingGroup('其他', otherItems)}
 
         {/* 退出登录 */}
-        <View className="logout-section">
+        {isLoggedIn && (<View className="logout-section">
           <View className="logout-btn" onClick={handleLogout}>
             <LogOut size={18} color="#EF4444" />
             <Text className="logout-text">退出登录</Text>
           </View>
         </View>
+        )}
 
         {/* 版本信息 */}
         <View className="version-footer">
