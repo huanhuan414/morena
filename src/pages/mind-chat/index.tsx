@@ -580,13 +580,7 @@ const MindChat: React.FC = () => {
               onInput={(e: any) => setSearchValue(e.detail.value)}
             />
           </View>
-          <View
-            className="bot-entry-button"
-            onClick={() => Taro.navigateTo({ url: '/package-group-bot/pages/group-list/index' })}
-          >
-            <Bot size={16} color="#7B3FE4" />
-            <Text className="bot-entry-text">群聊值守</Text>
-          </View>
+
           {activeTab === 'my' && (
             <View
               className="add-button"
@@ -872,6 +866,10 @@ const MindChat: React.FC = () => {
                           <View className="toolbar-btn toolbar-btn-primary" onClick={() => Taro.navigateTo({ url: `/package-avatar/pages/generated-content/index?avatarId=${clone.id}` })}>
                             <Eye size={14} color="#6366f1" />
                             <Text className="toolbar-label-primary">作品</Text>
+                          </View>
+                          <View className="toolbar-btn" onClick={() => Taro.navigateTo({ url: `/package-group-bot/pages/group-list/index?avatarId=${clone.id}&avatarName=${encodeURIComponent(clone.name)}` })}>
+                            <Bot size={14} color="#7B3FE4" />
+                            <Text className="toolbar-label" style={{ color: '#7B3FE4' }}>值守</Text>
                           </View>
                           <View className="toolbar-btn" onClick={() => openAvatarFriends(clone.id)}>
                             <Users size={14} />

@@ -120,23 +120,8 @@
   box-shadow: 0 4rpx 12rpx rgba(99, 102, 241, 0.3);
 }
 
-.bot-entry-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6rpx;
-  padding: 8rpx 16rpx;
-  background: rgba(123, 63, 228, 0.15);
-  border-radius: 16rpx;
-  flex-shrink: 0;
-}
 
-.bot-entry-text {
-  font-size: 22rpx;
-  color: #7B3FE4;
-  font-weight: 600;
-  white-space: nowrap;
-}
+
 
 .add-button-text {
   font-size: 26rpx;

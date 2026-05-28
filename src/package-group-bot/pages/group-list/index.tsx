@@ -40,6 +40,9 @@ const PLATFORM_MAP = {
 }
 
 const GroupList = () => {
+  const router = Taro.getCurrentInstance().router
+  const avatarId = router?.params?.avatarId || ''
+  const avatarName = decodeURIComponent(router?.params?.avatarName || '')
   const [groups, setGroups] = useState<GroupInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddDialog, setShowAddDialog] = useState(false)
@@ -96,7 +99,7 @@ const GroupList = () => {
       const res = await Network.request({
         url: '/api/group-bot/groups',
         method: 'POST',
-        data: addForm,
+        data: { ...addForm, avatarId, avatarName },
       })
       console.log('[group-list] addGroup response:', res.data)
       if (res.data?.code === 200) {
@@ -132,7 +135,7 @@ const GroupList = () => {
 
   return (
     <View className="bot-list-page">
-      <PageHeader title="群聊值守" showBack background="#f8fafc" />
+      <PageHeader title={avatarName ? `${avatarName} · 群聊值守` : '群聊值守'} showBack background="#f8fafc" />
 
       <ScrollView scrollY className="bot-list-scroll">
         {/* 统计概览 */}
