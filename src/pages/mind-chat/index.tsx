@@ -97,6 +97,7 @@ interface Avatar {
 const MindChat: React.FC = () => {
   const [activeTab, setActiveTab] = useState<CloneType>('my')
   const [searchValue, setSearchValue] = useState('')
+  const [currentSearchKeyword, setCurrentSearchKeyword] = useState('')
   const [myClones, setMyClones] = useState<Avatar[]>([])
   const [squareClones, setSquareClones] = useState<Avatar[]>([])
   const [loading, setLoading] = useState(true)
@@ -275,7 +276,7 @@ const MindChat: React.FC = () => {
     }
   }, [isLoggedIn])
 
-  const loadSquareClones = useCallback(async (page = 1, append = false) => {
+  const loadSquareClones = useCallback(async (page = 1, append = false, searchKeyword?: string) => {
     if (squareLoadingRef.current) {
       return
     }
@@ -287,7 +288,11 @@ const MindChat: React.FC = () => {
       const res = await Network.request({
         url: '/api/avatar/list',
         method: 'GET',
-        data: { page, pageSize }
+        data: {
+          page,
+          pageSize,
+          ...(searchKeyword ? { search: searchKeyword } : {})
+        }
       })
 
       if (res.data?.code === 200) {
@@ -370,12 +375,15 @@ const MindChat: React.FC = () => {
 
     // 防抖延迟 300ms，防止滚动过快触发多次
     scrollTimerRef.current = setTimeout(async () => {
-      await loadSquareClones(squarePage + 1, true)
+      await loadSquareClones(squarePage + 1, true, currentSearchKeyword)
     }, 300)
-  }, [hasMoreSquare, squarePage, loadSquareClones])
+  }, [hasMoreSquare, squarePage, loadSquareClones, currentSearchKeyword])
 
   useEffect(() => {
     activeTabRef.current = activeTab
+    // 切换 Tab 时清理搜索状态
+    setSearchValue('')
+    setCurrentSearchKeyword('')
   }, [activeTab])
 
   useEffect(() => {
@@ -575,11 +583,22 @@ const MindChat: React.FC = () => {
             </View>
             <Input
               className="search-input"
-              placeholder="搜索分身..."
+              placeholder={activeTab === 'square' ? '输入关键词搜索...' : '搜索分身...'}
               value={searchValue}
               onInput={(e: any) => setSearchValue(e.detail.value)}
             />
           </View>
+          {activeTab === 'square' && (
+            <View
+              className="search-button"
+              onClick={() => {
+                setCurrentSearchKeyword(searchValue.trim())
+                loadSquareClones(1, false, searchValue.trim())
+              }}
+            >
+              <Text className="search-button-text">搜索</Text>
+            </View>
+          )}
           {activeTab === 'my' && (
             <View
               className="add-button"
@@ -919,10 +938,10 @@ const MindChat: React.FC = () => {
             {squareClones.length === 0 ? (
               <View className="empty-state">
                 <View className="empty-icon-wrap">
-                  <Users size={56} color="rgba(99, 102, 241, 0.6)" />
+                  <Search size={56} color="rgba(99, 102, 241, 0.6)" />
                 </View>
-                <Text className="empty-title">暂无内容</Text>
-                <Text className="empty-desc">稍后再来看看吧</Text>
+                <Text className="empty-title">{currentSearchKeyword ? '未找到匹配的分身' : '暂无内容'}</Text>
+                <Text className="empty-desc">{currentSearchKeyword ? '请尝试其他关键词' : '稍后再来看看吧'}</Text>
               </View>
             ) : (
               <View className="square-cards-grid">
@@ -938,7 +957,7 @@ const MindChat: React.FC = () => {
 
                       {/* 技能标签 */}
                       <View className="square-card-tags">
-                        {(clone.parsedSkills || []).slice(0, 2).map((skillKey) => {
+                        {(clone.parsedSkills || clone.tags || []).slice(0, 2).map((skillKey: string) => {
                           const skillInfo = AVATAR_SKILL_MAP[skillKey] || { label: skillKey, color: '#6366f1' }
                           return (
                             <View className="square-skill-tag" key={skillKey} style={{ background: `${skillInfo.color}18` }}>
@@ -946,19 +965,11 @@ const MindChat: React.FC = () => {
                             </View>
                           )
                         })}
-                        {(clone.contentStyles || []).slice(0, 1).map((style) => {
-                          const styleInfo = CONTENT_STYLES.find(s => s.value === style)
-                          return styleInfo ? (
-                            <View className="square-skill-tag" key={style} style={{ background: `${styleInfo.color}18` }}>
-                              <Text className="square-skill-tag-text" style={{ color: styleInfo.color }}>{styleInfo.label}</Text>
-                            </View>
-                          ) : null
-                        })}
                       </View>
 
                       {/* 能力图标 */}
                       <View className="square-card-abilities">
-                        {(clone.parsedSkills || []).slice(0, 3).map((skillKey) => {
+                        {(clone.parsedSkills || clone.tags || []).slice(0, 3).map((skillKey: string) => {
                           const skillInfo = AVATAR_SKILL_MAP[skillKey]
                           return skillInfo ? <Sparkles key={skillKey} size={14} color={skillInfo.color} /> : null
                         })}
@@ -966,15 +977,13 @@ const MindChat: React.FC = () => {
                     </View>
 
                     {/* 操作 */}
-                    <View className="square-card-actions">
-                      <View className="square-action-btn square-voice-btn" onClick={handleSquareVoice}>
-                        <Phone size={13} color="#6366f1" />
-                        <Text className="square-action-text">通话</Text>
-                      </View>
-                      <View className="square-action-btn square-follow-btn" onClick={handleSquareConnect}>
-                        <ChevronsRight size={13} color="#ffffff" />
-                        <Text className="square-action-text-white">私聊</Text>
-                      </View>
+                    <View className="square-action-btn square-voice-btn" onClick={handleSquareVoice}>
+                      <Phone size={13} color="#6366f1" />
+                      <Text className="square-action-text">通话</Text>
+                    </View>
+                    <View className="square-action-btn square-follow-btn" onClick={handleSquareConnect}>
+                      <ChevronsRight size={13} color="#ffffff" />
+                      <Text className="square-action-text-white">私聊</Text>
                     </View>
                   </View>
                 ))}
@@ -1004,64 +1013,66 @@ const MindChat: React.FC = () => {
       </ScrollView>
 
       {/* 创建成功引导弹窗 */}
-      {showOnboardingDialog && (
-        <View className="onboarding-overlay" onClick={() => setShowOnboardingDialog(false)}>
-          <View className="onboarding-dialog" onClick={(e) => e.stopPropagation()}>
-            <View className="onboarding-dialog-header">
-              <Coins size={28} color="#f59e0b" />
-              <Text className="onboarding-dialog-title">分身创建成功！</Text>
-            </View>
-            <Text className="onboarding-dialog-desc">
-              开启托管后，你的AI分身将24小时自动接单赚钱，即使你睡觉也在为你创造收益
-            </Text>
-            <View className="onboarding-dialog-benefits">
-              <View className="onboarding-benefit-item">
-                <Sparkles size={16} color="#8b5cf6" />
-                <Text className="onboarding-benefit-text">自动接单，无需手动操作</Text>
+      {
+        showOnboardingDialog && (
+          <View className="onboarding-overlay" onClick={() => setShowOnboardingDialog(false)}>
+            <View className="onboarding-dialog" onClick={(e) => e.stopPropagation()}>
+              <View className="onboarding-dialog-header">
+                <Coins size={28} color="#f59e0b" />
+                <Text className="onboarding-dialog-title">分身创建成功！</Text>
               </View>
-              <View className="onboarding-benefit-item">
-                <Coins size={16} color="#f59e0b" />
-                <Text className="onboarding-benefit-text">24小时不间断赚钱</Text>
+              <Text className="onboarding-dialog-desc">
+                开启托管后，你的AI分身将24小时自动接单赚钱，即使你睡觉也在为你创造收益
+              </Text>
+              <View className="onboarding-dialog-benefits">
+                <View className="onboarding-benefit-item">
+                  <Sparkles size={16} color="#8b5cf6" />
+                  <Text className="onboarding-benefit-text">自动接单，无需手动操作</Text>
+                </View>
+                <View className="onboarding-benefit-item">
+                  <Coins size={16} color="#f59e0b" />
+                  <Text className="onboarding-benefit-text">24小时不间断赚钱</Text>
+                </View>
+                <View className="onboarding-benefit-item">
+                  <Crown size={16} color="#3b82f6" />
+                  <Text className="onboarding-benefit-text">接单越多能力越强</Text>
+                </View>
               </View>
-              <View className="onboarding-benefit-item">
-                <Crown size={16} color="#3b82f6" />
-                <Text className="onboarding-benefit-text">接单越多能力越强</Text>
-              </View>
-            </View>
-            <View className="onboarding-dialog-actions">
-              <View
-                className="onboarding-btn onboarding-btn-primary"
-                onClick={async () => {
-                  // 开启托管
-                  if (newAvatarId) {
-                    try {
-                      await Network.request({
-                        url: `/api/avatar/${newAvatarId}/trust`,
-                        method: 'PUT',
-                        data: { trust_enabled: true },
-                      })
-                      Taro.showToast({ title: '托管已开启，开始赚钱！', icon: 'success' })
-                      void loadMyClones()
-                    } catch {
-                      Taro.showToast({ title: '开启失败，请稍后重试', icon: 'none' })
+              <View className="onboarding-dialog-actions">
+                <View
+                  className="onboarding-btn onboarding-btn-primary"
+                  onClick={async () => {
+                    // 开启托管
+                    if (newAvatarId) {
+                      try {
+                        await Network.request({
+                          url: `/api/avatar/${newAvatarId}/trust`,
+                          method: 'PUT',
+                          data: { trust_enabled: true },
+                        })
+                        Taro.showToast({ title: '托管已开启，开始赚钱！', icon: 'success' })
+                        void loadMyClones()
+                      } catch {
+                        Taro.showToast({ title: '开启失败，请稍后重试', icon: 'none' })
+                      }
                     }
-                  }
-                  setShowOnboardingDialog(false)
-                }}
-              >
-                <Text className="onboarding-btn-primary-text">立即开启托管</Text>
-              </View>
-              <View
-                className="onboarding-btn onboarding-btn-secondary"
-                onClick={() => setShowOnboardingDialog(false)}
-              >
-                <Text className="onboarding-btn-secondary-text">稍后再说</Text>
+                    setShowOnboardingDialog(false)
+                  }}
+                >
+                  <Text className="onboarding-btn-primary-text">立即开启托管</Text>
+                </View>
+                <View
+                  className="onboarding-btn onboarding-btn-secondary"
+                  onClick={() => setShowOnboardingDialog(false)}
+                >
+                  <Text className="onboarding-btn-secondary-text">稍后再说</Text>
+                </View>
               </View>
             </View>
           </View>
-        </View>
-      )}
-    </View>
+        )
+      }
+    </View >
   )
 }
 
