@@ -199,6 +199,103 @@ ${context}`
     }
   }
 
+  /**
+   * 企业微信消息回复（从企业微信回调触发）
+   * fromUserName: 发送者企业微信UserID
+   * content: 消息内容（已去掉@莫瑞娜部分）
+   * chatId: 群聊ID（如果是群消息）
+   */
+  async generateWecomReply(fromUserName: string, content: string, chatId?: string): Promise<string> {
+    // 去掉 @莫瑞娜 的部分
+    const cleanContent = content.replace(/@莫瑞娜/g, '').trim()
+    if (!cleanContent) {
+      return '你好，有什么可以帮你的吗？'
+    }
+
+    // 查找对应的群（如果有的话）
+    const group = chatId ? this.groups.find(g => g.webhookUrl.includes(chatId)) : null
+
+    // 记录消息到内存
+    if (group) {
+      const userMsg: GroupMessage = {
+        id: `msg_${this.msgCounter++}`,
+        groupBotId: group.id,
+        senderName: fromUserName,
+        content: cleanContent,
+        msgType: 'user',
+        avatarReply: null,
+        userCorrection: null,
+        correctionDiff: null,
+        createdAt: new Date().toISOString(),
+      }
+      this.messages.push(userMsg)
+      group.lastActiveAt = new Date().toISOString()
+
+      // Build context
+      const recentMessages = this.messages
+        .filter(m => m.groupBotId === group.id)
+        .slice(-10)
+      const contextStr = recentMessages
+        .map(m => `${m.msgType === 'user' ? m.senderName : '分身'}: ${m.content}`)
+        .join('\n')
+
+      const reply = await this.generateAvatarReply(contextStr, cleanContent, group)
+
+      // Save avatar reply
+      const replyMsg: GroupMessage = {
+        id: `msg_${this.msgCounter++}`,
+        groupBotId: group.id,
+        senderName: '分身',
+        content: reply,
+        msgType: 'avatar',
+        avatarReply: reply,
+        userCorrection: null,
+        correctionDiff: null,
+        createdAt: new Date().toISOString(),
+      }
+      this.messages.push(replyMsg)
+
+      return reply
+    }
+
+    // 没有找到对应群，使用通用回复
+    return this.generateGenericReply(fromUserName, cleanContent)
+  }
+
+  private async generateGenericReply(userName: string, message: string): Promise<string> {
+    try {
+      const config = new Config()
+      const client = new LLMClient(config)
+
+      const systemPrompt = `你是莫瑞娜，一个AI分身助手。你代表用户回复消息。
+你的回复风格要求：
+1. 亲切自然，像朋友聊天一样
+2. 先理解对方的需求，再给出建议
+3. 不确定的事情要诚实说明
+4. 不要使用焦虑营销话术
+5. 不要做虚假承诺
+6. 回复简洁，不超过100字`
+
+      const messages = [
+        { role: 'system' as const, content: systemPrompt },
+        { role: 'user' as const, content: `用户${userName}说：${message}\n请以分身身份回复。` },
+      ]
+
+      console.log(`[GroupBot] Generating generic reply for wecom user: ${userName}, message: ${message}`)
+
+      const response = await client.invoke(messages, {
+        model: 'doubao-seed-2-0-lite-260215',
+        temperature: 0.7,
+      })
+
+      console.log(`[GroupBot] Generated generic reply: ${response.content}`)
+      return response.content
+    } catch (error) {
+      this.logger.error(`Failed to generate wecom reply: ${error.message}`, error.stack)
+      return '抱歉，我现在无法回复，稍后再试。'
+    }
+  }
+
   private async extractDiff(original: string, correction: string): Promise<string> {
     try {
       const config = new Config()
