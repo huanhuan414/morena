@@ -9,7 +9,8 @@ import {
 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import '@/styles/variables.css'
-import './index.css' 
+import './index.css'
+import logoImage from '@/static/logo.png'
 
 interface UserStats {
   avatarCount: number
@@ -59,17 +60,10 @@ export default function ProfilePage() {
   const [statusBarHeight] = useState(getStatusBarHeight())
   const [unreadCount, setUnreadCount] = useState(0)
 
-  useLoad(() => {
-    if (!isLoggedIn) {
-      navigateTo({ url: '/pages/login/index?redirect=/pages/profile/index' })
-    }
-  })
-
   useDidShow(() => {
-    if (isLoggedIn) {
-      fetchStats()
-      fetchUnreadCount()
-    }
+    fetchStats()
+    fetchUnreadCount()
+
   })
 
   const fetchStats = async () => {
@@ -115,12 +109,10 @@ export default function ProfilePage() {
     })
   }
 
-  if (!isLoggedIn) return null
-
   return (
     <View className="profile-page">
       {/* 顶部渐变Header */}
-      <View 
+      <View
         className="profile-header-gradient"
         style={{ paddingTop: `${statusBarHeight}px` }}
       >
@@ -140,22 +132,31 @@ export default function ProfilePage() {
         {/* 用户信息 + 操作按钮 */}
         <View className="card-top-row">
           <View className="header-user-info">
-            <View className="user-avatar-wrap">
-              {userInfo?.avatar ? (
-                <Image src={userInfo.avatar} className="user-avatar" mode="aspectFill" />
-              ) : (
-                <View className="avatar-placeholder">
-                  <Text className="avatar-text">{userInfo?.nickname?.[0] || 'U'}</Text>
+            {isLoggedIn ? (
+              <>
+                <View className="user-avatar-wrap">
+                  {userInfo?.avatar ? (
+                    <Image src={userInfo.avatar} className="user-avatar" mode="aspectFill" />
+                  ) : (
+                    <View className="avatar-placeholder">
+                      <Text className="avatar-text">{userInfo?.nickname?.[0] || 'U'}</Text>
+                    </View>
+                  )}
+                  <View className="level-badge">
+                    <Text className="level-badge-text">Lv.{stats.level}</Text>
+                  </View>
                 </View>
-              )}
-              <View className="level-badge">
-                <Text className="level-badge-text">Lv.{stats.level}</Text>
+                <View className="user-text-info">
+                  <Text className="user-name">{userInfo?.nickname || '探索者'}</Text>
+                  <Text className="user-id">ID: {userInfo?.id?.slice(-8) || 'guest'}</Text>
+                </View>
+              </>
+            ) : (
+              <View className="user-avatar-wrap" onClick={() => navigateTo({ url: '/pages/login/index?redirect=/pages/profile/index' })}>
+                <Image src={logoImage} className="user-avatar" mode="aspectFill" />
+                <Text className="login-text">去登录</Text>
               </View>
-            </View>
-            <View className="user-text-info">
-              <Text className="user-name">{userInfo?.nickname || '探索者'}</Text>
-              <Text className="user-id">ID: {userInfo?.id?.slice(-8) || 'guest'}</Text>
-            </View>
+            )}
           </View>
 
           <View className="card-actions">
@@ -198,7 +199,7 @@ export default function ProfilePage() {
             const iconColor = typeColorMap[item.type]
             const bgColor = typeBgMap[item.type]
             return (
-              <View 
+              <View
                 key={idx}
                 className="menu-item"
                 onClick={() => item.path && navigateTo({ url: item.path })}
@@ -216,11 +217,13 @@ export default function ProfilePage() {
           })}
         </View>
 
-        {/* 退出按钮 */}
-        <View className="logout-btn" onClick={handleLogout}>
-          <LogOut size={20} color="#EF4444" />
-          <Text className="logout-text">退出登录</Text>
-        </View>
+        {/* 退出按钮 - 仅登录后显示 */}
+        {isLoggedIn && (
+          <View className="logout-btn" onClick={handleLogout}>
+            <LogOut size={20} color="#EF4444" />
+            <Text className="logout-text">退出登录</Text>
+          </View>
+        )}
 
         {/* 版本信息 */}
         <View className="version-section">

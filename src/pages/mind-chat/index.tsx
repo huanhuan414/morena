@@ -512,7 +512,7 @@ const MindChat: React.FC = () => {
 
   const handleSquareConnect = () => {
     if (!isLoggedIn) {
-      Taro.navigateTo({ url: '/pages/login/index' })
+      Taro.navigateTo({ url: '/pages/login/index?redirect=/pages/mind-chat/index' })
       return
     }
     Taro.showModal({ title: '提示', content: '功能开发中，敬请期待', showCancel: false, confirmText: '知道了' })
@@ -520,7 +520,7 @@ const MindChat: React.FC = () => {
 
   const handleSquareVoice = () => {
     if (!isLoggedIn) {
-      Taro.navigateTo({ url: '/pages/login/index' })
+      Taro.navigateTo({ url: '/pages/login/index?redirect=/pages/mind-chat/index' })
       return
     }
     Taro.showModal({ title: '提示', content: '功能开发中，敬请期待', showCancel: false, confirmText: '知道了' })
@@ -717,7 +717,7 @@ const MindChat: React.FC = () => {
                 {!isLoggedIn && activeTab === 'my' && !searchValue && (
                   <View
                     className="login-redirect-btn"
-                    onClick={() => Taro.navigateTo({ url: '/pages/login/index' })}
+                    onClick={() => Taro.navigateTo({ url: '/pages/login/index?redirect=/pages/mind-chat/index' })}
                   >
                     <Text className="login-redirect-text">去登录</Text>
                   </View>

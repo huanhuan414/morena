@@ -220,7 +220,7 @@ export default function AvatarManagePage() {
           confirmText: '去登录',
           success: (modalRes) => {
             if (modalRes.confirm) {
-              Taro.navigateTo({ url: '/pages/login/index' })
+              Taro.navigateTo({ url: '/pages/login/index?redirect=/package-avatar/pages/avatar-manage/index' })
             }
           }
         })

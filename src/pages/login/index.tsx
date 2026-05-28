@@ -6,7 +6,7 @@ import { Button as UIButton } from '@/components/ui/button'
 import { WeappButton } from '@/components/ui/weapp-button'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
-import { Gift } from 'lucide-react-taro'
+import { Gift, ChevronLeft } from 'lucide-react-taro'
 import './index.css'
 
 const Login: React.FC = () => {
@@ -19,7 +19,6 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [codeLoading, setCodeLoading] = useState(false)
   const [wechatLoading, setWechatLoading] = useState(false)
-  const [guestLoading, setGuestLoading] = useState(false)
   const [agreed, setAgreed] = useState(false)
   const [showProfilePanel, setShowProfilePanel] = useState(false)
   const [profileNickname, setProfileNickname] = useState('')
@@ -28,7 +27,6 @@ const Login: React.FC = () => {
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [profileSaving, setProfileSaving] = useState(false)
   const [loginResult, setLoginResult] = useState<any>(null)
-  const [showAuthConfirm, setShowAuthConfirm] = useState(false)
   const { setUserInfo, setToken } = useUserStore(state => state)
 
   useEffect(() => {
@@ -79,7 +77,7 @@ const Login: React.FC = () => {
         if (tabbarPages.some(p => redirect.startsWith(p))) {
           Taro.switchTab({ url: redirect.split('?')[0] })
         } else {
-          Taro.navigateTo({ url: redirect })
+          Taro.redirectTo({ url: redirect })
         }
       } else {
         Taro.switchTab({ url: '/pages/index/index' })
@@ -241,23 +239,6 @@ const Login: React.FC = () => {
     navigateAfterLogin(loginResult)
   }
 
-  const handleAuthConfirmCancel = () => {
-    setShowAuthConfirm(false)
-    Taro.switchTab({ url: '/pages/index/index' })
-  }
-
-  const handleAuthConfirm = () => {
-    if (!agreed) {
-      Taro.showToast({ title: '请先同意用户协议', icon: 'none' })
-      return
-    }
-    setShowAuthConfirm(true)
-  }
-  const handleAuthConfirm_fk = () => {
-    if (guestLoading) return
-    setGuestLoading(true)
-    handleAuthConfirmCancel()
-  }
   const handleGetPhoneNumber = async (e: any) => {
     if (!agreed) {
       Taro.showToast({ title: '请先同意用户协议', icon: 'none' })
@@ -321,12 +302,38 @@ const Login: React.FC = () => {
     </View>
   )
 
+  const handleBack = () => {
+    const pages = Taro.getCurrentPages()
+    if (pages.length > 1) {
+      Taro.navigateBack()
+      return
+    }
+
+    const redirect = getRedirectUrl()
+    if (redirect) {
+      const tabbarPages = ['/pages/index/index', '/pages/mind-chat/index', '/package-avatar/pages/generated-content/index', '/pages/profile/index']
+      if (tabbarPages.some(p => redirect.startsWith(p))) {
+        Taro.switchTab({ url: redirect.split('?')[0] })
+      } else {
+        Taro.redirectTo({ url: redirect })
+      }
+    } else {
+      Taro.switchTab({ url: '/pages/index/index' })
+    }
+  }
+
   return (
     <View className="login-page">
       <View className="login-header">
         <View className="login-header-decor login-header-decor-1" />
         <View className="login-header-decor login-header-decor-2" />
-        <Text className="login-app-name block">莫瑞娜</Text>
+        <View className="login-header-top">
+          <View className="login-back-btn" onClick={handleBack}>
+            <ChevronLeft size={24} color="#ffffff" />
+          </View>
+          <Text className="login-app-name block">莫瑞娜</Text>
+          <View className="login-back-btn-placeholder" />
+        </View>
         <Text className="login-app-slogan block">AI 分身 · 创作无限可能</Text>
       </View>
 
@@ -445,26 +452,23 @@ const Login: React.FC = () => {
             </View>
 
             <View className="login-btn-group">
-              <UIButton
-                variant="default"
-                size="lg"
-                disabled={wechatLoading}
-                onClick={handleAuthConfirm}
-                // className={`login-primary-btn ${!agreed ? 'btn-disabled' : ''}`}
-                className="login-primary-btn"
-              >
-                <Text className="login-btn-text">{wechatLoading ? '授权中...' : '授权登录'}</Text>
-              </UIButton>
-
-              <UIButton
-                variant="outline"
-                size="lg"
-                disabled={guestLoading}
-                onClick={handleAuthConfirm_fk}
-                className="login-secondary-btn"
-              >
-                <Text className="login-btn-text">{guestLoading ? '加载中...' : '游客登录'}</Text>
-              </UIButton>
+              <View className="login-btn-wrapper">
+                <WeappButton
+                  className="login-primary-btn"
+                  open-type="getPhoneNumber"
+                  onGetPhoneNumber={handleGetPhoneNumber}
+                >
+                  <Text className="login-btn-text">{wechatLoading ? '授权中...' : '授权登录'}</Text>
+                </WeappButton>
+                {!agreed && (
+                  <View
+                    className="login-btn-overlay"
+                    onClick={() => {
+                      Taro.showToast({ title: '请先同意用户协议', icon: 'none' })
+                    }}
+                  />
+                )}
+              </View>
             </View>
 
             {renderAgreement()}
@@ -522,35 +526,6 @@ const Login: React.FC = () => {
                   <Text className="profile-skip-text">跳过</Text>
                 </View>
               </View>
-            </View>
-          </View>
-        </View>
-      )}
-
-      {showAuthConfirm && (
-        <View className="auth-confirm-mask" onClick={() => setShowAuthConfirm(false)}>
-          <View className="auth-confirm-panel" onClick={(e) => e.stopPropagation()}>
-            <View className="auth-confirm-header">
-              <Text className="auth-confirm-title">授权确认</Text>
-            </View>
-            <View className="auth-confirm-body">
-              <Text className="auth-confirm-desc">是否授权登录？</Text>
-              {/* <Text className="auth-confirm-hint">确定后将获取您的手机号进行登录</Text> */}
-            </View>
-            <View className="auth-confirm-actions">
-              <View className="auth-confirm-cancel" onClick={handleAuthConfirmCancel}>
-                <Text className="auth-confirm-cancel-text">取消</Text>
-              </View>
-              <WeappButton
-                className="auth-confirm-confirm"
-                open-type="getPhoneNumber"
-                onGetPhoneNumber={(e: any) => {
-                  setShowAuthConfirm(false)
-                  handleGetPhoneNumber(e)
-                }}
-              >
-                <Text className="auth-confirm-confirm-text">确定</Text>
-              </WeappButton>
             </View>
           </View>
         </View>
