@@ -60,6 +60,125 @@ export class SubscriptionController {
     return { code: 200, data: { allowed: true, remaining: 999 }, message: '校验成功' }
   }
 
+  @Get('benefits')
+  async getBenefits(@Query('userId') userId: string) {
+    if (!userId) return { code: 401, data: null, message: '请先登录' }
+    try {
+      const benefits = await this.subscriptionService.getMembershipBenefits(userId)
+      return { code: 200, data: benefits, message: '获取成功' }
+    } catch (e) {
+      console.error('[SubscriptionController] getBenefits error:', e.message)
+    }
+    return { code: 200, data: null, message: '获取失败' }
+  }
+
+  @Get('check-order')
+  async checkOrder(@Query('userId') userId: string) {
+    if (!userId) return { code: 401, allowed: false, message: '请先登录' }
+    try {
+      const result = await this.subscriptionService.checkOrderPermission(userId)
+      return { code: 200, data: result, message: '校验成功' }
+    } catch (e) {
+      console.error('[SubscriptionController] checkOrder error:', e.message)
+    }
+    return { code: 200, data: { allowed: false, reason: '服务异常' }, message: '校验失败' }
+  }
+
+  @Get('fee-rate')
+  async getFeeRate(@Query('userId') userId: string) {
+    if (!userId) return { code: 401, data: null, message: '请先登录' }
+    try {
+      const feeRate = await this.subscriptionService.getPlatformFeeRate(userId)
+      return { 
+        code: 200, 
+        data: { 
+          feeRate,
+          feeRatePercent: Math.round(feeRate * 100),
+        }, 
+        message: '获取成功' 
+      }
+    } catch (e) {
+      console.error('[SubscriptionController] getFeeRate error:', e.message)
+    }
+    return { code: 200, data: { feeRate: 0.20, feeRatePercent: 20 }, message: '获取失败，使用默认值' }
+  }
+
+  @Post('calculate-earnings')
+  async calculateEarnings(
+    @Body('userId') userId: string,
+    @Body('amount') amount: number,
+  ) {
+    if (!userId) return { code: 401, data: null, message: '请先登录' }
+    if (!amount || amount <= 0) return { code: 400, data: null, message: '金额无效' }
+    try {
+      const result = await this.subscriptionService.calculateEarnings(userId, amount)
+      return { code: 200, data: result, message: '计算成功' }
+    } catch (e) {
+      console.error('[SubscriptionController] calculateEarnings error:', e.message)
+    }
+    return { code: 500, data: null, message: '计算失败' }
+  }
+
+  @Get('skill-benefits')
+  async getSkillBenefits(@Query('userId') userId: string) {
+    if (!userId) return { code: 401, data: null, message: '请先登录' }
+    try {
+      const benefits = await this.subscriptionService.getSkillBenefits(userId)
+      return { code: 200, data: benefits, message: '获取成功' }
+    } catch (e) {
+      console.error('[SubscriptionController] getSkillBenefits error:', e.message)
+    }
+    return { code: 500, data: null, message: '获取失败' }
+  }
+
+  @Get('check-skill')
+  async checkSkill(
+    @Query('userId') userId: string,
+    @Query('skillType') skillType: string,
+  ) {
+    if (!userId) return { code: 401, data: null, message: '请先登录' }
+    if (!skillType) return { code: 400, data: null, message: '缺少技能类型' }
+    try {
+      const result = await this.subscriptionService.checkSkillPermission(userId, skillType)
+      return { code: 200, data: result, message: '校验成功' }
+    } catch (e) {
+      console.error('[SubscriptionController] checkSkill error:', e.message)
+    }
+    return { code: 500, data: { allowed: false }, message: '校验失败' }
+  }
+
+  @Post('record-skill-usage')
+  async recordSkillUsage(
+    @Body('userId') userId: string,
+    @Body('skillType') skillType: string,
+  ) {
+    if (!userId) return { code: 401, data: null, message: '请先登录' }
+    if (!skillType) return { code: 400, data: null, message: '缺少技能类型' }
+    try {
+      await this.subscriptionService.recordSkillUsage(userId, skillType)
+      return { code: 200, data: null, message: '记录成功' }
+    } catch (e) {
+      console.error('[SubscriptionController] recordSkillUsage error:', e.message)
+    }
+    return { code: 500, data: null, message: '记录失败' }
+  }
+
+  @Post('batch-skill-usage')
+  async getBatchSkillUsage(
+    @Body('userId') userId: string,
+    @Body('skillTypes') skillTypes: string[]
+  ) {
+    if (!userId) return { code: 401, data: null, message: '请先登录' }
+    if (!skillTypes || !Array.isArray(skillTypes)) return { code: 400, data: null, message: '缺少技能类型列表' }
+    try {
+      const result = await this.subscriptionService.getBatchSkillUsage(userId, skillTypes)
+      return { code: 200, data: result, message: '获取成功' }
+    } catch (e) {
+      console.error('[SubscriptionController] getBatchSkillUsage error:', e.message)
+    }
+    return { code: 500, data: null, message: '获取失败' }
+  }
+
   @Post('order')
   async createOrder(
     @Body('planId') planId: string,

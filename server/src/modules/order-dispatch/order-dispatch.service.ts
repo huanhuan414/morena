@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Injectable, Inject, Logger, forwardRef, HttpException, HttpStatus, ConflictException, BadRequestException, NotFoundException } from '@nestjs/common'
+import { Injectable, Inject, Logger, forwardRef, HttpException, HttpStatus, ConflictException, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common'
 import { getMySQLClient, getPool } from '../../storage/database/mysql-client'
 import { SmsService } from '../sms/sms.service'
 import { NotificationService } from '../notification/notification.service'
@@ -8,6 +8,7 @@ import { normalizeDispatchStatus as normalizeDispatchStatusV2, normalizeFulfillm
 import { ContentGenerationService } from '../content-generation/content-generation.service'
 import { OrderEventService } from './order-event.service'
 import { RedisService } from '../redis/redis.service'
+import { SubscriptionService } from '../subscription/subscription.service'
 
 @Injectable()
 export class OrderDispatchService {
@@ -21,6 +22,7 @@ export class OrderDispatchService {
     @Inject(forwardRef(() => OrderService)) private readonly orderService: OrderService,
     @Inject(forwardRef(() => OrderEventService)) private readonly eventService: OrderEventService,
     private readonly redisService: RedisService,
+    @Inject(forwardRef(() => SubscriptionService)) private readonly subscriptionService: SubscriptionService,
   ) {}
 
   private normalizeDispatchStatus(status?: string): string {
@@ -392,6 +394,10 @@ export class OrderDispatchService {
         const order = orderRows2?.[0]
         
         if (order) {
+          // 批量获取用户会员优先级
+          const userIds = [...new Set(readyAvatars.map((a: any) => a.userId || a.user_id).filter(Boolean))]
+          const orderPriorityMap = await this.subscriptionService.getBatchOrderPriority(userIds)
+          
           // 计算每个分身的匹配分数
           const scoredAvatars = readyAvatars.map(avatar => {
             const { score, details } = this.calculateMatchScore(avatar, order)
@@ -401,13 +407,19 @@ export class OrderDispatchService {
             let bonus = 0
             if (stats.total >= 5 && rate >= 0.8) bonus = 5
             if (stats.total >= 5 && rate <= 0.3) bonus = -10
-            const finalScore = Math.max(0, Math.min(100, baseScore + bonus))
+            // 会员优先级加分：(优先级-1) * 10，免费版=0，基础版=10，专业版=20，进阶版=30
+            const userId = avatar.userId || avatar.user_id
+            const orderPriority = orderPriorityMap.get(userId) || 1
+            const priorityBonus = (orderPriority - 1) * 10
+            const finalScore = Math.max(0, Math.min(100, baseScore + bonus + priorityBonus))
             return {
               ...avatar,
               matchScoreBase: baseScore,
               matchScore: finalScore,
               matchDetails: details,
-              dispatchStats: { ...stats, acceptanceRate: rate }
+              dispatchStats: { ...stats, acceptanceRate: rate },
+              orderPriority,
+              priorityBonus,
             }
           })
 
@@ -513,6 +525,12 @@ async getExecutionProgress(orderId: string) {
     }
 
     const avatar = avatars[0]
+
+    // 自定义分身接单权益校验
+    const customAvatarPermission = await this.subscriptionService.checkCustomAvatarAccept(avatar.userId)
+    if (!customAvatarPermission.allowed) {
+      throw new ForbiddenException(customAvatarPermission.reason)
+    }
 
     const existingRows = await db.query(
       `SELECT id FROM order_dispatch_requests
@@ -663,14 +681,34 @@ async getExecutionProgress(orderId: string) {
       }
     }
     
-    // 三维匹配排序：技能 + 风格 + 领域
+    // 批量获取用户会员优先级
+    const userIds = [...new Set(allAvatars.map(a => a.userId || a.user_id).filter(Boolean))]
+    const orderPriorityMap = await this.subscriptionService.getBatchOrderPriority(userIds)
+    
+    // 批量获取用户自动接单权益
+    const autoAcceptMap = await this.subscriptionService.getBatchAutoAccept(userIds)
+    
+    // 三维匹配排序：技能 + 风格 + 领域 + 会员优先级
     const scoredAvatars = allAvatars.map(avatar => {
       // 优先使用 avatar_skills 表的技能，fallback 到 avatars.skills 字段
       const aid = avatar.id || avatar.avatarId
       const skillsFromTable = avatarSkillsMap[aid] || []
       const avatarWithSkills = { ...avatar, _skillsFromTable: skillsFromTable }
       const { score, details } = this.calculateMatchScore(avatarWithSkills, order)
-      return { ...avatar, matchScore: score, matchDetails: details }
+      // 会员优先级加分：(优先级-1) * 10，免费版=0，基础版=10，专业版=20，进阶版=30
+      const uid = avatar.userId || avatar.user_id
+      const orderPriority = orderPriorityMap.get(uid) || 1
+      const priorityBonus = (orderPriority - 1) * 10
+      // 自动接单权益
+      const autoAccept = autoAcceptMap.get(uid) || false
+      return { 
+        ...avatar, 
+        matchScore: score + priorityBonus, 
+        matchDetails: details,
+        orderPriority,
+        priorityBonus,
+        autoAccept,
+      }
     })
     scoredAvatars.sort((a, b) => b.matchScore - a.matchScore)
     
@@ -707,7 +745,7 @@ async getExecutionProgress(orderId: string) {
         avatar_id: avatar.id,
         user_id: avatar.userId || avatar.userPhone,
         platform: 'auto',
-        status: 'pending',
+        status: avatar.autoAccept ? 'accepted' : 'pending',
         expires_at: new Date(Date.now() + 30 * 60 * 1000),
         created_at: new Date(),
         updated_at: new Date()
@@ -718,22 +756,24 @@ async getExecutionProgress(orderId: string) {
       }
       avatarIds.push(avatar.id)
       
-      // 📌 记录事件：已派单
+      // 📌 记录事件：已派单（自动接单时记录 accepted 事件）
       this.eventService.recordEvent({
         orderId,
         dispatchId: id,
         avatarId: avatar.id,
         userId: avatar.userId,
-        eventType: 'dispatched',
-        source: 'system',
+        eventType: avatar.autoAccept ? 'accepted' : 'dispatched',
+        source: avatar.autoAccept ? 'auto_accept' : 'system',
         avatarName: avatar.name,
-        eventData: { matchScore: avatar.matchScore, matchDetails: avatar.matchDetails },
+        eventData: { matchScore: avatar.matchScore, matchDetails: avatar.matchDetails, autoAccept: avatar.autoAccept },
       }).catch(err => console.warn('[事件] dispatched 记录失败:', err.message))
       
       // 发送真实短信通知 - 使用分身所属账号的手机号
       const userPhone = avatar.userPhone || avatar.phone
       if (userPhone) {
-        const smsContent = `${order?.title || '内容创作'}`
+        const smsContent = avatar.autoAccept 
+          ? `【自动接单】${order?.title || '内容创作'}`
+          : `【待确认】${order?.title || '内容创作'}`
         
         try {
           const smsResult = await this.smsService.sendSms(
@@ -754,11 +794,11 @@ async getExecutionProgress(orderId: string) {
         const notifResult = await db.insert('avatar_notifications', {
           id: notifId,
           avatar_id: avatar.id,
-          notification_type: 'order_assigned',
-          title: '新订单分配',
+          notification_type: avatar.autoAccept ? 'order_auto_accepted' : 'order_assigned',
+          title: avatar.autoAccept ? '订单已自动接单' : '新订单待确认',
           content: smsContent,
           is_read: 0,
-          data: JSON.stringify({ orderId }),
+          data: JSON.stringify({ orderId, autoAccept: avatar.autoAccept }),
           created_at: new Date()
         })
         if (notifResult.error) {
@@ -990,6 +1030,12 @@ async getExecutionProgress(orderId: string) {
         const avatarOwner: any = (avatarOwnerRows as any[])?.[0]
         if (!avatarOwner || avatarOwner.status !== 'active') {
           throw new NotFoundException('分身不存在或已失效，无法接单')
+        }
+
+        // 接单权限校验：检查每日次数+同时接单数
+        const permission = await this.subscriptionService.checkOrderPermission(avatarOwner.user_id)
+        if (!permission.allowed) {
+          throw new ConflictException(permission.reason)
         }
 
         const dispatchId = 'odr-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8)

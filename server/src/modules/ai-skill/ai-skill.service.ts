@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { getPool } from '../../storage/database/mysql-client';
 import { StorageService } from '../storage/storage.service';
 import { VolcengineService } from '../upload/volcengine.service';
+import { CoinService } from '../coin/coin.service';
 import * as crypto from 'crypto';
 
 /** 技能类型 */
@@ -24,7 +25,8 @@ const IMAGE_GEN_MODEL = process.env.IMAGE_GEN_MODEL || 'gpt-image-2';
 export class AiSkillService {
   constructor(
     private readonly storageService: StorageService,
-    private readonly volcengineService: VolcengineService
+    private readonly volcengineService: VolcengineService,
+    private readonly coinService: CoinService,
   ) {}
 
   /**
@@ -159,6 +161,25 @@ export class AiSkillService {
         `UPDATE ai_skill_records SET status = 'failed', error_message = ?, updated_at = NOW() WHERE id = ?`,
         [error.message?.slice(0, 500) || '未知错误', recordId],
       );
+      
+      // 退款
+      try {
+        const [recordRows] = await pool.query(
+          'SELECT user_id, skill_type, coin_consumed FROM ai_skill_records WHERE id = ?',
+          [recordId]
+        );
+        const record = (recordRows as any[])?.[0];
+        if (record && Number(record.coin_consumed || 0) > 0) {
+          await this.coinService.gift(
+            record.user_id,
+            Number(record.coin_consumed),
+            `${record.skill_type}生成失败退款`
+          );
+          console.log(`[AiSkillService] 已退款 ${record.coin_consumed} 币给用户 ${record.user_id}`);
+        }
+      } catch (refundError: any) {
+        console.error(`[AiSkillService] 退款失败, recordId=${recordId}:`, refundError.message);
+      }
     }
   }
 
@@ -265,6 +286,7 @@ ${imageHint}
     skillType: SkillType,
     inputImageUrl?: string,
     inputText?: string,
+    coinConsumed?: number,
   ) {
     const builtInPrompt = SKILL_PROMPTS[skillType];
     if (!builtInPrompt && skillType !== 'wechat_mp_article') {
@@ -288,9 +310,9 @@ ${imageHint}
     // 写入 generating 记录
     const pool = getPool();
     await pool.query(
-      `INSERT INTO ai_skill_records (id, user_id, skill_type, input_image_url, input_text, prompt, status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'generating', NOW())`,
-      [recordId, userId, skillType, inputImageUrl || null, inputText || null, fullPrompt],
+      `INSERT INTO ai_skill_records (id, user_id, skill_type, input_image_url, input_text, prompt, status, coin_consumed, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'generating', ?, NOW())`,
+      [recordId, userId, skillType, inputImageUrl || null, inputText || null, fullPrompt, coinConsumed || 0],
     );
 
     // 异步执行生成（不 await，后台运行）
@@ -309,68 +331,131 @@ ${imageHint}
 
   /**
    * 检查技能每日使用次数限制
-   * 未订阅用户：1次/天/技能
-   * 订阅用户：3次/天/技能
+   * 从数据库 subscription_plans 表读取对应会员等级的限制
    */
   async checkDailyLimit(userId: string, skillType: string): Promise<{ used: number; limit: number; remaining: number; isSubscribed: boolean }> {
-    const isSubscribed = await this.isUserSubscribed(userId)
-    const limit = isSubscribed ? 3 : 1
-
-    const today = new Date()
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
-
     const pool = getPool();
+
+    // 获取用户的会员等级
+    const [subRows] = await pool.query(
+      `SELECT sp.id, sp.name FROM user_subscriptions us 
+       JOIN subscription_plans sp ON us.plan_id = sp.id 
+       WHERE us.user_id = ? AND us.status = 'active' AND us.end_date > NOW() 
+       ORDER BY us.end_date DESC LIMIT 1`,
+      [userId]
+    );
+    const subscription = (subRows as any[])?.[0];
+    const planId = subscription?.id || 'plan_free';
+    const isSubscribed = !!subscription;
+
+    // 技能类型到数据库字段的映射
+    const skillLimitFieldMap: Record<string, string> = {
+      'palm_reading': 'palm_daily_limit',
+      'fashion_makeover': 'clothing_daily_limit',
+      'wechat_mp_article': 'article_daily_limit',
+      'text': 'text_daily_limit',
+      'image_gen': 'image_daily_limit',
+      'video_gen': 'video_daily_limit',
+    };
+
+    const limitField = skillLimitFieldMap[skillType] || 'text_daily_limit';
+
+    // 从 subscription_plans 表读取限制值
+    const [planRows] = await pool.query(
+      `SELECT ${limitField} as daily_limit FROM subscription_plans WHERE id = ?`,
+      [planId]
+    );
+    const planLimit = Number((planRows as any[])?.[0]?.daily_limit ?? -1);
+
+    // -1 表示无限制，使用一个大数值
+    const limit = planLimit === -1 ? 999999 : planLimit;
+
+    // 查询今日已使用次数
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
     const [rows] = await pool.query(
       `SELECT COUNT(*) as cnt FROM ai_skill_records WHERE user_id = ? AND skill_type = ? AND created_at >= ? AND created_at < ?`,
       [userId, skillType, startOfDay, endOfDay]
-    )
+    );
 
-    const used = Number(rows[0]?.cnt || 0)
-    const remaining = Math.max(0, limit - used)
+    const used = Number((rows as any[])?.[0]?.cnt || 0);
+    const remaining = Math.max(0, limit - used);
 
-    return { used, limit, remaining, isSubscribed }
+    return { used, limit, remaining, isSubscribed };
   }
 
   /**
    * 批量查询所有技能每日使用次数
    */
   async getAllUsageLimits(userId: string): Promise<Record<string, { used: number; limit: number; remaining: number; isSubscribed: boolean }>> {
-    const isSubscribed = await this.isUserSubscribed(userId)
-    const limit = isSubscribed ? 3 : 1
-
-    const today = new Date()
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
-
     const pool = getPool();
+
+    // 获取用户的会员等级
+    const [subRows] = await pool.query(
+      `SELECT sp.id, sp.name FROM user_subscriptions us 
+       JOIN subscription_plans sp ON us.plan_id = sp.id 
+       WHERE us.user_id = ? AND us.status = 'active' AND us.end_date > NOW() 
+       ORDER BY us.end_date DESC LIMIT 1`,
+      [userId]
+    );
+    const subscription = (subRows as any[])?.[0];
+    const planId = subscription?.id || 'plan_free';
+    const isSubscribed = !!subscription;
+
+    // 从 subscription_plans 表读取所有技能的限制值
+    const [planRows] = await pool.query(
+      `SELECT text_daily_limit, image_daily_limit, video_daily_limit, article_daily_limit, clothing_daily_limit, palm_daily_limit FROM subscription_plans WHERE id = ?`,
+      [planId]
+    );
+    const planData = (planRows as any[])?.[0] || {};
+
+    // 技能类型到限制值的映射
+    const skillLimitMap: Record<string, number> = {
+      'palm_reading': Number(planData.palm_daily_limit ?? -1),
+      'fashion_makeover': Number(planData.clothing_daily_limit ?? -1),
+      'wechat_mp_article': Number(planData.article_daily_limit ?? -1),
+      'text': Number(planData.text_daily_limit ?? -1),
+      'image_gen': Number(planData.image_daily_limit ?? -1),
+      'video_gen': Number(planData.video_daily_limit ?? -1),
+    };
+
+    // 查询今日已使用次数
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
     const [rows] = await pool.query(
       `SELECT skill_type, COUNT(*) as cnt FROM ai_skill_records WHERE user_id = ? AND created_at >= ? AND created_at < ? GROUP BY skill_type`,
       [userId, startOfDay, endOfDay]
-    )
+    );
 
-    const usageMap: Record<string, number> = {}
+    const usageMap: Record<string, number> = {};
     for (const row of rows as any[]) {
-      usageMap[row.skill_type] = Number(row.cnt)
+      usageMap[row.skill_type] = Number(row.cnt);
     }
 
-    // 技能ID → 对应的skill_type映射（数据库skills.id → ai_skill_records.skill_type）
-    // 多个skill_type可以映射到同一个技能ID（如content_writing关联wechat_mp_article和content_writing两种记录）
+    // 技能ID → 对应的skill_type映射
     const skillIdToTypes: Record<string, string[]> = {
       palm_reading: ['palm_reading'],
       fashion_advice: ['fashion_makeover'],
       content_writing: ['wechat_mp_article', 'content_writing'],
       image_gen: ['image_gen'],
       video_gen: ['video_gen'],
-    }
+    };
 
-    const result: Record<string, { used: number; limit: number; remaining: number; isSubscribed: boolean }> = {}
+    const result: Record<string, { used: number; limit: number; remaining: number; isSubscribed: boolean }> = {};
     for (const [skillId, types] of Object.entries(skillIdToTypes)) {
-      const used = types.reduce((sum, t) => sum + (usageMap[t] || 0), 0)
-      result[skillId] = { used, limit, remaining: Math.max(0, limit - used), isSubscribed }
+      const used = types.reduce((sum, t) => sum + (usageMap[t] || 0), 0);
+      // 取第一个类型的限制值
+      const primaryType = types[0];
+      const planLimit = skillLimitMap[primaryType] ?? -1;
+      const limit = planLimit === -1 ? 999999 : planLimit;
+      result[skillId] = { used, limit, remaining: Math.max(0, limit - used), isSubscribed };
     }
 
-    return result
+    return result;
   }
 
   /**
@@ -433,6 +518,25 @@ ${imageHint}
         `UPDATE ai_skill_records SET status = 'failed', error_message = ?, updated_at = NOW() WHERE id = ?`,
         [error.message?.slice(0, 500) || '未知错误', recordId],
       );
+      
+      // 退款
+      try {
+        const [recordRows] = await pool.query(
+          'SELECT user_id, skill_type, coin_consumed FROM ai_skill_records WHERE id = ?',
+          [recordId]
+        );
+        const record = (recordRows as any[])?.[0];
+        if (record && Number(record.coin_consumed || 0) > 0) {
+          await this.coinService.gift(
+            record.user_id,
+            Number(record.coin_consumed),
+            `${record.skill_type}生成失败退款`
+          );
+          console.log(`[AiSkillService] 已退款 ${record.coin_consumed} 币给用户 ${record.user_id}`);
+        }
+      } catch (refundError: any) {
+        console.error(`[AiSkillService] 退款失败, recordId=${recordId}:`, refundError.message);
+      }
     }
   }
 

@@ -245,6 +245,23 @@
   color: var(--text-secondary);
 }
 
+.user-coin-row {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-top: 8rpx;
+  padding: 6rpx 16rpx;
+  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+  border-radius: var(--radius-full);
+  align-self: flex-start;
+}
+
+.user-coin-text {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #D97706;
+}
+
 /* 统计数据 */
 .header-stats {
   display: flex;

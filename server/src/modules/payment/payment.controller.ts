@@ -316,13 +316,73 @@ export class PaymentController {
         return { code: 400, msg: '订单缺少微信支付单号', data: null };
       }
 
-      // 调用 WechatPayService 的发货上报方法
       await this.wechatPayService['uploadShippingInfo'](transactionId, order);
 
       return { code: 200, msg: '发货信息上报已触发', data: { outTradeNo, transactionId } };
     } catch (error) {
       this.logger.error(`上报发货信息失败: ${error.message}`);
       return { code: 500, msg: '上报失败', data: null };
+    }
+  }
+
+  @Post('coin/recharge')
+  @HttpCode(HttpStatus.OK)
+  async createCoinRechargePayment(@Body() body: any) {
+    const { userId, openid, packageId } = body;
+    this.logger.log(`创建币充值支付 - userId: ${userId}, packageId: ${packageId}, openid: ${openid ? '***' : 'missing'}`);
+
+    if (!userId || !packageId) {
+      return { code: 400, msg: '缺少必要参数: userId, packageId', data: null };
+    }
+
+    if (!openid) {
+      return { code: 400, msg: '缺少openid，请先登录小程序获取openid', data: null };
+    }
+
+    try {
+      const db = await getMySQLClient();
+      const packages = await db.query(
+        `SELECT * FROM coin_recharge_packages WHERE id = ? AND is_active = 1`,
+        [packageId],
+      );
+
+      if (!packages || packages.length === 0) {
+        return { code: 404, msg: '充值套餐不存在或已下架', data: null };
+      }
+
+      const pkg = packages[0];
+      const totalCoins = Number(pkg.coins) + Number(pkg.bonus || 0);
+
+      const result = await this.wechatPayService.createMiniProgramOrder({
+        userId,
+        openid,
+        planId: packageId,
+        description: `充值${pkg.coins}币${pkg.bonus > 0 ? `+赠送${pkg.bonus}币` : ''} - Morena AI`,
+        amount: Number(pkg.price),
+        orderType: 'coin_recharge',
+      });
+
+      this.logger.log(`币充值订单创建成功: orderId=${result.orderId}, coins=${totalCoins}`);
+
+      return {
+        code: 200,
+        msg: '订单创建成功',
+        data: {
+          orderId: result.orderId,
+          outTradeNo: result.outTradeNo,
+          coins: pkg.coins,
+          bonus: pkg.bonus || 0,
+          totalCoins,
+          timeStamp: result.timeStamp,
+          nonceStr: result.nonceStr,
+          packageValue: result.packageValue,
+          signType: result.signType,
+          paySign: result.paySign,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`创建币充值订单失败: ${error.message}`, error.stack);
+      return { code: 500, msg: `创建订单失败: ${error.message}`, data: null };
     }
   }
 }

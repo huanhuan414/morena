@@ -3,6 +3,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { AiSkillService, SkillType } from './ai-skill.service';
 import { StorageService } from '../storage/storage.service';
+import { CoinService } from '../coin/coin.service';
 
 @Controller('ai-skill')
 export class AiSkillController {
@@ -10,6 +11,7 @@ export class AiSkillController {
   constructor(
     @Inject(AiSkillService) private readonly aiSkillService: AiSkillService,
     @Inject(StorageService) private readonly storageService: StorageService,
+    @Inject(CoinService) private readonly coinService: CoinService,
   ) {}
 
   /**
@@ -44,14 +46,58 @@ export class AiSkillController {
         return { code: 429, msg: `今日使用次数已达上限（${limitCheck.limit}次/天）`, data: { remaining: 0, limit: limitCheck.limit, used: limitCheck.used } };
       }
 
-      const result = await this.aiSkillService.startGenerate(
-        userId,
-        body.skillType as SkillType,
-        imageUrl,
-        body.inputText,
-      );
-      // 立即返回 recordId，前端轮询状态
-      return { code: 200, msg: '已提交生成任务', data: result };
+      // 检查币余额是否充足
+      const canConsume = await this.coinService.canConsume(userId, body.skillType);
+      if (!canConsume.canConsume) {
+        return { 
+          code: 402, 
+          msg: `币余额不足，当前 ${canConsume.balance} 币，需要 ${canConsume.price} 币`, 
+          data: { balance: canConsume.balance, price: canConsume.price } 
+        };
+      }
+
+      // 扣币
+      let consumeResult: any = null;
+      try {
+        consumeResult = await this.coinService.consume(userId, body.skillType);
+      } catch (coinError: any) {
+        console.error('[AiSkillController] 扣币失败:', coinError.message);
+        return { code: 402, msg: coinError.message || '扣币失败', data: null };
+      }
+
+      // 提交生成任务
+      try {
+        const result = await this.aiSkillService.startGenerate(
+          userId,
+          body.skillType as SkillType,
+          imageUrl,
+          body.inputText,
+          consumeResult.amount,
+        );
+        // 返回结果，包含扣币信息
+        return { 
+          code: 200, 
+          msg: '已提交生成任务', 
+          data: {
+            ...result,
+            coinConsumed: consumeResult.amount,
+            balanceAfter: consumeResult.balanceAfter
+          }
+        };
+      } catch (generateError: any) {
+        // 生成失败，退款
+        console.error('[AiSkillController] 生成失败，退款:', generateError.message);
+        try {
+          await this.coinService.gift(
+            userId, 
+            consumeResult.amount, 
+            `${body.skillType}生成失败退款`
+          );
+        } catch (refundError: any) {
+          console.error('[AiSkillController] 退款失败:', refundError.message);
+        }
+        return { code: 500, msg: generateError.message || '提交失败', data: null };
+      }
     } catch (error: any) {
       console.error('[AiSkillController] generate error:', error.message);
       return { code: 500, msg: error.message || '提交失败', data: null };

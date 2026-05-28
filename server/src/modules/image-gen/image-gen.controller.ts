@@ -1,5 +1,7 @@
 import { Controller, Get, Post, Delete, Query, Body, Param, Req, HttpCode, HttpStatus, Inject } from '@nestjs/common';
 import { ImageGenService } from './image-gen.service';
+import { CoinService } from '../coin/coin.service';
+import { AiSkillService } from '../ai-skill/ai-skill.service';
 
 @Controller('image-gen')
 export class ImageGenController {
@@ -7,6 +9,8 @@ export class ImageGenController {
 
   constructor(
     @Inject(ImageGenService) imageGenService: ImageGenService,
+    @Inject(CoinService) private readonly coinService: CoinService,
+    @Inject(AiSkillService) private readonly aiSkillService: AiSkillService,
   ) {
     this.imageGenService = imageGenService;
   }
@@ -31,13 +35,68 @@ export class ImageGenController {
 
 
     try {
-      const result = await this.imageGenService.generate({
-        userId,
-        prompt: body.prompt.trim(),
-        style: body.style || 'realistic',
-        size: body.size || '1024x1024',
-      });
-      return { code: 200, msg: '生成成功', data: result };
+      const skillType = 'image_gen';
+
+      // 检查每日使用次数限制
+      const limitCheck = await this.aiSkillService.checkDailyLimit(userId, skillType);
+      if (limitCheck.remaining <= 0) {
+        return { 
+          code: 429, 
+          msg: `今日使用次数已达上限（${limitCheck.limit}次/天）`, 
+          data: { remaining: 0, limit: limitCheck.limit, used: limitCheck.used } 
+        };
+      }
+
+      // 检查币余额是否充足
+      const canConsume = await this.coinService.canConsume(userId, skillType);
+      if (!canConsume.canConsume) {
+        return { 
+          code: 402, 
+          msg: `币余额不足，当前 ${canConsume.balance} 币，需要 ${canConsume.price} 币`, 
+          data: { balance: canConsume.balance, price: canConsume.price } 
+        };
+      }
+
+      // 扣币
+      let consumeResult: any = null;
+      try {
+        consumeResult = await this.coinService.consume(userId, skillType);
+      } catch (coinError: any) {
+        console.error('[ImageGenController] 扣币失败:', coinError.message);
+        return { code: 402, msg: coinError.message || '扣币失败', data: null };
+      }
+
+      // 生成图片
+      try {
+        const result = await this.imageGenService.generate({
+          userId,
+          prompt: body.prompt.trim(),
+          style: body.style || 'realistic',
+          size: body.size || '1024x1024',
+        });
+        return { 
+          code: 200, 
+          msg: '生成成功', 
+          data: {
+            ...result,
+            coinConsumed: consumeResult.amount,
+            balanceAfter: consumeResult.balanceAfter
+          }
+        };
+      } catch (generateError: any) {
+        // 生成失败，退款
+        console.error('[ImageGenController] 生成失败，退款:', generateError.message);
+        try {
+          await this.coinService.gift(
+            userId, 
+            consumeResult.amount, 
+            `${skillType}生成失败退款`
+          );
+        } catch (refundError: any) {
+          console.error('[ImageGenController] 退款失败:', refundError.message);
+        }
+        return { code: 500, msg: generateError.message || '图片生成失败', data: null };
+      }
     } catch (error: any) {
       console.error('[ImageGenController] generate error:', error.message);
       return { code: 500, msg: error.message || '图片生成失败', data: null };

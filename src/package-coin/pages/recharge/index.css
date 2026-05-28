@@ -1,0 +1,346 @@
+.recharge-page {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f8fafc;
+}
+
+.recharge-header {
+  position: relative;
+  padding-bottom: 56rpx;
+  overflow: hidden;
+}
+
+.recharge-header-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 50%, #4f46e5 100%);
+  border-radius: 0 0 40rpx 40rpx;
+  z-index: 0;
+}
+
+.recharge-deco-circle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  z-index: 0;
+}
+
+.recharge-deco-1 {
+  width: 160rpx;
+  height: 160rpx;
+  top: -40rpx;
+  right: -20rpx;
+}
+
+.recharge-deco-2 {
+  width: 100rpx;
+  height: 100rpx;
+  bottom: 20rpx;
+  right: 80rpx;
+}
+
+.recharge-header-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 0 30rpx;
+}
+
+.recharge-back-btn {
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  backdrop-filter: blur(10px);
+}
+
+.recharge-header-title {
+  flex: 1;
+  text-align: center;
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 48rpx;
+}
+
+.recharge-header-right {
+  width: 64rpx;
+}
+
+.recharge-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24rpx;
+}
+
+.recharge-balance-section {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 24rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+.recharge-balance-icon {
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+  border-radius: 16rpx;
+  margin-right: 16rpx;
+}
+
+.recharge-balance-info {
+  flex: 1;
+}
+
+.recharge-balance-label {
+  font-size: 22rpx;
+  color: #94a3b8;
+  line-height: 32rpx;
+  display: block;
+  margin-bottom: 4rpx;
+}
+
+.recharge-balance-value {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 44rpx;
+}
+
+.recharge-packages-section {
+  margin-bottom: 24rpx;
+}
+
+.recharge-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 20rpx;
+}
+
+.recharge-title-dot {
+  width: 8rpx;
+  height: 32rpx;
+  background: linear-gradient(180deg, #8b5cf6, #6366f1);
+  border-radius: 4rpx;
+  flex-shrink: 0;
+}
+
+.recharge-section-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 40rpx;
+}
+
+.recharge-packages-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16rpx;
+}
+
+.recharge-package-item {
+  position: relative;
+  background: #ffffff;
+  border-radius: 20rpx;
+  padding: 24rpx 12rpx;
+  text-align: center;
+  border: 2rpx solid transparent;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+  transition: all 0.2s;
+}
+
+.recharge-package-item.selected {
+  border-color: #8b5cf6;
+  background: linear-gradient(180deg, #faf5ff 0%, #ffffff 100%);
+  box-shadow: 0 4rpx 16rpx rgba(139, 92, 246, 0.15);
+}
+
+.recharge-package-item.has-bonus {
+  background: linear-gradient(180deg, #fffbeb 0%, #ffffff 100%);
+}
+
+.recharge-package-item.has-bonus.selected {
+  background: linear-gradient(180deg, #fef3c7 0%, #fffbeb 100%);
+}
+
+.recharge-package-badge {
+  position: absolute;
+  top: -8rpx;
+  right: -8rpx;
+  background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+  border-radius: 12rpx;
+  padding: 4rpx 10rpx;
+  box-shadow: 0 2rpx 8rpx rgba(239, 68, 68, 0.3);
+}
+
+.recharge-package-badge-text {
+  font-size: 18rpx;
+  font-weight: 600;
+  color: #fff;
+  line-height: 26rpx;
+}
+
+.recharge-package-coins {
+  margin-bottom: 12rpx;
+}
+
+.recharge-package-coins-value {
+  font-size: 36rpx;
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 48rpx;
+}
+
+.recharge-package-coins-unit {
+  font-size: 20rpx;
+  color: #64748b;
+  line-height: 28rpx;
+  margin-left: 4rpx;
+}
+
+.recharge-package-price {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+}
+
+.recharge-package-price-symbol {
+  font-size: 22rpx;
+  color: #8b5cf6;
+  line-height: 30rpx;
+}
+
+.recharge-package-price-value {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #8b5cf6;
+  line-height: 40rpx;
+}
+
+.recharge-package-check {
+  position: absolute;
+  bottom: 8rpx;
+  right: 8rpx;
+  width: 28rpx;
+  height: 28rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  border-radius: 50%;
+}
+
+.recharge-summary-section {
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 24rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+.recharge-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12rpx 0;
+}
+
+.recharge-summary-row.bonus .recharge-summary-value {
+  color: #10B981;
+}
+
+.recharge-summary-row.total {
+  border-top: 1rpx solid #f1f5f9;
+  padding-top: 16rpx;
+  margin-top: 8rpx;
+}
+
+.recharge-summary-row.total .recharge-summary-value {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #8b5cf6;
+  line-height: 44rpx;
+}
+
+.recharge-summary-label {
+  font-size: 26rpx;
+  color: #64748b;
+  line-height: 36rpx;
+}
+
+.recharge-summary-value {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 36rpx;
+}
+
+.recharge-submit-btn {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  border-radius: 24rpx;
+  padding: 28rpx;
+  text-align: center;
+  margin-bottom: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(99, 102, 241, 0.3);
+}
+
+.recharge-submit-btn-text {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #fff;
+  line-height: 42rpx;
+}
+
+.recharge-tips-section {
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+.recharge-tips-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.recharge-tips-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 40rpx;
+}
+
+.recharge-tips-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.recharge-tips-item {
+  font-size: 24rpx;
+  color: #64748b;
+  line-height: 36rpx;
+}
+
+.recharge-bottom-placeholder {
+  height: 40rpx;
+}

@@ -41,6 +41,7 @@ import { ImageGenModule } from './modules/image-gen/image-gen.module';
 import { AiSkillModule } from './modules/ai-skill/ai-skill.module';
 import { OrderAssetsModule } from './modules/order-assets/order-assets.module';
 import { RedisModule } from './modules/redis/redis.module';
+import { CoinModule } from './modules/coin/coin.module';
 
 @Module({
   imports: [
@@ -82,7 +83,8 @@ import { RedisModule } from './modules/redis/redis.module';
     PaymentModule,
     ImageGenModule,
     AiSkillModule,
-    OrderAssetsModule
+    OrderAssetsModule,
+    CoinModule
   ],
   controllers: [AppController],
   providers: [AppService],

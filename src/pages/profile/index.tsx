@@ -5,7 +5,7 @@ import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
 import {
   Settings, ChevronRight, LogOut, Bell, Info,
-  Wallet, Crown, Trophy, Sparkles, FileText
+  Wallet, Crown, Trophy, Sparkles, FileText, Coins
 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import '@/styles/variables.css'
@@ -21,13 +21,12 @@ interface UserStats {
 
 // 菜单项配置
 const menuItems = [
-  // { title: '我的分身', icon: Sparkles, desc: '管理AI分身', type: 'primary', path: '/package-avatar/pages/avatar-manage/index' },
   { title: '工资墙', icon: Trophy, desc: '收益排行榜', type: 'primary', path: '/package-profile/pages/earnings-wall/index', requireLogin: false },
   { title: '技能广场', icon: Sparkles, desc: '解锁更多能力', type: 'success', path: '/package-skill/pages/skills-square/index', requireLogin: true },
   { title: '我要发单', icon: FileText, desc: '发布和管理订单', type: 'info', path: '/package-order/pages/order-list/index', requireLogin: true },
   { title: '收益中心', icon: Wallet, desc: '查看收益和提现', type: 'warning', path: '/package-profile/pages/earning-center/index', requireLogin: false },
+  { title: '币中心', icon: Coins, desc: '充值和交易记录', type: 'warning', path: '/package-coin/pages/index/index' },
   { title: '订阅中心', icon: Crown, desc: '升级解锁更多功能', type: 'primary', path: '/package-avatar/pages/subscription/index', requireLogin: true },
-  // { title: '帮助中心', icon: CircleQuestionMark, desc: '常见问题解答', type: 'info', path: '/package-profile/pages/help/index' },
   { title: '关于我们', icon: Info, desc: '版本 v1.0.0', type: 'default', path: '/package-profile/pages/about/index', requireLogin: false }
 ]
 
@@ -57,6 +56,7 @@ export default function ProfilePage() {
     totalWithdraw: 0,
     level: 1
   })
+  const [coinBalance, setCoinBalance] = useState<number>(0)
   const [statusBarHeight] = useState(getStatusBarHeight())
   const [unreadCount, setUnreadCount] = useState(0)
 
@@ -68,18 +68,22 @@ export default function ProfilePage() {
 
   const fetchStats = async () => {
     try {
-      const [statsRes, earningsRes] = await Promise.all([
+      const userId = userInfo?.id
+      const [statsRes, earningsRes, coinRes] = await Promise.all([
         Network.request({ url: '/api/user-stats/overview' }),
-        Network.request({ url: '/api/earnings/overview' })
+        Network.request({ url: '/api/earnings/overview' }),
+        Network.request({ url: `/api/coin/balance?userId=${userId}` })
       ])
       const data = statsRes.data?.code === 200 ? statsRes.data.data : {}
       const earningsData = earningsRes.data?.code === 200 ? earningsRes.data.data : {}
+      const coinData = coinRes.data?.code === 200 ? coinRes.data.data : {}
       setStats({
         avatarCount: data.avatarCount || 0,
         totalEarnings: earningsData.totalEarnings || 0,
         totalWithdraw: 0,
         level: 1
       })
+      setCoinBalance(coinData.balance || 0)
     } catch (error) {
       console.error('获取统计失败:', error)
     }
@@ -156,7 +160,19 @@ export default function ProfilePage() {
                 <Image src={logoImage} className="user-avatar" mode="aspectFill" />
                 <Text className="login-text">去登录</Text>
               </View>
+<<<<<<< HEAD
             )}
+=======
+            </View>
+            <View className="user-text-info">
+              <Text className="user-name">{userInfo?.nickname || '探索者'}</Text>
+              <Text className="user-id">ID: {userInfo?.id?.slice(-8) || 'guest'}</Text>
+              <View className="user-coin-row">
+                <Coins size={14} color="#F59E0B" />
+                <Text className="user-coin-text">{coinBalance.toLocaleString()} 币</Text>
+              </View>
+            </View>
+>>>>>>> 59975f88 (实现币系统完整功能：充值微信支付、技能广场权益、订单优先级、自动接单、修复多个Bug)
           </View>
 
           <View className="card-actions">

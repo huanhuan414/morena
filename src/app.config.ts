@@ -103,6 +103,15 @@ export default defineAppConfig({
         'pages/skills/index',
       ],
     },
+    {
+      root: 'package-coin',
+      name: 'coin',
+      pages: [
+        'pages/index/index',
+        'pages/recharge/index',
+        'pages/transactions/index',
+      ],
+    },
   ],
   window: {
     backgroundTextStyle: 'light',

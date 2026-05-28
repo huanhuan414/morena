@@ -65,7 +65,15 @@ export default function SkillsSquare() {
   const [avatarSkills, setAvatarSkills] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [addingSkill, setAddingSkill] = useState<string | null>(null)
-  const [usageLimits, setUsageLimits] = useState<Record<string, { used: number; limit: number; remaining: number }>>({})
+  const [skillUsage, setSkillUsage] = useState<Record<string, {
+    allowed: boolean
+    reason?: string
+    dailyLimit: number
+    usedToday: number
+    remaining: number
+    speed?: string
+    planName: string
+  }>>({})
 
   useDidShow(() => {
     loadSkills()
@@ -84,11 +92,20 @@ export default function SkillsSquare() {
         setAvatarSkills(aSkills.map((s: AvatarSkill) => s.skillId))
       }
 
-      // 获取每个技能的每日使用限额
+      // 获取用户技能使用情况
       try {
-        const limitRes = await Network.request({ url: '/api/ai-skill/usage-limit' })
-        const limitsData = limitRes?.data?.data || {}
-        setUsageLimits(limitsData)
+        const userInfo = Taro.getStorageSync('userInfo')
+        const userId = userInfo?.id
+        if (userId && allSkills.length > 0) {
+          const skillIds = allSkills.map((s: Skill) => s.id)
+          const usageRes = await Network.request({
+            url: '/api/subscription/batch-skill-usage',
+            method: 'POST',
+            data: { userId, skillTypes: skillIds }
+          })
+          const usageData = usageRes?.data?.data || {}
+          setSkillUsage(usageData)
+        }
       } catch (e) {
       }
     } catch (err) {
@@ -275,6 +292,7 @@ export default function SkillsSquare() {
                 const IconComp = iconConfig.Icon
                 const catLabel = CATEGORY_LABELS[skill.category] || '其他'
                 const earnLabel = EARNING_MAP[skill.category] || '可赚¥2-10/单'
+                const skillPrice = Number(skill.price) || 0
                 return (
                   <View className="skill-card" key={skill.id}>
                     {/* 卡片顶部渐变装饰 */}
@@ -292,6 +310,12 @@ export default function SkillsSquare() {
                             <View className="skill-tag skill-tag-cat">
                               <Text className="block skill-tag-text">{catLabel}</Text>
                             </View>
+                            {skillPrice > 0 && (
+                              <View className="skill-tag skill-tag-price">
+                                <Coins size={10} color="#8B5CF6" />
+                                <Text className="block skill-tag-text-price">{skillPrice}币/次</Text>
+                              </View>
+                            )}
                             <View className="skill-tag skill-tag-earn">
                               <Coins size={10} color="#F59E0B" />
                               <Text className="block skill-tag-text-earn">{earnLabel}</Text>
@@ -314,13 +338,37 @@ export default function SkillsSquare() {
                           <Users size={12} color="#94A3B8" />
                           <Text className="block skill-stat-val">{formatCount(Number(skill.usageCount))}人使用</Text>
                         </View>
-                        <View className="skill-stat-divider" />
-                        <View className="skill-stat">
-                          <Text className="block skill-stat-val" style={{ fontSize: '11px', color: usageLimits[skill.id]?.remaining === 0 ? '#EF4444' : '#8B5CF6' }}>
-                            今日剩余 {usageLimits[skill.id]?.remaining ?? '-'}/{usageLimits[skill.id]?.limit ?? '-'}
-                          </Text>
-                        </View>
                       </View>
+
+                      {/* 会员权益信息 */}
+                      {skillUsage[skill.id] && (
+                        <View className="skill-benefit-row">
+                          <View className="skill-benefit-plan">
+                            <Text className="block skill-benefit-plan-text">{skillUsage[skill.id].planName}</Text>
+                          </View>
+                          {skillUsage[skill.id].speed && (
+                            <View className="skill-benefit-speed">
+                              <Text className="block skill-benefit-speed-text">
+                                {skillUsage[skill.id].speed === 'normal' && '普通速度'}
+                                {skillUsage[skill.id].speed === 'fast' && '⚡加速生成'}
+                                {skillUsage[skill.id].speed === 'ultra' && '🚀超速生成'}
+                              </Text>
+                            </View>
+                          )}
+                          {skillUsage[skill.id].dailyLimit !== 0 && (
+                            <View className="skill-benefit-limit">
+                              <Text className="block skill-benefit-limit-text" style={{ color: skillUsage[skill.id].remaining === 0 ? '#EF4444' : '#10B981' }}>
+                                今日 {skillUsage[skill.id].usedToday}/{skillUsage[skill.id].dailyLimit === -1 ? '不限' : skillUsage[skill.id].dailyLimit} 次
+                              </Text>
+                            </View>
+                          )}
+                          {!skillUsage[skill.id].allowed && skillUsage[skill.id].reason && (
+                            <View className="skill-benefit-warning">
+                              <Text className="block skill-benefit-warning-text">{skillUsage[skill.id].reason}</Text>
+                            </View>
+                          )}
+                        </View>
+                      )}
 
                       {/* 操作按钮 */}
                       <View className="skill-card-action">
