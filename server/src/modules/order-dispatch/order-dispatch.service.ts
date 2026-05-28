@@ -135,7 +135,7 @@ export class OrderDispatchService {
     }
 
     const id = crypto.randomUUID()
-    const expiresAt = new Date(Date.now() + 30 * 60 * 1000) // 30分钟内必须接单
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10分钟内必须接单
     await db.insert('order_dispatch_requests', {
       id,
       order_id: data.order_id,
@@ -554,7 +554,7 @@ async getExecutionProgress(orderId: string) {
       user_id: avatar.userId,
       platform: 'manual',
       status: 'pending',
-      expires_at: new Date(Date.now() + 30 * 60 * 1000),
+      expires_at: new Date(Date.now() + 10 * 60 * 1000),
       created_at: new Date(),
       updated_at: new Date()
     })
@@ -746,7 +746,7 @@ async getExecutionProgress(orderId: string) {
         user_id: avatar.userId || avatar.userPhone,
         platform: 'auto',
         status: avatar.autoAccept ? 'accepted' : 'pending',
-        expires_at: new Date(Date.now() + 30 * 60 * 1000),
+        expires_at: new Date(Date.now() + 10 * 60 * 1000),
         created_at: new Date(),
         updated_at: new Date()
       })
@@ -918,6 +918,25 @@ async getExecutionProgress(orderId: string) {
     }
 
     // 1.3 原子占位：INCR递增已接单计数
+    // 先检查Redis计数器是否与数据库一致，不一致则强制同步
+    try {
+      const currentAcceptedRows = await db.query(
+        `SELECT COUNT(DISTINCT avatar_id) as count
+         FROM order_dispatch_requests
+         WHERE order_id = ? AND status IN ('accepted', 'completed')`,
+        [orderId]
+      )
+      const dbAccepted = Number((currentAcceptedRows as any[])?.[0]?.count || 0)
+      const redisAccepted = await this.redisService.getCounter(redisKeyAccepted)
+      
+      if (redisAccepted !== dbAccepted) {
+        this.logger.log(`Redis计数器不一致，强制同步: orderId=${orderId}, Redis=${redisAccepted}, DB=${dbAccepted}`)
+        await this.redisService.getClient().set(redisKeyAccepted, String(dbAccepted), 'EX', OrderDispatchService.REDIS_TTL_SECONDS)
+      }
+    } catch (err: any) {
+      this.logger.warn(`Redis计数器同步失败: ${err.message}`)
+    }
+
     // INCR是原子操作，返回递增后的值。如果超过名额，立即DECR回滚并拒绝
     // 这确保了即使100个请求同时到达，也只有requiredCount个能通过
     const redisRequiredCount = await this.redisService.getCounter(redisKeyRequired)
@@ -1302,7 +1321,6 @@ async getExecutionProgress(orderId: string) {
   async declineOrder(dispatchId: string) {
     const db = getMySQLClient()
     
-    // 查找分派记录
     const declineRows = await db.query(
       'SELECT * FROM order_dispatch_requests WHERE id = ?',
       [dispatchId]
@@ -1313,14 +1331,12 @@ async getExecutionProgress(orderId: string) {
       throw new NotFoundException('分派记录不存在')
     }
     
-    // 更新状态为 declined
     await db.updateWhere('order_dispatch_requests', { id: dispatchId }, {
       status: 'rejected',
       responded_at: new Date(),
       updated_at: new Date()
     })
     
-    // 📌 记录事件：分身婉拒
     let declinedAvatarName = '分身'
     try {
       const avatarInfo = await db.query('SELECT name FROM avatars WHERE id = ?', [request.avatarId])
@@ -1334,6 +1350,25 @@ async getExecutionProgress(orderId: string) {
       source: 'avatar',
       avatarName: declinedAvatarName,
     }).catch(err => console.warn('[事件] rejected 记录失败:', err.message))
+    
+    try {
+      const orderInfo = await db.query('SELECT user_id, title FROM orders WHERE id = ?', [request.orderId])
+      const order = orderInfo?.[0]
+      
+      if (order?.user_id) {
+        await this.notificationService.createNotification({
+          user_id: order.user_id,
+          type: 'dispatch_rejected',
+          title: '分身已拒绝订单',
+          content: `分身"${declinedAvatarName}"已拒绝接单"${order.title || '内容创作'}"，名额已释放到订单广场。`,
+          metadata: { orderId: request.orderId, avatarId: request.avatarId, avatarName: declinedAvatarName },
+          created_at: new Date(),
+          updated_at: new Date()
+        }).catch(err => console.warn('[通知] 分身拒绝通知发送失败:', err.message))
+      }
+    } catch (err) {
+      console.warn('[通知] 分身拒绝通知失败:', err.message)
+    }
     
     return { success: true }
   }

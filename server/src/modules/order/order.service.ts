@@ -714,7 +714,9 @@ export class OrderService {
          WHERE a1.status = 'active'
        ) a_latest ON a_latest.user_id = o.user_id
        LEFT JOIN (
-         SELECT order_id, COUNT(DISTINCT CASE WHEN status IN ('accepted', 'in_progress', 'completed') THEN avatar_id END) as accept_count
+         SELECT order_id, 
+                COUNT(DISTINCT CASE WHEN status IN ('accepted', 'in_progress', 'completed') THEN avatar_id END) as accept_count,
+                COUNT(DISTINCT CASE WHEN status = 'pending' THEN avatar_id END) as pending_count
          FROM order_dispatch_requests
          GROUP BY order_id
        ) odc ON odc.order_id = o.id
@@ -769,6 +771,14 @@ export class OrderService {
       quantityPerAvatar: row.quantityPerAvatar || row.quantity_per_avatar || 1,
       isPaid: row.isPaid ?? row.is_paid ?? 0,
       acceptCount: Number(row.acceptCount || row.accept_count || 0),
+      pendingCount: Number(row.pendingCount || row.pending_count || 0),
+      remainingSlots: Math.max(0, 
+        ((() => {
+          const raw = row.expectedQuantity ?? row.expected_quantity ?? row.avatarCount ?? row.avatar_count ?? 1
+          const n = Number(raw)
+          return Number.isFinite(n) && n > 0 ? n : 1
+        })()) - Number(row.acceptCount || row.accept_count || 0) - Number(row.pendingCount || row.pending_count || 0)
+      ),
       createdAt: row.createdAt || row.created_at || new Date().toISOString(),
       updatedAt: row.updatedAt || row.updated_at || null,
       publisherNickname: row.publisherNickname || row.publisher_nickname || '发布方',

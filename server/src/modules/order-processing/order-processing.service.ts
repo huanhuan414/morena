@@ -5,6 +5,7 @@ import { getCache, setCache } from '../../common/shared-cache'
 import { OrderService } from '../order/order.service'
 import { NotificationService } from '../notification/notification.service'
 import { normalizeFulfillmentStatus } from '../order/order-status'
+import { RedisService } from '../redis/redis.service'
 
 const URGE_ACCEPTANCE_COOLDOWN_MS = 60 * 60 * 1000
 const lastUrgeAcceptanceAt = new Map<string, number>()
@@ -17,7 +18,9 @@ export class OrderProcessingService {
 
   constructor(
     @Inject(forwardRef(() => OrderService))
-    private readonly orderService: OrderService
+    private readonly orderService: OrderService,
+    @Inject(RedisService)
+    private readonly redisService: RedisService
   ) {}
 
   /**
@@ -866,7 +869,7 @@ export class OrderProcessingService {
   }
 
   /**
-   * 驳回订单（拒绝，不可重新提交）
+   * 驳回订单（拒绝，可重新生成一次）
    */
   async requestRevision(identifier: string, feedback: Record<string, any>): Promise<any> {
     const current = await this.findRecordByIdentifier(identifier)
@@ -877,9 +880,23 @@ export class OrderProcessingService {
       {}
     )
     const mergedFeedback = this.mergeFeedback(existingFeedback, feedback || {})
+    
+    const revisionCount = (current.revisionCount || current.revision_count || 0) + 1
+
+    // 添加驳回历史记录
+    const revisionHistory = existingFeedback.revisionHistory || []
+    revisionHistory.push({
+      reason: feedback.rejectReason || '',
+      time: new Date().toISOString(),
+      count: revisionCount
+    })
+    mergedFeedback.revisionHistory = revisionHistory
+    mergedFeedback.rejectReason = feedback.rejectReason || ''
 
     const record = await this.updateRecordByIdentifier(identifier, {
       status: 'rejected',
+      revision_count: revisionCount,
+      revision_requested_at: new Date(),
       publish_feedback: JSON.stringify(mergedFeedback)
     })
     if (!record) return null
@@ -896,6 +913,24 @@ export class OrderProcessingService {
       )
       this.logger.log(`[驳回] 已更新派单记录状态: orderId=${normalized.orderId}, avatarId=${normalized.avatarId}`)
 
+      // 第二次驳回后立即释放名额
+      if (revisionCount >= 2) {
+        try {
+          const redisKeyAccepted = `order:${normalized.orderId}:accepted`
+          const currentAcceptedRows = await db.query(
+            `SELECT COUNT(DISTINCT avatar_id) as count
+             FROM order_dispatch_requests
+             WHERE order_id = ? AND status IN ('accepted', 'completed')`,
+            [normalized.orderId]
+          )
+          const currentAccepted = Number((currentAcceptedRows as any[])?.[0]?.count || 0)
+          await this.redisService.getClient().set(redisKeyAccepted, String(currentAccepted), 'EX', 3600)
+          this.logger.log(`[驳回] 已释放名额: orderId=${normalized.orderId}, 当前接单数=${currentAccepted}`)
+        } catch (err: any) {
+          this.logger.warn(`[驳回] 释放名额失败: ${err.message}`)
+        }
+      }
+
       const [avatarRows] = await db.query(
         `SELECT a.user_id, o.title FROM avatars a LEFT JOIN orders o ON o.id = ? WHERE a.id = ?`,
         [normalized.orderId, normalized.avatarId]
@@ -904,14 +939,15 @@ export class OrderProcessingService {
       if (avatarInfo?.user_id) {
         try {
           const notificationService = new NotificationService()
+          const canRegenerate = revisionCount < 2
           await notificationService.createNotification({
             user_id: avatarInfo.user_id,
             type: 'order_rejected',
-            title: '订单已驳回',
-            content: avatarInfo.title 
-              ? `订单「${avatarInfo.title}」已被驳回，原因：${feedback.rejectReason || '无'}`
-              : `订单已被驳回，原因：${feedback.rejectReason || '无'}`,
-            metadata: { orderId: normalized.orderId, requestId: normalized.requestId }
+            title: canRegenerate ? '订单已被驳回' : '订单已被驳回（最终驳回）',
+            content: canRegenerate
+              ? `订单「${avatarInfo.title || '内容'}」已被驳回，原因：${feedback.rejectReason || '无'}，可重新生成1次`
+              : `订单「${avatarInfo.title || '内容'}」已被驳回，原因：${feedback.rejectReason || '无'}，驳回次数已用完，无法重新生成`,
+            metadata: { orderId: normalized.orderId, requestId: normalized.requestId, revisionCount }
           })
           this.logger.log(`[驳回] 已发送通知给用户: ${avatarInfo.user_id}`)
         } catch (err: any) {

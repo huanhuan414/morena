@@ -322,7 +322,7 @@ export default function GeneratedContentPage() {
   }
 
   // 获取卡片底部按钮配置
-  const getCardActions = (rawStatus: string, contentType?: string) => {
+  const getCardActions = (rawStatus: string, contentType?: string, content?: any) => {
     const status = BACKEND_STATUS_TO_TAB[rawStatus] || rawStatus
     const isVideo = ['video_text', 'video_script', 'video'].includes(contentType || '')
     const isSimpleTask = contentType === 'simple_task'
@@ -362,7 +362,13 @@ export default function GeneratedContentPage() {
           { key: 'regenerate', label: '重新生成', icon: RefreshCw, type: 'primary' },
         ]
       case 'rejected':
+        if (content && (content.revisionCount || content.revision_count || 0) >= 2) {
+          return [
+            { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
+          ]
+        }
         return [
+          { key: 'regenerate', label: '重新生成', icon: RefreshCw, type: 'primary' },
           { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
         ]
       case 'cancelled':
@@ -497,7 +503,7 @@ export default function GeneratedContentPage() {
               videoUrls = Array.isArray(rawVideoUrl) ? rawVideoUrl : (typeof rawVideoUrl === 'string' && rawVideoUrl.trim() ? (rawVideoUrl.startsWith('[') ? JSON.parse(rawVideoUrl) : [rawVideoUrl]) : [])
             } catch { videoUrls = [] }
             const avatarName = content.avatar_name || content.avatarName || '我的分身'
-            const actions = getCardActions(content.status, content.contentType)
+            const actions = getCardActions(content.status, content.contentType, content)
             const isVideo = ['video', 'video_text'].includes(content.contentType)
 
             return (
