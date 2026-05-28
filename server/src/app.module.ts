@@ -40,6 +40,7 @@ import { PaymentModule } from './modules/payment/payment.module';
 import { ImageGenModule } from './modules/image-gen/image-gen.module';
 import { AiSkillModule } from './modules/ai-skill/ai-skill.module';
 import { OrderAssetsModule } from './modules/order-assets/order-assets.module';
+import { GroupBotModule } from './modules/group-bot/group-bot.module';
 import { RedisModule } from './modules/redis/redis.module';
 
 @Module({
@@ -82,7 +83,8 @@ import { RedisModule } from './modules/redis/redis.module';
     PaymentModule,
     ImageGenModule,
     AiSkillModule,
-    OrderAssetsModule
+    OrderAssetsModule,
+    GroupBotModule
   ],
   controllers: [AppController],
   providers: [AppService],

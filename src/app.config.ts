@@ -87,6 +87,14 @@ export default defineAppConfig({
       ],
     },
     {
+      root: 'package-group-bot',
+      name: 'group-bot',
+      pages: [
+        'pages/group-list/index',
+        'pages/group-chat/index',
+      ],
+    },
+    {
       root: 'package-admin',
       name: 'admin',
       pages: [

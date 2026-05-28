@@ -1,0 +1,11 @@
+.bot-list-page {
+  min-height: 100vh;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+}
+
+.bot-list-scroll {
+  flex: 1;
+  height: calc(100vh - 44px);
+}

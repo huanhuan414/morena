@@ -580,6 +580,12 @@ const MindChat: React.FC = () => {
               onInput={(e: any) => setSearchValue(e.detail.value)}
             />
           </View>
+          <View
+            className="bot-entry-button"
+            onClick={() => Taro.navigateTo({ url: '/package-group-bot/pages/group-list/index' })}
+          >
+            <Bot size={16} color="#7B3FE4" />
+          </View>
           {activeTab === 'my' && (
             <View
               className="add-button"

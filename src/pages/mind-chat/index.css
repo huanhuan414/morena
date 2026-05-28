@@ -120,6 +120,17 @@
   box-shadow: 0 4rpx 12rpx rgba(99, 102, 241, 0.3);
 }
 
+.bot-entry-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64rpx;
+  height: 64rpx;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 16rpx;
+  margin-right: 12rpx;
+}
+
 .add-button-text {
   font-size: 26rpx;
   font-weight: 600;
