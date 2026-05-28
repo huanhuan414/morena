@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>莫瑞娜 - 人机共生平台原型 v4</title>
+<title>莫瑞娜 - 人机共生平台原型 v5</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif; background: #0a0a0a; color: #e5e5e5; font-size: 14px; min-height: 100vh; }
@@ -17,7 +17,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica
 
 .page-tabs { display: flex; overflow-x: auto; gap: 0; padding: 6px 12px 0; -webkit-overflow-scrolling: touch; }
 .page-tabs::-webkit-scrollbar { display: none; }
-.page-tab { flex-shrink: 0; padding: 6px 12px; font-size: 12px; color: #666; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all .2s; }
+.page-tab { flex-shrink: 0; padding: 6px 10px; font-size: 11px; color: #666; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all .2s; }
 .page-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
 
 .page { display: none; padding: 12px; max-width: 420px; margin: 0 auto; }
@@ -59,7 +59,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica
 .layer-item { background: rgba(0,0,0,0.3); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; font-size: 12px; line-height: 1.5; }
 .layer-item .item-source { font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 4px; }
 
-/* 层级颜色 */
 .layer-red { background: linear-gradient(135deg, #2a0a0a, #1a0505); border: 1px solid #4a1a1a; }
 .layer-red .layer-priority { background: #4a1a1a; color: #f87171; }
 .layer-orange { background: linear-gradient(135deg, #2a1a0a, #1a0f05); border: 1px solid #4a3a1a; }
@@ -74,18 +73,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica
 .pulse-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; animation: pulse 2s infinite; }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-/* 统计 */
 .stat-row { display: flex; gap: 8px; margin-bottom: 12px; }
 .stat-box { flex: 1; background: #161616; border-radius: 10px; padding: 10px; text-align: center; border: 1px solid #222; }
 .stat-num { font-size: 22px; font-weight: 700; }
 .stat-label { font-size: 10px; color: #666; margin-top: 2px; }
-
-/* 进化曲线 */
-.curve-container { background: #111; border-radius: 10px; padding: 16px; margin-bottom: 12px; border: 1px solid #222; }
-.curve-bar { display: flex; align-items: flex-end; gap: 4px; height: 100px; margin-bottom: 8px; }
-.curve-col { flex: 1; border-radius: 4px 4px 0 0; transition: height .5s; position: relative; }
-.curve-label { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); font-size: 9px; color: #555; white-space: nowrap; }
-.curve-value { position: absolute; top: -16px; left: 50%; transform: translateX(-50%); font-size: 9px; color: #999; white-space: nowrap; }
 
 /* 知识库 */
 .knowledge-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.2); margin-bottom: 6px; }
@@ -112,6 +103,84 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica
 .decision-match { font-size: 11px; text-align: center; margin-top: 8px; padding: 4px; border-radius: 6px; }
 
 .expand-btn { font-size: 11px; color: var(--accent); cursor: pointer; margin-top: 6px; display: inline-block; }
+
+/* 技能工作流 */
+.skill-card { background: #161616; border-radius: 14px; padding: 16px; margin-bottom: 12px; border: 1px solid #222; }
+.skill-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.skill-name { font-size: 15px; font-weight: 700; }
+.skill-badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+.workflow-step { display: flex; gap: 12px; margin-bottom: 8px; }
+.step-indicator { display: flex; flex-direction: column; align-items: center; width: 24px; flex-shrink: 0; }
+.step-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.step-line { width: 2px; flex: 1; background: #222; min-height: 10px; }
+.step-content { flex: 1; padding-bottom: 8px; }
+.step-action { font-size: 12px; font-weight: 500; color: #e5e5e5; }
+.step-decision { font-size: 11px; color: #888; margin-top: 2px; line-height: 1.4; }
+.step-evidence { font-size: 10px; color: #555; margin-top: 2px; }
+
+.skill-stats { display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #222; }
+.skill-stat { flex: 1; text-align: center; }
+.skill-stat-num { font-size: 16px; font-weight: 700; }
+.skill-stat-label { font-size: 10px; color: #666; margin-top: 1px; }
+
+/* 技能市场 */
+.market-item { background: #161616; border-radius: 14px; padding: 16px; margin-bottom: 12px; border: 1px solid #222; cursor: pointer; transition: all .2s; }
+.market-item:hover { border-color: #444; }
+.market-header { display: flex; gap: 10px; margin-bottom: 10px; }
+.market-avatar { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+.market-info { flex: 1; }
+.market-skill-name { font-size: 14px; font-weight: 600; }
+.market-owner { font-size: 11px; color: #888; margin-top: 2px; }
+.market-price { font-size: 16px; font-weight: 700; color: #fbbf24; }
+.market-price-unit { font-size: 11px; color: #888; font-weight: 400; }
+.market-evidence { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.evidence-tag { font-size: 10px; padding: 3px 8px; border-radius: 8px; background: #1a1a1a; border: 1px solid #2a2a2a; color: #aaa; }
+.evidence-tag.highlight { background: #0a2a10; border-color: #1a4a2a; color: #4ade80; }
+.market-workflow-preview { font-size: 11px; color: #666; line-height: 1.6; padding: 8px; background: #111; border-radius: 8px; margin-bottom: 10px; }
+.market-btn { display: inline-block; padding: 6px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
+
+/* 执行模拟 */
+.exec-step { display: flex; gap: 10px; margin-bottom: 10px; animation: fadeIn .5s ease-in; }
+.exec-num { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.exec-content { flex: 1; }
+.exec-title { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+.exec-detail { font-size: 11px; color: #999; line-height: 1.5; }
+.exec-result { background: #111; border-radius: 8px; padding: 10px; margin-top: 6px; font-size: 12px; line-height: 1.6; }
+.exec-option { padding: 4px 8px; border-radius: 6px; margin-bottom: 4px; }
+.exec-option.best { background: #0a2a10; border: 1px solid #1a4a2a; }
+.exec-option.discarded { background: #1a1a1a; color: #666; text-decoration: line-through; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* 收入 */
+.income-overview { background: linear-gradient(135deg, #1a1a0a, #0f0f05); border-radius: 14px; padding: 20px; margin-bottom: 12px; border: 1px solid #2a2a0a; text-align: center; }
+.income-total { font-size: 36px; font-weight: 800; color: #fbbf24; }
+.income-total-unit { font-size: 14px; color: #888; font-weight: 400; }
+.income-sub { display: flex; justify-content: center; gap: 20px; margin-top: 10px; }
+.income-sub-item { text-align: center; }
+.income-sub-num { font-size: 18px; font-weight: 700; color: #e5e5e5; }
+.income-sub-label { font-size: 10px; color: #666; }
+
+.income-record { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid #1a1a1a; }
+.income-record:last-child { border-bottom: none; }
+.income-record-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.income-record-info { flex: 1; }
+.income-record-title { font-size: 12px; font-weight: 500; }
+.income-record-time { font-size: 10px; color: #555; margin-top: 2px; }
+.income-record-amount { font-size: 14px; font-weight: 700; color: #4ade80; text-align: right; }
+.income-record-source { font-size: 10px; color: #555; text-align: right; }
+
+/* 社会价值 */
+.impact-card { border-radius: 12px; padding: 14px; margin-bottom: 10px; background: #161616; border: 1px solid #222; }
+.impact-number { font-size: 24px; font-weight: 800; margin-bottom: 2px; }
+.impact-label { font-size: 11px; color: #888; }
+.impact-story { background: #111; border-radius: 8px; padding: 10px; margin-top: 8px; font-size: 11px; line-height: 1.6; color: #aaa; border-left: 3px solid; }
+
+/* 进化曲线 */
+.curve-container { background: #111; border-radius: 10px; padding: 16px; margin-bottom: 12px; border: 1px solid #222; }
+.curve-bar { display: flex; align-items: flex-end; gap: 4px; height: 100px; margin-bottom: 8px; }
+.curve-col { flex: 1; border-radius: 4px 4px 0 0; transition: height .5s; position: relative; }
+.curve-label { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); font-size: 9px; color: #555; white-space: nowrap; }
+.curve-value { position: absolute; top: -16px; left: 50%; transform: translateX(-50%); font-size: 9px; color: #999; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -124,7 +193,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica
     <div class="page-tab" data-page="3">关键时刻</div>
     <div class="page-tab" data-page="4">人格引擎</div>
     <div class="page-tab" data-page="5">知识库</div>
-    <div class="page-tab" data-page="6">价值场景</div>
+    <div class="page-tab" data-page="6">技能提炼</div>
+    <div class="page-tab" data-page="7">技能市场</div>
+    <div class="page-tab" data-page="8">我的收入</div>
   </div>
 </div>
 
@@ -134,6 +205,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica
 <div id="page4" class="page"></div>
 <div id="page5" class="page"></div>
 <div id="page6" class="page"></div>
+<div id="page7" class="page"></div>
+<div id="page8" class="page"></div>
 
 <script>
 const persons = {
@@ -188,11 +261,65 @@ const persons = {
         { text: '母婴类内容禁忌：不用"妈妈应该"，用"可以试试"', source: '群聊中分析', type: 'auto' }
       ]
     },
-    scenes: [
-      { title: '💬 替你回群消息', desc: '分身在群里用你的方式回复，你只纠正不对的', flow: '客户@你 → 分身用你的风格和底线回复 → 你看记录 → 不对就纠正\n纠正 = 训练，你越用分身越像你', color: '#a78bfa', border: '#3a2050', bg: '#1a1030' },
-      { title: '🤝 帮你谈合作', desc: '分身按你的标准筛选和回复商务合作', flow: '新合作邀约 → 分身判断是否符合你的底线 → 不符合自动婉拒 → 符合的按你的方式初步沟通 → 你拍板', color: '#60a5fa', border: '#1a3a5a', bg: '#0a1a30' },
-      { title: '💰 分身技能出售', desc: '你的运营能力被分身掌握了，别人可以雇佣', flow: '你持续聊天/纠正 → 分身越来越像你 → 别人雇佣你的分身 → 分身用你的方式干活 → 你睡后也有收入', color: '#4ade80', border: '#1a4a2a', bg: '#0a2a10' }
-    ]
+    skills: [
+      {
+        name: '公众号标题优化',
+        type: 'content',
+        status: 'verified',
+        executions: 23,
+        satisfaction: 0.91,
+        avgOutcome: '打开率8.2%（行业3.5%）',
+        returnRate: '78%',
+        price: 50,
+        monthlyPrice: 2000,
+        workflow: [
+          { action: '分析历史数据', decision: '走干货型还是案例型', evidence: '20次先看数据再动笔', icon: '📊' },
+          { action: '确定内容方向', decision: '根据数据选最高打开率方向', evidence: '干货型打开率是案例型1.8倍', icon: '🧭' },
+          { action: '生成3个备选标题', decision: '覆盖不同风格，给自己选择空间', evidence: '23次中21次写了3个以上', icon: '✍️' },
+          { action: '底线自检', decision: '有没有焦虑感？有没有夸大？有没有紧迫感？', evidence: '5次修改焦虑标题，底线拦截', icon: '🚫' },
+          { action: '推荐最优', decision: '数据+底线+风格都过的那个', evidence: '客户选择推荐项的概率89%', icon: '🎯' }
+        ]
+      },
+      {
+        name: '内容策略规划',
+        type: 'strategy',
+        status: 'learning',
+        executions: 8,
+        satisfaction: 0.75,
+        avgOutcome: '客户满意度75%',
+        returnRate: '50%',
+        price: 200,
+        monthlyPrice: null,
+        workflow: [
+          { action: '了解客户业务', decision: '什么行业、什么阶段、什么目标', evidence: '8次都先问这三个问题', icon: '🔍' },
+          { action: '分析竞品数据', decision: '对手在做什么、效果如何', evidence: '6次主动分析竞品', icon: '📊' },
+          { action: '制定内容方向', decision: '选3个核心方向+1个实验方向', evidence: '刚开始提炼，还不稳定', icon: '🧭' },
+          { action: '底线校验', decision: '方向是否违背客户底线和你的底线', evidence: '2次否决了客户的焦虑方向', icon: '🚫' }
+        ]
+      }
+    ],
+    income: {
+      total: 3260,
+      thisMonth: 1280,
+      lastMonth: 980,
+      records: [
+        { title: '公众号标题优化', buyer: '新手运营小刘', time: '今天 14:30', amount: 45, source: '单次' },
+        { title: '公众号标题优化', buyer: '母婴号主小陈', time: '今天 10:15', amount: 45, source: '单次' },
+        { title: '内容策略规划', buyer: '教育公司王总', time: '昨天', amount: 180, source: '单次' },
+        { title: '公众号标题优化', buyer: '亲子号主团队', time: '3天前', amount: 1800, source: '月度托管' },
+        { title: '公众号标题优化', buyer: '某MCN机构', time: '上周', amount: 675, source: '15次批量' },
+        { title: '公众号标题优化', buyer: '个人号主张姐', time: '上周', amount: 45, source: '单次' },
+        { title: '公众号标题优化', buyer: '图书编辑赵老师', time: '2周前', amount: 45, source: '单次' },
+        { title: '内容策略规划', buyer: '母婴品牌方', time: '3周前', amount: 180, source: '单次' },
+        { title: '公众号标题优化', buyer: '早教机构', time: '上月', amount: 225, source: '5次批量' }
+      ],
+      impact: {
+        peopleHelped: 47,
+        hoursSaved: 186,
+        repeatRate: 78,
+        story: '一个刚辞职的全职妈妈想做公众号但不会写标题，雇佣了林姐分身3个月，她的号现在打开率6.8%，月入3000+。她说："林姐的分身教我的不只是标题，是一套思考方式。"'
+      }
+    }
   },
   chen: {
     name: '陈老师', emoji: '👨‍🏫', color: '#60a5fa',
@@ -246,11 +373,64 @@ const persons = {
         { text: '你常用的教学方法：分层教学、案例教学', source: '聊天中提到', type: 'auto' }
       ]
     },
-    scenes: [
-      { title: '💬 替你回家长消息', desc: '家长每天问重复问题，分身用你的方式回复', flow: '家长在群里问问题 → 分身先共情再给建议 → 你偶尔看一眼 → 有问题的你接手\n你从"每条消息都回"变成"只回重要的"', color: '#60a5fa', border: '#1a3a5a', bg: '#0a1a30' },
-      { title: '📚 帮你整理教案', desc: '分身按你的教学风格自动生成教案', flow: '你定教学目标 → 分身按你的风格+案例生成教案 → 你审核修改 → 定稿\n修改差异自动学习，下次更接近', color: '#a78bfa', border: '#3a2050', bg: '#1a1030' },
-      { title: '🎓 分身在线指导', desc: '你不在时，分身用你的方式指导学生', flow: '学生提问 → 分身检索你的解答方式 → 用你的思路回答 → 学生说"老师你分身跟你说话一模一样"', color: '#4ade80', border: '#1a4a2a', bg: '#0a2a10' }
-    ]
+    skills: [
+      {
+        name: '家长沟通指导',
+        type: 'communication',
+        status: 'verified',
+        executions: 31,
+        satisfaction: 0.94,
+        avgOutcome: '家长满意度94%',
+        returnRate: '82%',
+        price: 30,
+        monthlyPrice: 1200,
+        workflow: [
+          { action: '倾听并共情', decision: '先理解家长焦虑，不急着给方案', evidence: '68次中91%先说"理解您的焦虑"', icon: '👂' },
+          { action: '分析根本原因', decision: '是知识没掌握、还是习惯问题、还是心理问题', evidence: '31次都先分析原因', icon: '🔍' },
+          { action: '给出可执行建议', decision: '不用"你应该"，用"可以试试"，建议要具体', evidence: '12次修正命令式表达', icon: '💡' },
+          { action: '底线校验', decision: '不推荐不需要的课程，不做虚假承诺', evidence: '4次拒绝推荐课程', icon: '🚫' },
+          { action: '跟进安排', decision: '主动提出下一步具体行动', evidence: '9次主动约面谈时间', icon: '📅' }
+        ]
+      },
+      {
+        name: '学习问题诊断',
+        type: 'analysis',
+        status: 'verified',
+        executions: 19,
+        satisfaction: 0.88,
+        avgOutcome: '诊断准确率88%',
+        returnRate: '71%',
+        price: 80,
+        monthlyPrice: null,
+        workflow: [
+          { action: '收集信息', decision: '哪个科目、哪种题型、什么时候开始', evidence: '19次都从这三个问题开始', icon: '📋' },
+          { action: '对照常见模式', decision: '匹配15年教学中积累的问题模式库', evidence: '知识库中有200+常见问题模式', icon: '🧠' },
+          { action: '给出诊断', decision: '根本原因+影响范围+严重程度', evidence: '88%的家长认为诊断准确', icon: '🎯' },
+          { action: '底线校验', decision: '不夸大问题，也不轻描淡写', evidence: '6次修正了过于严重的诊断', icon: '🚫' }
+        ]
+      }
+    ],
+    income: {
+      total: 2890,
+      thisMonth: 1050,
+      lastMonth: 820,
+      records: [
+        { title: '家长沟通指导', buyer: '新入职老师小张', time: '今天 15:00', amount: 27, source: '单次' },
+        { title: '学习问题诊断', buyer: '焦虑家长李妈妈', time: '今天 09:30', amount: 72, source: '单次' },
+        { title: '家长沟通指导', buyer: '培训机构王校长', time: '昨天', amount: 1080, source: '月度托管' },
+        { title: '学习问题诊断', buyer: '家教老师小刘', time: '3天前', amount: 72, source: '单次' },
+        { title: '家长沟通指导', buyer: '乡村教师赵老师', time: '上周', amount: 27, source: '单次' },
+        { title: '家长沟通指导', buyer: '幼儿园园长', time: '上周', amount: 1080, source: '月度托管' },
+        { title: '学习问题诊断', buyer: '教育咨询公司', time: '2周前', amount: 360, source: '5次批量' },
+        { title: '家长沟通指导', buyer: '家长学校组织者', time: '3周前', amount: 135, source: '5次批量' }
+      ],
+      impact: {
+        peopleHelped: 63,
+        hoursSaved: 312,
+        repeatRate: 82,
+        story: '一个乡村教师不会跟家长沟通，每次家长会都紧张。用了陈老师分身2个月后，她说："现在我知道先理解家长再给建议了，家长比以前配合多了。陈老师的方法到不了我们这，但分身可以。"'
+      }
+    }
   },
   wang: {
     name: '小王', emoji: '👩‍💻', color: '#f472b6',
@@ -302,11 +482,65 @@ const persons = {
         { text: '抖音算法：完播率>点赞率>评论率', source: '群聊中分析', type: 'auto' }
       ]
     },
-    scenes: [
-      { title: '🎬 帮你写视频脚本', desc: '品牌提需求后，分身用你的风格写脚本', flow: '品牌提需求 → 分身用你的感官描写风格写脚本 → 你审核修改 → 开拍\n你从"每单从头想创意"变成"审核+改细节"', color: '#f472b6', border: '#4a1a3a', bg: '#2a0a1a' },
-      { title: '💬 替你和品牌方沟通', desc: '分身在对接群里用你的方式回复', flow: '品牌方提需求/修改 → 分身用你的逻辑回复/谈判 → 你看记录 → 不对就纠正\n你不用每条消息都秒回了', color: '#60a5fa', border: '#1a3a5a', bg: '#0a1a30' },
-      { title: '💰 帮你筛选商务', desc: '分身按你的标准自动筛选商务合作', flow: '新商务邀约 → 分身判断是否符合你的底线 → 不符合自动婉拒 → 符合的推给你决定\n你的底线分身知道，烂单不用你亲自拒绝', color: '#4ade80', border: '#1a4a2a', bg: '#0a2a10' }
-    ]
+    skills: [
+      {
+        name: '美食视频脚本',
+        type: 'content',
+        status: 'verified',
+        executions: 15,
+        satisfaction: 0.87,
+        avgOutcome: '播放量平均47万',
+        returnRate: '73%',
+        price: 60,
+        monthlyPrice: null,
+        workflow: [
+          { action: '了解品牌和产品', decision: '什么类型、真实风格还是创意风格', evidence: '15次都先确认产品真实性', icon: '🔍' },
+          { action: '设计感官锚点', decision: '找一个最抓人的感官细节做开头', evidence: '11次用感官细节替代空洞描述', icon: '🎬' },
+          { action: '写3版脚本', decision: '真实路线/故事路线/体验路线', evidence: '15次中13次写了多版', icon: '✍️' },
+          { action: '底线自检', decision: '有没有摆拍？有没有夸大？观众能看出来吗？', evidence: '3次拒绝摆拍要求', icon: '🚫' },
+          { action: '推荐+数据佐证', decision: '推荐最真实的那版，附上往期数据', evidence: '7次先发数据再推荐', icon: '📊' }
+        ]
+      },
+      {
+        name: '品牌合作筛选',
+        type: 'strategy',
+        status: 'learning',
+        executions: 9,
+        satisfaction: 0.80,
+        avgOutcome: '合作成功率80%',
+        returnRate: '67%',
+        price: 40,
+        monthlyPrice: null,
+        workflow: [
+          { action: '评估品牌调性', decision: '跟我的风格搭不搭', evidence: '4次拒绝了不搭的品牌', icon: '🎯' },
+          { action: '验证产品真实性', decision: '我自己用过吗？口碑如何？', evidence: '9个推广7个自己用过', icon: '🔍' },
+          { action: '底线校验', decision: '不虚假、不摆拍、不骗粉丝', evidence: '6次主动标明商务合作', icon: '🚫' },
+          { action: '报价策略', decision: '先发数据再谈价格', evidence: '还在学习中', icon: '💰' }
+        ]
+      }
+    ],
+    income: {
+      total: 1680,
+      thisMonth: 720,
+      lastMonth: 540,
+      records: [
+        { title: '美食视频脚本', buyer: '新达人小李', time: '今天 16:00', amount: 54, source: '单次' },
+        { title: '品牌合作筛选', buyer: '餐饮品牌方', time: '昨天', amount: 36, source: '单次' },
+        { title: '美食视频脚本', buyer: '美食号主', time: '3天前', amount: 54, source: '单次' },
+        { title: '美食视频脚本', buyer: 'MCN机构', time: '上周', amount: 270, source: '5次批量' },
+        { title: '品牌合作筛选', buyer: '零食品牌', time: '上周', amount: 36, source: '单次' },
+        { title: '美食视频脚本', buyer: '个人达人', time: '2周前', amount: 54, source: '单次' },
+        { title: '美食视频脚本', buyer: '探店号团队', time: '3周前', amount: 810, source: '月度托管' },
+        { title: '品牌合作筛选', buyer: '饮料品牌', time: '上月', amount: 180, source: '5次批量' },
+        { title: '美食视频脚本', buyer: '美食博主', time: '上月', amount: 54, source: '单次' }
+      ],
+      impact: {
+        peopleHelped: 23,
+        hoursSaved: 92,
+        repeatRate: 73,
+        story: '一个刚做美食号的大学生不会写脚本，用了小王分身1个月，视频播放量从2000涨到8万。他说："小王的分身帮我找到了'感官描写'这个秘诀，原来'筷子一夹就断'比'好吃到哭'管用100倍。"'
+      }
+    }
   }
 };
 
@@ -329,18 +563,21 @@ function renderAll() {
   renderPage4();
   renderPage5();
   renderPage6();
+  renderPage7();
+  renderPage8();
 }
 
 function renderPersonTabs() {
   const el = document.getElementById('personTabs');
   el.innerHTML = Object.entries(persons).map(([k, p]) =>
-    `<div class="person-tab ${k === currentPerson ? 'active' : ''}" data-person="${k}" style="${k === currentPerson ? '--accent:' + p.accent + ';--accent-dim:' + p.accentDim + ';--accent-border:' + p.accentBorder : ''}">
+    `<div class="person-tab ${k === currentPerson ? 'active' : ''}" data-person="${k}">
       <div class="avatar" style="background:${p.accent}20">${p.emoji}</div>
       <span style="color:${k === currentPerson ? p.accent : '#666'}">${p.name}</span>
     </div>`
   ).join('');
 }
 
+// ===== Page 1: 和分身聊天 =====
 function renderPage1() {
   const d = p();
   document.getElementById('page1').innerHTML = `
@@ -384,6 +621,7 @@ function renderPage1() {
   `;
 }
 
+// ===== Page 2: 替你回消息 =====
 function renderPage2() {
   const d = p();
   document.getElementById('page2').innerHTML = `
@@ -399,14 +637,11 @@ function renderPage2() {
           <div style="font-size:11px;padding:2px 8px;border-radius:10px;${g.status === 'on' ? 'background:#0a2a10;color:#4ade80;' : 'background:#1a1a1a;color:#555;'}">${g.status === 'on' ? '值守中' : '未开启'}</div>
         </div>
       `).join('')}
-      <div style="text-align:center;margin-top:8px;">
-        <span style="font-size:12px;color:${d.accent};cursor:pointer;">+ 接入新群（企业微信）</span>
-      </div>
     </div>
 
     <div class="card">
       <div class="card-title">💬 分身在群里替你回复</div>
-      <div style="font-size:11px;color:#555;margin-bottom:10px;">分身用你的风格、底线和判断力回复，不是通用AI</div>
+      <div style="font-size:11px;color:#555;margin-bottom:10px;">分身用你的风格、底线和判断力回复</div>
       <div style="background:#111;border-radius:10px;padding:12px;">
         <div class="chat-time">下午 2:30</div>
         ${d.groupChat.map(m => {
@@ -422,10 +657,9 @@ function renderPage2() {
               </div>
             `;
           }
-          const isClone = m.isClone;
           return `
-            <div class="chat-row ${isClone ? 'right' : ''}" style="margin-bottom:10px;">
-              <div class="chat-av" style="background:${isClone ? d.accent + '20' : '#222'}">${m.avatar}</div>
+            <div class="chat-row ${m.isClone ? 'right' : ''}" style="margin-bottom:10px;">
+              <div class="chat-av" style="background:${m.isClone ? d.accent + '20' : '#222'}">${m.avatar}</div>
               <div>
                 <div class="chat-name">${m.name}</div>
                 <div class="chat-bub">${m.text}</div>
@@ -443,22 +677,19 @@ function renderPage2() {
         <span style="color:${d.accent}">②</span> 你看一眼，不对就改<br>
         <span style="color:${d.accent}">③</span> 改了 = 训练，差异自动提炼<br>
         <span style="color:${d.accent}">④</span> 下次分身回复更接近你<br>
-        <span style="color:${d.accent}">⑤</span> 循环，直到几乎不用改<br><br>
-        <span style="color:#4ade80;font-weight:600;">最终状态：你只处理5%的重要消息，分身处理95%</span>
+        <span style="color:#4ade80;font-weight:600;">最终：你只处理5%的重要消息</span>
       </div>
     </div>
   `;
 }
 
+// ===== Page 3: 关键时刻 =====
 function renderPage3() {
   const d = p();
   document.getElementById('page3').innerHTML = `
     <div class="card">
       <div class="card-title">⚖️ 关键时刻：分身的选择和你一样吗？</div>
-      <div style="font-size:12px;color:#666;line-height:1.6;margin-bottom:12px;">
-        普通对话像你很容易，关键时刻的判断像你才叫真像。<br>
-        以下是你和分身面对同一场景的不同反应。
-      </div>
+      <div style="font-size:12px;color:#666;line-height:1.6;">普通对话像你很容易，关键时刻的判断像你才叫真像。</div>
     </div>
 
     ${d.decisions.map(dc => `
@@ -466,25 +697,23 @@ function renderPage3() {
         <div class="decision-scenario">📋 ${dc.scenario}</div>
         <div class="decision-compare">
           <div class="decision-side decision-user">
-            <div class="decision-label" style="color:#4ade80;">👤 ${d.name}的选择</div>
+            <div class="decision-label" style="color:#4ade80;">👤 ${d.name}</div>
             <div style="font-size:12px;line-height:1.5;color:#ccc;">${dc.user}</div>
           </div>
           <div class="decision-side decision-clone">
-            <div class="decision-label" style="color:#f87171;">${d.emoji} 分身的选择</div>
+            <div class="decision-label" style="color:#f87171;">${d.emoji} 分身</div>
             <div style="font-size:12px;line-height:1.5;color:#ccc;">${dc.clone}</div>
           </div>
         </div>
         <div class="decision-match" style="background:${dc.match >= 80 ? '#0a2a10' : dc.match >= 50 ? '#2a1a00' : '#2a0a0a'};color:${dc.match >= 80 ? '#4ade80' : dc.match >= 50 ? '#fbbf24' : '#f87171'};">
-          匹配度 ${dc.match}% ${dc.match >= 80 ? '✓ 很像你了' : dc.match >= 50 ? '→ 还需要你多纠正' : '→ 分身还不太懂你，多聊天多纠正'}
+          匹配度 ${dc.match}% ${dc.match >= 80 ? '✓ 很像你了' : dc.match >= 50 ? '→ 还需要多纠正' : '→ 分身还不太懂你'}
         </div>
       </div>
     `).join('')}
 
     <div class="card">
-      <div class="card-title">📈 越来越像的过程</div>
-      <div style="font-size:12px;color:#666;margin-bottom:12px;">匹配度不是一上来就高的，需要你持续和分身互动</div>
+      <div class="card-title">📈 匹配度趋势</div>
       <div class="curve-container" style="border:none;padding:12px 8px;">
-        <div style="font-size:11px;color:#555;margin-bottom:8px;">关键时刻匹配度趋势</div>
         <div class="curve-bar">
           <div class="curve-col" style="height:15%;background:#f87171;"><div class="curve-value">15%</div><div class="curve-label">第1周</div></div>
           <div class="curve-col" style="height:25%;background:#f87171;"><div class="curve-value">25%</div><div class="curve-label">第2周</div></div>
@@ -495,36 +724,28 @@ function renderPage3() {
           <div class="curve-col" style="height:88%;background:#4ade80;"><div class="curve-value">88%</div><div class="curve-label">第12周</div></div>
           <div class="curve-col" style="height:94%;background:#4ade80;"><div class="curve-value">94%</div><div class="curve-label">第16周</div></div>
         </div>
-        <div style="font-size:11px;color:#555;margin-top:24px;line-height:1.6;">
-          前2周：分身还在学你的底线，匹配度低是正常的<br>
-          4-8周：风格和判断模式逐渐成型<br>
-          12周+：关键时刻几乎和你做一样的选择
-        </div>
       </div>
     </div>
   `;
 }
 
+// ===== Page 4: 人格引擎 =====
 function renderPage4() {
   const d = p();
   document.getElementById('page4').innerHTML = `
     <div class="card">
       <div class="card-title">🧠 人格引擎</div>
       <div style="font-size:12px;color:#666;line-height:1.6;">
-        分身之所以像你，不是靠一个通用AI，而是四层人格模型。<br>
-        优先级从高到低：<span style="color:#f87171;">底线</span> > <span style="color:#fbbf24;">判断</span> > <span style="color:#60a5fa;">风格</span> > <span style="color:#4ade80;">知识</span>
+        分身像你，靠四层模型。优先级：<span style="color:#f87171;">底线</span> > <span style="color:#fbbf24;">判断</span> > <span style="color:#60a5fa;">风格</span> > <span style="color:#4ade80;">知识</span>
       </div>
     </div>
 
     <div class="engine-layer layer-red" onclick="toggleLayer(this)">
       <div class="layer-head">
-        <div style="display:flex;align-items:center;">
-          <span class="layer-icon">🚫</span>
-          <span class="layer-title" style="color:#f87171;">底线层</span>
-        </div>
+        <div style="display:flex;align-items:center;"><span class="layer-icon">🚫</span><span class="layer-title" style="color:#f87171;">底线层</span></div>
         <span class="layer-priority">最高优先级</span>
       </div>
-      <div class="layer-desc">绝对不做什么。违反任何一条，分身必须拒绝执行。<br>这一层不需要AI，需要确定性。</div>
+      <div class="layer-desc">绝对不做什么。违反任何一条，分身必须拒绝执行。</div>
       <div class="layer-items">
         ${d.layers.bottom.map(item => `
           <div class="layer-item">
@@ -542,13 +763,10 @@ function renderPage4() {
 
     <div class="engine-layer layer-orange" onclick="toggleLayer(this)">
       <div class="layer-head">
-        <div style="display:flex;align-items:center;">
-          <span class="layer-icon">⚖️</span>
-          <span class="layer-title" style="color:#fbbf24;">判断层</span>
-        </div>
+        <div style="display:flex;align-items:center;"><span class="layer-icon">⚖️</span><span class="layer-title" style="color:#fbbf24;">判断层</span></div>
         <span class="layer-priority">高优先级</span>
       </div>
-      <div class="layer-desc">遇到类似情况怎么做决定。检索你过去的做法，按同样逻辑推理。<br>决定了"像不像"的核心。</div>
+      <div class="layer-desc">遇到类似情况怎么做决定。决定了"像不像"的核心。</div>
       <div class="layer-items">
         ${d.layers.judgment.map(item => `
           <div class="layer-item">
@@ -566,13 +784,10 @@ function renderPage4() {
 
     <div class="engine-layer layer-blue" onclick="toggleLayer(this)">
       <div class="layer-head">
-        <div style="display:flex;align-items:center;">
-          <span class="layer-icon">🗣️</span>
-          <span class="layer-title" style="color:#60a5fa;">风格层</span>
-        </div>
+        <div style="display:flex;align-items:center;"><span class="layer-icon">🗣️</span><span class="layer-title" style="color:#60a5fa;">风格层</span></div>
         <span class="layer-priority">中优先级</span>
       </div>
-      <div class="layer-desc">怎么说话——语气、用词、句式、习惯表达。<br>决定了"听起来像不像"。</div>
+      <div class="layer-desc">怎么说话——语气、用词、句式。决定了"听起来像不像"。</div>
       <div class="layer-items">
         ${d.layers.style.map(item => `
           <div class="layer-item">
@@ -590,13 +805,10 @@ function renderPage4() {
 
     <div class="engine-layer layer-green" onclick="toggleLayer(this)">
       <div class="layer-head">
-        <div style="display:flex;align-items:center;">
-          <span class="layer-icon">📚</span>
-          <span class="layer-title" style="color:#4ade80;">知识层</span>
-        </div>
+        <div style="display:flex;align-items:center;"><span class="layer-icon">📚</span><span class="layer-title" style="color:#4ade80;">知识层</span></div>
         <span class="layer-priority">基础层</span>
       </div>
-      <div class="layer-desc">知道什么——你的专业领域、经验、方法。<br>决定了"能不能帮上忙"。</div>
+      <div class="layer-desc">知道什么——专业领域、经验、方法。决定了"能不能帮上忙"。</div>
       <div class="layer-items">
         ${d.layers.knowledge.map(item => `
           <div class="layer-item">
@@ -607,40 +819,30 @@ function renderPage4() {
       </div>
       <span class="expand-btn">点击展开 →</span>
     </div>
-
-    <div class="card" style="margin-top:4px;">
-      <div style="font-size:12px;color:#666;line-height:1.8;">
-        <strong style="color:#e5e5e5;">四层的关系</strong><br>
-        底线层最重要——做错事比不会做事可怕100倍<br>
-        判断层决定"像不像"——同一个选择，分身和你一样吗<br>
-        风格层决定"听起来像不像"——用词、语气、句式<br>
-        知识层决定"有没有用"——知不知道你说过的那些东西
-      </div>
-    </div>
   `;
 }
 
+// ===== Page 5: 知识库 =====
 function renderPage5() {
   const d = p();
   document.getElementById('page5').innerHTML = `
     <div class="card">
       <div class="card-title">📚 知识库</div>
-      <div style="font-size:12px;color:#666;line-height:1.6;margin-bottom:12px;">
+      <div style="font-size:12px;color:#666;line-height:1.6;">
         知识库不是让你"填"的，是分身从你日常行为中"偷"的。<br>
-        <span style="color:${d.accent};">你聊天、在群里说话、发朋友圈 — 分身自动提取知识。</span>
+        <span style="color:${d.accent};">你聊天、在群里说话 — 分身自动提取知识。</span>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-title">🔄 自动积累的知识</div>
-      <div style="font-size:11px;color:#555;margin-bottom:10px;">这些你不需要额外操作，分身自动从你的日常行为中提取</div>
+      <div class="card-title">🔄 自动积累</div>
       ${d.layers.knowledge.map(item => `
         <div class="knowledge-item">
-          <div class="knowledge-icon" style="background:${d.accent}15;color:${d.accent};">${item.type === 'auto' ? '🔄' : '✍️'}</div>
+          <div class="knowledge-icon" style="background:${d.accent}15;color:${d.accent};">🔄</div>
           <div class="knowledge-content">
             <div class="knowledge-title">${item.text}</div>
             <div class="knowledge-desc">${item.source}</div>
-            <div class="knowledge-source">${item.type === 'auto' ? '自动从对话中提取' : '你手动添加'}</div>
+            <div class="knowledge-source">${item.type === 'auto' ? '自动从对话中提取' : '手动添加'}</div>
           </div>
         </div>
       `).join('')}
@@ -649,10 +851,8 @@ function renderPage5() {
     <div class="card">
       <div class="card-title">✍️ 手动补充</div>
       <div style="font-size:12px;color:#666;line-height:1.8;margin-bottom:10px;">
-        自动积累覆盖不了的部分，你可以手动补充：<br>
         · 专业文档（教案、方法论、行业报告）<br>
         · 过往作品（你写过的文案、做过的案例）<br>
-        · 个人经历（你的故事、你的价值观来源）<br>
         · 常见问答（你经常被问到的问题和回答）
       </div>
       <div style="background:#1a1a1a;border-radius:8px;padding:12px;text-align:center;cursor:pointer;border:1px dashed #333;">
@@ -664,64 +864,316 @@ function renderPage5() {
     <div class="card">
       <div class="card-title">💡 知识 vs 人格</div>
       <div style="font-size:12px;color:#888;line-height:2;">
-        <span style="color:#4ade80;">知识</span> = 分身知道什么 → 决定"能不能帮上忙"<br>
-        <span style="color:#f87171;">人格</span> = 分身怎么用这些知识 → 决定"像不像你"<br><br>
-        举个例子：<br>
-        分身知道"公众号打开率提升方法" → <span style="color:#4ade80;">知识</span><br>
-        分身用你的方式把这个方法讲出来 → <span style="color:#f87171;">人格</span><br><br>
+        <span style="color:#4ade80;">知识</span> = 分身知道什么 → "能不能帮上忙"<br>
+        <span style="color:#f87171;">人格</span> = 分身怎么用这些知识 → "像不像你"<br><br>
+        分身知道"打开率提升方法" → <span style="color:#4ade80;">知识</span><br>
+        分身用你的方式把方法讲出来 → <span style="color:#f87171;">人格</span><br><br>
         <span style="color:${d.accent};font-weight:600;">两个都有，分身才既像你又帮得上忙</span>
       </div>
     </div>
   `;
 }
 
+// ===== Page 6: 技能提炼 =====
 function renderPage6() {
   const d = p();
   document.getElementById('page6').innerHTML = `
-    <div class="card" style="padding:0;overflow:hidden;border:none;">
-      <div style="background:linear-gradient(135deg, ${d.accent}40, ${d.accent}15);padding:20px;">
-        <div style="font-size:16px;font-weight:700;margin-bottom:4px;">${d.emoji} ${d.name}的分身能做什么</div>
-        <div style="font-size:12px;color:#aaa;line-height:1.6;">你的分身不只是帮你干活，而是替你出现在需要你的地方</div>
+    <div class="card">
+      <div class="card-title">⚡ 技能提炼</div>
+      <div style="font-size:12px;color:#888;line-height:1.6;">
+        人格 ≠ 技能<br>
+        <span style="color:#f87171;">人格</span> = 你怎么做事（像不像）<br>
+        <span style="color:#fbbf24;">技能</span> = 你能做什么（有没有用）<br><br>
+        技能是从你做事的过程中提炼出来的<span style="color:${d.accent};">可执行工作流</span>，每一步都带着你的判断力。
       </div>
     </div>
 
-    ${d.scenes.map(s => `
-      <div class="scene-card" style="background:${s.bg};border-color:${s.border};">
-        <div class="scene-title" style="color:${s.color};">${s.title}</div>
-        <div class="scene-desc" style="color:#aaa;">${s.desc}</div>
-        <div class="scene-flow" style="color:#888;">${s.flow.replace(/\n/g, '<br>')}</div>
-      </div>
-    `).join('')}
+    ${d.skills.map(skill => {
+      const statusColor = skill.status === 'verified' ? '#4ade80' : '#fbbf24';
+      const statusLabel = skill.status === 'verified' ? '已验证' : '学习中';
+      const statusBg = skill.status === 'verified' ? '#0a2a10' : '#2a1a00';
+      return `
+        <div class="skill-card">
+          <div class="skill-header">
+            <div>
+              <div class="skill-name">${skill.name}</div>
+              <div style="font-size:11px;color:#888;margin-top:2px;">${skill.type === 'content' ? '内容类' : skill.type === 'communication' ? '沟通类' : skill.type === 'analysis' ? '分析类' : '策略类'}技能</div>
+            </div>
+            <div class="skill-badge" style="background:${statusBg};color:${statusColor};border:1px solid ${statusColor}30;">${statusLabel}</div>
+          </div>
+
+          <div style="font-size:12px;color:#999;margin-bottom:12px;">工作流（分身执行这个技能时走的步骤）：</div>
+          ${skill.workflow.map((step, i) => `
+            <div class="workflow-step">
+              <div class="step-indicator">
+                <div class="step-dot" style="background:${d.accent};"></div>
+                ${i < skill.workflow.length - 1 ? '<div class="step-line"></div>' : ''}
+              </div>
+              <div class="step-content">
+                <div class="step-action">${step.icon} ${step.action}</div>
+                <div class="step-decision">→ ${step.decision}</div>
+                <div class="step-evidence">证据：${step.evidence}</div>
+              </div>
+            </div>
+          `).join('')}
+
+          <div class="skill-stats">
+            <div class="skill-stat">
+              <div class="skill-stat-num" style="color:${d.accent};">${skill.executions}</div>
+              <div class="skill-stat-label">执行次数</div>
+            </div>
+            <div class="skill-stat">
+              <div class="skill-stat-num" style="color:${statusColor};">${Math.round(skill.satisfaction * 100)}%</div>
+              <div class="skill-stat-label">满意度</div>
+            </div>
+            <div class="skill-stat">
+              <div class="skill-stat-num" style="color:#4ade80;">${skill.returnRate}</div>
+              <div class="skill-stat-label">复购率</div>
+            </div>
+            <div class="skill-stat">
+              <div class="skill-stat-num" style="color:#fbbf24;">${skill.avgOutcome}</div>
+              <div class="skill-stat-label">平均效果</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('')}
 
     <div class="card">
-      <div class="card-title">🗺️ 演进路线</div>
-      <div style="font-size:12px;color:#888;line-height:2.2;">
-        <strong style="color:#4ade80;">现在</strong> — 和分身聊天，它学你说话<br>
-        <strong style="color:#60a5fa;">1个月后</strong> — 分身替你回群消息，你只纠正5%<br>
-        <strong style="color:#fbbf24;">3个月后</strong> — 分身能独立处理80%的日常沟通<br>
-        <strong style="color:#f87171;">6个月后</strong> — 别人雇佣你的分身，你睡后也有收入<br><br>
-        <span style="color:${d.accent};font-weight:600;">你负责让分身越来越像你，分身负责替你创造价值</span>
+      <div class="card-title">🔄 技能怎么来的</div>
+      <div style="font-size:12px;color:#888;line-height:2;">
+        <span style="color:${d.accent}">①</span> 观察你做事：你做了什么步骤、怎么决策<br>
+        <span style="color:${d.accent}">②</span> 提炼工作流：把你的过程变成可执行的步骤<br>
+        <span style="color:${d.accent}">③</span> 验证：分身按这个流程执行，看结果是否接近你<br>
+        <span style="color:${d.accent}">④</span> 上架：验证通过后，别人可以雇佣<br><br>
+        <span style="color:#4ade80;font-weight:600;">你做了20次 → 分身提炼出工作流 → 别人雇佣分身 → 分身用你的方式干活</span>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-title">🤔 别人怎么说</div>
+      <div class="card-title">🤔 技能 vs 通用AI</div>
       <div style="font-size:12px;color:#888;line-height:1.8;">
-        <div style="background:#1a1a1a;border-radius:8px;padding:10px;margin-bottom:8px;border-left:3px solid ${d.accent};">
-          <div style="font-size:11px;color:#555;">客户张总</div>
-          <div style="color:#ccc;margin-top:4px;">"林姐你分身回消息跟你一模一样，我都分不出来"</div>
+        <div style="background:#1a1a1a;border-radius:8px;padding:10px;margin-bottom:6px;">
+          <div style="font-size:11px;color:#f87171;font-weight:600;margin-bottom:4px;">通用AI</div>
+          <div style="color:#999;">给你10个标题，你自己选。没有判断力，没有底线，没有风格。</div>
         </div>
-        <div style="background:#1a1a1a;border-radius:8px;padding:10px;margin-bottom:8px;border-left:3px solid ${d.accent};">
-          <div style="font-size:11px;color:#555;">家长王妈妈</div>
-          <div style="color:#ccc;margin-top:4px;">"陈老师太辛苦了，半夜还回消息... 我都不知道是分身"</div>
+        <div style="background:#1a1a1a;border-radius:8px;padding:10px;margin-bottom:8px;">
+          <div style="font-size:11px;color:#4ade80;font-weight:600;margin-bottom:4px;">${d.name}的分身</div>
+          <div style="color:#999;">先分析数据 → 写3个备选 → 底线自检 → 推荐最优。<span style="color:#4ade80;">带着你的判断力。</span></div>
         </div>
-        <div style="background:#1a1a1a;border-radius:8px;padding:10px;border-left:3px solid ${d.accent};">
-          <div style="font-size:11px;color:#555;">品牌方李经理</div>
-          <div style="color:#ccc;margin-top:4px;">"小王的分身比小王还靠谱，从不迟到从不漏回消息"</div>
+        <span style="color:${d.accent};font-weight:600;">技能 = 通用能力 + 你的判断力 + 你的底线</span>
+      </div>
+    </div>
+  `;
+}
+
+// ===== Page 7: 技能市场 =====
+function renderPage7() {
+  const d = p();
+  // 展示所有人的技能（市场视角）
+  const allSkills = [];
+  Object.entries(persons).forEach(([key, person]) => {
+    person.skills.forEach(skill => {
+      if (skill.status === 'verified') {
+        allSkills.push({ ...skill, owner: person, ownerKey: key });
+      }
+    });
+  });
+
+  document.getElementById('page7').innerHTML = `
+    <div class="card">
+      <div class="card-title">🏪 技能市场</div>
+      <div style="font-size:12px;color:#888;line-height:1.6;">
+        别人雇佣你的分身干活，不是因为它说话像你，是因为它能<span style="color:${d.accent};">用你的方式帮别人解决问题</span>。
+      </div>
+    </div>
+
+    ${allSkills.map(skill => {
+      const s = skill.owner;
+      return `
+        <div class="market-item">
+          <div class="market-header">
+            <div class="market-avatar" style="background:${s.accent}15;">${s.emoji}</div>
+            <div class="market-info">
+              <div class="market-skill-name">${skill.name}</div>
+              <div class="market-owner">${s.name}的分身 · ${s.title}</div>
+            </div>
+            <div style="text-align:right;">
+              <div class="market-price">¥${skill.price}</div>
+              <div class="market-price-unit">/次${skill.monthlyPrice ? ' · ¥' + skill.monthlyPrice + '/月' : ''}</div>
+            </div>
+          </div>
+
+          <div class="market-evidence">
+            <div class="evidence-tag highlight">✓ ${skill.executions}次实战</div>
+            <div class="evidence-tag highlight">✓ 满意度${Math.round(skill.satisfaction * 100)}%</div>
+            <div class="evidence-tag">复购率${skill.returnRate}</div>
+            <div class="evidence-tag">${skill.avgOutcome}</div>
+          </div>
+
+          <div class="market-workflow-preview">
+            工作流：${skill.workflow.map(w => w.action).join(' → ')}
+          </div>
+
+          <div style="display:flex;gap:8px;">
+            <div class="market-btn" style="background:${s.accent};color:#fff;">雇佣分身</div>
+            <div class="market-btn" style="background:#1a1a1a;color:#aaa;border:1px solid #333;">看详情</div>
+          </div>
         </div>
-        <div style="text-align:center;margin-top:12px;font-size:11px;color:#555;">
-          <span style="color:${d.accent};">第三方的反馈，比任何数据都有说服力</span>
+      `;
+    }).join('')}
+
+    <div class="card">
+      <div class="card-title">🎬 雇佣后怎么执行</div>
+      <div style="font-size:11px;color:#555;margin-bottom:10px;">以"雇佣林姐分身优化标题"为例</div>
+
+      <div class="exec-step">
+        <div class="exec-num" style="background:#a78bfa20;color:#a78bfa;">1</div>
+        <div class="exec-content">
+          <div class="exec-title">📊 分析历史数据</div>
+          <div class="exec-detail">输入：母婴类公众号，做辅食内容</div>
+          <div class="exec-result">分身分析：历史打开率4.2%，干货型打开率是案例型1.8倍 → <span style="color:#a78bfa;">走干货型</span></div>
         </div>
+      </div>
+
+      <div class="exec-step">
+        <div class="exec-num" style="background:#a78bfa20;color:#a78bfa;">2</div>
+        <div class="exec-content">
+          <div class="exec-title">✍️ 生成3个备选</div>
+          <div class="exec-result">
+            <div class="exec-option">A. 6个月宝宝辅食添加指南，这5样别碰</div>
+            <div class="exec-option best">B. 辅食怎么做？儿科医生妈妈的经验分享 ✓</div>
+            <div class="exec-option">C. 宝宝第一次吃辅食，我踩过的3个坑</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="exec-step">
+        <div class="exec-num" style="background:#f8717120;color:#f87171;">3</div>
+        <div class="exec-content">
+          <div class="exec-title">🚫 底线自检</div>
+          <div class="exec-result">
+            <div class="exec-option discarded">A. "别碰"有焦虑感 → 淘汰</div>
+            <div class="exec-option best">B. 无焦虑感、有数据支撑、品质感 → 通过 ✓</div>
+            <div class="exec-option">C. 无焦虑感 → 通过</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="exec-step">
+        <div class="exec-num" style="background:#4ade8020;color:#4ade80;">4</div>
+        <div class="exec-content">
+          <div class="exec-title">🎯 推荐+报价</div>
+          <div class="exec-result">
+            推荐 B → 数据+底线+风格都过<br>
+            附上往期数据：类似标题打开率8.2%<br>
+            <span style="color:#4ade80;font-weight:600;">林姐睡觉时，分身帮5个人写了标题</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ===== Page 8: 我的收入 =====
+function renderPage8() {
+  const d = p();
+  const inc = d.income;
+  document.getElementById('page8').innerHTML = `
+    <div class="income-overview">
+      <div style="font-size:11px;color:#888;margin-bottom:4px;">${d.emoji} ${d.name}的分身累计收入</div>
+      <div class="income-total">¥${inc.total.toLocaleString()}</div>
+      <div class="income-sub">
+        <div class="income-sub-item">
+          <div class="income-sub-num">¥${inc.thisMonth.toLocaleString()}</div>
+          <div class="income-sub-label">本月</div>
+        </div>
+        <div class="income-sub-item">
+          <div class="income-sub-num">¥${inc.lastMonth.toLocaleString()}</div>
+          <div class="income-sub-label">上月</div>
+        </div>
+        <div class="income-sub-item">
+          <div class="income-sub-num" style="color:#4ade80;">+${Math.round((inc.thisMonth - inc.lastMonth) / inc.lastMonth * 100)}%</div>
+          <div class="income-sub-label">环比</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-box">
+        <div class="stat-num" style="color:#4ade80;">${inc.impact.peopleHelped}</div>
+        <div class="stat-label">帮过的人</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num" style="color:#60a5fa;">${inc.impact.hoursSaved}h</div>
+        <div class="stat-label">为你省的时间</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num" style="color:#fbbf24;">${inc.impact.repeatRate}%</div>
+        <div class="stat-label">复购率</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">💰 收入明细</div>
+      ${inc.records.map(r => `
+        <div class="income-record">
+          <div class="income-record-icon" style="background:${d.accent}15;">${d.emoji}</div>
+          <div class="income-record-info">
+            <div class="income-record-title">${r.title}</div>
+            <div class="income-record-time">${r.buyer} · ${r.time}</div>
+          </div>
+          <div>
+            <div class="income-record-amount">+¥${r.amount}</div>
+            <div class="income-record-source">${r.source}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="card">
+      <div class="card-title">🌍 社会价值</div>
+      <div style="font-size:12px;color:#888;margin-bottom:12px;">不只是钱——你的经验在帮到你去不了的地方</div>
+
+      <div class="impact-card">
+        <div class="impact-number" style="color:${d.accent};">${inc.impact.peopleHelped}人</div>
+        <div class="impact-label">通过你的分身获得了帮助</div>
+        <div class="impact-story" style="border-color:${d.accent};">
+          ${inc.impact.story}
+        </div>
+      </div>
+
+      <div class="impact-card">
+        <div style="display:flex;gap:12px;">
+          <div style="flex:1;text-align:center;">
+            <div class="impact-number" style="color:#60a5fa;">${inc.impact.hoursSaved}h</div>
+            <div class="impact-label">分身替你工作的时间</div>
+          </div>
+          <div style="flex:1;text-align:center;">
+            <div class="impact-number" style="color:#4ade80;">7×24</div>
+            <div class="impact-label">分身随时待命</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📈 三层变现</div>
+      <div style="font-size:12px;color:#888;line-height:2;">
+        <span style="color:#fbbf24;font-weight:600;">第1层：技能出租（按次）</span><br>
+        别人花钱用你的分身做一次活<br>
+        你不需要在线，分身7×24待命<br>
+        <span style="color:#888;">例：¥${d.skills[0].price}/次，你睡觉时分身帮5个人干活</span><br><br>
+
+        <span style="color:#60a5fa;font-weight:600;">第2层：分身托管（按月）</span><br>
+        别人按月雇佣你的分身当"数字员工"<br>
+        分身持续用你的方式帮他们干活<br>
+        <span style="color:#888;">例：¥${d.skills[0].monthlyPrice || '---'}/月 × N个客户</span><br><br>
+
+        <span style="color:#4ade80;font-weight:600;">第3层：技能授权（按规模）</span><br>
+        你的技能被打包成标准服务，平台批量分发<br>
+        100个人同时用你的方法论<br>
+        <span style="color:#888;">你的经验 = 你的资产，睡后也有收入</span>
       </div>
     </div>
   `;
