@@ -22,13 +22,13 @@ interface UserStats {
 // 菜单项配置
 const menuItems = [
   // { title: '我的分身', icon: Sparkles, desc: '管理AI分身', type: 'primary', path: '/package-avatar/pages/avatar-manage/index' },
-  { title: '工资墙', icon: Trophy, desc: '收益排行榜', type: 'primary', path: '/package-profile/pages/earnings-wall/index' },
-  { title: '技能广场', icon: Sparkles, desc: '解锁更多能力', type: 'success', path: '/package-skill/pages/skills-square/index' },
-  { title: '我要发单', icon: FileText, desc: '发布和管理订单', type: 'info', path: '/package-order/pages/order-list/index' },
-  { title: '收益中心', icon: Wallet, desc: '查看收益和提现', type: 'warning', path: '/package-profile/pages/earning-center/index' },
-  { title: '订阅中心', icon: Crown, desc: '升级解锁更多功能', type: 'primary', path: '/package-avatar/pages/subscription/index' },
+  { title: '工资墙', icon: Trophy, desc: '收益排行榜', type: 'primary', path: '/package-profile/pages/earnings-wall/index', requireLogin: false },
+  { title: '技能广场', icon: Sparkles, desc: '解锁更多能力', type: 'success', path: '/package-skill/pages/skills-square/index', requireLogin: true },
+  { title: '我要发单', icon: FileText, desc: '发布和管理订单', type: 'info', path: '/package-order/pages/order-list/index', requireLogin: true },
+  { title: '收益中心', icon: Wallet, desc: '查看收益和提现', type: 'warning', path: '/package-profile/pages/earning-center/index', requireLogin: false },
+  { title: '订阅中心', icon: Crown, desc: '升级解锁更多功能', type: 'primary', path: '/package-avatar/pages/subscription/index', requireLogin: true },
   // { title: '帮助中心', icon: CircleQuestionMark, desc: '常见问题解答', type: 'info', path: '/package-profile/pages/help/index' },
-  { title: '关于我们', icon: Info, desc: '版本 v1.0.0', type: 'default', path: '/package-profile/pages/about/index' }
+  { title: '关于我们', icon: Info, desc: '版本 v1.0.0', type: 'default', path: '/package-profile/pages/about/index', requireLogin: false }
 ]
 
 const typeColorMap: Record<string, string> = {
@@ -198,11 +198,19 @@ export default function ProfilePage() {
             const Icon = item.icon
             const iconColor = typeColorMap[item.type]
             const bgColor = typeBgMap[item.type]
+            const handleMenuClick = () => {
+              if (!item.path) return
+              if (item.requireLogin && !isLoggedIn) {
+                navigateTo({ url: `/pages/login/index?redirect=${encodeURIComponent(item.path)}` })
+                return
+              }
+              navigateTo({ url: item.path })
+            }
             return (
               <View
                 key={idx}
                 className="menu-item"
-                onClick={() => item.path && navigateTo({ url: item.path })}
+                onClick={handleMenuClick}
               >
                 <View className="menu-icon-wrap" style={{ backgroundColor: bgColor }}>
                   <Icon size={20} color={iconColor} />
