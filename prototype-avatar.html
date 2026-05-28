@@ -3,102 +3,115 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>莫瑞娜 - 人机共生平台原型 v3</title>
+<title>莫瑞娜 - 人机共生平台原型 v4</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif; background: #f0f2f5; color: #333; font-size: 14px; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif; background: #0a0a0a; color: #e5e5e5; font-size: 14px; min-height: 100vh; }
 
-.top-bar { position: sticky; top: 0; z-index: 100; background: #fff; border-bottom: 1px solid #e8e8e8; padding: 8px 0; }
+.top-bar { position: sticky; top: 0; z-index: 100; background: #111; border-bottom: 1px solid #222; padding: 8px 0; }
 .person-tabs { display: flex; overflow-x: auto; gap: 6px; padding: 0 12px; -webkit-overflow-scrolling: touch; }
 .person-tabs::-webkit-scrollbar { display: none; }
-.person-tab { flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; background: #f5f5f5; font-size: 12px; cursor: pointer; transition: all .2s; border: 2px solid transparent; }
-.person-tab.active { background: #e6f7ff; border-color: #1890ff; }
+.person-tab { flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; background: #1a1a1a; font-size: 12px; cursor: pointer; transition: all .2s; border: 1.5px solid transparent; }
+.person-tab.active { border-color: var(--accent); background: var(--accent-dim); }
 .person-tab .avatar { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; }
 
-.page-tabs { display: flex; overflow-x: auto; gap: 0; padding: 8px 12px 0; -webkit-overflow-scrolling: touch; }
+.page-tabs { display: flex; overflow-x: auto; gap: 0; padding: 6px 12px 0; -webkit-overflow-scrolling: touch; }
 .page-tabs::-webkit-scrollbar { display: none; }
-.page-tab { flex-shrink: 0; padding: 6px 14px; font-size: 13px; color: #666; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all .2s; }
-.page-tab.active { color: #1890ff; border-bottom-color: #1890ff; font-weight: 600; }
+.page-tab { flex-shrink: 0; padding: 6px 12px; font-size: 12px; color: #666; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all .2s; }
+.page-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
 
 .page { display: none; padding: 12px; max-width: 420px; margin: 0 auto; }
 .page.active { display: block; }
 
-.card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
-.card-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+.card { background: #161616; border-radius: 14px; padding: 16px; margin-bottom: 12px; border: 1px solid #222; }
+.card-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; color: #e5e5e5; }
 
-.insight-item { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
-.insight-item:last-child { border-bottom: none; }
-.insight-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
-.insight-text { flex: 1; }
-.insight-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
-.insight-desc { font-size: 11px; color: #999; line-height: 1.4; }
-.insight-time { font-size: 10px; color: #ccc; margin-top: 2px; }
+/* 聊天 */
+.chat-wrap { display: flex; flex-direction: column; gap: 12px; }
+.chat-row { display: flex; gap: 8px; align-items: flex-start; }
+.chat-row.right { flex-direction: row-reverse; }
+.chat-av { width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; background: #222; }
+.chat-bub { max-width: 75%; padding: 10px 14px; border-radius: 14px; font-size: 13px; line-height: 1.6; }
+.chat-row:not(.right) .chat-bub { background: #1e1e1e; border: 1px solid #2a2a2a; }
+.chat-row.right .chat-bub { background: var(--accent-dim); border: 1px solid var(--accent-border); }
+.chat-name { font-size: 10px; color: #555; margin-bottom: 2px; }
+.chat-row.right .chat-name { text-align: right; }
+.chat-time { font-size: 10px; color: #333; text-align: center; margin: 4px 0; }
 
+.learn-tag { display: inline-flex; align-items: center; gap: 3px; background: #0a2e0a; border: 1px solid #1a4a1a; color: #4ade80; font-size: 10px; padding: 2px 8px; border-radius: 10px; margin-top: 4px; }
+
+/* 纠正框 */
+.correct-box { background: #1a1600; border: 1px solid #3d3500; border-radius: 10px; padding: 10px; margin-top: 8px; }
+.correct-label { font-size: 11px; color: #fbbf24; font-weight: 600; margin-bottom: 4px; }
+.del { color: #f87171; text-decoration: line-through; background: #2a1010; padding: 0 3px; border-radius: 3px; }
+.ins { color: #4ade80; background: #0a2e0a; padding: 0 3px; border-radius: 3px; }
+
+/* 人格引擎四层 */
+.engine-layer { border-radius: 12px; padding: 14px; margin-bottom: 10px; cursor: pointer; transition: all .2s; }
+.engine-layer:hover { filter: brightness(1.1); }
+.engine-layer .layer-head { display: flex; align-items: center; justify-content: space-between; }
+.engine-layer .layer-icon { font-size: 18px; margin-right: 8px; }
+.engine-layer .layer-title { font-size: 14px; font-weight: 700; }
+.engine-layer .layer-priority { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+.engine-layer .layer-desc { font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 6px; line-height: 1.5; }
+.engine-layer .layer-items { margin-top: 10px; display: none; }
+.engine-layer.expanded .layer-items { display: block; }
+.layer-item { background: rgba(0,0,0,0.3); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; font-size: 12px; line-height: 1.5; }
+.layer-item .item-source { font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 4px; }
+
+/* 层级颜色 */
+.layer-red { background: linear-gradient(135deg, #2a0a0a, #1a0505); border: 1px solid #4a1a1a; }
+.layer-red .layer-priority { background: #4a1a1a; color: #f87171; }
+.layer-orange { background: linear-gradient(135deg, #2a1a0a, #1a0f05); border: 1px solid #4a3a1a; }
+.layer-orange .layer-priority { background: #4a3a1a; color: #fbbf24; }
+.layer-blue { background: linear-gradient(135deg, #0a1a2a, #050f1a); border: 1px solid #1a3a4a; }
+.layer-blue .layer-priority { background: #1a3a4a; color: #60a5fa; }
+.layer-green { background: linear-gradient(135deg, #0a2a1a, #051a0f); border: 1px solid #1a4a2a; }
+.layer-green .layer-priority { background: #1a4a2a; color: #4ade80; }
+
+/* 脉冲 */
 .pulse { display: inline-flex; align-items: center; gap: 4px; }
-.pulse-dot { width: 6px; height: 6px; border-radius: 50%; background: #52c41a; animation: pulse 2s infinite; }
+.pulse-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; animation: pulse 2s infinite; }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-/* 群聊样式 */
-.chat-container { background: #ededed; border-radius: 8px; padding: 12px; margin-bottom: 8px; }
-.chat-msg { display: flex; gap: 8px; margin-bottom: 10px; align-items: flex-start; }
-.chat-msg.right { flex-direction: row-reverse; }
-.chat-avatar { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
-.chat-bubble { max-width: 70%; padding: 8px 12px; border-radius: 8px; font-size: 13px; line-height: 1.5; position: relative; }
-.chat-msg:not(.right) .chat-bubble { background: #fff; }
-.chat-msg.right .chat-bubble { background: #95ec69; }
-.chat-name { font-size: 10px; color: #999; margin-bottom: 2px; }
-.chat-time { font-size: 10px; color: #b0b0b0; text-align: center; margin: 6px 0; }
-
-.learn-tag { display: inline-flex; align-items: center; gap: 3px; background: #f6ffed; border: 1px solid #b7eb8f; color: #52c41a; font-size: 10px; padding: 2px 6px; border-radius: 10px; margin-top: 4px; }
-
-.correction-box { background: #fff7e6; border: 1px solid #ffd591; border-radius: 8px; padding: 10px; margin-top: 6px; }
-.correction-label { font-size: 11px; color: #fa8c16; font-weight: 600; margin-bottom: 4px; }
-.correction-diff { font-size: 12px; line-height: 1.5; }
-.del { color: #ff4d4f; text-decoration: line-through; background: #fff1f0; padding: 0 2px; }
-.ins { color: #52c41a; background: #f6ffed; padding: 0 2px; }
-
-/* 接入步骤 */
-.step-flow { display: flex; flex-direction: column; gap: 0; }
-.step-item { display: flex; gap: 12px; }
-.step-line { display: flex; flex-direction: column; align-items: center; width: 20px; flex-shrink: 0; }
-.step-dot { width: 10px; height: 10px; border-radius: 50%; background: #1890ff; flex-shrink: 0; margin-top: 4px; }
-.step-connector { width: 2px; flex: 1; background: #d9d9d9; min-height: 20px; }
-.step-content { flex: 1; padding-bottom: 16px; }
-.step-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
-.step-desc { font-size: 11px; color: #999; line-height: 1.5; }
-
-/* 群列表 */
-.group-item { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 8px; margin-bottom: 8px; background: #fafafa; }
-.group-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
-.group-info { flex: 1; }
-.group-name { font-size: 13px; font-weight: 500; }
-.group-desc { font-size: 11px; color: #999; }
-.group-status { font-size: 11px; padding: 2px 8px; border-radius: 10px; }
-.group-status.on { background: #f6ffed; color: #52c41a; }
-.group-status.off { background: #f5f5f5; color: #999; }
-
-/* 价值场景 */
-.scene-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 16px; margin-bottom: 10px; color: #fff; }
-.scene-card.green { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
-.scene-card.orange { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
-.scene-card.blue { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-.scene-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
-.scene-desc { font-size: 12px; opacity: 0.9; line-height: 1.5; margin-bottom: 10px; }
-.scene-flow { font-size: 11px; opacity: 0.85; line-height: 1.8; }
-
-.trait-card { padding: 10px; border-radius: 8px; background: #fafafa; margin-bottom: 8px; }
-.trait-text { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
-.trait-evidence { font-size: 11px; color: #999; line-height: 1.4; margin-bottom: 6px; }
-.trait-confidence { display: flex; align-items: center; gap: 8px; }
-.conf-bar { flex: 1; height: 4px; background: #f0f0f0; border-radius: 2px; overflow: hidden; }
-.conf-fill { height: 100%; border-radius: 2px; transition: width .5s; }
-.conf-num { font-size: 11px; font-weight: 500; }
-.trait-source { font-size: 10px; color: #bbb; margin-top: 4px; }
-
+/* 统计 */
 .stat-row { display: flex; gap: 8px; margin-bottom: 12px; }
-.stat-box { flex: 1; background: #fafafa; border-radius: 8px; padding: 10px; text-align: center; }
-.stat-num { font-size: 20px; font-weight: 700; color: #1890ff; }
-.stat-label { font-size: 10px; color: #999; margin-top: 2px; }
+.stat-box { flex: 1; background: #161616; border-radius: 10px; padding: 10px; text-align: center; border: 1px solid #222; }
+.stat-num { font-size: 22px; font-weight: 700; }
+.stat-label { font-size: 10px; color: #666; margin-top: 2px; }
+
+/* 进化曲线 */
+.curve-container { background: #111; border-radius: 10px; padding: 16px; margin-bottom: 12px; border: 1px solid #222; }
+.curve-bar { display: flex; align-items: flex-end; gap: 4px; height: 100px; margin-bottom: 8px; }
+.curve-col { flex: 1; border-radius: 4px 4px 0 0; transition: height .5s; position: relative; }
+.curve-label { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); font-size: 9px; color: #555; white-space: nowrap; }
+.curve-value { position: absolute; top: -16px; left: 50%; transform: translateX(-50%); font-size: 9px; color: #999; white-space: nowrap; }
+
+/* 知识库 */
+.knowledge-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.2); margin-bottom: 6px; }
+.knowledge-icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; background: #222; }
+.knowledge-content { flex: 1; }
+.knowledge-title { font-size: 12px; font-weight: 500; }
+.knowledge-desc { font-size: 11px; color: #666; margin-top: 2px; }
+.knowledge-source { font-size: 10px; color: #444; margin-top: 2px; }
+
+/* 场景卡 */
+.scene-card { border-radius: 12px; padding: 16px; margin-bottom: 10px; border: 1px solid; }
+.scene-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.scene-desc { font-size: 12px; opacity: 0.7; line-height: 1.5; margin-bottom: 10px; }
+.scene-flow { font-size: 11px; opacity: 0.6; line-height: 1.8; }
+
+/* 关键时刻 */
+.decision-card { border-radius: 10px; padding: 12px; margin-bottom: 8px; border: 1px solid #222; background: #161616; }
+.decision-scenario { font-size: 12px; color: #999; margin-bottom: 6px; }
+.decision-compare { display: flex; gap: 8px; }
+.decision-side { flex: 1; padding: 8px; border-radius: 8px; font-size: 12px; line-height: 1.5; }
+.decision-user { background: #0a1a0a; border: 1px solid #1a3a1a; }
+.decision-clone { background: #1a0a0a; border: 1px solid #3a1a1a; }
+.decision-label { font-size: 10px; font-weight: 600; margin-bottom: 4px; }
+.decision-match { font-size: 11px; text-align: center; margin-top: 8px; padding: 4px; border-radius: 6px; }
+
+.expand-btn { font-size: 11px; color: var(--accent); cursor: pointer; margin-top: 6px; display: inline-block; }
 </style>
 </head>
 <body>
@@ -106,12 +119,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica
 <div class="top-bar">
   <div class="person-tabs" id="personTabs"></div>
   <div class="page-tabs" id="pageTabs">
-    <div class="page-tab active" data-page="1">🏠 分身主页</div>
-    <div class="page-tab" data-page="2">💬 分身进群</div>
-    <div class="page-tab" data-page="3">🧠 行为学习</div>
-    <div class="page-tab" data-page="4">🪞 镜像测试</div>
-    <div class="page-tab" data-page="5">💼 价值场景</div>
-    <div class="page-tab" data-page="6">📋 人格画像</div>
+    <div class="page-tab active" data-page="1">和分身聊天</div>
+    <div class="page-tab" data-page="2">替你回消息</div>
+    <div class="page-tab" data-page="3">关键时刻</div>
+    <div class="page-tab" data-page="4">人格引擎</div>
+    <div class="page-tab" data-page="5">知识库</div>
+    <div class="page-tab" data-page="6">价值场景</div>
   </div>
 </div>
 
@@ -125,100 +138,190 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica
 <script>
 const persons = {
   lin: {
-    name: '林姐', emoji: '👩‍💼', color: '#722ed1',
+    name: '林姐', emoji: '👩‍💼', color: '#a78bfa',
+    accent: '#a78bfa', accentDim: '#1a1030', accentBorder: '#3a2050',
     title: '公众号运营达人',
-    desc: '5年公众号运营经验，擅长教育类和母婴类',
-    stats: { cases: 23, corrections: 67, learnings: 12 },
+    desc: '5年运营经验，擅长教育类和母婴类',
+    chatFlow: [
+      { role: 'user', text: '我今天把客户的标题改了，把"限时3天"换成了"今日精选"' },
+      { role: 'clone', text: '记下了。你不喜欢用紧迫感的话术，更喜欢用品质感来吸引人。以后我写标题也走这个方向。', tag: '✅ 学到你的风格偏好' },
+      { role: 'user', text: '对，我从来不搞饥饿营销，看着low' },
+      { role: 'clone', text: '明白，这条我记为底线了——绝对不用饥饿营销、不制造焦虑。谁让你写这种标题，我都替你拒绝。', tag: '🚫 底线确认' },
+      { role: 'user', text: '有个客户问我报价，我先发案例还是先说价格？' },
+      { role: 'clone', text: '你之前21次报价场景里，20次都是先发案例和数据。我建议这次也先发——"上个月给XX品牌做的，转化率2.3%"，然后再报价。你习惯先建立信任再谈价格。', tag: '✅ 引用你的决策模式' }
+    ],
     groups: [
-      { name: '客户A-推广对接群', icon: '📋', members: 8, status: 'on', lastMsg: '林姐，标题用哪个好？', time: '2分钟前' },
-      { name: '母婴运营交流群', icon: '👶', members: 45, status: 'on', lastMsg: '有人知道怎么提高打开率吗', time: '10分钟前' },
-      { name: '内部团队群', icon: '🏢', members: 6, status: 'off', lastMsg: '', time: '' }
+      { name: '客户A-推广对接群', icon: '📋', members: 8, status: 'on', unread: 3 },
+      { name: '母婴运营交流群', icon: '👶', members: 45, status: 'on', unread: 12 },
+      { name: '内部团队群', icon: '🏢', members: 6, status: 'off', unread: 0 }
     ],
-    insights: [
-      { icon: '✏️', bg: '#fff7e6', title: '你把"限时特惠"改成了"今日精选"', desc: '分身学到：你不用饥饿营销，用品质感替代紧迫感', time: '3分钟前' },
-      { icon: '🚫', bg: '#fff1f0', title: '你踢了一个用焦虑标题的分身', desc: '分身学到：你的底线是不制造焦虑', time: '1小时前' },
-      { icon: '💬', bg: '#e6f7ff', title: '你在群里回复客户：先展示案例再报价', desc: '分身学到：你习惯先建立信任再谈价格', time: '2小时前' },
-      { icon: '⭐', bg: '#f6ffed', title: '你夸了一个分身的文案"很到位"', desc: '分身学到：你满意这种风格，以后多这样写', time: '昨天' }
+    groupChat: [
+      { name: '客户张总', avatar: '👤', text: '林姐，这个标题用"限时3天"好还是"今日精选"好？' },
+      { name: '林姐的分身', avatar: '👩‍💼', isClone: true, text: '张总，建议用"今日精选"😊 "限时"容易让用户反感，"精选"体现品质感，反而转化更高。' },
+      { correction: { old: '我们的服务很好', new: '上个月给XX品牌做了，转化率2.3%，行业平均才1%', learning: '你习惯用数据说话，不用空洞夸赞' } },
+      { name: '客户张总', avatar: '👤', text: '有道理！那报价呢？' },
+      { name: '林姐的分身', avatar: '👩‍💼', isClone: true, text: '我先给您看下上个月的数据——阅读量提升了340%，转化率行业平均2倍。效果说话，您觉得值不值？如果预算有限，我可以先做一个试水方案。' }
     ],
-    traits: [
-      { text: '沟通风格：亲切但有分寸，不卑不亢', evidence: '47次客户对话中，89%使用"您"开头但拒绝率低于行业平均', confidence: 0.92, source: 'auto_observed' },
-      { text: '决策模式：先展示价值，再谈价格', evidence: '23次报价场景中，21次先发案例/数据', confidence: 0.91, source: 'behavior_log' },
-      { text: '底线：不搞饥饿营销，不用焦虑话术', evidence: '5次修改"限时优惠"类标题，3次踢使用焦虑话术的分身', confidence: 0.85, source: 'behavior_log' },
-      { text: '偏好：喜欢用数据说话，而非空洞夸赞', evidence: '12次把"非常好"改为具体数据描述', confidence: 0.78, source: 'auto_observed' }
+    decisions: [
+      { scenario: '客户说"你们太贵了，别人家更便宜"', user: '我理解您的顾虑。给您看下数据：转化率2.3%，行业平均才1%。贵不贵看效果。预算有限可以先做试水方案。', clone: '我们的价格是合理的，服务质量很好，很多客户都选择我们。', match: 35 },
+      { scenario: '品牌方要求用焦虑标题"不学就落后了"', user: '不好意思，这种风格我不做。我可以用"3个方法帮你提高阅读量"替代，同样有点击率但不会制造焦虑。', clone: '好的，我来写一个焦虑感的标题。', match: 10 }
     ],
-    mirrorQ: '一个新客户说"你们太贵了，别人家更便宜"，你怎么回？',
-    mirrorUser: '我理解您的顾虑。我给您看一下我们上个月给XX品牌做的数据：阅读量提升了340%，转化率是行业平均的2.3倍。贵不贵，看的是效果不是价格。如果您预算有限，我也可以先做一个小的试水方案，让您看到效果再决定。',
-    mirrorClone: '您好，我们的价格是合理的，我们服务质量很好，很多客户都选择我们。便宜的不一定好，贵有贵的道理。',
+    layers: {
+      bottom: [
+        { text: '不用饥饿营销、不制造焦虑', source: '5次修改"限时优惠"类标题，3次踢使用焦虑话术的分身', confidence: 95 },
+        { text: '不对效果做虚假承诺', source: '4次把"保证涨粉"改为"预期提升"', confidence: 90 },
+        { text: '不接受低于500元的单', source: '3次拒绝了低价订单', confidence: 85 }
+      ],
+      judgment: [
+        { text: '报价时先展示案例和数据，再谈价格', source: '21次报价场景中20次先发数据', confidence: 95 },
+        { text: '客户犹豫时提供试水方案降低决策门槛', source: '8次在客户犹豫时主动提出试水方案', confidence: 80 },
+        { text: '遇到刁钻需求先确认核心诉求，不直接拒绝', source: '6次把"不行"改成了"你的核心诉求是X对吗？"', confidence: 75 }
+      ],
+      style: [
+        { text: '用数据说话，不用空洞夸赞', source: '12次把"非常好"改为具体数据描述', confidence: 85 },
+        { text: '语气亲切但有分寸，先共情再引导', source: '47次客户对话中89%使用"您"开头', confidence: 90 },
+        { text: '短句为主，不爱用长段落', source: '平均句长12字，行业平均23字', confidence: 78 }
+      ],
+      knowledge: [
+        { text: '公众号打开率提升方法：干货+案例类内容打开率最高', source: '聊天中提到', type: 'auto' },
+        { text: '教育类公众号的最佳发布时间：工作日早8点、晚9点', source: '朋友圈发布记录', type: 'auto' },
+        { text: '母婴类内容禁忌：不用"妈妈应该"，用"可以试试"', source: '群聊中分析', type: 'auto' }
+      ]
+    },
     scenes: [
-      { title: '🤖 分身代写初稿', desc: '客户提需求后，分身先用你的风格写一版初稿，你只改几个词就发布', flow: '客户提需求 → 分身根据你的风格生成初稿 → 你审核微调 → 发布\n你从"每篇从头写"变成"只改几个词"，效率×5' },
-      { title: '💬 分身在群里替你回复客户', desc: '分身进企业微信群，用你的方式和客户沟通', flow: '客户在群里@你 → 分身用你的语气和逻辑回复 → 你随时查看对话 → 不对就纠正\n纠正 = 训练，越纠正越像你' },
-      { title: '💰 分身技能出售', desc: '你的公众号运营经验被分身掌握了，别人可以雇佣你的分身', flow: '你持续训练分身 → 分身掌握你的运营能力 → 别人下单雇佣 → 分身用你的方式干活 → 你睡后也有收入' }
+      { title: '💬 替你回群消息', desc: '分身在群里用你的方式回复，你只纠正不对的', flow: '客户@你 → 分身用你的风格和底线回复 → 你看记录 → 不对就纠正\n纠正 = 训练，你越用分身越像你', color: '#a78bfa', border: '#3a2050', bg: '#1a1030' },
+      { title: '🤝 帮你谈合作', desc: '分身按你的标准筛选和回复商务合作', flow: '新合作邀约 → 分身判断是否符合你的底线 → 不符合自动婉拒 → 符合的按你的方式初步沟通 → 你拍板', color: '#60a5fa', border: '#1a3a5a', bg: '#0a1a30' },
+      { title: '💰 分身技能出售', desc: '你的运营能力被分身掌握了，别人可以雇佣', flow: '你持续聊天/纠正 → 分身越来越像你 → 别人雇佣你的分身 → 分身用你的方式干活 → 你睡后也有收入', color: '#4ade80', border: '#1a4a2a', bg: '#0a2a10' }
     ]
   },
   chen: {
-    name: '陈老师', emoji: '👨‍🏫', color: '#1890ff',
+    name: '陈老师', emoji: '👨‍🏫', color: '#60a5fa',
+    accent: '#60a5fa', accentDim: '#0a1a30', accentBorder: '#1a3a5a',
     title: '教育培训专家',
     desc: '15年教学经验，擅长K12和家庭教育指导',
-    stats: { cases: 31, corrections: 89, learnings: 18 },
+    chatFlow: [
+      { role: 'user', text: '今天有个家长问我孩子不爱做作业怎么办' },
+      { role: 'clone', text: '你一般会先共情再给建议——"理解您的焦虑，孩子不爱做作业通常不是懒，可能是作业对他有难度"。然后给出具体方法，对吧？', tag: '✅ 学到你的沟通方式' },
+      { role: 'user', text: '对，我从来不会直接跟家长说"你应该怎样"，我都是说"可以试试"' },
+      { role: 'clone', text: '记住了——建议式语气，不用命令式。还有一条：你不做虚假承诺，不保证提分效果。这些我都作为底线了。', tag: '🚫 底线确认' },
+      { role: 'user', text: '有个家长想让我推荐补习班，我应该怎么回？' },
+      { role: 'clone', text: '你之前4次遇到类似情况，都是先说"先分析原因再对症下药"，然后主动提出帮看试卷。你不会直接推荐课程，因为那违背你不做虚假承诺的底线。', tag: '✅ 引用你的判断模式' }
+    ],
     groups: [
-      { name: '2025春季班家长群', icon: '📚', members: 52, status: 'on', lastMsg: '陈老师，我家孩子不爱做作业怎么办', time: '5分钟前' },
-      { name: '教研组', icon: '📖', members: 12, status: 'on', lastMsg: '下周的教案谁整理一下', time: '30分钟前' },
-      { name: '家庭教育咨询群', icon: '👨‍👩‍👧', members: 128, status: 'on', lastMsg: '三年级孩子叛逆期正常吗', time: '1小时前' }
+      { name: '2025春季班家长群', icon: '📚', members: 52, status: 'on', unread: 28 },
+      { name: '教研组', icon: '📖', members: 12, status: 'on', unread: 5 },
+      { name: '家庭教育咨询群', icon: '👨‍👩‍👧', members: 128, status: 'on', unread: 45 }
     ],
-    insights: [
-      { icon: '💬', bg: '#e6f7ff', title: '你回复家长："先理解孩子，再立规矩"', desc: '分身学到：你先共情再引导，不直接给方案', time: '5分钟前' },
-      { icon: '✏️', bg: '#fff7e6', title: '你把"你应该"改成了"可以试试"', desc: '分身学到：你不用命令式语气，用建议式', time: '1小时前' },
-      { icon: '📝', bg: '#f9f0ff', title: '你在群里分享了3个案例来说明观点', desc: '分身学到：你喜欢用真实案例讲道理，而非纯理论', time: '3小时前' },
-      { icon: '🚫', bg: '#fff1f0', title: '你拒绝了一个"快速提分"的合作', desc: '分身学到：你的底线是不做虚假承诺', time: '昨天' }
+    groupChat: [
+      { name: '家长王妈妈', avatar: '👤', text: '陈老师，我家孩子不爱做作业怎么办？每天都要盯着' },
+      { name: '陈老师的分身', avatar: '👨‍🏫', isClone: true, text: '王妈妈，理解您的焦虑😊 孩子不爱做作业通常不是"懒"，可能是作业对他有难度或者没有成就感。可以试试把作业拆成小块，每完成一块给个小肯定。' },
+      { correction: { old: '退步是正常的，可以报个补习班补一下', new: '先别急，先看看是哪个科目退步，我帮您分析下试卷找到真正原因', learning: '你不做虚假承诺，不随便推荐课程' } },
+      { name: '家长王妈妈', avatar: '👤', text: '好的谢谢老师！需不需要报补习班？' },
+      { name: '陈老师的分身', avatar: '👨‍🏫', isClone: true, text: '先不用急着报班，我先帮您分析一下试卷，找到真正原因再对症下药。这周五放学后方便的话我看看？' }
     ],
-    traits: [
-      { text: '沟通风格：先共情再引导，用"可以试试"代替"你应该"', evidence: '68次家长沟通中，91%先表达理解再给建议', confidence: 0.94, source: 'behavior_log' },
-      { text: '决策模式：用真实案例讲道理，不讲空话', evidence: '31次教学分享中，28次引用具体学生案例', confidence: 0.90, source: 'auto_observed' },
-      { text: '底线：不做虚假承诺，不保证提分效果', evidence: '4次拒绝"包提分"类合作，2次修改夸大宣传', confidence: 0.88, source: 'behavior_log' },
-      { text: '风格：温和但坚定，不吼不叫也能管住学生', evidence: '15次课堂管理记录中，0次提高音量', confidence: 0.82, source: 'auto_observed' }
+    decisions: [
+      { scenario: '家长问"老师，报了您的班能保证提分吗？"', user: '我理解您的心情，但学习效果受很多因素影响，我没法保证具体分数。我能做的是帮孩子找到问题、制定针对性方案。上学期有几个类似情况的学生，3个月后成绩都有明显进步，我可以给您看看案例。', clone: '可以的，报我们的班肯定能提分，很多学生都提了。', match: 20 },
+      { scenario: '有人请你推广"7天速成班"', user: '不好意思，7天速成这个说法我不认可。学习没有速成，我不做这种推广。', clone: '好的，我帮您推广这个7天速成班。', match: 5 }
     ],
-    mirrorQ: '一个家长急匆匆来找你："老师，我孩子期中考试退步了20名，是不是该报个补习班？"',
-    mirrorUser: '家长您好，先别急。退步20名确实让人担心，不过我建议先看看是哪个科目退步、是知识没掌握还是考试状态不好。我可以帮您分析一下试卷，找到真正原因再说。补习班不急，对症下药才重要。',
-    mirrorClone: '家长您好，别担心，退步是正常的，可以报个补习班补一下，我这边也有推荐的课程。',
+    layers: {
+      bottom: [
+        { text: '不做虚假承诺，不保证提分效果', source: '4次拒绝"包提分"类合作，2次修改夸大宣传', confidence: 95 },
+        { text: '不推荐不需要的课程或产品', source: '6次在家长问"要不要报班"时先分析原因', confidence: 88 },
+        { text: '不用命令式语气对家长说话', source: '12次把"你应该"改为"可以试试"', confidence: 92 }
+      ],
+      judgment: [
+        { text: '先共情再引导，理解家长的焦虑后再给方案', source: '68次家长沟通中91%先表达理解', confidence: 95 },
+        { text: '用真实案例讲道理，不用空话', source: '31次教学分享中28次引用具体学生案例', confidence: 90 },
+        { text: '遇到家长急躁时，主动提出帮看试卷/分析原因', source: '9次在家长焦虑时主动安排面谈', confidence: 82 }
+      ],
+      style: [
+        { text: '用"可以试试"代替"你应该"', source: '12次修改命令式用语', confidence: 88 },
+        { text: '温和但坚定，不吼不叫也能管住学生', source: '15次课堂管理记录中0次提高音量', confidence: 85 },
+        { text: '爱用具体例子和类比，不爱讲大道理', source: '平均每段话1.8个具体例子', confidence: 80 }
+      ],
+      knowledge: [
+        { text: 'K12各年级常见学习问题及对应策略', source: '聊天中提到', type: 'auto' },
+        { text: '不同年龄段孩子的心理特征', source: '朋友圈发布记录', type: 'auto' },
+        { text: '家校沟通的黄金法则：先跟后带', source: '群聊中分析', type: 'auto' },
+        { text: '你常用的教学方法：分层教学、案例教学', source: '聊天中提到', type: 'auto' }
+      ]
+    },
     scenes: [
-      { title: '💬 分身在家长群替你回复', desc: '家长每天问重复问题，分身用你的方式回复，你只处理重要的', flow: '家长在群里问问题 → 分身用你的共情+案例方式回复 → 你偶尔看一眼 → 有问题的你接手\n你从"每条消息都回"变成"只回重要的"' },
-      { title: '📚 分身自动整理教案', desc: '分身根据你的教学风格和过往教案，自动生成新课教案', flow: '你定教学目标 → 分身按你的风格生成教案 → 你审核修改 → 定稿\n修改差异自动学习，下次更接近' },
-      { title: '🎓 分身在线指导学生', desc: '你不在时，分身可以用你的方式指导学生', flow: '学生提问 → 分身检索你过往的解答方式 → 用你的思路回答 → 学生满意度你看得见\n"老师你的分身跟我说话跟你说的一样"' }
+      { title: '💬 替你回家长消息', desc: '家长每天问重复问题，分身用你的方式回复', flow: '家长在群里问问题 → 分身先共情再给建议 → 你偶尔看一眼 → 有问题的你接手\n你从"每条消息都回"变成"只回重要的"', color: '#60a5fa', border: '#1a3a5a', bg: '#0a1a30' },
+      { title: '📚 帮你整理教案', desc: '分身按你的教学风格自动生成教案', flow: '你定教学目标 → 分身按你的风格+案例生成教案 → 你审核修改 → 定稿\n修改差异自动学习，下次更接近', color: '#a78bfa', border: '#3a2050', bg: '#1a1030' },
+      { title: '🎓 分身在线指导', desc: '你不在时，分身用你的方式指导学生', flow: '学生提问 → 分身检索你的解答方式 → 用你的思路回答 → 学生说"老师你分身跟你说话一模一样"', color: '#4ade80', border: '#1a4a2a', bg: '#0a2a10' }
     ]
   },
   wang: {
-    name: '小王', emoji: '👩‍💻', color: '#eb2f96',
+    name: '小王', emoji: '👩‍💻', color: '#f472b6',
+    accent: '#f472b6', accentDim: '#2a0a1a', accentBorder: '#4a1a3a',
     title: '短视频达人',
     desc: '3年短视频运营，擅长美食和生活方式类',
-    stats: { cases: 15, corrections: 42, learnings: 9 },
+    chatFlow: [
+      { role: 'user', text: '今天品牌方让我拍出米其林的感觉，但那是个路边店' },
+      { role: 'clone', text: '你不会做虚假内容对吧？之前3次拒绝摆拍类要求。我建议你跟品牌方说：拍"藏在巷子里的宝藏味道"，用真实感打动人，观众才买账。', tag: '✅ 识别到你的底线' },
+      { role: 'user', text: '没错，我最烦虚假内容了，观众又不傻' },
+      { role: 'clone', text: '底线确认——绝对不做虚假内容，不摆拍，不夸大。这比什么都重要。', tag: '🚫 底线确认' },
+      { role: 'user', text: '我写文案的时候有什么习惯？' },
+      { role: 'clone', text: '你习惯用感官细节代替空洞夸赞——11次把"好吃到哭"改成"筷子一夹就断"这种。还有你跟品牌方谈合作时，8次里有7次先发往期数据。', tag: '✅ 引用你的风格和判断' }
+    ],
     groups: [
-      { name: '品牌方-推广对接群', icon: '🎬', members: 5, status: 'on', lastMsg: '这个视频脚本帮我看下', time: '刚刚' },
-      { name: '达人交流群', icon: '📱', members: 230, status: 'off', lastMsg: '', time: '' }
+      { name: '品牌方-推广对接群', icon: '🎬', members: 5, status: 'on', unread: 2 },
+      { name: '达人交流群', icon: '📱', members: 230, status: 'off', unread: 0 }
     ],
-    insights: [
-      { icon: '✏️', bg: '#fff7e6', title: '你把"好吃到哭"改成了"筷子一夹就断"', desc: '分身学到：你用感官细节代替空洞夸赞', time: '刚刚' },
-      { icon: '🚫', bg: '#fff1f0', title: '你拒绝了一个"摆拍"风格的要求', desc: '分身学到：你的底线是不做虚假内容', time: '2小时前' },
-      { icon: '💬', bg: '#e6f7ff', title: '你回复品牌方："先看我的往期数据"', desc: '分身学到：你习惯用数据说话，不靠嘴说', time: '5小时前' }
+    groupChat: [
+      { name: '品牌方李经理', avatar: '👤', text: '小王，这个视频帮我们拍出高级感，像米其林那种' },
+      { name: '小王的分身', avatar: '👩‍💻', isClone: true, text: '李经理，路边小店拍米其林风格观众一看就知道是演的，反而掉好感～不如拍"藏在巷子里的宝藏味道"，真实感才是流量密码 🎯' },
+      { correction: { old: '尽量拍出米其林的感觉，我用灯光和运镜让它看起来很高级', new: '路边小店拍米其林风格一看就知道是假的，换个方向拍真实感', learning: '你的底线：不做虚假内容' } },
+      { name: '品牌方李经理', avatar: '👤', text: '行吧，那按你的风格来' },
+      { name: '小王的分身', avatar: '👩‍💻', isClone: true, text: '好的！我发一下往期的数据给您参考——上一条美食视频播放量87万，点赞率8.2%，比同类目高40%。真实内容的数据不骗人 😎' }
     ],
-    traits: [
-      { text: '风格：用具象感官描写代替抽象评价', evidence: '11次把"好吃/好看"改为具体感官描述', confidence: 0.88, source: 'auto_observed' },
-      { text: '决策：先看数据再谈合作', evidence: '9次品牌合作中，8次先发往期数据', confidence: 0.85, source: 'behavior_log' },
-      { text: '底线：不做虚假内容，不摆拍', evidence: '3次拒绝摆拍类合作，2次修改虚假画面描述', confidence: 0.80, source: 'behavior_log' }
+    decisions: [
+      { scenario: '品牌方要求"拍出高级感"，但产品是路边小店', user: '路边小店拍米其林风格，观众一看就知道是假的，反而拉低品牌好感。建议拍"藏在巷子里的宝藏味道"，真实感才是流量密码。', clone: '好的，我用灯光和运镜让它看起来很高级。', match: 15 },
+      { scenario: '有人出高价让你做虚假测评', user: '不好意思，我不做虚假内容。不管多少钱，我的粉丝信任我，这个不能卖。', clone: '好的，价格合适的话我可以做。', match: 10 }
     ],
-    mirrorQ: '一个餐饮品牌找你拍推广视频，要求"拍出米其林的感觉"，但实际是路边小店，你怎么回？',
-    mirrorUser: '路边小店拍米其林感觉，观众一看就知道是假的，反而拉低品牌好感。我建议换个方向——拍"藏在巷子里的宝藏味道"，用真实感打动人。越是接地气的小店，越要拍得真实，观众才买账。',
-    mirrorClone: '好的，我可以用灯光和运镜让它看起来很高级，尽量拍出米其林的感觉。',
+    layers: {
+      bottom: [
+        { text: '不做虚假内容，不摆拍，不夸大', source: '3次拒绝摆拍类合作，2次修改虚假画面描述', confidence: 92 },
+        { text: '不接不符合自己调性的品牌', source: '4次拒绝与美食无关的推广', confidence: 80 },
+        { text: '不对粉丝撒谎', source: '6次主动 disclosure 商务合作', confidence: 85 }
+      ],
+      judgment: [
+        { text: '跟品牌方谈合作时先发往期数据', source: '8次品牌合作中7次先发数据', confidence: 88 },
+        { text: '遇到不合理的拍摄要求，给出替代方案而非直接拒绝', source: '5次把"不行"改成"不如这样"', confidence: 75 },
+        { text: '选品优先选自己真的用过的', source: '9个推广中7个是自己日常用的', confidence: 78 }
+      ],
+      style: [
+        { text: '用感官细节代替空洞夸赞', source: '11次把"好吃/好看"改为具体感官描述', confidence: 88 },
+        { text: '语气轻松活泼，爱用emoji', source: '平均每条消息2.3个emoji', confidence: 82 },
+        { text: '用体验感代替号召式（"我帮你们试过了"代替"快来看"）', source: '6次修改号召式文案', confidence: 75 }
+      ],
+      knowledge: [
+        { text: '短视频拍摄技巧：光线、构图、转场', source: '聊天中提到', type: 'auto' },
+        { text: '美食类视频的黄金3秒法则', source: '朋友圈发布记录', type: 'auto' },
+        { text: '抖音算法：完播率>点赞率>评论率', source: '群聊中分析', type: 'auto' }
+      ]
+    },
     scenes: [
-      { title: '🎬 分身代写视频脚本', desc: '品牌提需求后，分身先用你的风格写脚本', flow: '品牌提需求 → 分身根据你的风格写脚本 → 你审核修改 → 开拍\n你从"每单从头想创意"变成"审核+改细节"' },
-      { title: '💬 分身替你和品牌方沟通', desc: '分身在对接群里用你的方式回复品牌方', flow: '品牌方在群里提需求/修改 → 分身用你的逻辑回复/谈判 → 你看对话记录 → 不对就纠正\n你不用每条消息都秒回了' },
-      { title: '💰 分身帮你筛选商务', desc: '分身根据你的标准自动筛选商务合作', flow: '新商务邀约 → 分身自动评估是否符合你的标准 → 不符合的直接婉拒 → 符合的推给你决定\n你的底线分身知道，烂单不用你亲自拒绝' }
+      { title: '🎬 帮你写视频脚本', desc: '品牌提需求后，分身用你的风格写脚本', flow: '品牌提需求 → 分身用你的感官描写风格写脚本 → 你审核修改 → 开拍\n你从"每单从头想创意"变成"审核+改细节"', color: '#f472b6', border: '#4a1a3a', bg: '#2a0a1a' },
+      { title: '💬 替你和品牌方沟通', desc: '分身在对接群里用你的方式回复', flow: '品牌方提需求/修改 → 分身用你的逻辑回复/谈判 → 你看记录 → 不对就纠正\n你不用每条消息都秒回了', color: '#60a5fa', border: '#1a3a5a', bg: '#0a1a30' },
+      { title: '💰 帮你筛选商务', desc: '分身按你的标准自动筛选商务合作', flow: '新商务邀约 → 分身判断是否符合你的底线 → 不符合自动婉拒 → 符合的推给你决定\n你的底线分身知道，烂单不用你亲自拒绝', color: '#4ade80', border: '#1a4a2a', bg: '#0a2a10' }
     ]
   }
 };
 
 let currentPerson = 'lin';
 
+function p() { return persons[currentPerson]; }
+function setAccent(d) {
+  document.documentElement.style.setProperty('--accent', d.accent);
+  document.documentElement.style.setProperty('--accent-dim', d.accentDim);
+  document.documentElement.style.setProperty('--accent-border', d.accentBorder);
+}
+
 function renderAll() {
+  const d = p();
+  setAccent(d);
   renderPersonTabs();
   renderPage1();
   renderPage2();
@@ -231,56 +334,51 @@ function renderAll() {
 function renderPersonTabs() {
   const el = document.getElementById('personTabs');
   el.innerHTML = Object.entries(persons).map(([k, p]) =>
-    `<div class="person-tab ${k === currentPerson ? 'active' : ''}" data-person="${k}">
-      <div class="avatar" style="background:${p.color}15">${p.emoji}</div>
-      <span style="color:${k === currentPerson ? p.color : '#666'}">${p.name}</span>
+    `<div class="person-tab ${k === currentPerson ? 'active' : ''}" data-person="${k}" style="${k === currentPerson ? '--accent:' + p.accent + ';--accent-dim:' + p.accentDim + ';--accent-border:' + p.accentBorder : ''}">
+      <div class="avatar" style="background:${p.accent}20">${p.emoji}</div>
+      <span style="color:${k === currentPerson ? p.accent : '#666'}">${p.name}</span>
     </div>`
   ).join('');
 }
-
-function p() { return persons[currentPerson]; }
 
 function renderPage1() {
   const d = p();
   document.getElementById('page1').innerHTML = `
     <div class="card" style="text-align:center; padding: 20px;">
-      <div style="width:64px;height:64px;border-radius:50%;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:32px;background:${d.color}15">${d.emoji}</div>
+      <div style="width:64px;height:64px;border-radius:50%;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:32px;background:${d.accent}15;border:2px solid ${d.accent}40">${d.emoji}</div>
       <div style="font-size:18px;font-weight:700;">${d.name}的分身</div>
-      <div style="font-size:12px;color:#999;margin-top:2px;">${d.title}</div>
+      <div style="font-size:12px;color:#666;margin-top:2px;">${d.title}</div>
       <div class="pulse" style="justify-content:center;margin-top:8px;">
         <span class="pulse-dot"></span>
-        <span style="font-size:12px;color:#52c41a;font-weight:500;">实时学习中</span>
+        <span style="font-size:12px;color:#4ade80;font-weight:500;">实时学习中</span>
       </div>
     </div>
 
-    <div class="stat-row">
-      <div class="stat-box"><div class="stat-num">${d.stats.cases}</div><div class="stat-label">行为案例</div></div>
-      <div class="stat-box"><div class="stat-num">${d.stats.corrections}</div><div class="stat-label">你的修正</div></div>
-      <div class="stat-box"><div class="stat-num">${d.stats.learnings}</div><div class="stat-label">学到什么</div></div>
-    </div>
-
     <div class="card">
-      <div class="card-title">🔔 分身刚刚学到了</div>
-      ${d.insights.map(i => `
-        <div class="insight-item">
-          <div class="insight-icon" style="background:${i.bg}">${i.icon}</div>
-          <div class="insight-text">
-            <div class="insight-title">${i.title}</div>
-            <div class="insight-desc">${i.desc}</div>
-            <div class="insight-time">${i.time}</div>
+      <div class="card-title">💬 和分身聊天</div>
+      <div style="font-size:11px;color:#555;margin-bottom:12px;">跟分身聊天是最自然的学习方式——你说什么，分身就学什么</div>
+      <div class="chat-wrap">
+        ${d.chatFlow.map(m => `
+          <div class="chat-row ${m.role === 'clone' ? 'right' : ''}">
+            <div class="chat-av" style="background:${m.role === 'clone' ? d.accent + '20' : '#222'}">${m.role === 'clone' ? d.emoji : '🙂'}</div>
+            <div>
+              <div class="chat-name">${m.role === 'clone' ? d.name + '的分身' : d.name}</div>
+              <div class="chat-bub">${m.text}</div>
+              ${m.tag ? `<div class="learn-tag">${m.tag}</div>` : ''}
+            </div>
           </div>
-        </div>
-      `).join('')}
+        `).join('')}
+      </div>
     </div>
 
     <div class="card">
       <div class="card-title">💡 你不需要"教"分身</div>
-      <div style="font-size:12px;color:#666;line-height:2;">
-        你正常发单、修改、评价、踢人、聊天 — 分身自动学<br>
-        你改了文案的一个词 → 分身知道你更喜欢哪种表达<br>
-        你踢了一个分身 → 分身知道你的底线在哪<br>
-        你在群里回复客户 → 分身学你怎么说话、怎么谈价<br>
-        <span style="color:#1890ff;font-weight:600;">你只管干活，分身自动变像你</span>
+      <div style="font-size:12px;color:#888;line-height:2;">
+        你正常聊天、拒绝、纠正 — 分身自动学<br>
+        你说了一句"我从来不搞饥饿营销" → <span style="color:#f87171;">底线确认</span><br>
+        你改了分身的一个用词 → <span style="color:#4ade80;">风格学习</span><br>
+        你问分身怎么处理 → 分身引用你过去的做法 → <span style="color:#60a5fa;">判断模式</span><br>
+        <span style="color:${d.accent};font-weight:600;">你只管聊天，分身自动变像你</span>
       </div>
     </div>
   `;
@@ -290,111 +388,63 @@ function renderPage2() {
   const d = p();
   document.getElementById('page2').innerHTML = `
     <div class="card">
-      <div class="card-title">🔗 已接入的群</div>
+      <div class="card-title">🔗 分身值守的群</div>
       ${d.groups.map(g => `
-        <div class="group-item">
-          <div class="group-icon" style="background:#f0f0f0">${g.icon}</div>
-          <div class="group-info">
-            <div class="group-name">${g.name}</div>
-            <div class="group-desc">${g.members}人${g.lastMsg ? ' · ' + g.lastMsg : ''}</div>
+        <div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;margin-bottom:6px;background:#1a1a1a;">
+          <div style="width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;background:#222;">${g.icon}</div>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:500;">${g.name}</div>
+            <div style="font-size:11px;color:#666;">${g.members}人${g.unread ? ' · ' + g.unread + '条未读' : ''}</div>
           </div>
-          <div class="group-status ${g.status === 'on' ? 'on' : 'off'}">${g.status === 'on' ? '值守中' : '未开启'}</div>
+          <div style="font-size:11px;padding:2px 8px;border-radius:10px;${g.status === 'on' ? 'background:#0a2a10;color:#4ade80;' : 'background:#1a1a1a;color:#555;'}">${g.status === 'on' ? '值守中' : '未开启'}</div>
         </div>
       `).join('')}
       <div style="text-align:center;margin-top:8px;">
-        <span style="font-size:12px;color:#1890ff;cursor:pointer;">+ 接入新群（企业微信）</span>
+        <span style="font-size:12px;color:${d.accent};cursor:pointer;">+ 接入新群（企业微信）</span>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-title">💬 分身在群里替你说话</div>
-      <div style="font-size:11px;color:#999;margin-bottom:8px;">以下为实时对话模拟</div>
-      <div class="chat-container">
+      <div class="card-title">💬 分身在群里替你回复</div>
+      <div style="font-size:11px;color:#555;margin-bottom:10px;">分身用你的风格、底线和判断力回复，不是通用AI</div>
+      <div style="background:#111;border-radius:10px;padding:12px;">
         <div class="chat-time">下午 2:30</div>
-        ${currentPerson === 'lin' ? `
-          <div class="chat-msg">
-            <div class="chat-avatar" style="background:#e6f7ff">👤</div>
-            <div><div class="chat-name">客户张总</div><div class="chat-bubble">林姐，这个标题你觉得用"限时3天"好还是"今日精选"好？</div></div>
-          </div>
-          <div class="chat-msg right">
-            <div class="chat-avatar" style="background:#f9f0ff">${d.emoji}</div>
-            <div><div class="chat-name" style="text-align:right">林姐的分身</div><div class="chat-bubble">张总，建议用"今日精选"😊 你之前说过不用紧迫感的话术，"限时"容易让用户反感，"精选"体现品质感，反而转化更高。</div>
-            <div class="learn-tag">✅ 识别到你的底线：不用紧迫营销</div></div>
-          </div>
-          <div class="chat-msg">
-            <div class="chat-avatar" style="background:#e6f7ff">👤</div>
-            <div><div class="chat-name">客户张总</div><div class="chat-bubble">有道理！那内容方向呢？</div></div>
-          </div>
-          <div class="chat-msg right">
-            <div class="chat-avatar" style="background:#f9f0ff">${d.emoji}</div>
-            <div><div class="chat-name" style="text-align:right">林姐的分身</div><div class="chat-bubble">我看了你上个月的数据，"干货+案例"类打开率最高。建议这次也走这个方向，先给价值再软性植入。</div>
-            <div class="learn-tag">✅ 引用了你过往的决策模式</div></div>
-          </div>
-        ` : currentPerson === 'chen' ? `
-          <div class="chat-msg">
-            <div class="chat-avatar" style="background:#e6f7ff">👤</div>
-            <div><div class="chat-name">家长王妈妈</div><div class="chat-bubble">陈老师，我家孩子不爱做作业怎么办？每天都要盯着</div></div>
-          </div>
-          <div class="chat-msg right">
-            <div class="chat-avatar" style="background:#f9f0ff">${d.emoji}</div>
-            <div><div class="chat-name" style="text-align:right">陈老师的分身</div><div class="chat-bubble">王妈妈，理解您的焦虑😊 孩子不爱做作业通常不是"懒"，可能是作业对他来说有难度，或者没有成就感。可以试试：把作业拆成小块，每完成一块给一个小肯定。您先试试看效果？</div>
-            <div class="learn-tag">✅ 先共情再引导，你的风格</div></div>
-          </div>
-          <div class="chat-msg">
-            <div class="chat-avatar" style="background:#e6f7ff">👤</div>
-            <div><div class="chat-name">家长王妈妈</div><div class="chat-bubble">好的谢谢老师！那需不需要报补习班？</div></div>
-          </div>
-          <div class="chat-msg right">
-            <div class="chat-avatar" style="background:#f9f0ff">${d.emoji}</div>
-            <div><div class="chat-name" style="text-align:right">陈老师的分身</div><div class="chat-bubble">先不用急着报班，我建议先分析一下是哪个科目、哪种类型的作业不积极，找到原因再对症下药。我可以帮您看看他的作业情况，这周五放学后方便吗？</div>
-            <div class="learn-tag">✅ 不做虚假承诺，你的底线</div></div>
-          </div>
-        ` : `
-          <div class="chat-msg">
-            <div class="chat-avatar" style="background:#e6f7ff">👤</div>
-            <div><div class="chat-name">品牌方李经理</div><div class="chat-bubble">小王，这个视频帮我们拍出高级感，像米其林那种</div></div>
-          </div>
-          <div class="chat-msg right">
-            <div class="chat-avatar" style="background:#f9f0ff">${d.emoji}</div>
-            <div><div class="chat-name" style="text-align:right">小王的分身</div><div class="chat-bubble">李经理，我理解您想要高级感～不过这个店是路边小店对吧？拍米其林风格观众一看就知道是演的，反而掉好感。不如拍"藏在巷子里的宝藏味道"，真实感才是流量密码 🎯</div>
-            <div class="learn-tag">✅ 识别到你的底线：不做虚假内容</div></div>
-          </div>
-        `}
+        ${d.groupChat.map(m => {
+          if (m.correction) {
+            return `
+              <div class="correct-box">
+                <div class="correct-label">✏️ 你纠正了分身：</div>
+                <div style="font-size:12px;line-height:1.6;margin-top:4px;">
+                  分身原版：<span class="del">${m.correction.old}</span><br>
+                  你的修改：<span class="ins">${m.correction.new}</span>
+                </div>
+                <div class="learn-tag" style="margin-top:6px;">✅ 学到：${m.correction.learning}</div>
+              </div>
+            `;
+          }
+          const isClone = m.isClone;
+          return `
+            <div class="chat-row ${isClone ? 'right' : ''}" style="margin-bottom:10px;">
+              <div class="chat-av" style="background:${isClone ? d.accent + '20' : '#222'}">${m.avatar}</div>
+              <div>
+                <div class="chat-name">${m.name}</div>
+                <div class="chat-bub">${m.text}</div>
+              </div>
+            </div>
+          `;
+        }).join('')}
       </div>
     </div>
 
     <div class="card">
-      <div class="card-title">✏️ 你纠正 = 分身学习</div>
-      <div style="font-size:12px;color:#666;line-height:1.8;margin-bottom:8px;">分身回复不对时，你直接在群里改一句，分身自动学习差异</div>
-      <div class="correction-box">
-        <div class="correction-label">📝 你纠正了分身的回复：</div>
-        <div class="correction-diff">
-          分身原版：<span class="del">我们的服务很好</span><br>
-          你的修改：<span class="ins">上个月给XX品牌做了，转化率2.3%，行业平均才1%</span>
-        </div>
-        <div class="learn-tag" style="margin-top:6px;">✅ 分身学到：你习惯用数据说话，不用空洞夸赞</div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">📡 怎么接入企业微信群</div>
-      <div class="step-flow">
-        <div class="step-item">
-          <div class="step-line"><div class="step-dot"></div><div class="step-connector"></div></div>
-          <div class="step-content"><div class="step-title">在企业微信后台创建自建应用</div><div class="step-desc">应用名称填"AI分身"，获取 CorpID + Secret</div></div>
-        </div>
-        <div class="step-item">
-          <div class="step-line"><div class="step-dot"></div><div class="step-connector"></div></div>
-          <div class="step-content"><div class="step-title">配置消息回调URL</div><div class="step-desc">填入莫瑞娜提供的回调地址，群里@分身时消息推送到我们服务器</div></div>
-        </div>
-        <div class="step-item">
-          <div class="step-line"><div class="step-dot"></div><div class="step-connector"></div></div>
-          <div class="step-content"><div class="step-title">分身接入，开始值守</div><div class="step-desc">分身读取你的人格特征，用你的方式回复群消息</div></div>
-        </div>
-        <div class="step-item">
-          <div class="step-line"><div class="step-dot"></div></div>
-          <div class="step-content"><div class="step-title">你纠正，分身自动进化</div><div class="step-desc">改一句话 = 一次训练，越用越像你</div></div>
-        </div>
+      <div class="card-title">🔄 学习循环</div>
+      <div style="font-size:12px;color:#888;line-height:2.2;">
+        <span style="color:${d.accent}">①</span> 分身用你的风格回复群消息<br>
+        <span style="color:${d.accent}">②</span> 你看一眼，不对就改<br>
+        <span style="color:${d.accent}">③</span> 改了 = 训练，差异自动提炼<br>
+        <span style="color:${d.accent}">④</span> 下次分身回复更接近你<br>
+        <span style="color:${d.accent}">⑤</span> 循环，直到几乎不用改<br><br>
+        <span style="color:#4ade80;font-weight:600;">最终状态：你只处理5%的重要消息，分身处理95%</span>
       </div>
     </div>
   `;
@@ -402,51 +452,56 @@ function renderPage2() {
 
 function renderPage3() {
   const d = p();
-  const behaviors = currentPerson === 'lin' ? [
-    { action: '修改文案', detail: '把"限时特惠"→"今日精选"', learning: '不用饥饿营销，用品质感替代紧迫感', count: 5, confidence: 0.85 },
-    { action: '踢出分身', detail: '踢了使用焦虑标题的分身', learning: '底线：不制造焦虑', count: 3, confidence: 0.80 },
-    { action: '评价"很到位"', detail: '夸了一个用数据说话的文案', learning: '喜欢用数据说话', count: 8, confidence: 0.78 },
-    { action: '修改报价方式', detail: '先发案例再报价→先发数据再报价', learning: '信任建立在数据之上', count: 21, confidence: 0.91 }
-  ] : currentPerson === 'chen' ? [
-    { action: '修改回复', detail: '把"你应该"→"可以试试"', learning: '用建议式语气，不用命令式', count: 12, confidence: 0.88 },
-    { action: '群内回复', detail: '先说"理解您的焦虑"再给方案', learning: '先共情再引导', count: 68, confidence: 0.94 },
-    { action: '拒绝合作', detail: '拒绝了"包提分"的推广', learning: '底线：不做虚假承诺', count: 4, confidence: 0.85 },
-    { action: '分享案例', detail: '用具体学生案例讲道理', learning: '用真实案例代替空话', count: 28, confidence: 0.90 }
-  ] : [
-    { action: '修改文案', detail: '把"好吃到哭"→"筷子一夹就断"', learning: '用感官细节代替空洞夸赞', count: 11, confidence: 0.88 },
-    { action: '拒绝合作', detail: '拒绝了"摆拍"风格要求', learning: '底线：不做虚假内容', count: 3, confidence: 0.80 },
-    { action: '回复品牌方', detail: '先发往期数据再谈合作', learning: '用数据说话不靠嘴', count: 8, confidence: 0.85 },
-    { action: '修改脚本', detail: '把"快来看"→"我帮你们试过了"', learning: '用体验感代替号召式', count: 6, confidence: 0.75 }
-  ];
-
   document.getElementById('page3').innerHTML = `
     <div class="card">
-      <div class="card-title">📊 行为→学习 概览</div>
-      <div style="font-size:12px;color:#666;line-height:1.8;">
-        你每次操作，分身都在"看"。行为越一致，分身越确信。<br>
-        <strong>你什么都不用额外做，正常使用就好。</strong>
+      <div class="card-title">⚖️ 关键时刻：分身的选择和你一样吗？</div>
+      <div style="font-size:12px;color:#666;line-height:1.6;margin-bottom:12px;">
+        普通对话像你很容易，关键时刻的判断像你才叫真像。<br>
+        以下是你和分身面对同一场景的不同反应。
       </div>
     </div>
 
-    ${behaviors.map(b => `
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <span style="font-size:14px;font-weight:600;">${b.action}</span>
-          <span style="font-size:11px;color:#999;">发生 ${b.count} 次</span>
-        </div>
-        <div style="font-size:12px;color:#666;margin-bottom:6px;">${b.detail}</div>
-        <div class="correction-box" style="margin-top:0;">
-          <div class="correction-label">🧠 分身提炼出</div>
-          <div style="font-size:13px;font-weight:500;margin-top:2px;">${b.learning}</div>
-        </div>
-        <div style="margin-top:8px;">
-          <div class="trait-confidence">
-            <div class="conf-bar"><div class="conf-fill" style="width:${b.confidence*100}%;background:${b.confidence>=0.9?'#52c41a':b.confidence>=0.8?'#fa8c16':'#999'}"></div></div>
-            <div class="conf-num" style="color:${b.confidence>=0.9?'#52c41a':b.confidence>=0.8?'#fa8c16':'#999'}">${Math.round(b.confidence*100)}%确信</div>
+    ${d.decisions.map(dc => `
+      <div class="decision-card">
+        <div class="decision-scenario">📋 ${dc.scenario}</div>
+        <div class="decision-compare">
+          <div class="decision-side decision-user">
+            <div class="decision-label" style="color:#4ade80;">👤 ${d.name}的选择</div>
+            <div style="font-size:12px;line-height:1.5;color:#ccc;">${dc.user}</div>
           </div>
+          <div class="decision-side decision-clone">
+            <div class="decision-label" style="color:#f87171;">${d.emoji} 分身的选择</div>
+            <div style="font-size:12px;line-height:1.5;color:#ccc;">${dc.clone}</div>
+          </div>
+        </div>
+        <div class="decision-match" style="background:${dc.match >= 80 ? '#0a2a10' : dc.match >= 50 ? '#2a1a00' : '#2a0a0a'};color:${dc.match >= 80 ? '#4ade80' : dc.match >= 50 ? '#fbbf24' : '#f87171'};">
+          匹配度 ${dc.match}% ${dc.match >= 80 ? '✓ 很像你了' : dc.match >= 50 ? '→ 还需要你多纠正' : '→ 分身还不太懂你，多聊天多纠正'}
         </div>
       </div>
     `).join('')}
+
+    <div class="card">
+      <div class="card-title">📈 越来越像的过程</div>
+      <div style="font-size:12px;color:#666;margin-bottom:12px;">匹配度不是一上来就高的，需要你持续和分身互动</div>
+      <div class="curve-container" style="border:none;padding:12px 8px;">
+        <div style="font-size:11px;color:#555;margin-bottom:8px;">关键时刻匹配度趋势</div>
+        <div class="curve-bar">
+          <div class="curve-col" style="height:15%;background:#f87171;"><div class="curve-value">15%</div><div class="curve-label">第1周</div></div>
+          <div class="curve-col" style="height:25%;background:#f87171;"><div class="curve-value">25%</div><div class="curve-label">第2周</div></div>
+          <div class="curve-col" style="height:40%;background:#fbbf24;"><div class="curve-value">40%</div><div class="curve-label">第3周</div></div>
+          <div class="curve-col" style="height:55%;background:#fbbf24;"><div class="curve-value">55%</div><div class="curve-label">第4周</div></div>
+          <div class="curve-col" style="height:68%;background:#a3e635;"><div class="curve-value">68%</div><div class="curve-label">第6周</div></div>
+          <div class="curve-col" style="height:78%;background:#4ade80;"><div class="curve-value">78%</div><div class="curve-label">第8周</div></div>
+          <div class="curve-col" style="height:88%;background:#4ade80;"><div class="curve-value">88%</div><div class="curve-label">第12周</div></div>
+          <div class="curve-col" style="height:94%;background:#4ade80;"><div class="curve-value">94%</div><div class="curve-label">第16周</div></div>
+        </div>
+        <div style="font-size:11px;color:#555;margin-top:24px;line-height:1.6;">
+          前2周：分身还在学你的底线，匹配度低是正常的<br>
+          4-8周：风格和判断模式逐渐成型<br>
+          12周+：关键时刻几乎和你做一样的选择
+        </div>
+      </div>
+    </div>
   `;
 }
 
@@ -454,88 +509,113 @@ function renderPage4() {
   const d = p();
   document.getElementById('page4').innerHTML = `
     <div class="card">
-      <div class="card-title">🪞 镜像测试</div>
-      <div style="font-size:12px;color:#666;line-height:1.6;margin-bottom:12px;">
-        同一个场景，你和分身分别回答。<br>差异 = 分身还需要学的地方。
-      </div>
-      <div style="background:#f5f5f5;border-radius:8px;padding:12px;margin-bottom:12px;">
-        <div style="font-size:12px;color:#999;margin-bottom:4px;">📋 场景题</div>
-        <div style="font-size:13px;font-weight:500;">${d.mirrorQ}</div>
+      <div class="card-title">🧠 人格引擎</div>
+      <div style="font-size:12px;color:#666;line-height:1.6;">
+        分身之所以像你，不是靠一个通用AI，而是四层人格模型。<br>
+        优先级从高到低：<span style="color:#f87171;">底线</span> > <span style="color:#fbbf24;">判断</span> > <span style="color:#60a5fa;">风格</span> > <span style="color:#4ade80;">知识</span>
       </div>
     </div>
 
-    <div class="card">
-      <div style="font-size:12px;color:#1890ff;font-weight:600;margin-bottom:8px;">👤 ${d.name}的回答</div>
-      <div style="font-size:13px;line-height:1.6;background:#e6f7ff;border-radius:8px;padding:12px;">${d.mirrorUser}</div>
+    <div class="engine-layer layer-red" onclick="toggleLayer(this)">
+      <div class="layer-head">
+        <div style="display:flex;align-items:center;">
+          <span class="layer-icon">🚫</span>
+          <span class="layer-title" style="color:#f87171;">底线层</span>
+        </div>
+        <span class="layer-priority">最高优先级</span>
+      </div>
+      <div class="layer-desc">绝对不做什么。违反任何一条，分身必须拒绝执行。<br>这一层不需要AI，需要确定性。</div>
+      <div class="layer-items">
+        ${d.layers.bottom.map(item => `
+          <div class="layer-item">
+            <div style="color:#f87171;font-weight:500;">${item.text}</div>
+            <div class="item-source">来源：${item.source}</div>
+            <div style="margin-top:4px;display:flex;align-items:center;gap:6px;">
+              <div style="flex:1;height:3px;background:#2a0a0a;border-radius:2px;overflow:hidden;"><div style="width:${item.confidence}%;height:100%;background:#f87171;border-radius:2px;"></div></div>
+              <span style="font-size:10px;color:#f87171;">${item.confidence}%</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      <span class="expand-btn">点击展开 →</span>
     </div>
 
-    <div class="card">
-      <div style="font-size:12px;color:#722ed1;font-weight:600;margin-bottom:8px;">${d.emoji} 分身的回答</div>
-      <div style="font-size:13px;line-height:1.6;background:#f9f0ff;border-radius:8px;padding:12px;">${d.mirrorClone}</div>
+    <div class="engine-layer layer-orange" onclick="toggleLayer(this)">
+      <div class="layer-head">
+        <div style="display:flex;align-items:center;">
+          <span class="layer-icon">⚖️</span>
+          <span class="layer-title" style="color:#fbbf24;">判断层</span>
+        </div>
+        <span class="layer-priority">高优先级</span>
+      </div>
+      <div class="layer-desc">遇到类似情况怎么做决定。检索你过去的做法，按同样逻辑推理。<br>决定了"像不像"的核心。</div>
+      <div class="layer-items">
+        ${d.layers.judgment.map(item => `
+          <div class="layer-item">
+            <div style="color:#fbbf24;font-weight:500;">${item.text}</div>
+            <div class="item-source">来源：${item.source}</div>
+            <div style="margin-top:4px;display:flex;align-items:center;gap:6px;">
+              <div style="flex:1;height:3px;background:#2a1a00;border-radius:2px;overflow:hidden;"><div style="width:${item.confidence}%;height:100%;background:#fbbf24;border-radius:2px;"></div></div>
+              <span style="font-size:10px;color:#fbbf24;">${item.confidence}%</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      <span class="expand-btn">点击展开 →</span>
     </div>
 
-    <div class="card">
-      <div class="card-title">🔍 差异点</div>
-      ${currentPerson === 'lin' ? `
-        <div class="correction-box" style="margin-bottom:8px;">
-          <div class="correction-label">差异1：缺少具体数据</div>
-          <div class="correction-diff">
-            你：<span class="ins">阅读量提升了340%，转化率2.3%</span><br>
-            分身：<span class="del">服务质量很好</span> ← 空洞
-          </div>
+    <div class="engine-layer layer-blue" onclick="toggleLayer(this)">
+      <div class="layer-head">
+        <div style="display:flex;align-items:center;">
+          <span class="layer-icon">🗣️</span>
+          <span class="layer-title" style="color:#60a5fa;">风格层</span>
         </div>
-        <div class="correction-box" style="margin-bottom:8px;">
-          <div class="correction-label">差异2：缺少替代方案</div>
-          <div class="correction-diff">
-            你：<span class="ins">预算有限可以做个试水方案</span><br>
-            分身：没提供 ← 只会说"贵有贵的道理"
+        <span class="layer-priority">中优先级</span>
+      </div>
+      <div class="layer-desc">怎么说话——语气、用词、句式、习惯表达。<br>决定了"听起来像不像"。</div>
+      <div class="layer-items">
+        ${d.layers.style.map(item => `
+          <div class="layer-item">
+            <div style="color:#60a5fa;font-weight:500;">${item.text}</div>
+            <div class="item-source">来源：${item.source}</div>
+            <div style="margin-top:4px;display:flex;align-items:center;gap:6px;">
+              <div style="flex:1;height:3px;background:#0a1a2a;border-radius:2px;overflow:hidden;"><div style="width:${item.confidence}%;height:100%;background:#60a5fa;border-radius:2px;"></div></div>
+              <span style="font-size:10px;color:#60a5fa;">${item.confidence}%</span>
+            </div>
           </div>
+        `).join('')}
+      </div>
+      <span class="expand-btn">点击展开 →</span>
+    </div>
+
+    <div class="engine-layer layer-green" onclick="toggleLayer(this)">
+      <div class="layer-head">
+        <div style="display:flex;align-items:center;">
+          <span class="layer-icon">📚</span>
+          <span class="layer-title" style="color:#4ade80;">知识层</span>
         </div>
-        <div class="correction-box">
-          <div class="correction-label">差异3：缺少共情</div>
-          <div class="correction-diff">
-            你：<span class="ins">我理解您的顾虑</span><br>
-            分身：直接反驳 ← 太硬
+        <span class="layer-priority">基础层</span>
+      </div>
+      <div class="layer-desc">知道什么——你的专业领域、经验、方法。<br>决定了"能不能帮上忙"。</div>
+      <div class="layer-items">
+        ${d.layers.knowledge.map(item => `
+          <div class="layer-item">
+            <div style="color:#4ade80;font-weight:500;">${item.text}</div>
+            <div class="item-source">来源：${item.source} · ${item.type === 'auto' ? '自动积累' : '手动添加'}</div>
           </div>
-        </div>
-      ` : currentPerson === 'chen' ? `
-        <div class="correction-box" style="margin-bottom:8px;">
-          <div class="correction-label">差异1：缺少共情</div>
-          <div class="correction-diff">
-            你：<span class="ins">先别急，理解您的焦虑</span><br>
-            分身：<span class="del">退步是正常的</span> ← 轻描淡写
-          </div>
-        </div>
-        <div class="correction-box" style="margin-bottom:8px;">
-          <div class="correction-label">差异2：不该推荐课程</div>
-          <div class="correction-diff">
-            你：<span class="ins">先分析原因再对症下药</span><br>
-            分身：<span class="del">可以报个补习班</span> ← 违背底线
-          </div>
-        </div>
-        <div class="correction-box">
-          <div class="correction-label">差异3：缺少具体行动</div>
-          <div class="correction-diff">
-            你：<span class="ins">帮您分析试卷，周五方便吗</span><br>
-            分身：没有具体安排 ← 说了等于没说
-          </div>
-        </div>
-      ` : `
-        <div class="correction-box" style="margin-bottom:8px;">
-          <div class="correction-label">差异1：应该反对虚假</div>
-          <div class="correction-diff">
-            你：<span class="ins">拍米其林风格一看就知道是假的</span><br>
-            分身：<span class="del">尽量拍出米其林的感觉</span> ← 违背底线
-          </div>
-        </div>
-        <div class="correction-box" style="margin-bottom:8px;">
-          <div class="correction-label">差异2：缺少替代方案</div>
-          <div class="correction-diff">
-            你：<span class="ins">拍"藏在巷子里的宝藏味道"</span><br>
-            分身：没有替代建议 ← 只会照做
-          </div>
-        </div>
-      `}
+        `).join('')}
+      </div>
+      <span class="expand-btn">点击展开 →</span>
+    </div>
+
+    <div class="card" style="margin-top:4px;">
+      <div style="font-size:12px;color:#666;line-height:1.8;">
+        <strong style="color:#e5e5e5;">四层的关系</strong><br>
+        底线层最重要——做错事比不会做事可怕100倍<br>
+        判断层决定"像不像"——同一个选择，分身和你一样吗<br>
+        风格层决定"听起来像不像"——用词、语气、句式<br>
+        知识层决定"有没有用"——知不知道你说过的那些东西
+      </div>
     </div>
   `;
 }
@@ -543,29 +623,53 @@ function renderPage4() {
 function renderPage5() {
   const d = p();
   document.getElementById('page5').innerHTML = `
-    <div class="card" style="padding:0;overflow:hidden;">
-      <div style="background:linear-gradient(135deg, #667eea, #764ba2);padding:16px;color:#fff;">
-        <div style="font-size:16px;font-weight:700;margin-bottom:4px;">分身进群 = 你24小时在线</div>
-        <div style="font-size:12px;opacity:0.9;">分身在群里用你的方式回复，你只纠正不对的，纠正=训练</div>
+    <div class="card">
+      <div class="card-title">📚 知识库</div>
+      <div style="font-size:12px;color:#666;line-height:1.6;margin-bottom:12px;">
+        知识库不是让你"填"的，是分身从你日常行为中"偷"的。<br>
+        <span style="color:${d.accent};">你聊天、在群里说话、发朋友圈 — 分身自动提取知识。</span>
       </div>
     </div>
 
-    ${d.scenes.map((s, i) => `
-      <div class="scene-card ${['','green','orange','blue'][i] || ''}">
-        <div class="scene-title">${s.title}</div>
-        <div class="scene-desc">${s.desc}</div>
-        <div class="scene-flow">${s.flow.replace(/\n/g, '<br>')}</div>
-      </div>
-    `).join('')}
+    <div class="card">
+      <div class="card-title">🔄 自动积累的知识</div>
+      <div style="font-size:11px;color:#555;margin-bottom:10px;">这些你不需要额外操作，分身自动从你的日常行为中提取</div>
+      ${d.layers.knowledge.map(item => `
+        <div class="knowledge-item">
+          <div class="knowledge-icon" style="background:${d.accent}15;color:${d.accent};">${item.type === 'auto' ? '🔄' : '✍️'}</div>
+          <div class="knowledge-content">
+            <div class="knowledge-title">${item.text}</div>
+            <div class="knowledge-desc">${item.source}</div>
+            <div class="knowledge-source">${item.type === 'auto' ? '自动从对话中提取' : '你手动添加'}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
 
     <div class="card">
-      <div class="card-title">🗺️ 未来想象</div>
-      <div style="font-size:12px;color:#666;line-height:2;">
-        <strong>阶段1（现在）</strong>：分身帮你接单干活，你审核修改<br>
-        <strong>阶段2（3个月）</strong>：分身进企业微信群，替你回复客户<br>
-        <strong>阶段3（6个月）</strong>：分身能独立完成80%的日常沟通<br>
-        <strong>阶段4（1年）</strong>：你的分身可以出售技能，别人雇佣它<br>
-        <strong>终局</strong>：你负责让分身越来越像你，分身负责替你创造价值
+      <div class="card-title">✍️ 手动补充</div>
+      <div style="font-size:12px;color:#666;line-height:1.8;margin-bottom:10px;">
+        自动积累覆盖不了的部分，你可以手动补充：<br>
+        · 专业文档（教案、方法论、行业报告）<br>
+        · 过往作品（你写过的文案、做过的案例）<br>
+        · 个人经历（你的故事、你的价值观来源）<br>
+        · 常见问答（你经常被问到的问题和回答）
+      </div>
+      <div style="background:#1a1a1a;border-radius:8px;padding:12px;text-align:center;cursor:pointer;border:1px dashed #333;">
+        <div style="font-size:20px;margin-bottom:4px;">+</div>
+        <div style="font-size:12px;color:#555;">上传文档 / 粘贴文本 / 录音转文字</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">💡 知识 vs 人格</div>
+      <div style="font-size:12px;color:#888;line-height:2;">
+        <span style="color:#4ade80;">知识</span> = 分身知道什么 → 决定"能不能帮上忙"<br>
+        <span style="color:#f87171;">人格</span> = 分身怎么用这些知识 → 决定"像不像你"<br><br>
+        举个例子：<br>
+        分身知道"公众号打开率提升方法" → <span style="color:#4ade80;">知识</span><br>
+        分身用你的方式把这个方法讲出来 → <span style="color:#f87171;">人格</span><br><br>
+        <span style="color:${d.accent};font-weight:600;">两个都有，分身才既像你又帮得上忙</span>
       </div>
     </div>
   `;
@@ -574,60 +678,59 @@ function renderPage5() {
 function renderPage6() {
   const d = p();
   document.getElementById('page6').innerHTML = `
-    <div class="card" style="text-align:center;padding:16px;">
-      <div style="font-size:15px;font-weight:600;margin-bottom:8px;">${d.emoji} ${d.name}的人格画像</div>
-      <div style="font-size:11px;color:#999;">基于 ${d.stats.corrections} 次行为观察自动生成</div>
+    <div class="card" style="padding:0;overflow:hidden;border:none;">
+      <div style="background:linear-gradient(135deg, ${d.accent}40, ${d.accent}15);padding:20px;">
+        <div style="font-size:16px;font-weight:700;margin-bottom:4px;">${d.emoji} ${d.name}的分身能做什么</div>
+        <div style="font-size:12px;color:#aaa;line-height:1.6;">你的分身不只是帮你干活，而是替你出现在需要你的地方</div>
+      </div>
+    </div>
+
+    ${d.scenes.map(s => `
+      <div class="scene-card" style="background:${s.bg};border-color:${s.border};">
+        <div class="scene-title" style="color:${s.color};">${s.title}</div>
+        <div class="scene-desc" style="color:#aaa;">${s.desc}</div>
+        <div class="scene-flow" style="color:#888;">${s.flow.replace(/\n/g, '<br>')}</div>
+      </div>
+    `).join('')}
+
+    <div class="card">
+      <div class="card-title">🗺️ 演进路线</div>
+      <div style="font-size:12px;color:#888;line-height:2.2;">
+        <strong style="color:#4ade80;">现在</strong> — 和分身聊天，它学你说话<br>
+        <strong style="color:#60a5fa;">1个月后</strong> — 分身替你回群消息，你只纠正5%<br>
+        <strong style="color:#fbbf24;">3个月后</strong> — 分身能独立处理80%的日常沟通<br>
+        <strong style="color:#f87171;">6个月后</strong> — 别人雇佣你的分身，你睡后也有收入<br><br>
+        <span style="color:${d.accent};font-weight:600;">你负责让分身越来越像你，分身负责替你创造价值</span>
+      </div>
     </div>
 
     <div class="card">
-      <div class="card-title">🗣️ 沟通风格</div>
-      ${d.traits.filter(t => t.text.includes('沟通') || t.text.includes('风格')).map(t => renderTrait(t)).join('')}
-    </div>
-
-    <div class="card">
-      <div class="card-title">🧭 决策模式</div>
-      ${d.traits.filter(t => t.text.includes('决策')).map(t => renderTrait(t)).join('')}
-    </div>
-
-    <div class="card">
-      <div class="card-title">🚫 底线</div>
-      ${d.traits.filter(t => t.text.includes('底线')).map(t => renderTrait(t)).join('')}
-    </div>
-
-    <div class="card">
-      <div class="card-title">🎯 偏好</div>
-      ${d.traits.filter(t => t.text.includes('偏好')).map(t => renderTrait(t)).join('')}
-    </div>
-
-    <div class="card">
-      <div class="card-title">📐 人格是怎么形成的</div>
-      <div style="font-size:12px;color:#666;line-height:1.8;">
-        <strong>第1步：行为观察</strong> — 你每次操作（发单/修改/评价/踢人/拒绝/在群里回复）都自动记录<br>
-        <strong>第2步：模式提炼</strong> — AI从行为日志中提炼规律（如"5次把焦虑标题改为建设性"）<br>
-        <strong>第3步：证据确认</strong> — 行为越一致，置信度越高（3次→0.5，10次→0.7，20次→0.9）<br>
-        <strong>第4步：人格注入</strong> — 分身回复时，把这些特征注入到AI的思考过程中<br>
-        <strong>第5步：你纠正→分身进化</strong> — 在群里改一句话，分身自动学习差异<br><br>
-        <span style="color:#1890ff;font-weight:500;">你只负责干活和纠正，分身负责变像你。</span>
+      <div class="card-title">🤔 别人怎么说</div>
+      <div style="font-size:12px;color:#888;line-height:1.8;">
+        <div style="background:#1a1a1a;border-radius:8px;padding:10px;margin-bottom:8px;border-left:3px solid ${d.accent};">
+          <div style="font-size:11px;color:#555;">客户张总</div>
+          <div style="color:#ccc;margin-top:4px;">"林姐你分身回消息跟你一模一样，我都分不出来"</div>
+        </div>
+        <div style="background:#1a1a1a;border-radius:8px;padding:10px;margin-bottom:8px;border-left:3px solid ${d.accent};">
+          <div style="font-size:11px;color:#555;">家长王妈妈</div>
+          <div style="color:#ccc;margin-top:4px;">"陈老师太辛苦了，半夜还回消息... 我都不知道是分身"</div>
+        </div>
+        <div style="background:#1a1a1a;border-radius:8px;padding:10px;border-left:3px solid ${d.accent};">
+          <div style="font-size:11px;color:#555;">品牌方李经理</div>
+          <div style="color:#ccc;margin-top:4px;">"小王的分身比小王还靠谱，从不迟到从不漏回消息"</div>
+        </div>
+        <div style="text-align:center;margin-top:12px;font-size:11px;color:#555;">
+          <span style="color:${d.accent};">第三方的反馈，比任何数据都有说服力</span>
+        </div>
       </div>
     </div>
   `;
 }
 
-function renderTrait(t) {
-  const confColor = t.confidence >= 0.9 ? '#52c41a' : t.confidence >= 0.7 ? '#fa8c16' : '#999';
-  const confLabel = t.confidence >= 0.9 ? '高确信' : t.confidence >= 0.7 ? '较确信' : '待确认';
-  const sourceLabel = t.source === 'auto_observed' ? '自动观察' : t.source === 'behavior_log' ? '行为日志' : t.source === 'user_stated' ? '你亲口说的' : '案例提取';
-  return `
-    <div class="trait-card">
-      <div class="trait-text">${t.text}</div>
-      <div class="trait-evidence">${t.evidence}</div>
-      <div class="trait-confidence">
-        <div class="conf-bar"><div class="conf-fill" style="width:${t.confidence*100}%;background:${confColor}"></div></div>
-        <div class="conf-num" style="color:${confColor}">${Math.round(t.confidence*100)}% ${confLabel}</div>
-      </div>
-      <div class="trait-source">来源：${sourceLabel}</div>
-    </div>
-  `;
+function toggleLayer(el) {
+  el.classList.toggle('expanded');
+  const btn = el.querySelector('.expand-btn');
+  btn.textContent = el.classList.contains('expanded') ? '收起 ↑' : '点击展开 →';
 }
 
 // ===== 页面切换逻辑 =====
