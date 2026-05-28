@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger, Optional } from '@nestjs/common'
 import { CreateGroupDto, UpdateGroupStatusDto, CorrectMessageDto, WebhookPayloadDto, TriggerReplyDto } from './dto/group-bot.dto'
 import { LLMClient, Config } from 'coze-coding-dev-sdk'
+import { FeishuService } from './feishu/feishu.service'
 
 interface GroupBot {
   id: string
@@ -9,6 +10,7 @@ interface GroupBot {
   groupName: string
   platform: 'wecom' | 'feishu'
   webhookUrl: string
+  platformChatId?: string  // 飞书chatId或企业微信chatId
   status: 'active' | 'paused'
   lastActiveAt: string
   createdAt: string
@@ -33,6 +35,13 @@ export class GroupBotService {
   private messages: GroupMessage[] = []
   private idCounter = 1
   private msgCounter = 1
+  private feishuService: FeishuService | null = null
+
+  constructor(
+    @Optional() feishuService: FeishuService,
+  ) {
+    this.feishuService = feishuService
+  }
 
   async createGroup(userId: string, dto: CreateGroupDto): Promise<GroupBot> {
     const group: GroupBot = {
@@ -296,6 +305,112 @@ ${context}`
     }
   }
 
+  /**
+   * 飞书消息回复（从WebSocket长连接触发）
+   * text: 消息内容
+   * senderName: 发送者名称
+   * avatarId: 分身ID（可选，为空则用默认风格）
+   */
+  async generateFeishuReply(text: string, senderName: string, avatarId: string | null): Promise<string | null> {
+    try {
+      const config = new Config()
+      const client = new LLMClient(config)
+
+      const systemPrompt = avatarId
+        ? `你是群里的AI分身（分身ID: ${avatarId}），代表群主回复消息。
+你的回复风格要求：
+1. 亲切自然，像朋友聊天一样
+2. 先理解对方的需求，再给出建议
+3. 不确定的事情要诚实说明
+4. 不要使用焦虑营销话术
+5. 不要做虚假承诺
+6. 回复简洁，不超过100字`
+        : `你是莫瑞娜，一个AI分身助手。你代表用户回复消息。
+你的回复风格要求：
+1. 亲切自然，像朋友聊天一样
+2. 先理解对方的需求，再给出建议
+3. 不确定的事情要诚实说明
+4. 不要使用焦虑营销话术
+5. 不要做虚假承诺
+6. 回复简洁，不超过100字`
+
+      const messages = [
+        { role: 'system' as const, content: systemPrompt },
+        { role: 'user' as const, content: `用户${senderName}说：${text}\n请以分身身份回复。` },
+      ]
+
+      console.log(`[GroupBot] Generating feishu reply for: ${senderName}, message: ${text}`)
+
+      const response = await client.invoke(messages, {
+        model: 'doubao-seed-2-0-lite-260215',
+        temperature: 0.7,
+      })
+
+      console.log(`[GroupBot] Generated feishu reply: ${response.content}`)
+      return response.content
+    } catch (error) {
+      this.logger.error(`Failed to generate feishu reply: ${error.message}`, error.stack)
+      return null
+    }
+  }
+
+  /**
+   * 记录飞书消息到本地
+   */
+  async recordFeishuMessage(groupBotId: string, senderName: string, userContent: string, avatarReply: string): Promise<void> {
+    // 保存用户消息
+    const userMsg: GroupMessage = {
+      id: `msg_${this.msgCounter++}`,
+      groupBotId,
+      senderName,
+      content: userContent,
+      msgType: 'user',
+      avatarReply: null,
+      userCorrection: null,
+      correctionDiff: null,
+      createdAt: new Date().toISOString(),
+    }
+    this.messages.push(userMsg)
+
+    // 保存分身回复
+    const replyMsg: GroupMessage = {
+      id: `msg_${this.msgCounter++}`,
+      groupBotId,
+      senderName: '分身',
+      content: avatarReply,
+      msgType: 'avatar',
+      avatarReply: avatarReply,
+      userCorrection: null,
+      correctionDiff: null,
+      createdAt: new Date().toISOString(),
+    }
+    this.messages.push(replyMsg)
+
+    // 更新最后活跃时间
+    const group = this.groups.find(g => g.id === groupBotId)
+    if (group) {
+      group.lastActiveAt = new Date().toISOString()
+    }
+  }
+
+  /**
+   * 根据平台chatId查找群配置
+   */
+  async findGroupByPlatformChatId(platform: 'wecom' | 'feishu', chatId: string): Promise<GroupBot | null> {
+    const group = this.groups.find(g => g.platform === platform && g.webhookUrl === chatId)
+    return group || null
+  }
+
+  /**
+   * 更新群的飞书chatId
+   */
+  async updateGroupChatId(groupBotId: string, chatId: string): Promise<GroupBot | null> {
+    const group = this.groups.find(g => g.id === groupBotId)
+    if (!group) return null
+    group.webhookUrl = chatId
+    return group
+  }
+
   private async extractDiff(original: string, correction: string): Promise<string> {
     try {
       const config = new Config()
@@ -322,5 +437,26 @@ ${context}`
       this.logger.error(`Failed to extract diff: ${error.message}`)
       return '差异分析失败'
     }
+  }
+
+  // ========== 飞书连接管理 ==========
+
+  async startFeishuConnection(): Promise<void> {
+    if (this.feishuService) {
+      await this.feishuService.startWebSocket()
+    } else {
+      throw new Error('飞书服务未配置')
+    }
+  }
+
+  stopFeishuConnection(): void {
+    // WebSocket断开通过服务销毁实现
+  }
+
+  getFeishuStatus(): { connected: boolean; appId?: string } {
+    if (!this.feishuService) {
+      return { connected: false }
+    }
+    return this.feishuService.getConnectionStatus()
   }
 }

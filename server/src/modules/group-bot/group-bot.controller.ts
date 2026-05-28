@@ -217,6 +217,28 @@ export class GroupBotController {
     }
   }
 
+  // ========== 飞书连接管理 ==========
+
+  @Post('feishu/start')
+  async startFeishu() {
+    console.log(`[GroupBot] POST /api/group-bot/feishu/start - 启动飞书长连接`)
+    await this.groupBotService.startFeishuConnection()
+    return { code: 200, msg: '飞书长连接已启动', data: null }
+  }
+
+  @Post('feishu/stop')
+  async stopFeishu() {
+    console.log(`[GroupBot] POST /api/group-bot/feishu/stop - 停止飞书长连接`)
+    this.groupBotService.stopFeishuConnection()
+    return { code: 200, msg: '飞书长连接已停止', data: null }
+  }
+
+  @Get('feishu/status')
+  async feishuStatus() {
+    const status = this.groupBotService.getFeishuStatus()
+    return { code: 200, msg: 'success', data: status }
+  }
+
   // ========== 通用 Webhook（飞书等） ==========
 
   @Post('webhook/:platform')
