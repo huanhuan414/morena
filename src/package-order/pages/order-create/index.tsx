@@ -181,12 +181,12 @@ export default function OrderCreate() {
           const extracted = data?.data
           if (extracted) {
             const newAssets: typeof uploadedAssets = []
-            ;(extracted.images || []).forEach((img: { url: string; filename: string; size?: number; mimeType?: string }, idx: number) => {
-              newAssets.push({ id: `zip_img_${Date.now()}_${idx}`, url: img.url, type: 'image', filename: img.filename, size: img.size || 0, mimeType: img.mimeType || 'image/jpeg' })
-            })
-            ;(extracted.videos || []).forEach((vid: { url: string; filename: string; size?: number; mimeType?: string }, idx: number) => {
-              newAssets.push({ id: `zip_vid_${Date.now()}_${idx}`, url: vid.url, type: 'video', filename: vid.filename, size: vid.size || 0, mimeType: vid.mimeType || 'video/mp4' })
-            })
+              ; (extracted.images || []).forEach((img: { url: string; filename: string; size?: number; mimeType?: string }, idx: number) => {
+                newAssets.push({ id: `zip_img_${Date.now()}_${idx}`, url: img.url, type: 'image', filename: img.filename, size: img.size || 0, mimeType: img.mimeType || 'image/jpeg' })
+              })
+              ; (extracted.videos || []).forEach((vid: { url: string; filename: string; size?: number; mimeType?: string }, idx: number) => {
+                newAssets.push({ id: `zip_vid_${Date.now()}_${idx}`, url: vid.url, type: 'video', filename: vid.filename, size: vid.size || 0, mimeType: vid.mimeType || 'video/mp4' })
+              })
             setUploadedAssets(prev => [...prev, ...newAssets])
             Taro.showToast({ title: `提取${newAssets.length}个文件`, icon: 'success' })
           }
@@ -955,57 +955,57 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
 
         {/* 自定义文案 - 简单任务不需要 */}
         {form.contentType !== 'simple' && (
-        <View className="section">
-          <View className="section-header">
-            <View className="section-title-row">
-              <View className="title-dot accent" />
-              <FileText size={16} color="#6366F1" />
-              <Text className="section-title">文案设置</Text>
+          <View className="section">
+            <View className="section-header">
+              <View className="section-title-row">
+                <View className="title-dot accent" />
+                <FileText size={16} color="#6366F1" />
+                <Text className="section-title">文案设置</Text>
+              </View>
+              <View
+                className={`asset-ai-switch ${form.useCustomCopywriting ? 'active' : ''}`}
+                onClick={() => setForm(prev => ({ ...prev, useCustomCopywriting: !prev.useCustomCopywriting }))}
+              >
+                <View className={`asset-ai-switch-dot ${form.useCustomCopywriting ? 'active' : ''}`} />
+              </View>
             </View>
-            <View
-              className={`asset-ai-switch ${form.useCustomCopywriting ? 'active' : ''}`}
-              onClick={() => setForm(prev => ({ ...prev, useCustomCopywriting: !prev.useCustomCopywriting }))}
-            >
-              <View className={`asset-ai-switch-dot ${form.useCustomCopywriting ? 'active' : ''}`} />
-            </View>
-          </View>
-          <View className="asset-ai-toggle-row" style={{ marginTop: '8px', marginBottom: '8px' }}>
-            <View className="asset-ai-toggle-left">
-              <Sparkles size={14} color="#8B5CF6" />
-              <Text className="asset-ai-toggle-label">
-                {form.useCustomCopywriting ? '自定义文案' : 'AI生成文案'}
+            <View className="asset-ai-toggle-row" style={{ marginTop: '8px', marginBottom: '8px' }}>
+              <View className="asset-ai-toggle-left">
+                <Sparkles size={14} color="#8B5CF6" />
+                <Text className="asset-ai-toggle-label">
+                  {form.useCustomCopywriting ? '自定义文案' : 'AI生成文案'}
+                </Text>
+              </View>
+              <Text className="section-hint" style={{ fontSize: '12px' }}>
+                {form.useCustomCopywriting ? '分身将使用您输入的文案' : '分身接单时AI自动生成'}
               </Text>
             </View>
-            <Text className="section-hint" style={{ fontSize: '12px' }}>
-              {form.useCustomCopywriting ? '分身将使用您输入的文案' : '分身接单时AI自动生成'}
-            </Text>
-          </View>
-          {form.useCustomCopywriting && (
-            <View>
-              <View className="textarea-wrapper">
-                <Textarea
-                  className="desc-textarea"
-                  style={{ height: '200px' }}
-                  placeholder="请输入文案内容，分身将直接使用此文案发布..."
-                  value={form.customCopywriting}
-                  onInput={e => setForm(prev => ({ ...prev, customCopywriting: e.detail.value }))}
-                  maxlength={5000}
-                />
-              </View>
-              <View className="desc-footer">
-                <View className="ai-hint">
-                  <Lightbulb size={12} color="#8B5CF6" />
-                  <Text className="ai-hint-text">每个分身将直接使用此文案，不再AI生成</Text>
+            {form.useCustomCopywriting && (
+              <View>
+                <View className="textarea-wrapper">
+                  <Textarea
+                    className="desc-textarea"
+                    style={{ height: '200px' }}
+                    placeholder="请输入文案内容，分身将直接使用此文案发布..."
+                    value={form.customCopywriting}
+                    onInput={e => setForm(prev => ({ ...prev, customCopywriting: e.detail.value }))}
+                    maxlength={5000}
+                  />
                 </View>
-                <Text className="char-count">{form.customCopywriting.length}/5000</Text>
+                <View className="desc-footer">
+                  <View className="ai-hint">
+                    <Lightbulb size={12} color="#8B5CF6" />
+                    <Text className="ai-hint-text">每个分身将直接使用此文案，不再AI生成</Text>
+                  </View>
+                  <Text className="char-count">{form.customCopywriting.length}/5000</Text>
+                </View>
               </View>
-            </View>
-          )}
-        </View>
+            )}
+          </View>
         )}
 
         {/* 素材上传（可选） */}
-        <View className="section">
+        {selectedType?.id != 'text' && (<View className="section">
           <View className="section-header">
             <View className="section-title-row">
               <View className="title-dot accent" />
@@ -1119,7 +1119,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                   <Text className="asset-mode-hint-text">共享模式：所有分身使用相同的素材</Text>
                 </View>
               )}
-                      {form.assetDistributeMode === 'exclusive' && (
+              {form.assetDistributeMode === 'exclusive' && (
                 <View className="asset-mode-hint">
                   <Text className="asset-mode-hint-text">
                     独占模式：每个分身分配不同素材
@@ -1160,6 +1160,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
             </>
           )}
         </View>
+        )}
 
         {/* 分身设置 - 增加价值说明 */}
         <View className="section">
