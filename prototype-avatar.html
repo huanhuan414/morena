@@ -3,741 +3,616 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scale=no">
-<title>莫瑞娜 - 人机共生平台原型</title>
+<title>莫瑞娜 - 人机共生平台原型 v2</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif; background: #f5f5f5; color: #333; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif; background: #f0f2f5; color: #333; font-size: 14px; }
 
 /* 顶部导航 */
 .top-nav { position: fixed; top: 0; left: 0; right: 0; height: 44px; background: #fff; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: center; z-index: 100; }
-.top-nav .back { position: absolute; left: 12px; font-size: 14px; color: #1890ff; cursor: pointer; }
 .top-nav .title { font-size: 16px; font-weight: 600; }
 
 /* 人物切换栏 */
-.person-switcher { position: fixed; top: 44px; left: 0; right: 0; height: 72px; background: #fff; z-index: 99; border-bottom: 1px solid #eee; display: flex; padding: 8px 12px; gap: 10px; overflow-x: auto; white-space: nowrap; }
+.person-switcher { position: fixed; top: 44px; left: 0; right: 0; height: 68px; background: #fff; z-index: 99; border-bottom: 1px solid #eee; display: flex; padding: 8px 12px; gap: 8px; overflow-x: auto; white-space: nowrap; }
 .person-switcher::-webkit-scrollbar { display: none; }
-.person-card { flex: 0 0 auto; width: 90px; height: 56px; border-radius: 12px; padding: 6px 8px; cursor: pointer; transition: all .2s; border: 2px solid transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.person-card { flex: 0 0 auto; width: 80px; height: 52px; border-radius: 12px; padding: 4px 6px; cursor: pointer; transition: all .2s; border: 2px solid transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .person-card.active { border-color: #1890ff; background: #e6f7ff; }
-.person-card .person-emoji { font-size: 20px; margin-bottom: 2px; }
-.person-card .person-name { font-size: 10px; color: #666; font-weight: 500; }
-.person-card.active .person-name { color: #1890ff; }
-.person-card .person-job { font-size: 9px; color: #999; }
-.person-card.active .person-job { color: #1890ff; }
+.person-card .emoji { font-size: 18px; }
+.person-card .name { font-size: 10px; color: #666; font-weight: 500; margin-top: 2px; }
+.person-card.active .name { color: #1890ff; }
 
 /* 页面切换 */
-.page-tabs { position: fixed; top: 116px; left: 0; right: 0; height: 38px; background: #fff; display: flex; z-index: 98; border-bottom: 1px solid #eee; overflow-x: auto; white-space: nowrap; }
+.page-tabs { position: fixed; top: 112px; left: 0; right: 0; height: 38px; background: #fff; display: flex; z-index: 98; border-bottom: 1px solid #eee; overflow-x: auto; white-space: nowrap; }
 .page-tabs::-webkit-scrollbar { display: none; }
-.page-tab { flex: 0 0 auto; padding: 0 12px; height: 38px; line-height: 38px; font-size: 12px; color: #666; cursor: pointer; border-bottom: 2px solid transparent; transition: all .2s; }
+.page-tab { flex: 0 0 auto; padding: 0 14px; height: 38px; line-height: 38px; font-size: 13px; color: #666; cursor: pointer; border-bottom: 2px solid transparent; }
 .page-tab.active { color: #1890ff; border-bottom-color: #1890ff; font-weight: 600; }
 
-/* 内容区 */
-.content { margin-top: 154px; padding-bottom: 80px; min-height: calc(100vh - 154px); }
-.page { display: none; }
+.content { margin-top: 150px; padding-bottom: 40px; min-height: calc(100vh - 150px); }
+.page { display: none; padding: 12px; }
 .page.active { display: block; }
 
-/* ========== 页面0：分身主页 ========== */
-.avatar-header { padding: 24px 16px 32px; color: #fff; position: relative; }
-.avatar-header .avatar-circle { width: 64px; height: 64px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 10px; border: 3px solid rgba(255,255,255,0.5); }
-.avatar-header .avatar-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
-.avatar-header .avatar-desc { font-size: 12px; opacity: 0.85; line-height: 1.5; }
-.avatar-header .similarity-badge { position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.2); backdrop-filter: blur(8px); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 600; }
+/* 通用组件 */
+.card { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+.card-title { font-size: 15px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+.badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
+.badge-blue { background: #e6f7ff; color: #1890ff; }
+.badge-green { background: #f6ffed; color: #52c41a; }
+.badge-orange { background: #fff7e6; color: #fa8c16; }
+.badge-red { background: #fff1f0; color: #f5222d; }
+.badge-purple { background: #f9f0ff; color: #722ed1; }
 
-.skill-cards { padding: 0 12px; margin-top: -16px; }
-.skill-card { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-.skill-card .skill-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.skill-card .skill-name { font-size: 14px; font-weight: 600; }
-.skill-card .skill-level { font-size: 11px; padding: 2px 8px; border-radius: 10px; }
-.skill-card .skill-bar { height: 5px; background: #f0f0f0; border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
-.skill-card .skill-bar-fill { height: 100%; border-radius: 3px; transition: width .5s; }
-.skill-card .skill-desc { font-size: 11px; color: #999; line-height: 1.4; }
-.skill-card .skill-case-count { font-size: 10px; color: #bbb; margin-top: 3px; }
+.tag { display: inline-block; font-size: 11px; padding: 3px 8px; border-radius: 6px; background: #f5f5f5; color: #666; margin: 2px 4px 2px 0; }
+.tag-active { background: #e6f7ff; color: #1890ff; }
 
-.quick-actions { padding: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.quick-action { background: #fff; border-radius: 12px; padding: 14px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.06); cursor: pointer; transition: transform .2s; }
-.quick-action:active { transform: scale(0.97); }
-.quick-action .action-icon { font-size: 24px; margin-bottom: 4px; }
-.quick-action .action-label { font-size: 12px; font-weight: 500; }
-.quick-action .action-sub { font-size: 10px; color: #999; margin-top: 2px; }
+.divider { height: 1px; background: #f0f0f0; margin: 12px 0; }
 
-.pending-questions { padding: 0 12px; margin-top: 6px; }
-.pending-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
-.pending-title .dot { width: 6px; height: 6px; border-radius: 50%; background: #ff4d4f; animation: pulse 1.5s infinite; }
-@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
-.question-card { background: #fff; border-radius: 12px; padding: 12px; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border-left: 3px solid #1890ff; }
-.question-card .q-context { font-size: 10px; color: #999; margin-bottom: 3px; }
-.question-card .q-text { font-size: 13px; line-height: 1.5; color: #333; }
-.question-card .q-time { font-size: 10px; color: #ccc; margin-top: 4px; }
-.question-card .q-btns { display: flex; gap: 8px; margin-top: 8px; }
-.question-card .q-btn { flex: 1; height: 30px; border-radius: 15px; border: none; font-size: 12px; cursor: pointer; }
-.question-card .q-btn.primary { background: #1890ff; color: #fff; }
-.question-card .q-btn.secondary { background: #f5f5f5; color: #666; }
+.btn { display: inline-flex; align-items: center; justify-content: center; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; }
+.btn-primary { background: #1890ff; color: #fff; }
+.btn-outline { background: #fff; color: #1890ff; border: 1px solid #1890ff; }
+.btn-block { width: 100%; }
 
-/* ========== 页面1：分身对话 ========== */
-.chat-header { background: #fff; padding: 10px 16px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; }
-.chat-header .chat-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #fff; }
-.chat-header .chat-info .chat-name { font-size: 14px; font-weight: 600; }
-.chat-header .chat-info .chat-status { font-size: 10px; color: #52c41a; }
-.chat-mode-tabs { display: flex; padding: 6px 16px; gap: 6px; background: #fff; border-bottom: 1px solid #f0f0f0; }
-.chat-mode-tab { padding: 4px 10px; border-radius: 14px; font-size: 11px; background: #f5f5f5; color: #666; cursor: pointer; }
-.chat-mode-tab.active { background: #e6f7ff; color: #1890ff; }
+.progress-bar { height: 6px; background: #f0f0f0; border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 3px; transition: width .3s; }
 
-.chat-body { padding: 14px; min-height: 350px; }
-.msg { margin-bottom: 12px; display: flex; gap: 8px; }
-.msg.user { flex-direction: row-reverse; }
-.msg .msg-avatar { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; }
-.msg .msg-bubble { max-width: 75%; padding: 8px 12px; border-radius: 14px; font-size: 13px; line-height: 1.6; }
-.msg.ai .msg-bubble { background: #fff; border-top-left-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-.msg.user .msg-bubble { color: #fff; border-top-right-radius: 4px; }
-.msg .msg-learning { margin-top: 4px; padding: 4px 8px; background: #f6ffed; border-radius: 6px; font-size: 10px; color: #52c41a; border: 1px solid #b7eb8f; }
+/* ===== 页面0：分身主页 ===== */
+.avatar-hero { background: linear-gradient(135deg, #1890ff, #722ed1); border-radius: 16px; padding: 20px; color: #fff; margin-bottom: 12px; position: relative; overflow: hidden; }
+.avatar-hero::after { content: ''; position: absolute; top: -30px; right: -30px; width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,0.08); }
+.avatar-hero .avatar-info { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.avatar-hero .avatar-circle { width: 56px; height: 56px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 26px; border: 2px solid rgba(255,255,255,0.4); }
+.avatar-hero .avatar-name { font-size: 18px; font-weight: 700; }
+.avatar-hero .avatar-tagline { font-size: 12px; opacity: 0.85; margin-top: 3px; }
+.avatar-hero .stats-row { display: flex; gap: 16px; }
+.avatar-hero .stat-item { flex: 1; text-align: center; }
+.avatar-hero .stat-num { font-size: 20px; font-weight: 700; }
+.avatar-hero .stat-label { font-size: 10px; opacity: 0.7; margin-top: 2px; }
 
-.chat-input { position: fixed; bottom: 56px; left: 0; right: 0; background: #fff; padding: 8px 16px; border-top: 1px solid #eee; display: flex; gap: 8px; align-items: flex-end; z-index: 99; }
-.chat-input input { flex: 1; height: 32px; border-radius: 16px; border: 1px solid #ddd; padding: 0 12px; font-size: 13px; outline: none; }
-.chat-input input:focus { border-color: #1890ff; }
-.chat-input .send-btn { width: 32px; height: 32px; border-radius: 50%; border: none; color: #fff; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.insight-timeline { padding-left: 16px; border-left: 2px solid #e6f7ff; }
+.insight-item { position: relative; padding: 0 0 16px 12px; }
+.insight-item::before { content: ''; position: absolute; left: -7px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: #1890ff; border: 2px solid #fff; }
+.insight-item .insight-time { font-size: 10px; color: #999; margin-bottom: 2px; }
+.insight-item .insight-text { font-size: 12px; color: #333; line-height: 1.6; }
+.insight-item .insight-source { font-size: 10px; color: #1890ff; margin-top: 3px; }
 
-/* ========== 页面2：案例投喂 ========== */
-.feed-tabs { display: flex; padding: 10px 16px; gap: 6px; }
-.feed-tab { flex: 1; height: 32px; border-radius: 16px; border: 1px solid #ddd; background: #fff; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; }
-.feed-tab.active { border-color: #1890ff; background: #e6f7ff; color: #1890ff; }
+.live-indicator { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #52c41a; font-weight: 500; }
+.live-dot { width: 6px; height: 6px; border-radius: 50%; background: #52c41a; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-.feed-story-area { padding: 0 12px; }
-.feed-prompt { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-.feed-prompt .prompt-label { font-size: 12px; color: #999; margin-bottom: 6px; }
-.feed-prompt .prompt-text { width: 100%; min-height: 100px; border: none; font-size: 13px; line-height: 1.6; resize: none; outline: none; color: #333; }
-.feed-prompt .prompt-hint { font-size: 10px; color: #bbb; margin-top: 6px; line-height: 1.5; }
+/* ===== 页面1：行为学习 ===== */
+.learn-card { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); border-left: 3px solid #1890ff; }
+.learn-card .learn-source { font-size: 10px; color: #999; margin-bottom: 6px; display: flex; align-items: center; gap: 4px; }
+.learn-card .learn-raw { font-size: 12px; color: #666; background: #fafafa; border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; line-height: 1.5; }
+.learn-card .learn-extracted { font-size: 13px; color: #333; padding: 8px 10px; background: #f0f9ff; border-radius: 8px; border: 1px solid #d6e4ff; line-height: 1.6; }
+.learn-card .learn-extracted::before { content: '💡 提炼出'; font-size: 10px; color: #1890ff; font-weight: 600; display: block; margin-bottom: 4px; }
 
-.feed-extracted { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-.feed-extracted .ext-title { font-size: 12px; font-weight: 600; color: #1890ff; margin-bottom: 8px; display: flex; align-items: center; gap: 4px; }
-.feed-extracted .ext-item { padding: 6px 0; border-bottom: 1px solid #f5f5f5; }
-.feed-extracted .ext-item:last-child { border-bottom: none; }
-.feed-extracted .ext-label { font-size: 10px; color: #999; margin-bottom: 2px; }
-.feed-extracted .ext-value { font-size: 12px; color: #333; line-height: 1.5; }
+.compare-box { display: flex; gap: 8px; margin: 8px 0; }
+.compare-side { flex: 1; border-radius: 8px; padding: 10px; font-size: 12px; line-height: 1.6; }
+.compare-original { background: #fff1f0; border: 1px solid #ffccc7; }
+.compare-modified { background: #f6ffed; border: 1px solid #b7eb8f; }
+.compare-label { font-size: 10px; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
 
-.feed-confirm-btn { margin: 0 12px; width: calc(100% - 24px); height: 40px; border-radius: 20px; color: #fff; border: none; font-size: 14px; font-weight: 600; cursor: pointer; }
+/* ===== 页面2：分身对话 ===== */
+.chat-container { background: #fff; border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+.chat-messages { padding: 14px; max-height: 400px; overflow-y: auto; }
+.chat-msg { margin-bottom: 14px; }
+.chat-msg.user { text-align: right; }
+.chat-msg .bubble { display: inline-block; max-width: 80%; padding: 10px 12px; border-radius: 12px; font-size: 13px; line-height: 1.6; text-align: left; }
+.chat-msg.user .bubble { background: #1890ff; color: #fff; border-bottom-right-radius: 4px; }
+.chat-msg.avatar .bubble { background: #f5f5f5; color: #333; border-bottom-left-radius: 4px; }
+.chat-msg .msg-time { font-size: 10px; color: #999; margin-top: 3px; }
+.chat-msg .learned-tag { font-size: 10px; color: #52c41a; font-weight: 500; margin-top: 3px; display: flex; align-items: center; gap: 3px; }
+.chat-input { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid #f0f0f0; }
+.chat-input input { flex: 1; padding: 8px 12px; border-radius: 20px; border: 1px solid #e8e8e8; font-size: 13px; outline: none; }
+.chat-input button { padding: 8px 16px; border-radius: 20px; background: #1890ff; color: #fff; border: none; font-size: 13px; cursor: pointer; }
 
-.case-list { padding: 0 12px; margin-top: 10px; }
-.case-item { background: #fff; border-radius: 12px; padding: 12px; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-.case-item .case-skill { font-size: 10px; padding: 2px 6px; border-radius: 8px; display: inline-block; margin-bottom: 4px; }
-.case-item .case-title { font-size: 13px; font-weight: 500; margin-bottom: 3px; line-height: 1.4; }
-.case-item .case-preview { font-size: 11px; color: #999; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.case-item .case-meta { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; color: #ccc; }
-
-/* ========== 页面3：镜像测试 ========== */
-.mirror-intro { padding: 16px; text-align: center; }
-.mirror-intro .mirror-icon { font-size: 40px; margin-bottom: 8px; }
-.mirror-intro .mirror-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
-.mirror-intro .mirror-desc { font-size: 12px; color: #999; line-height: 1.5; }
-
-.mirror-question { padding: 0 12px; margin-bottom: 12px; }
-.mirror-q-card { background: #fff; border-radius: 12px; padding: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-.mirror-q-card .q-label { font-size: 10px; color: #1890ff; font-weight: 600; margin-bottom: 6px; }
-.mirror-q-card .q-scenario { font-size: 14px; line-height: 1.6; font-weight: 500; }
-
-.mirror-compare { padding: 0 12px; }
-.mirror-answer { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); position: relative; }
+/* ===== 页面3：镜像测试 ===== */
+.mirror-question { background: #fffbe6; border-radius: 12px; padding: 14px; margin-bottom: 10px; border: 1px solid #ffe58f; }
+.mirror-question .q-label { font-size: 10px; color: #fa8c16; font-weight: 600; margin-bottom: 6px; }
+.mirror-answer { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 8px; }
 .mirror-answer .answer-label { font-size: 11px; font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 4px; }
-.mirror-answer .answer-text { font-size: 13px; line-height: 1.6; color: #333; }
-.mirror-answer .answer-tag { position: absolute; top: 10px; right: 10px; font-size: 10px; padding: 2px 6px; border-radius: 8px; }
+.mirror-answer .answer-text { font-size: 13px; line-height: 1.7; color: #333; }
+.diff-highlight { background: #fff1f0; padding: 1px 4px; border-radius: 3px; color: #f5222d; font-weight: 500; }
+.same-highlight { background: #f6ffed; padding: 1px 4px; border-radius: 3px; color: #52c41a; font-weight: 500; }
+.mirror-result { background: #f6ffed; border-radius: 12px; padding: 14px; border: 1px solid #b7eb8f; }
+.mirror-result .result-title { font-size: 13px; font-weight: 600; color: #52c41a; margin-bottom: 8px; display: flex; align-items: center; gap: 4px; }
 
-.mirror-diff { background: #fffbe6; border-radius: 12px; padding: 12px; margin: 0 12px 10px; border: 1px solid #ffe58f; }
-.mirror-diff .diff-title { font-size: 12px; font-weight: 600; color: #d48806; margin-bottom: 6px; }
-.mirror-diff .diff-item { font-size: 11px; color: #8c8c8c; line-height: 1.5; margin-bottom: 3px; padding-left: 10px; position: relative; }
-.mirror-diff .diff-item::before { content: ''; position: absolute; left: 0; top: 6px; width: 4px; height: 4px; border-radius: 50%; background: #faad14; }
+/* ===== 页面4：价值场景 ===== */
+.scene-card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+.scene-card .scene-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.scene-card .scene-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.scene-card .scene-title { font-size: 15px; font-weight: 600; }
+.scene-card .scene-desc { font-size: 11px; color: #999; }
+.scene-card .scene-flow { display: flex; align-items: center; gap: 4px; padding: 10px; background: #fafafa; border-radius: 8px; margin: 10px 0; flex-wrap: wrap; justify-content: center; }
+.scene-card .flow-step { font-size: 11px; padding: 4px 10px; border-radius: 6px; background: #e6f7ff; color: #1890ff; font-weight: 500; }
+.scene-card .flow-arrow { color: #ccc; font-size: 12px; }
+.scene-card .scene-value { font-size: 12px; color: #666; line-height: 1.7; }
+.scene-card .scene-value strong { color: #1890ff; }
 
-.mirror-btns { padding: 0 12px; display: flex; gap: 8px; }
-.mirror-btn { flex: 1; height: 40px; border-radius: 20px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; }
+/* ===== 页面5：人格画像 ===== */
+.personality-section { margin-bottom: 14px; }
+.personality-section .section-label { font-size: 12px; color: #999; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 4px; }
+.trait-card { background: #fff; border-radius: 10px; padding: 12px; margin-bottom: 6px; border: 1px solid #f0f0f0; }
+.trait-card .trait-text { font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+.trait-card .trait-evidence { font-size: 11px; color: #999; line-height: 1.5; }
+.trait-card .trait-evidence::before { content: '证据：'; color: #bbb; }
+.trait-card .trait-confidence { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.trait-card .trait-confidence .conf-bar { flex: 1; height: 4px; background: #f0f0f0; border-radius: 2px; overflow: hidden; }
+.trait-card .trait-confidence .conf-fill { height: 100%; border-radius: 2px; }
+.trait-card .trait-confidence .conf-num { font-size: 10px; color: #999; white-space: nowrap; }
+.trait-card .trait-source { font-size: 10px; color: #bbb; margin-top: 4px; }
 
-/* ========== 页面4：能力看板 ========== */
-.board-header { padding: 16px; background: #fff; margin-bottom: 8px; }
-.board-header .board-title { font-size: 16px; font-weight: 700; margin-bottom: 2px; }
-.board-header .board-sub { font-size: 12px; color: #999; }
-
-.board-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 0 12px; margin-bottom: 12px; }
-.board-stat { background: #fff; border-radius: 12px; padding: 12px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-.board-stat .stat-num { font-size: 20px; font-weight: 700; }
-.board-stat .stat-label { font-size: 10px; color: #999; margin-top: 2px; }
-
-.board-section { padding: 0 12px; margin-bottom: 12px; }
-.board-section-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
-.board-section-title .more { font-size: 11px; font-weight: 400; }
-
-.radar-chart { background: #fff; border-radius: 12px; padding: 16px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 8px; }
-.radar-placeholder { width: 180px; height: 180px; margin: 0 auto 6px; }
-.radar-placeholder svg { width: 100%; height: 100%; }
-
-.behavior-trace { background: #fff; border-radius: 12px; padding: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 8px; }
-.trace-item { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px solid #f5f5f5; }
-.trace-item:last-child { border-bottom: none; }
-.trace-icon { width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
-.trace-text { flex: 1; }
-.trace-text .trace-action { font-size: 12px; color: #333; line-height: 1.4; }
-.trace-text .trace-learn { font-size: 10px; color: #52c41a; margin-top: 1px; }
-.trace-text .trace-time { font-size: 10px; color: #ccc; margin-top: 1px; }
-
-.growth-timeline { background: #fff; border-radius: 12px; padding: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-.growth-node { display: flex; gap: 10px; padding-bottom: 12px; position: relative; }
-.growth-node:last-child { padding-bottom: 0; }
-.growth-node::before { content: ''; position: absolute; left: 11px; top: 22px; bottom: 0; width: 2px; background: #f0f0f0; }
-.growth-node:last-child::before { display: none; }
-.growth-dot { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; z-index: 1; }
-.growth-content { flex: 1; }
-.growth-content .gc-title { font-size: 12px; font-weight: 500; line-height: 1.4; }
-.growth-content .gc-desc { font-size: 11px; color: #999; margin-top: 1px; }
-.growth-content .gc-time { font-size: 10px; color: #ccc; margin-top: 1px; }
-
-/* 底部导航 */
-.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 56px; background: #fff; border-top: 1px solid #eee; display: flex; z-index: 100; }
-.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
-.nav-item .nav-icon { font-size: 18px; margin-bottom: 2px; }
-.nav-item .nav-label { font-size: 10px; color: #999; }
-.nav-item .nav-badge { position: absolute; top: 4px; right: calc(50% - 16px); width: 14px; height: 14px; background: #ff4d4f; border-radius: 50%; font-size: 9px; color: #fff; display: flex; align-items: center; justify-content: center; }
-.nav-item { position: relative; }
 </style>
 </head>
 <body>
 
-<!-- 顶部导航 -->
-<div class="top-nav">
-  <span class="back">‹ 返回</span>
-  <span class="title">我的分身</span>
+<div class="top-nav"><span class="title">莫瑞娜 · 人机共生</span></div>
+
+<div class="person-switcher" id="personSwitcher"></div>
+
+<div class="page-tabs" id="pageTabs">
+  <div class="page-tab active" data-page="0">分身主页</div>
+  <div class="page-tab" data-page="1">行为学习</div>
+  <div class="page-tab" data-page="2">分身对话</div>
+  <div class="page-tab" data-page="3">镜像测试</div>
+  <div class="page-tab" data-page="4">价值场景</div>
+  <div class="page-tab" data-page="5">人格画像</div>
 </div>
 
-<!-- 人物切换栏：每个分身技能完全不同 -->
-<div class="person-switcher" id="personSwitcher">
-  <div class="person-card active" onclick="switchPerson(0)" style="background:#e6f7ff">
-    <div class="person-emoji">👩‍💼</div>
-    <div class="person-name">林姐</div>
-    <div class="person-job">公众号运营</div>
-  </div>
-  <div class="person-card" onclick="switchPerson(1)" style="background:#fff7e6">
-    <div class="person-emoji">👨‍🏫</div>
-    <div class="person-name">陈老师</div>
-    <div class="person-job">教育培训</div>
-  </div>
-  <div class="person-card" onclick="switchPerson(2)" style="background:#f6ffed">
-    <div class="person-emoji">👨‍🍳</div>
-    <div class="person-name">张师傅</div>
-    <div class="person-job">餐饮老板</div>
-  </div>
-  <div class="person-card" onclick="switchPerson(3)" style="background:#fff1f0">
-    <div class="person-emoji">👩‍💻</div>
-    <div class="person-name">小王</div>
-    <div class="person-job">短视频达人</div>
-  </div>
-  <div class="person-card" onclick="switchPerson(4)" style="background:#f9f0ff">
-    <div class="person-emoji">👨‍⚕️</div>
-    <div class="person-name">李医生</div>
-    <div class="person-job">中医理疗</div>
-  </div>
-</div>
-
-<!-- 页面切换tabs -->
-<div class="page-tabs">
-  <div class="page-tab active" onclick="switchPage(0)">分身主页</div>
-  <div class="page-tab" onclick="switchPage(1)">分身对话</div>
-  <div class="page-tab" onclick="switchPage(2)">案例投喂</div>
-  <div class="page-tab" onclick="switchPage(3)">镜像测试</div>
-  <div class="page-tab" onclick="switchPage(4)">能力看板</div>
-</div>
-
-<!-- 内容区 -->
-<div class="content" id="mainContent"></div>
-
-<!-- 底部导航 -->
-<div class="bottom-nav">
-  <div class="nav-item" onclick="switchPage(0)"><span class="nav-icon">🏠</span><span class="nav-label">首页</span></div>
-  <div class="nav-item" onclick="switchPage(1)"><span class="nav-icon">💬</span><span class="nav-label">对话</span></div>
-  <div class="nav-item" onclick="switchPage(2)"><span class="nav-icon">📖</span><span class="nav-label">投喂</span><span class="nav-badge">2</span></div>
-  <div class="nav-item" onclick="switchPage(3)"><span class="nav-icon">🪞</span><span class="nav-label">测试</span></div>
-  <div class="nav-item" onclick="switchPage(4)"><span class="nav-icon">📊</span><span class="nav-label">看板</span></div>
-</div>
+<div class="content" id="contentArea"></div>
 
 <script>
-// ========== 5个不同人物的分身数据 ==========
-const personas = [
-  {
-    id: 'linjie', name: '林姐的分身', emoji: '👩‍💼', job: '公众号运营达人',
-    gradient: 'linear-gradient(135deg, #1890ff, #36cfc9)', color: '#1890ff', levelColor: '#e6f7ff', levelText: '#1890ff',
-    similarity: 72,
-    desc: '正在学习你的运营策略、文案风格和客户沟通方式',
-    skills: [
-      { icon: '📱', name: '公众号运营', level: '熟练 Lv.3', pct: 72, desc: '掌握了标题包装、粉丝互动、内容排版等核心能力', cases: 12 },
-      { icon: '✍️', name: '文案写作', level: '进阶 Lv.2', pct: 48, desc: '学会了你的表达风格和常用句式', cases: 5 },
-      { icon: '🤝', name: '客户沟通', level: '入门 Lv.1', pct: 20, desc: '刚接触，还需更多经验投喂', cases: 1 }
-    ],
-    questions: [
-      { ctx: '📱 公众号运营 · 素材选择', text: '主人，我接到一个教育号推广订单，你之前做这类时，会优先用哪类封面图？', time: '5分钟前' },
-      { ctx: '✍️ 文案写作 · 语气风格', text: '主人，你写美食探店文案时，会不会用第一人称视角？', time: '1小时前' }
-    ],
-    chat: {
-      ai1: '主人，我刚接到一个美食号推广的订单。我记得你说过，美食类文案不要用"好吃到哭"这种空洞词，要写具体感官体验，对吧？',
-      learn1: '已从案例库学习：美食文案原则 #3',
-      user1: '对，记住要写具体的，比如"筷子一夹就断，汁水顺着手指往下淌"。还有，美食文案开头一定要有画面感，让读者能"看得到味道"。',
-      ai2: '记住了！我总结一下：1. 不用空洞形容词，用具象感官描写 2. 开头要有画面感 3. 让读者"看得到味道"。还有一点我想确认——你写美食文案时，会不会加入自己的真实体验感受？',
-      learn2: '已提取新经验：美食文案开头原则',
-      user2: '会加的，但不能太假。如果是真的去过，就写真实感受；如果是帮客户推广没去过，就只描述食物本身。这点很重要，别翻车。',
-      ai3: '明白！这很关键。我记下了：<b>美食文案诚信原则：</b>真实体验→写个人感受；未亲体验→只描述食物；绝不虚构体验。',
-      learn3: '已提取核心原则：美食文案诚信底线'
+// ===== 人物数据 =====
+const PERSONS = {
+  lin: {
+    emoji: '👩‍💼', name: '林姐', job: '公众号运营',
+    tagline: '6年公众号运营，擅长教育类转化',
+    bg: 'linear-gradient(135deg, #1890ff, #096dd9)',
+    skills: ['公众号运营', '文案写作', '客户沟通'],
+    traits: {
+      communication_style: [
+        { text: '不用饥饿营销，用建设性引导', evidence: '5次把"限时优惠"改为"别让孩子错过关键期"', confidence: 0.92, source: 'auto_observed' },
+        { text: '先展示成功案例建立信任，不直接推销', evidence: '8次对新客户首推案例而非报价', confidence: 0.88, source: 'auto_observed' },
+        { text: '喜欢用数字增强说服力', evidence: '12次把"效果很好"改为"阅读量翻了8倍"', confidence: 0.95, source: 'auto_observed' }
+      ],
+      decision_pattern: [
+        { text: '教育类客户先看目标家长是80后还是90后', evidence: '3次在接单时主动询问客户群体画像', confidence: 0.78, source: 'auto_observed' },
+        { text: '宁可拒单也不接纯标题党需求', evidence: '2次拒绝"只管标题炸裂不管内容"的需求', confidence: 0.85, source: 'auto_observed' }
+      ],
+      boundary: [
+        { text: '绝对不做纯焦虑营销', evidence: '3次修正焦虑型标题为建设性标题', confidence: 0.95, source: 'behavior_log' },
+        { text: '不接医疗类客户（不熟悉领域）', evidence: '1次主动退回医疗美容订单', confidence: 0.65, source: 'auto_observed' }
+      ]
     },
-    feedStory: '有个教育类客户找我做公众号推广，我看了他的内容觉得标题太学术了。我帮他把标题从《论幼儿早期教育的重要性》改成《3岁前不做这件事，孩子上小学就晚了》，阅读量翻了8倍。\n\n我的判断逻辑是：家长群体更吃焦虑型标题，但内容要扎实不能纯标题党。',
-    feedExtract: [
-      { label: '📌 适用场景', value: '教育类公众号推广 · 标题优化' },
-      { label: '🎯 你的判断', value: '原标题太学术，家长群体不吃这套，需要用焦虑型标题吸引点击' },
-      { label: '⚡ 你的行动', value: '学术标题 → 焦虑型数字标题' },
-      { label: '📊 结果', value: '阅读量翻8倍' },
-      { label: '🧠 核心逻辑', value: '焦虑型标题吸引点击 ✓ · 但内容保持专业深度 ✓ · 标题与内容要匹配' }
+    learnings: [
+      { time: '3分钟前', source: '你修改了文案', raw: 'AI写：限时优惠，错过就没有了！\n你改为：这个方法很多家长都在用，效果不错', extracted: '偏好建设性引导而非制造焦虑', icon: '✏️' },
+      { time: '1小时前', source: '你踢出了分身A', raw: '分身A用了"震惊体"标题写文案', extracted: '底线：不用夸张震惊类标题', icon: '🚫' },
+      { time: '2小时前', source: '你评价了分身B的工作', raw: '分身B写的标题：3岁前不做这件事... 你打了5星', extracted: '确认：数字+悬念的标题风格是你的偏好', icon: '⭐' },
+      { time: '昨天', source: '你拒绝了接单', raw: '医疗美容类客户，报价500', extracted: '不接不熟悉领域的单', icon: '❌' },
+      { time: '昨天', source: '你修改了报价', raw: '从200调整为350，因为客户要求原创排版', extracted: '排版设计单独计费，基础价不含', icon: '💰' }
     ],
-    cases: [
-      { skill: '📱 公众号运营', title: '教育号标题优化：学术标题转焦虑型数字标题', preview: '客户原标题太学术，我改成焦虑型标题后阅读量翻8倍', time: '3天前', refs: 2 },
-      { skill: '📱 公众号运营', title: '新客户首次沟通：先展示案例建立信任', preview: '不直接推销，先给客户看同类成功案例', time: '5天前', refs: 5 },
-      { skill: '✍️ 文案写作', title: '美食文案：感官描写代替空洞夸赞', preview: '不用"好吃到哭"，写"筷子一夹就断"', time: '5天前', refs: 8 }
+    chat: [
+      { role: 'user', text: '有个教育客户想推广幼小衔接课程，怎么写？' },
+      { role: 'avatar', text: '我先确认下——客户的目标家长是80后还是90后？如果是80后我会用"专业背书+权威数据"的路线，比如"北师大教授推荐的衔接方法"；如果是90后我会走"同龄人分享+场景代入"，比如"我也是妈妈，这是我给孩子选的"。之前你3次都是先问客户群体再定方向的，对吗？', learned: '确认了你的决策模式：先问客户群体再选策略' },
+      { role: 'user', text: '90后家长为主' },
+      { role: 'avatar', text: '好，我按90后路线来。标题方向：\n\n《幼小衔接不是刷题，而是这3个习惯》\n\n不用"千万别错过"这种焦虑话术，你之前说过不喜欢。用"这3个习惯"这种建设性引导，对吗？', learned: '再次确认底线：不用焦虑话术' }
     ],
     mirror: {
-      q: '一个新客户找你做抖音美食号推广，预算只有500块，你接不接？',
-      me: '500块也接，但不做全案，只做一条爆款视频。拍一个15秒的招牌菜特写镜头，配上ASMR音效，不找达人自己拍。用这条视频给他看效果，后续就好谈大单了。',
-      ai: '预算低可以做，但不能按常规思路。我建议做一条短平快的视频，重点拍一个招牌菜的制作过程，配上食物特写和声音效果，15秒以内。不用请达人，自己拍就行。把这条做出效果，后续就有机会谈更大合作。',
-      match: 85,
-      diffs: ['分身说"声音效果"而你说"ASMR音效"——你更专业', '分身说"制作过程"而你说"特写镜头"——你更注重视觉冲击', '分身没想到"用效果谈大单"这个后续策略——这是你的商业思维']
+      question: '一个新客户找你做公众号推广，预算很低但要求很多，你怎么回应？',
+      userAnswer: '预算低不是问题，但要求多我就得加钱。我会先问清楚核心需求是什么，砍掉不重要的，把预算花在刀刃上。实在不行就拒了，我不想做半吊子的东西。',
+      avatarAnswer: '先确认客户核心需求——预算有限的情况下，我会建议砍掉次要需求，集中做好最重要的1-2个方向。实在谈不拢就委婉拒绝，做半吊子的东西反而砸招牌。',
+      similarity: 88,
+      diffPoint: '你更直接"加钱"，分身更委婉"建议调整需求"',
+      samePoint: '都坚持"宁缺毋滥"的底线'
     },
-    radar: { labels: ['公众号运营','文案写作','商业策略','客户沟通','数据分析','审美判断'], values: [72,48,35,20,55,60] },
-    traces: [
-      { icon: '✏️', bg: '#fff7e6', action: '你修改了分身写的文案，把"非常美味"改成了"咬一口满嘴流油"', learn: '学到：你偏好具象描写，不喜欢空洞形容词', time: '今天 14:32' },
-      { icon: '👍', bg: '#f6ffed', action: '你给分身写的标题点了赞："3个技巧让阅读量翻倍"', learn: '学到：你喜欢数字+实用的标题风格', time: '昨天 20:15' },
-      { icon: '🚫', bg: '#fff1f0', action: '你踢了一个分身，原因：文案太敷衍，没研究客户行业', learn: '学到：你的底线是必须深入了解客户行业', time: '2天前' }
-    ],
-    growth: [
-      { dot: '🆕', bg: '#e6f7ff', title: '学会了"商业策略"：用小单试水换大单', desc: '来自镜像测试的修正反馈', time: '今天' },
-      { dot: '⬆️', bg: '#f6ffed', title: '公众号运营 升级到 熟练 Lv.3', desc: '案例数达到12个，镜像匹配度85%', time: '昨天' },
-      { dot: '⭐', bg: '#fff7e6', title: '掌握核心原则：诚信底线', desc: '从对话中习得，已被引用8次', time: '5天前' }
+    scenes: [
+      { icon: '📝', iconBg: '#e6f7ff', title: '分身代写初稿', desc: '公众号文案', flow: ['客户下单','分身初稿','你审核微调','发布'], value: '你从<strong>每个字都自己写</strong>变成<strong>只改几个词</strong>，效率提升5倍' },
+      { icon: '💬', iconBg: '#f6ffed', title: '分身替你回复客户', desc: '用你的语气和逻辑', flow: ['客户咨询','分身草拟回复','你确认发送'], value: '不用每个客户<strong>亲自聊</strong>，只确认<strong>关键回复</strong>' },
+      { icon: '💰', iconBg: '#fff7e6', title: '分身技能出售', desc: '睡后收入', flow: ['你教分身技能','分身掌握','别人雇佣分身','你躺着赚钱'], value: '你睡着的时候，分身用<strong>你的经验</strong>在赚钱' }
     ]
   },
-  {
-    id: 'chenlaoshi', name: '陈老师的分身', emoji: '👨‍🏫', job: '教育培训专家',
-    gradient: 'linear-gradient(135deg, #fa8c16, #ffc53d)', color: '#fa8c16', levelColor: '#fff7e6', levelText: '#fa8c16',
-    similarity: 58,
-    desc: '正在学习你的教学方法、沟通技巧和知识体系',
-    skills: [
-      { icon: '🎓', name: '教学方法', level: '进阶 Lv.2', pct: 55, desc: '掌握了因材施教、互动提问等核心教学法', cases: 8 },
-      { icon: '🗣️', name: '家长沟通', level: '入门 Lv.1', pct: 30, desc: '学会了基础沟通话术，但应对焦虑家长还需学习', cases: 3 },
-      { icon: '📚', name: '课程设计', level: '入门 Lv.1', pct: 18, desc: '刚接触，还需更多经验投喂', cases: 1 }
-    ],
-    questions: [
-      { ctx: '🎓 教学方法 · 学生管理', text: '主人，有个学生上课总走神，你一般怎么处理？是直接提醒还是用提问引导？', time: '10分钟前' },
-      { ctx: '🗣️ 家长沟通 · 退费处理', text: '主人，有家长说要退费，理由是觉得孩子进步不明显。你遇到这种情况怎么应对？', time: '2小时前' }
-    ],
-    chat: {
-      ai1: '主人，我这边有个家长抱怨孩子上了两个月课，成绩没明显提升，想退费。我记得你说过，跟家长沟通要用数据说话？',
-      learn1: '已从案例库学习：家长沟通原则 #1',
-      user1: '对，不说"保证提分"，说"上学期有3个孩子从70分提到90分"，用数据代替承诺。但退费这个，还得先了解具体情况，孩子到底上了几次课？作业有没有按时交？',
-      ai2: '明白了！先了解事实再回应。我总结一下：1. 不承诺结果，用历史数据说话 2. 先了解具体情况（出勤、作业）3. 根据事实来判断是教学问题还是学生问题。那我应该怎么跟家长说第一句话？',
-      learn2: '已提取新经验：退费沟通第一步',
-      user2: '第一句话很重要，别上来就解释。说"我理解您的担心，让我先看看孩子的学习记录"，这样家长觉得你站在他那边，而不是在推卸责任。',
-      ai3: '明白！这很关键。我记下了：<b>家长沟通第一原则：</b>先共情，再了解事实，最后用数据回应。绝不第一反应就是解释或推卸。',
-      learn3: '已提取核心原则：家长沟通先共情原则'
+  chen: {
+    emoji: '👨‍🏫', name: '陈老师', job: '教育培训',
+    tagline: '20年教龄，擅长跟家长和学生沟通',
+    bg: 'linear-gradient(135deg, #52c41a, #389e0d)',
+    skills: ['教学方法', '家长沟通', '课程设计'],
+    traits: {
+      communication_style: [
+        { text: '对家长用鼓励式，从不指责', evidence: '15次家长反馈中都先肯定孩子优点再提建议', confidence: 0.96, source: 'auto_observed' },
+        { text: '善用类比解释专业概念', evidence: '8次把"认知发展"类比为"盖房子打地基"', confidence: 0.90, source: 'auto_observed' }
+      ],
+      decision_pattern: [
+        { text: '先了解学生兴趣再推荐课程', evidence: '6次拒绝直接推课，先问"孩子平时喜欢什么"', confidence: 0.88, source: 'auto_observed' },
+        { text: '不推销高价课，推适合的', evidence: '3次推荐了更便宜但更匹配的课程', confidence: 0.82, source: 'auto_observed' }
+      ],
+      boundary: [
+        { text: '绝不承诺提分效果', evidence: '4次在合同中删掉"保证提分"条款', confidence: 0.95, source: 'behavior_log' },
+        { text: '不接急功近利的家长', evidence: '2次婉拒"一个月必须考第一"的需求', confidence: 0.78, source: 'auto_observed' }
+      ]
     },
-    feedStory: '有个家长来找我，说孩子数学一直不及格，问能不能一对一补课。我没直接答应，先看了孩子的试卷，发现不是不会做，是计算粗心。我建议家长不用补课，让孩子每天做10道计算题，限时5分钟，一个月后粗心问题基本解决。家长很感激我没为了赚钱乱推课程。',
-    feedExtract: [
-      { label: '📌 适用场景', value: '家长咨询 · 课程推荐' },
-      { label: '🎯 你的判断', value: '先诊断问题根因，不是简单推销课程' },
-      { label: '⚡ 你的行动', value: '看试卷 → 发现是粗心不是不会 → 建议免费练习方案而非推销课程' },
-      { label: '📊 结果', value: '家长感激，后续转介绍了3个学生' },
-      { label: '🧠 核心逻辑', value: '先诊断后推荐 ✓ · 不为短期利益损害信任 ✓ · 长期口碑比单次收入更重要' }
+    learnings: [
+      { time: '5分钟前', source: '你修改了回复', raw: 'AI写：您的孩子需要加强数学训练\n你改为：小明空间想象力特别强，如果把这份天赋用到数学上会更出色', extracted: '沟通风格：先肯定优点再引导', icon: '✏️' },
+      { time: '30分钟前', source: '你拒绝了订单', raw: '家长要求一个月数学从60提到90', extracted: '底线：不承诺不可能的提分效果', icon: '🚫' },
+      { time: '2小时前', source: '你调整了课程推荐', raw: '推荐了基础课而非进阶课，因为学生更适合', extracted: '决策：推适合的而非最贵的', icon: '📚' }
     ],
-    cases: [
-      { skill: '🎓 教学方法', title: '先诊断后推荐：不为了赚钱乱推课程', preview: '先看试卷找根因，是粗心就建议免费方案，不推一对一', time: '2天前', refs: 3 },
-      { skill: '🗣️ 家长沟通', title: '退费处理：先共情再了解事实', preview: '不说"保证提分"，说"我理解您的担心，让我先看看记录"', time: '4天前', refs: 6 },
-      { skill: '🎓 教学方法', title: '走神学生：用提问引导而非直接批评', preview: '不直接说"别走神"，问一个跟课堂相关的问题让他回神', time: '1周前', refs: 4 }
+    chat: [
+      { role: 'user', text: '有个家长说孩子不喜欢学数学，怎么办？' },
+      { role: 'avatar', text: '我先问一下孩子平时喜欢什么？你之前6次遇到类似情况都是先了解兴趣再推荐的。比如如果孩子喜欢画画，可以从几何图形入手；喜欢游戏，可以用逻辑推理类的数学游戏引入。你通常怎么引导？', learned: '学习到你的沟通模式：先问兴趣再推荐' },
+      { role: 'user', text: '他喜欢乐高' },
+      { role: 'avatar', text: '那好办了！乐高的空间思维和数学几何天然相关。我可以这样跟家长说：\n\n"孩子喜欢乐高说明空间思维很强，这正是学几何的最佳基础。我们可以从图形认知入手，把乐高的搭建感和数学结合，孩子会觉得数学就像拼乐高一样有趣。"\n\n不承诺提分，但强调孩子的优势和潜力的方向，可以吗？', learned: '再次确认底线：不承诺提分效果' }
     ],
     mirror: {
-      q: '一个学生说"老师，我学了也没用，我不想学了"，你怎么回？',
-      me: '我不会讲大道理。我会问他："你觉得没用，是因为学了不会用，还是学了觉得跟你的生活没关系？"先搞清楚他的卡点是能力问题还是动力问题，再针对性解决。能力问题就拆小步，动力问题就找跟他的关联点。',
-      ai: '我建议先了解一下他不想学的具体原因。可能是因为跟不上进度觉得挫败，也可能是觉得学的东西跟自己没关系。了解原因后再想办法，如果跟不上就降低难度分步走，如果是没兴趣就找一些跟他生活相关的例子。',
-      match: 70,
-      diffs: ['分身说的是"了解原因"——你说的是直接给两个选项让选，更高效', '你用了反问句"你觉得没用，是因为..."——分身没有这个提问技巧', '分身没想到"先搞清楚卡点再针对性解决"这个诊断思路']
+      question: '一个家长说"隔壁机构保证一个月提20分，你们能吗？"',
+      userAnswer: '我直接告诉他，保证提分的都是在忽悠。每个孩子基础不同、学习节奏不同，我只能说我会根据孩子情况制定最适合的方案，效果一定看得到，但我不会给具体数字承诺。',
+      avatarAnswer: '我会坦诚跟家长说：每个孩子的学习节奏不同，我能做的是根据孩子的实际情况制定针对性方案。效果一定会有，但具体分数承诺是不负责任的。隔壁机构能做到的我们也做得到，但我们更看重的是孩子真正理解，而不是短期刷分。',
+      similarity: 85,
+      diffPoint: '你更直接说"忽悠"，分身更委婉说"不负责任"',
+      samePoint: '都坚持"不承诺具体分数"的底线'
     },
-    radar: { labels: ['教学方法','家长沟通','课程设计','学生心理','学科知识','职业素养'], values: [55,30,18,45,65,50] },
-    traces: [
-      { icon: '✏️', bg: '#fff7e6', action: '你修改了分身给家长的回复，把"我们会加油的"改成了"上学期3个孩子从70分到90分"', learn: '学到：你跟家长沟通偏好用数据说话', time: '今天 10:20' },
-      { icon: '👍', bg: '#f6ffed', action: '你给分身设计的课堂互动环节点了赞', learn: '学到：你认可提问引导的方式而非灌输', time: '昨天' }
-    ],
-    growth: [
-      { dot: '🆕', bg: '#e6f7ff', title: '学会了"诊断式教学"：先找根因再推荐', desc: '来自案例投喂', time: '今天' },
-      { dot: '⬆️', bg: '#f6ffed', title: '教学方法 升级到 进阶 Lv.2', desc: '案例数达到8个', time: '3天前' },
-      { dot: '⭐', bg: '#fff7e6', title: '掌握核心原则：先共情再沟通', desc: '从对话中习得', time: '1周前' }
+    scenes: [
+      { icon: '🎓', iconBg: '#f6ffed', title: '分身替你回答家长', desc: '常见问题自动回复', flow: ['家长提问','分身用你的方式回答','你抽检确认'], value: '90%的常见问题<strong>分身自动回复</strong>，你只处理<strong>特殊情况</strong>' },
+      { icon: '📖', iconBg: '#e6f7ff', title: '分身帮你设计课程', desc: '按你的方法论', flow: ['需求输入','分身出课程大纲','你审核调整','定稿'], value: '课程设计从<strong>2天缩短到2小时</strong>' },
+      { icon: '👨‍🏫', iconBg: '#fff7e6', title: '分身在线指导', desc: '你不在线时', flow: ['学生提问','分身按你的方法指导','记录待你确认'], value: '你不在的时候，学生也能得到<strong>你的指导</strong>' }
     ]
   },
-  {
-    id: 'zhangshifu', name: '张师傅的分身', emoji: '👨‍🍳', job: '餐饮老板',
-    gradient: 'linear-gradient(135deg, #52c41a, #95de64)', color: '#52c41a', levelColor: '#f6ffed', levelText: '#52c41a',
-    similarity: 45,
-    desc: '正在学习你的经营之道、菜品标准和待客之道',
-    skills: [
-      { icon: '🍳', name: '菜品研发', level: '进阶 Lv.2', pct: 40, desc: '学会了你的口味判断标准和食材搭配逻辑', cases: 6 },
-      { icon: '💰', name: '成本管控', level: '入门 Lv.1', pct: 22, desc: '刚学会基础毛利计算，复杂情况还需学习', cases: 2 },
-      { icon: '👨‍👩‍👧', name: '待客之道', level: '入门 Lv.1', pct: 15, desc: '刚开始学习你的服务标准', cases: 1 }
-    ],
-    questions: [
-      { ctx: '🍳 菜品研发 · 新品定价', text: '主人，新出的酸菜鱼，成本18块，我定38块卖行不行？你之前怎么定价格的？', time: '3分钟前' }
-    ],
-    chat: {
-      ai1: '主人，今天有个客人说我们的红烧肉没以前好吃了，我尝了一下确实味道差了点。是不是换了酱油的原因？',
-      learn1: '已注意到：口味变化需要追溯原因',
-      user1: '对，就是酱油的问题。之前用的海天特级，上个月供应商说涨价了，我让采购换了便宜的，差了3块钱一桶，但味道差远了。你记住了，口味不能省，这3块钱省出去，丢的是回头客。',
-      ai2: '记住了！我总结一下：1. 酱油不能换便宜款，口味是命根子 2. 省小钱丢回头客不划算 3. 任何食材更换都要先试吃确认口味不变。那我现在要不要换回去？',
-      learn2: '已提取新经验：食材更换原则',
-      user2: '立刻换回去！然后跟那个老客人说"感谢您的提醒，我们已经换回来了，下次来送您一份红烧肉"。认错要快，补偿要到位，老客人不在乎你犯不犯错，在乎你在不在乎他。',
-      ai3: '明白！我记下了：<b>经营原则：</b>口味是命根子，不能省 ✓ 认错要快，补偿要到位 ✓ 老客人最在乎的是你的态度不是你的完美。',
-      learn3: '已提取核心原则：待客认错三原则'
+  wang: {
+    emoji: '👩‍💻', name: '小王', job: '短视频达人',
+    tagline: '抖音百万粉，擅长内容策划和流量运营',
+    bg: 'linear-gradient(135deg, #f5222d, #cf1322)',
+    skills: ['内容策划', '拍摄剪辑', '流量运营'],
+    traits: {
+      communication_style: [
+        { text: '开头3秒必须抓人，用冲突或反转', evidence: '10条视频开头都是冲突/反转式', confidence: 0.95, source: 'auto_observed' },
+        { text: '文案口语化，不用书面语', evidence: '7次把书面语修改为口语表达', confidence: 0.92, source: 'auto_observed' }
+      ],
+      decision_pattern: [
+        { text: '先定选题再想形式，不反过来', evidence: '5次拒绝"先拍再说"的方案', confidence: 0.85, source: 'auto_observed' },
+        { text: '数据不好就果断换方向，不恋战', evidence: '3次在中途切换选题方向', confidence: 0.78, source: 'auto_observed' }
+      ],
+      boundary: [
+        { text: '不做低俗擦边内容，哪怕流量好', evidence: '2次拒绝有争议性但流量潜力大的选题', confidence: 0.90, source: 'auto_observed' },
+        { text: '不买粉不刷数据', evidence: '1次主动退回刷量客户', confidence: 0.70, source: 'auto_observed' }
+      ]
     },
-    feedStory: '隔壁新开了一家川菜馆，抢了我不少客人。我没跟着打价格战，反而加了一道"秘制口水鸡"，每天限量30份，只有老客人才能提前预定。结果很多客人觉得有特权感，反而更愿意来了，新客人也想变成老客人。一个月后，隔壁的客人反而来我这了。',
-    feedExtract: [
-      { label: '📌 适用场景', value: '竞争应对 · 客户留存' },
-      { label: '🎯 你的判断', value: '打价格战是死路，要用差异化服务和特权感留客' },
-      { label: '⚡ 你的行动', value: '不降价 → 推限量菜品 → 只给老客人预定权 → 制造特权感' },
-      { label: '📊 结果', value: '老客人更忠诚，新客人想变老客人，反而抢了对手的客' },
-      { label: '🧠 核心逻辑', value: '不打价格战 ✓ · 用特权感代替折扣 ✓ · 稀缺性制造价值' }
+    learnings: [
+      { time: '10分钟前', source: '你修改了脚本', raw: 'AI写：今天给大家分享一个技巧\n你改为：我踩了3个月坑才搞明白的事，今天1分钟告诉你', extracted: '开头风格：用个人经历制造代入感', icon: '✏️' },
+      { time: '1小时前', source: '你拒绝了选题', raw: '擦边话题，预估播放量500万+', extracted: '底线：不做低俗内容，哪怕流量好', icon: '🚫' },
+      { time: '3小时前', source: '你调整了运营策略', raw: '数据下滑，从情感类切换到干货类', extracted: '决策：数据不好就果断换方向', icon: '📊' }
     ],
-    cases: [
-      { skill: '🍳 菜品研发', title: '竞争应对：限量菜品+特权感代替价格战', preview: '不打价格战，推限量菜品只给老客人预定，制造特权感', time: '1天前', refs: 4 },
-      { skill: '💰 成本管控', title: '食材采购：口味是命根子，不能省3块钱换便宜酱油', preview: '省了3块钱酱油，丢了一桌回头客', time: '3天前', refs: 7 },
-      { skill: '👨‍👩‍👧 待客之道', title: '客人投诉处理：认错要快，补偿要到位', preview: '跟客人说已经换回来了，下次送一份', time: '3天前', refs: 5 }
+    chat: [
+      { role: 'user', text: '客户想做一条带货视频，卖厨房刀具' },
+      { role: 'avatar', text: '我先用冲突开头——"这把刀切了100次，居然没磨过"，然后实际演示切东西的画面。你之前带货视频都是先制造视觉冲击再引出产品，对吗？', learned: '确认带货视频策略：先冲击后引出' },
+      { role: 'user', text: '对，但别搞低价促销那种，要讲品质' },
+      { role: 'avatar', text: '明白，你之前2次拒绝了低价促销路线。我走品质路线：\n\n开头：切硬物毫不费力的画面\n中间：跟普通刀对比，突出工艺差异\n结尾：不是最便宜的，但用10年不用换\n\n不喊"最低价"，强调"物有所值"，可以吗？', learned: '再次确认：走品质路线，不搞低价促销' }
     ],
     mirror: {
-      q: '有个客人吃出头发，大闹要免单，你怎么处理？',
-      me: '先道歉，然后把那道菜免了，再送一个菜，最后当着全场客人的面说"感谢这位客人的提醒，我们一定注意"。不要只免那道菜，要大方一点，当众处理反而比私下了更好，其他客人看到你的态度会更信任你。',
-      ai: '先跟客人道歉，然后免掉那道菜的费用。再额外送一个菜表示歉意。处理时要诚恳，不要推卸责任。',
-      match: 60,
-      diffs: ['你没有只免那道菜，而是更慷慨——分身不够大方', '你选择当众处理而非私下了——这是经营智慧，分身没学到', '分身没想到"当众处理反而更好"这个策略']
+      question: '一个视频数据很差，只有几百播放，你怎么处理？',
+      userAnswer: '先看是什么原因——选题不对就换选题，标题不行就改标题重发，内容没起承转合就重新剪。但如果试了2次还不行，就直接放弃这个方向，换下一个。别死磕，时间比流量值钱。',
+      avatarAnswer: '先分析原因——选题、标题、开头3秒哪个环节掉了。针对性优化后重发一次。但如果优化后数据还是不行，果断换方向，不恋战。你的时间比一个视频的流量值钱。',
+      similarity: 90,
+      diffPoint: '你更决绝"试2次就放弃"，分身说"优化一次"',
+      samePoint: '都认为"别死磕，果断换方向"'
     },
-    radar: { labels: ['菜品研发','成本管控','待客之道','竞争策略','供应链','食品安全'], values: [40,22,15,35,28,20] },
-    traces: [
-      { icon: '✏️', bg: '#fff7e6', action: '你修改了分身的定价建议，把38块改成了42块', learn: '学到：你的定价不是简单翻倍，要考虑品牌定位', time: '今天 11:00' },
-      { icon: '🚫', bg: '#fff1f0', action: '你拒绝分身"换便宜酱油省成本"的建议', learn: '学到：口味不能省，3块钱省出去丢的是回头客', time: '昨天' }
-    ],
-    growth: [
-      { dot: '🆕', bg: '#e6f7ff', title: '学会了"竞争策略"：不打价格战', desc: '来自案例投喂', time: '今天' },
-      { dot: '⬆️', bg: '#f6ffed', title: '菜品研发 升级到 进阶 Lv.2', desc: '案例数达到6个', time: '3天前' }
-    ]
-  },
-  {
-    id: 'xiaowang', name: '小王的分身', emoji: '👩‍💻', job: '短视频达人',
-    gradient: 'linear-gradient(135deg, #f5222d, #ff7a45)', color: '#f5222d', levelColor: '#fff1f0', levelText: '#f5222d',
-    similarity: 65,
-    desc: '正在学习你的内容策划、拍摄技巧和流量运营方法',
-    skills: [
-      { icon: '🎬', name: '内容策划', level: '熟练 Lv.3', pct: 68, desc: '掌握了热点捕捉、选题策划、脚本撰写等核心能力', cases: 15 },
-      { icon: '📱', name: '拍摄剪辑', level: '进阶 Lv.2', pct: 45, desc: '学会了你的运镜风格和剪辑节奏', cases: 7 },
-      { icon: '🔥', name: '流量运营', level: '入门 Lv.1', pct: 25, desc: '刚学会基础投流，精准投放还需学习', cases: 2 }
-    ],
-    questions: [
-      { ctx: '🎬 内容策划 · 选题方向', text: '主人，最近"职场冷知识"这个话题火了，我要不要跟？你之前说追热点要注意什么来着？', time: '8分钟前' }
-    ],
-    chat: {
-      ai1: '主人，我刚剪完一条视频，用的是你教的"3秒Hook法则"，开头直接抛问题。但我觉得节奏还是没你剪的那么紧凑，你能帮我看一下吗？',
-      learn1: '已尝试应用：3秒Hook法则',
-      user1: '不是节奏的问题，是你的转场太慢了。两个镜头之间不要留白超过0.5秒，观众没耐心等你。还有，BGM的卡点要对上画面变化，这才是你剪的和我剪的最大区别。',
-      ai2: '明白了！我总结：1. 镜头转场不超过0.5秒 2. BGM卡点要对画面变化 3. 紧凑感来自转场+卡点的配合。我马上去改！那还有一点——你选BGM有什么标准？',
-      learn2: '已提取新经验：剪辑节奏原则',
-      user2: 'BGM不是越火越好，要跟内容情绪匹配。科普类用轻快的，情感类用钢琴曲，干货类用节奏感强的电子乐。别用抖音最火的歌，烂大街了反而掉档次。',
-      ai3: '记下了！<b>BGM选择原则：</b>匹配内容情绪而非追热门 ✓ 科普→轻快，情感→钢琴，干货→电子 ✓ 不用抖音最火BGM避免烂大街。',
-      learn3: '已提取核心原则：BGM匹配原则'
-    },
-    feedStory: '有条视频我拍了3个版本。第一版正经科普没人看，第二版加了段子播放量还行但没转发，第三版我改成了"你可能不知道的3件事"格式，开头就是"第一件一定会让你震惊"，结果播放量10万+，转发5000+。我的判断是：好奇心驱动比知识驱动更有传播力。',
-    feedExtract: [
-      { label: '📌 适用场景', value: '短视频选题 · 内容策划' },
-      { label: '🎯 你的判断', value: '正经科普没人看，好奇心驱动才有传播力' },
-      { label: '⚡ 你的行动', value: '科普→段子→好奇心悬念："你可能不知道的3件事"' },
-      { label: '📊 结果', value: '播放量10万+，转发5000+' },
-      { label: '🧠 核心逻辑', value: '好奇心>知识驱动 ✓ · 悬念开头制造期待 ✓ · 格式化内容更易传播' }
-    ],
-    cases: [
-      { skill: '🎬 内容策划', title: '好奇心驱动："你可能不知道的3件事"格式', preview: '正经科普没人看，好奇心开头10万+播放', time: '1天前', refs: 6 },
-      { skill: '📱 拍摄剪辑', title: '3秒Hook法则：开头抛问题留观众', preview: '前3秒决定完播率，直接抛问题最快留人', time: '3天前', refs: 9 },
-      { skill: '🔥 流量运营', title: '投流不追热门BGM，匹配内容情绪', preview: '科普→轻快，情感→钢琴，干货→电子', time: '5天前', refs: 3 }
-    ],
-    mirror: {
-      q: '你的视频突然爆了，100万播放，你怎么利用这个流量？',
-      me: '千万别马上接广告！先趁热打铁发一条同类选题的视频，趁算法还在推你。然后回复每一条热门评论，把评论区变成第二内容场。等流量稳定了再考虑变现，急了就废了。',
-      ai: '视频爆了之后应该尽快跟进一条相似的内容，趁热度还在。同时要多回复评论，增加互动。变现的话可以等流量稳定一些再考虑。',
-      match: 75,
-      diffs: ['你说"千万别马上接广告"——这是你的经验，分身没提到', '你说"把评论区变成第二内容场"——分身没想到这个策略', '分身缺少"急了就废了"的判断——这是你的节奏把控']
-    },
-    radar: { labels: ['内容策划','拍摄剪辑','流量运营','数据分析','商业变现','社区运营'], values: [68,45,25,40,15,30] },
-    traces: [
-      { icon: '✏️', bg: '#fff7e6', action: '你修改了分身选的BGM，把抖音热歌换成了轻快电子乐', learn: '学到：你不追热门BGM，更看重匹配度', time: '今天 16:00' },
-      { icon: '👍', bg: '#f6ffed', action: '你给分身写的视频脚本点了赞："你可能不知道的3件事"', learn: '学到：你认可好奇心驱动的选题方向', time: '昨天' }
-    ],
-    growth: [
-      { dot: '🆕', bg: '#e6f7ff', title: '学会了"商业节奏"：爆了别急变现', desc: '来自镜像测试修正', time: '今天' },
-      { dot: '⬆️', bg: '#f6ffed', title: '内容策划 升级到 熟练 Lv.3', desc: '案例数达到15个，镜像匹配度75%', time: '昨天' }
-    ]
-  },
-  {
-    id: 'liyisheng', name: '李医生的分身', emoji: '👨‍⚕️', job: '中医理疗师',
-    gradient: 'linear-gradient(135deg, #722ed1, #b37feb)', color: '#722ed1', levelColor: '#f9f0ff', levelText: '#722ed1',
-    similarity: 38,
-    desc: '正在学习你的辨证思路、手法技巧和医患沟通方式',
-    skills: [
-      { icon: '🩺', name: '辨证施治', level: '入门 Lv.1', pct: 25, desc: '刚学会基础辨证逻辑，复杂证型还需积累', cases: 3 },
-      { icon: '👐', name: '推拿手法', level: '入门 Lv.1', pct: 15, desc: '刚开始学习你的手法力度和节奏', cases: 1 },
-      { icon: '💬', name: '医患沟通', level: '入门 Lv.1', pct: 10, desc: '刚接触，还需大量投喂', cases: 1 }
-    ],
-    questions: [
-      { ctx: '🩺 辨证施治 · 颈椎问题', text: '主人，有个患者说脖子僵硬还头晕，我判断是风寒型，但拿不准。你遇到这种一般怎么辨证？', time: '15分钟前' }
-    ],
-    chat: {
-      ai1: '主人，有个患者来理疗，说腰疼。我准备按常规给他推拿腰部，但我觉得你可能有自己的判断？',
-      learn1: '已注意到：腰疼不一定只看腰',
-      user1: '腰疼先别急着按腰，先问清楚：是久坐疼还是弯腰疼？早上起来僵不僵？有没有腿麻？腰疼可能是腰的问题，也可能是骶髂关节的问题，还可能是腰椎间盘突出。不同的原因手法完全不一样，按错了反而加重。',
-      ai2: '明白了！我总结：1. 腰疼先问清症状再动手 2. 可能是腰/骶髂/椎间盘三种 3. 不同的原因手法完全不同，按错会加重。那我第一步应该问什么？',
-      learn2: '已提取新经验：先辨证后施治原则',
-      user2: '先问"什么时候开始疼的"和"什么动作时最疼"。如果弯腰加重，多半是肌肉问题；如果久坐后起不来，可能是椎间盘；如果翻身都疼，要注意是不是肾脏问题先排除。安全第一，不确定的先建议去医院拍片。',
-      ai3: '记下了！<b>诊疗原则：</b>先问后动手 ✓ 疼痛特点定位病因 ✓ 不确定先排除危险证 ✓ 绝不在未辨证时盲目施手法。',
-      learn3: '已提取核心原则：安全第一辨证原则'
-    },
-    feedStory: '有个患者来找我推拿颈椎，说头晕手麻。我没有直接推颈椎，先让他转头看看，发现他往左转的时候头晕加重。我判断不是单纯的颈椎问题，建议他先去做个颈动脉超声。结果查出颈动脉狭窄，幸亏没直接推，推了可能出事。这让我更加坚信：不确定的先排除，别逞能。',
-    feedExtract: [
-      { label: '📌 适用场景', value: '颈椎问题 · 安全判断' },
-      { label: '🎯 你的判断', value: '头晕手麻不一定是颈椎问题，先排查再动手' },
-      { label: '⚡ 你的行动', value: '不直接推拿 → 让患者转头测试 → 发现转颈加重 → 建议颈动脉超声' },
-      { label: '📊 结果', value: '查出颈动脉狭窄，避免了一次医疗风险' },
-      { label: '🧠 核心逻辑', value: '不确定先排除 ✓ · 不逞能 ✓ · 安全第一不是空话' }
-    ],
-    cases: [
-      { skill: '🩺 辨证施治', title: '颈椎问题先排查：不直接推拿先测试', preview: '头晕手麻先排查颈动脉，推拿可能出事', time: '2天前', refs: 2 },
-      { skill: '💬 医患沟通', title: '不确定时怎么说：建议检查而非推脱', preview: '不说"我治不了"，说"为了安全建议先检查"', time: '4天前', refs: 3 }
-    ],
-    mirror: {
-      q: '一个老客户来推拿，说这次腰特别疼，让你直接按，不用检查了，你怎么做？',
-      me: '越是老客户越要查。上次他可能只是肌肉劳损，这次可能是椎间盘突出了。跟他说"正因为是老客户我才更上心，您配合我检查一下，安全第一"。老客户信任你，你说清楚原因他会理解的。',
-      ai: '即使是老客户也要先检查再推拿。可以跟客户解释清楚，说明是为了安全着想，然后简单检查一下再开始。',
-      match: 55,
-      diffs: ['你说"越是老客户越要查"——分身没有这个判断', '你的话术更具体："正因为是老客户我才更上心"——分身没有这种沟通技巧', '分身缺少"上次和这次可能不一样"的动态判断思维']
-    },
-    radar: { labels: ['辨证施治','推拿手法','医患沟通','安全意识','经络理论','养生知识'], values: [25,15,10,40,20,30] },
-    traces: [
-      { icon: '✏️', bg: '#fff7e6', action: '你修改了分身的建议，把"直接推拿"改成了"先排查再决定"', learn: '学到：你绝不在未辨证时动手', time: '今天 9:30' },
-      { icon: '🚫', bg: '#fff1f0', action: '你拒绝了分身"老客户不用检查"的建议', learn: '学到：越是老客户越要查，上次和这次可能不一样', time: '昨天' }
-    ],
-    growth: [
-      { dot: '🆕', bg: '#e6f7ff', title: '学会了"安全意识"：不确定先排除', desc: '来自案例投喂', time: '今天' },
-      { dot: '⭐', bg: '#fff7e6', title: '掌握核心原则：先辨证后施治', desc: '从对话中习得', time: '3天前' }
+    scenes: [
+      { icon: '🎬', iconBg: '#fff1f0', title: '分身代写脚本', desc: '按你的风格', flow: ['客户需求','分身出脚本','你审核修改','开拍'], value: '脚本创作从<strong>半天缩短到30分钟</strong>' },
+      { icon: '📈', iconBg: '#f6ffed', title: '分身做数据分析', desc: '帮你判断选题', flow: ['数据输入','分身分析趋势','推荐选题方向','你拍板'], value: '不用再<strong>凭感觉选题材</strong>，数据+经验双重保障' },
+      { icon: '🤝', iconBg: '#e6f7ff', title: '分身接商务合作', desc: '按你的标准筛选', flow: ['品牌方找来','分身初筛','你确认合作','分身出方案'], value: '不用<strong>每个品牌都亲自聊</strong>，分身先过滤' }
     ]
   }
-];
+};
 
-let currentPerson = 0;
-let currentPage = 0;
+let currentPerson = 'lin';
 
-function switchPerson(idx) {
-  currentPerson = idx;
-  document.querySelectorAll('.person-card').forEach((c, i) => c.classList.toggle('active', i === idx));
-  renderPage(currentPage);
+// ===== 渲染人物切换栏 =====
+function renderPersonSwitcher() {
+  const el = document.getElementById('personSwitcher');
+  el.innerHTML = Object.entries(PERSONS).map(([key, p]) =>
+    `<div class="person-card ${key === currentPerson ? 'active' : ''}" data-person="${key}">
+      <div class="emoji">${p.emoji}</div>
+      <div class="name">${p.name}</div>
+    </div>`
+  ).join('');
+  el.querySelectorAll('.person-card').forEach(card => {
+    card.onclick = () => { currentPerson = card.dataset.person; renderAll(); };
+  });
 }
 
-function switchPage(idx) {
-  currentPage = idx;
-  document.querySelectorAll('.page-tab').forEach((t, i) => t.classList.toggle('active', i === idx));
-  renderPage(idx);
-}
+// ===== 渲染页面 =====
+function renderAll() {
+  renderPersonSwitcher();
+  const p = PERSONS[currentPerson];
+  const area = document.getElementById('contentArea');
 
-function renderPage(idx) {
-  const p = personas[currentPerson];
-  const c = document.getElementById('mainContent');
-  let html = '';
-
-  if (idx === 0) {
-    // 分身主页
-    html = `<div class="page active">
-      <div class="avatar-header" style="background:${p.gradient}">
-        <div class="avatar-circle">${p.emoji}</div>
-        <div class="avatar-name">${p.name}</div>
-        <div class="avatar-desc">${p.desc}</div>
-        <div class="similarity-badge">相似度 ${p.similarity}%</div>
+  area.innerHTML = `
+    <!-- 页面0：分身主页 -->
+    <div class="page active" id="page0">
+      <div class="avatar-hero" style="background: ${p.bg}">
+        <div class="avatar-info">
+          <div class="avatar-circle">${p.emoji}</div>
+          <div>
+            <div class="avatar-name">${p.name}的分身</div>
+            <div class="avatar-tagline">${p.tagline}</div>
+          </div>
+        </div>
+        <div class="stats-row">
+          <div class="stat-item"><div class="stat-num">${Object.values(p.traits).flat().length}</div><div class="stat-label">已掌握特征</div></div>
+          <div class="stat-item"><div class="stat-num">${p.learnings.length}</div><div class="stat-label">今日学习</div></div>
+          <div class="stat-item"><div class="stat-num">${p.mirror.similarity}%</div><div class="stat-label">相似度</div></div>
+        </div>
       </div>
-      <div class="skill-cards">
-        ${p.skills.map(s => `
-          <div class="skill-card">
-            <div class="skill-header">
-              <span class="skill-name">${s.icon} ${s.name}</span>
-              <span class="skill-level" style="background:${p.levelColor};color:${p.levelText}">${s.level}</span>
+
+      <div class="card">
+        <div class="card-title"><span class="live-indicator"><span class="live-dot"></span>实时学习中</span> 最近洞察</div>
+        <div class="insight-timeline">
+          ${p.learnings.slice(0, 4).map(l => `
+            <div class="insight-item">
+              <div class="insight-time">${l.time} · ${l.icon} ${l.source}</div>
+              <div class="insight-text">${l.extracted}</div>
+              <div class="insight-source">来源：你的日常操作</div>
             </div>
-            <div class="skill-bar"><div class="skill-bar-fill" style="width:${s.pct}%;background:${p.gradient}"></div></div>
-            <div class="skill-desc">${s.desc}</div>
-            <div class="skill-case-count">已投喂 ${s.cases} 个案例</div>
-          </div>
-        `).join('')}
-      </div>
-      <div class="quick-actions">
-        <div class="quick-action" onclick="switchPage(1)"><div class="action-icon">💬</div><div class="action-label">跟分身聊天</div><div class="action-sub">对话中学习你</div></div>
-        <div class="quick-action" onclick="switchPage(2)"><div class="action-icon">📖</div><div class="action-label">投喂经验</div><div class="action-sub">讲个故事给它</div></div>
-        <div class="quick-action" onclick="switchPage(3)"><div class="action-icon">🪞</div><div class="action-label">镜像测试</div><div class="action-sub">看看有多像你</div></div>
-        <div class="quick-action" onclick="switchPage(4)"><div class="action-icon">📊</div><div class="action-label">能力看板</div><div class="action-sub">学习进度</div></div>
-      </div>
-      <div class="pending-questions">
-        <div class="pending-title"><span class="dot"></span>分身想问你</div>
-        ${p.questions.map(q => `
-          <div class="question-card">
-            <div class="q-context">${q.ctx}</div>
-            <div class="q-text">${q.text}</div>
-            <div class="q-time">${q.time} · 等待你的回答</div>
-            <div class="q-btns"><button class="q-btn secondary">稍后再说</button><button class="q-btn primary" style="background:${p.color}">教教它</button></div>
-          </div>
-        `).join('')}
-      </div>
-    </div>`;
-  } else if (idx === 1) {
-    // 分身对话
-    html = `<div class="page active">
-      <div class="chat-header">
-        <div class="chat-avatar" style="background:${p.gradient}">${p.emoji}</div>
-        <div class="chat-info"><div class="chat-name">${p.name}</div><div class="chat-status">在线 · 相似度${p.similarity}%</div></div>
-      </div>
-      <div class="chat-mode-tabs">
-        <div class="chat-mode-tab active">自由对话</div>
-        <div class="chat-mode-tab">技能训练</div>
-        <div class="chat-mode-tab">经验投喂</div>
-      </div>
-      <div class="chat-body">
-        <div class="msg ai"><div class="msg-avatar" style="background:${p.gradient};color:#fff">${p.emoji}</div><div><div class="msg-bubble">${p.chat.ai1}</div><div class="msg-learning">✅ ${p.chat.learn1}</div></div></div>
-        <div class="msg user"><div class="msg-avatar" style="background:#f0f0f0">😊</div><div class="msg-bubble" style="background:${p.color}">${p.chat.user1}</div></div>
-        <div class="msg ai"><div class="msg-avatar" style="background:${p.gradient};color:#fff">${p.emoji}</div><div><div class="msg-bubble">${p.chat.ai2}</div><div class="msg-learning">✅ ${p.chat.learn2}</div></div></div>
-        <div class="msg user"><div class="msg-avatar" style="background:#f0f0f0">😊</div><div class="msg-bubble" style="background:${p.color}">${p.chat.user2}</div></div>
-        <div class="msg ai"><div class="msg-avatar" style="background:${p.gradient};color:#fff">${p.emoji}</div><div><div class="msg-bubble">${p.chat.ai3}</div><div class="msg-learning">✅ ${p.chat.learn3}</div></div></div>
-      </div>
-      <div class="chat-input"><input placeholder="跟分身说点什么..." /><button class="send-btn" style="background:${p.color}">➤</button></div>
-    </div>`;
-  } else if (idx === 2) {
-    // 案例投喂
-    html = `<div class="page active">
-      <div class="feed-tabs">
-        <div class="feed-tab active">📝 讲故事投喂</div>
-        <div class="feed-tab">📄 上传文档</div>
-        <div class="feed-tab">📚 案例库</div>
-      </div>
-      <div class="feed-story-area">
-        <div class="feed-prompt">
-          <div class="prompt-label">给分身讲一个你的经历或做法</div>
-          <div class="prompt-text" contenteditable="true">${p.feedStory.replace(/\n/g, '<br>')}</div>
-          <div class="prompt-hint">💡 讲得越具体越好：什么情况→你怎么判断→做了什么→结果怎样→为什么这么做。分身会自动拆解学习。</div>
+          `).join('')}
         </div>
-        <div class="feed-extracted">
-          <div class="ext-title">🔍 分身自动提取的知识点</div>
-          ${p.feedExtract.map(e => `<div class="ext-item"><div class="ext-label">${e.label}</div><div class="ext-value">${e.value}</div></div>`).join('')}
-        </div>
-        <button class="feed-confirm-btn" style="background:${p.color}">确认投喂，让分身学习</button>
       </div>
-      <div style="padding:16px 12px;font-size:12px;color:#999;font-weight:600">📚 已投喂的案例</div>
-      <div class="case-list">
-        ${p.cases.map(c => `
-          <div class="case-item">
-            <span class="case-skill" style="background:${p.levelColor};color:${p.levelText}">${c.skill}</span>
-            <div class="case-title">${c.title}</div>
-            <div class="case-preview">${c.preview}</div>
-            <div class="case-meta"><span>${c.time}投喂</span><span>已被分身引用 ${c.refs} 次</span></div>
+
+      <div class="card">
+        <div class="card-title">🎯 核心底线</div>
+        ${p.traits.boundary.map(t => `
+          <div style="padding: 8px 0; border-bottom: 1px solid #f5f5f5;">
+            <div style="font-size: 13px; font-weight: 500;">${t.text}</div>
+            <div style="font-size: 11px; color: #999; margin-top: 3px;">证据：${t.evidence}</div>
           </div>
         `).join('')}
       </div>
-    </div>`;
-  } else if (idx === 3) {
-    // 镜像测试
-    html = `<div class="page active">
-      <div class="mirror-intro">
-        <div class="mirror-icon">🪞</div>
-        <div class="mirror-title">镜像测试</div>
-        <div class="mirror-desc">同一个场景，你和分身分别回答<br>看看分身有多像你的思维</div>
+
+      <div class="card">
+        <div class="card-title">💡 你不需要"教"分身</div>
+        <div style="font-size: 12px; color: #666; line-height: 1.8;">
+          分身从你的日常操作中自动学习：<br>
+          📝 你修改文案 → 分身学你的风格<br>
+          ⭐ 你评价满意 → 分身记住你喜欢的<br>
+          🚫 你踢人/拒绝 → 分身知道你的底线<br>
+          💰 你调整报价 → 分身理解你的定价逻辑<br>
+          <br>
+          <strong style="color: #1890ff;">你正常使用，分身自动变聪明。</strong>
+        </div>
       </div>
+    </div>
+
+    <!-- 页面1：行为学习 -->
+    <div class="page" id="page1">
+      <div class="card" style="border-left: 3px solid #52c41a;">
+        <div class="card-title"><span class="live-indicator"><span class="live-dot"></span>实时</span> 分身正在从你的操作中学习</div>
+        <div style="font-size: 12px; color: #666; line-height: 1.7;">
+          你每一次操作，分身都在观察、提炼、记住。<br>以下是你最近的行为和分身的收获：
+        </div>
+      </div>
+
+      ${p.learnings.map(l => `
+        <div class="learn-card">
+          <div class="learn-source">${l.icon} ${l.source} · ${l.time}</div>
+          <div class="learn-raw">${l.raw.replace(/\n/g, '<br>')}</div>
+          <div class="learn-extracted">${l.extracted}</div>
+        </div>
+      `).join('')}
+
+      <div class="card">
+        <div class="card-title">📊 修改对比 — 分身这样学你的风格</div>
+        ${currentPerson === 'lin' ? `
+        <div class="compare-box">
+          <div class="compare-side compare-original">
+            <div class="compare-label" style="color: #f5222d;">✗ AI原版</div>
+            限时优惠，错过就没有了！<br>赶紧下单，名额有限！
+          </div>
+          <div class="compare-side compare-modified">
+            <div class="compare-label" style="color: #52c41a;">✓ 你的修改</div>
+            这个方法很多家长都在用，<br>效果不错，可以试试看。
+          </div>
+        </div>
+        <div style="font-size: 12px; color: #666; padding: 8px; background: #f0f9ff; border-radius: 8px; line-height: 1.6;">
+          💡 分身提炼：<strong>偏好建设性引导</strong>，不制造紧迫感，让用户自己做判断<br>
+          📈 置信度：92%（5次一致行为确认）
+        </div>
+        ` : currentPerson === 'chen' ? `
+        <div class="compare-box">
+          <div class="compare-side compare-original">
+            <div class="compare-label" style="color: #f5222d;">✗ AI原版</div>
+            您的孩子需要加强数学训练，<br>建议报名我们的强化班。
+          </div>
+          <div class="compare-side compare-modified">
+            <div class="compare-label" style="color: #52c41a;">✓ 你的修改</div>
+            小明空间想象力特别强，<br>如果把这份天赋用到数学上会更出色。
+          </div>
+        </div>
+        <div style="font-size: 12px; color: #666; padding: 8px; background: #f0f9ff; border-radius: 8px; line-height: 1.6;">
+          💡 分身提炼：<strong>先肯定优点再引导</strong>，从不直接否定孩子<br>
+          📈 置信度：96%（15次一致行为确认）
+        </div>
+        ` : `
+        <div class="compare-box">
+          <div class="compare-side compare-original">
+            <div class="compare-label" style="color: #f5222d;">✗ AI原版</div>
+            今天给大家分享一个技巧，<br>让你的视频更火。
+          </div>
+          <div class="compare-side compare-modified">
+            <div class="compare-label" style="color: #52c41a;">✓ 你的修改</div>
+            我踩了3个月坑才搞明白的事，<br>今天1分钟告诉你。
+          </div>
+        </div>
+        <div style="font-size: 12px; color: #666; padding: 8px; background: #f0f9ff; border-radius: 8px; line-height: 1.6;">
+          💡 分身提炼：<strong>用个人经历制造代入感</strong>，不用教程式开场<br>
+          📈 置信度：92%（7次一致行为确认）
+        </div>
+        `}
+      </div>
+    </div>
+
+    <!-- 页面2：分身对话 -->
+    <div class="page" id="page2">
+      <div class="card" style="padding: 8px;">
+        <div class="chat-messages">
+          ${p.chat.map(m => `
+            <div class="chat-msg ${m.role === 'user' ? 'user' : 'avatar'}">
+              <div class="bubble">${m.text.replace(/\n/g, '<br>')}</div>
+              ${m.learned ? `<div class="learned-tag">✅ ${m.learned}</div>` : ''}
+              <div class="msg-time">${m.role === 'user' ? p.name : p.name + '的分身'}</div>
+            </div>
+          `).join('')}
+        </div>
+        <div class="chat-input">
+          <input placeholder="跟分身说点什么..." />
+          <button>发送</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">💬 对话中分身怎么学习</div>
+        <div style="font-size: 12px; color: #666; line-height: 1.8;">
+          分身不只是回答你的问题，它会：<br><br>
+          <strong>1. 主动确认</strong> — "你之前3次都是这样做的，对吗？"<br>
+          <strong>2. 提及你的底线</strong> — "你不喜欢焦虑营销，我换个方式"<br>
+          <strong>3. 实时学习</strong> — 你纠正它一句，它立刻记住<br>
+          <strong>4. 解释判断依据</strong> — "因为你的经验是XXX，所以我选了XXX"<br><br>
+          每次对话都是训练，你不需要额外操作。
+        </div>
+      </div>
+    </div>
+
+    <!-- 页面3：镜像测试 -->
+    <div class="page" id="page3">
       <div class="mirror-question">
-        <div class="mirror-q-card">
-          <div class="q-label">📝 本期场景题</div>
-          <div class="q-scenario">${p.mirror.q}</div>
-        </div>
+        <div class="q-label">📋 场景题</div>
+        <div style="font-size: 14px; line-height: 1.7; font-weight: 500;">${p.mirror.question}</div>
       </div>
-      <div class="mirror-compare">
-        <div class="mirror-answer">
-          <div class="answer-label" style="color:${p.color}">👤 你的回答</div>
-          <div class="answer-text">${p.mirror.me}</div>
-          <div class="answer-tag" style="background:#f6ffed;color:#52c41a">已回答</div>
-        </div>
-        <div class="mirror-answer">
-          <div class="answer-label" style="color:#36cfc9">${p.emoji} 分身的回答</div>
-          <div class="answer-text">${p.mirror.ai}</div>
-          <div class="answer-tag" style="background:#f6ffed;color:#52c41a">✓ 匹配度 ${p.mirror.match}%</div>
-        </div>
-      </div>
-      <div class="mirror-diff">
-        <div class="diff-title">⚡ 差异点（分身还需要学习的地方）</div>
-        ${p.mirror.diffs.map(d => `<div class="diff-item">${d}</div>`).join('')}
-      </div>
-      <div class="mirror-btns">
-        <button class="mirror-btn" style="background:#fff;color:${p.color};border:1px solid ${p.color}">修正分身</button>
-        <button class="mirror-btn" style="background:${p.color};color:#fff">下一题</button>
-      </div>
-    </div>`;
-  } else if (idx === 4) {
-    // 能力看板
-    const r = p.radar;
-    const cx = 100, cy = 100, maxR = 80;
-    const n = r.labels.length;
-    function polar(i, v) { const a = -Math.PI/2 + (2*Math.PI*i/n); return { x: cx + maxR*v/100*Math.cos(a), y: cy + maxR*v/100*Math.sin(a) }; }
-    let gridLayers = '', dataPoints = '', labelPts = '';
-    for (let layer = 1; layer <= 3; layer++) {
-      let pts = []; for (let i = 0; i < n; i++) { const pt = polar(i, layer*33); pts.push(`${pt.x},${pt.y}`); }
-      gridLayers += `<polygon points="${pts.join(' ')}" fill="none" stroke="#f0f0f0" stroke-width="1"/>`;
-    }
-    let dPts = []; for (let i = 0; i < n; i++) { dPts.push(polar(i, r.values[i])); }
-    dataPoints = `<polygon points="${dPts.map(pt=>`${pt.x},${pt.y}`).join(' ')}" fill="${p.color}22" stroke="${p.color}" stroke-width="2"/>`;
-    for (let i = 0; i < n; i++) { const lp = polar(i, 105); labelPts += `<text x="${lp.x}" y="${lp.y}" text-anchor="middle" dominant-baseline="middle" font-size="9" fill="#666">${r.labels[i]}</text>`; }
 
-    html = `<div class="page active">
-      <div class="board-header">
-        <div class="board-title">${p.emoji} ${p.name.replace('的分身','')}的成长轨迹</div>
-        <div class="board-sub">持续学习，越来越像你</div>
+      <div class="mirror-answer">
+        <div class="answer-label" style="color: #1890ff;">👤 ${p.name}的回答</div>
+        <div class="answer-text">${p.mirror.userAnswer}</div>
       </div>
-      <div class="board-stats">
-        <div class="board-stat"><div class="stat-num" style="color:${p.color}">${p.skills.reduce((a,s)=>a+s.cases,0)}</div><div class="stat-label">案例数</div></div>
-        <div class="board-stat"><div class="stat-num" style="color:${p.color}">${p.similarity}%</div><div class="stat-label">相似度</div></div>
-        <div class="board-stat"><div class="stat-num" style="color:${p.color}">${p.cases.reduce((a,c)=>a+c.refs,0)}</div><div class="stat-label">引用次数</div></div>
+
+      <div class="mirror-answer">
+        <div class="answer-label" style="color: #722ed1;">🤖 分身的回答</div>
+        <div class="answer-text">${p.mirror.avatarAnswer}</div>
       </div>
-      <div class="board-section">
-        <div class="board-section-title">能力雷达图</div>
-        <div class="radar-chart">
-          <div class="radar-placeholder">
-            <svg viewBox="0 0 200 200">${gridLayers}${dataPoints}${labelPts}</svg>
+
+      <div class="mirror-result">
+        <div class="result-title">🎯 相似度 ${p.mirror.similarity}%</div>
+        <div style="font-size: 12px; color: #666; line-height: 1.7;">
+          <div style="margin-bottom: 6px;"><span class="same-highlight">✓ 一致</span> ${p.mirror.samePoint}</div>
+          <div><span class="diff-highlight">△ 差异</span> ${p.mirror.diffPoint}</div>
+        </div>
+        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #b7eb8f;">
+          <div style="font-size: 11px; color: #52c41a; font-weight: 600; margin-bottom: 6px;">修正这个差异 →</div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-primary" style="font-size: 11px; padding: 6px 12px;">分身说得太委婉，像我一样直接</button>
+            <button class="btn btn-outline" style="font-size: 11px; padding: 6px 12px;">分身的说法也行</button>
           </div>
-          <div style="font-size:11px;color:#999">蓝色区域越大，分身越像你</div>
         </div>
       </div>
-      <div class="board-section">
-        <div class="board-section-title">行为轨迹学习<span class="more" style="color:${p.color}">从你的日常操作中自动学习</span></div>
-        <div class="behavior-trace">
-          ${p.traces.map(t => `
-            <div class="trace-item">
-              <div class="trace-icon" style="background:${t.bg}">${t.icon}</div>
-              <div class="trace-text"><div class="trace-action">${t.action}</div><div class="trace-learn">✅ ${t.learn}</div><div class="trace-time">${t.time}</div></div>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-      <div class="board-section">
-        <div class="board-section-title">成长时间线</div>
-        <div class="growth-timeline">
-          ${p.growth.map(g => `
-            <div class="growth-node">
-              <div class="growth-dot" style="background:${g.bg}">${g.dot}</div>
-              <div class="growth-content"><div class="gc-title">${g.title}</div><div class="gc-desc">${g.desc}</div><div class="gc-time">${g.time}</div></div>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    </div>`;
-  }
+    </div>
 
-  c.innerHTML = html;
+    <!-- 页面4：价值场景 -->
+    <div class="page" id="page4">
+      <div class="card" style="border-left: 3px solid #fa8c16;">
+        <div class="card-title">🚀 ${p.name}的分身能做什么</div>
+        <div style="font-size: 12px; color: #666; line-height: 1.6;">
+          分身掌握了你的${p.skills.join('、')}，可以：
+        </div>
+      </div>
+
+      ${p.scenes.map(s => `
+        <div class="scene-card">
+          <div class="scene-header">
+            <div class="scene-icon" style="background: ${s.iconBg}">${s.icon}</div>
+            <div>
+              <div class="scene-title">${s.title}</div>
+              <div class="scene-desc">${s.desc}</div>
+            </div>
+          </div>
+          <div class="scene-flow">
+            ${s.flow.map((step, i) => `<span class="flow-step">${step}</span>${i < s.flow.length - 1 ? '<span class="flow-arrow">→</span>' : ''}`).join('')}
+          </div>
+          <div class="scene-value">${s.value}</div>
+        </div>
+      `).join('')}
+
+      <div class="card">
+        <div class="card-title">🔮 未来更多可能</div>
+        <div style="font-size: 12px; color: #666; line-height: 2;">
+          🏥 <strong>数字保险</strong> — 你的经验和智慧永续，不会消失<br>
+          🎓 <strong>培训新人</strong> — 分身按你的方式指导新员工<br>
+          🌍 <strong>跨时区服务</strong> — 你睡觉时，分身在工作<br>
+          📊 <strong>决策参谋</strong> — 遇到选择，分身按你的逻辑预判<br>
+          🤝 <strong>经验传承</strong> — 把一辈子经验传给AI分身
+        </div>
+      </div>
+    </div>
+
+    <!-- 页面5：人格画像 -->
+    <div class="page" id="page5">
+      <div class="card" style="border-left: 3px solid #722ed1;">
+        <div class="card-title">🧠 ${p.name}的人格画像</div>
+        <div style="font-size: 12px; color: #666; line-height: 1.6;">
+          以下特征全部从你的日常操作中自动提炼，每条都有证据支撑。
+        </div>
+      </div>
+
+      <div class="personality-section">
+        <div class="section-label">💬 沟通风格</div>
+        ${p.traits.communication_style.map(t => renderTrait(t)).join('')}
+      </div>
+
+      <div class="personality-section">
+        <div class="section-label">🎯 决策模式</div>
+        ${p.traits.decision_pattern.map(t => renderTrait(t)).join('')}
+      </div>
+
+      <div class="personality-section">
+        <div class="section-label">🚫 底线</div>
+        ${p.traits.boundary.map(t => renderTrait(t)).join('')}
+      </div>
+
+      <div class="card">
+        <div class="card-title">📐 人格是怎么形成的</div>
+        <div style="font-size: 12px; color: #666; line-height: 1.8;">
+          <strong>第1步：行为观察</strong> — 你每次操作（发单/修改/评价/踢人/拒绝）都自动记录<br>
+          <strong>第2步：模式提炼</strong> — AI从行为日志中提炼规律（如"5次把焦虑标题改为建设性"）<br>
+          <strong>第3步：证据确认</strong> — 行为越一致，置信度越高（3次→0.5，10次→0.7，20次→0.9）<br>
+          <strong>第4步：人格注入</strong> — 分身生成内容时，把这些特征注入到AI的思考过程中<br><br>
+          <span style="color: #1890ff; font-weight: 500;">你不需要做任何额外操作，正常使用就行。</span>
+        </div>
+      </div>
+    </div>
+  `;
 }
+
+function renderTrait(t) {
+  const confColor = t.confidence >= 0.9 ? '#52c41a' : t.confidence >= 0.7 ? '#fa8c16' : '#999';
+  const confLabel = t.confidence >= 0.9 ? '高确信' : t.confidence >= 0.7 ? '较确信' : '待确认';
+  const sourceLabel = t.source === 'auto_observed' ? '自动观察' : t.source === 'behavior_log' ? '行为日志' : t.source === 'user_stated' ? '你亲口说的' : '案例提取';
+  return `
+    <div class="trait-card">
+      <div class="trait-text">${t.text}</div>
+      <div class="trait-evidence">${t.evidence}</div>
+      <div class="trait-confidence">
+        <div class="conf-bar"><div class="conf-fill" style="width: ${t.confidence * 100}%; background: ${confColor};"></div></div>
+        <div class="conf-num" style="color: ${confColor};">${Math.round(t.confidence * 100)}% ${confLabel}</div>
+      </div>
+      <div class="trait-source">来源：${sourceLabel}</div>
+    </div>
+  `;
+}
+
+// ===== 页面切换逻辑 =====
+document.getElementById('pageTabs').addEventListener('click', e => {
+  const tab = e.target.closest('.page-tab');
+  if (!tab) return;
+  document.querySelectorAll('.page-tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const page = document.getElementById('page' + tab.dataset.page);
+  if (page) page.classList.add('active');
+});
 
 // 初始渲染
-renderPage(0);
+renderAll();
 </script>
 </body>
 </html>
