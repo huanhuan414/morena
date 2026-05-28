@@ -124,11 +124,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 64rpx;
-  height: 64rpx;
-  background: rgba(255, 255, 255, 0.2);
+  gap: 6rpx;
+  padding: 8rpx 16rpx;
+  background: rgba(123, 63, 228, 0.15);
   border-radius: 16rpx;
-  margin-right: 12rpx;
+  flex-shrink: 0;
+}
+
+.bot-entry-text {
+  font-size: 22rpx;
+  color: #7B3FE4;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .add-button-text {

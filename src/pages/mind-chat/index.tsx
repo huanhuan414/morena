@@ -585,6 +585,7 @@ const MindChat: React.FC = () => {
             onClick={() => Taro.navigateTo({ url: '/package-group-bot/pages/group-list/index' })}
           >
             <Bot size={16} color="#7B3FE4" />
+            <Text className="bot-entry-text">群聊值守</Text>
           </View>
           {activeTab === 'my' && (
             <View
