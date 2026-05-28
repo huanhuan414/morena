@@ -10,7 +10,7 @@ import {
 import { getStatusBarHeight } from '@/utils/safe-area'
 import '@/styles/variables.css'
 import './index.css'
-import logoImage from '@/static/logo.png'
+import logoImage from '@/static/logo.jpg'
 
 interface UserStats {
   avatarCount: number
