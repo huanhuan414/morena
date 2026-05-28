@@ -447,7 +447,14 @@ export default function OrderAcceptance() {
                   </Text>
 
                   {feedback.link && (
-                    <View className="od-link-item" onClick={() => handleLinkClick(feedback.link)}>
+                    <View className="od-link-item" onClick={() => {
+                      Taro.setClipboardData({ data: feedback.link }).then(() => {
+                        Taro.showToast({ title: '链接已复制', icon: 'success', duration: 1500 })
+                      }).catch(() => {
+                        Taro.showToast({ title: '复制失败', icon: 'none', duration: 1500 })
+                      })
+                    }}
+                    >
                       <View className="od-link-icon">
                         <ExternalLink size={14} color="#6366F1" />
                       </View>
