@@ -133,8 +133,8 @@ const GroupChat = () => {
 
     if (isSystem) {
       return (
-        <View key={msg.id} className="flex justify-center my-2">
-          <Text className="text-xs text-gray-400 bg-gray-100 px-3 py-1 rounded-full">
+        <View key={msg.id} style={{ display: 'flex', justifyContent: 'center', margin: '16rpx 0' }}>
+          <Text className="text-xs text-gray-400" style={{ backgroundColor: '#f3f4f6', padding: '4rpx 24rpx', borderRadius: '999rpx' }}>
             {msg.content}
           </Text>
         </View>
@@ -144,54 +144,54 @@ const GroupChat = () => {
     return (
       <View key={msg.id} className={`msg-bubble ${isAvatar ? 'msg-avatar' : 'msg-user'}`}>
         {/* 头像和名字 */}
-        <View className="flex flex-row items-center mb-1">
+        <View className="msg-sender">
           {isAvatar ? (
-            <View className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center mr-2">
+            <View className="msg-sender-icon msg-sender-icon-avatar">
               <Bot size={14} color="#3b82f6" />
             </View>
           ) : (
-            <View className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center mr-2">
+            <View className="msg-sender-icon msg-sender-icon-user">
               <User size={14} color="#6b7280" />
             </View>
           )}
-          <Text className="text-xs text-gray-500">{msg.senderName}</Text>
+          <Text className="msg-sender-name">{msg.senderName}</Text>
           {isAvatar && (
-            <Badge variant="outline" className="ml-2">
+            <Badge variant="outline" className="msg-badge">
               <Text className="text-xs text-blue-500">分身</Text>
             </Badge>
           )}
-          <Text className="text-xs text-gray-300 ml-2">{formatTime(msg.timestamp)}</Text>
+          <Text className="msg-time">{formatTime(msg.timestamp)}</Text>
         </View>
 
         {/* 消息内容 */}
-        <View className={`${isAvatar ? 'bg-blue-50 ml-8' : 'bg-white ml-8'} rounded-xl p-3`}>
-          <Text className="block text-sm text-gray-800">{msg.content}</Text>
+        <View className={`msg-content ${isAvatar ? 'msg-content-avatar' : 'msg-content-user'}`}>
+          <Text className="msg-text">{msg.content}</Text>
 
           {/* 分身回复内容 */}
           {isAvatar && msg.avatarReply && msg.avatarReply !== msg.content && (
-            <View className="mt-2 pt-2 border-t border-blue-100">
-              <Text className="block text-xs text-blue-400 mb-1">分身回复</Text>
-              <Text className="block text-sm text-gray-700">{msg.avatarReply}</Text>
+            <View className="msg-reply-area">
+              <Text className="msg-reply-label">分身回复</Text>
+              <Text className="msg-reply-text">{msg.avatarReply}</Text>
             </View>
           )}
 
           {/* 用户纠正 */}
           {msg.userCorrection && (
-            <View className="mt-2 pt-2 border-t border-orange-100">
-              <View className="flex flex-row items-center mb-1">
+            <View className="msg-correction-area">
+              <View className="msg-correction-header">
                 <Pencil size={12} color="#f97316" />
-                <Text className="text-xs text-orange-500 ml-1">你的纠正</Text>
+                <Text className="msg-correction-label">你的纠正</Text>
               </View>
-              <Text className="block text-sm text-gray-700">{msg.userCorrection}</Text>
+              <Text className="msg-correction-text">{msg.userCorrection}</Text>
 
               {/* 学习结果 */}
               {msg.learnedFromCorrection && (
-                <View className="mt-2 bg-green-50 rounded-lg p-2">
-                  <View className="flex flex-row items-center">
+                <View className="msg-learned">
+                  <View className="msg-learned-header">
                     <Sparkles size={12} color="#22c55e" />
-                    <Text className="text-xs text-green-600 font-semibold ml-1">分身学到了</Text>
+                    <Text className="msg-learned-label">分身学到了</Text>
                   </View>
-                  <Text className="block text-xs text-green-700 mt-1">
+                  <Text className="msg-learned-text">
                     {msg.learnedFromCorrection}
                   </Text>
                 </View>
@@ -201,9 +201,9 @@ const GroupChat = () => {
 
           {/* 纠正输入框 */}
           {correctingMsgId === msg.id && (
-            <View className="mt-3 pt-3 border-t border-gray-200">
-              <Text className="block text-xs text-gray-500 mb-2">纠正分身回复：</Text>
-              <View className="bg-gray-50 rounded-xl p-3 mb-2">
+            <View className="msg-correct-input">
+              <Text className="msg-correct-label">纠正分身回复：</Text>
+              <View className="msg-correct-textarea-wrap">
                 <Textarea
                   style={{ width: '100%', minHeight: '60px', backgroundColor: 'transparent' }}
                   value={correctionText}
@@ -211,8 +211,8 @@ const GroupChat = () => {
                   placeholder="输入你觉得正确的回复..."
                 />
               </View>
-              <View className="flex flex-row gap-2">
-                <View className="flex-1">
+              <View className="msg-correct-actions">
+                <View className="msg-correct-action">
                   <Button
                     size="sm"
                     variant="outline"
@@ -222,7 +222,7 @@ const GroupChat = () => {
                     <Text>取消</Text>
                   </Button>
                 </View>
-                <View className="flex-1">
+                <View className="msg-correct-action">
                   <Button size="sm" className="w-full" onClick={submitCorrection}>
                     <Text>提交纠正</Text>
                   </Button>
@@ -233,13 +233,10 @@ const GroupChat = () => {
 
           {/* 操作按钮 */}
           {isAvatar && !correctingMsgId && !msg.userCorrection && (
-            <View className="flex flex-row mt-2 pt-2 border-t border-gray-100">
-              <View
-                className="flex flex-row items-center mr-4"
-                onClick={() => startCorrection(msg)}
-              >
+            <View className="msg-actions">
+              <View className="msg-action-btn" onClick={() => startCorrection(msg)}>
                 <Pencil size={12} color="#f97316" />
-                <Text className="text-xs text-orange-500 ml-1">纠正</Text>
+                <Text className="msg-action-text">纠正</Text>
               </View>
             </View>
           )}
@@ -255,43 +252,39 @@ const GroupChat = () => {
       {/* 消息列表 */}
       <ScrollView scrollY className="chat-scroll" scrollIntoView="">
         {/* 群信息条 */}
-        <View className="px-4 py-2 bg-gray-50">
-          <View className="flex flex-row items-center justify-between">
-            <View className="flex flex-row items-center">
+        <View className="chat-status-bar">
+          <View className="chat-status-row">
+            <View className="chat-status-left">
               <Bot size={14} color="#3b82f6" />
-              <Text className="text-xs text-gray-500 ml-1">分身值守中</Text>
+              <Text className="chat-status-text">分身值守中</Text>
             </View>
-            <View className="flex flex-row items-center" onClick={loadMessages}>
+            <View className="chat-status-right" onClick={loadMessages}>
               <RefreshCw size={12} color="#9ca3af" />
-              <Text className="text-xs text-gray-400 ml-1">刷新</Text>
+              <Text className="chat-status-refresh">刷新</Text>
             </View>
           </View>
         </View>
 
         {/* 提示条 */}
-        <View className="px-4 py-2">
-          <View className="bg-blue-50 rounded-lg px-3 py-2">
-            <Text className="block text-xs text-blue-600">
-              群里@分身时，分身会用你的风格自动回复。点击&ldquo;纠正&rdquo;可以教分身更好地模仿你。
+        <View className="chat-tip">
+          <View className="chat-tip-inner">
+            <Text className="chat-tip-text">
+              群里@分身时，分身会用你的风格自动回复。点击「纠正」可以教分身更好地模仿你。
             </Text>
           </View>
         </View>
 
         {/* 消息 */}
-        <View className="px-4 pb-4">
+        <View className="chat-messages">
           {loading ? (
-            <View className="flex items-center justify-center py-12">
-              <Text className="block text-gray-400">加载中...</Text>
+            <View className="chat-loading">
+              <Text className="chat-loading-text">加载中...</Text>
             </View>
           ) : messages.length === 0 ? (
-            <View className="flex items-center justify-center py-12">
-              <View className="text-center">
-                <MessageSquare size={48} color="#d1d5db" className="mx-auto" />
-                <Text className="block text-gray-400 mt-3">还没有消息</Text>
-                <Text className="block text-gray-300 text-sm mt-1">
-                  在群里@分身，分身会自动回复
-                </Text>
-              </View>
+            <View className="chat-empty">
+              <MessageSquare size={48} color="#d1d5db" />
+              <Text className="chat-empty-title">还没有消息</Text>
+              <Text className="chat-empty-desc">在群里@分身，分身会自动回复</Text>
             </View>
           ) : (
             messages.map(msg => renderMessage(msg))
@@ -318,8 +311,7 @@ const GroupChat = () => {
         }}
       >
         <View
-          className="flex-1"
-          style={{ backgroundColor: '#f8fafc', borderRadius: '20px', padding: '8px 12px' }}
+          className="chat-input-wrap"
         >
           <Input
             style={{ width: '100%', fontSize: '14px' }}
@@ -329,7 +321,7 @@ const GroupChat = () => {
             onConfirm={handleSendAsAvatar}
           />
         </View>
-        <View style={{ flexShrink: 0 }}>
+        <View className="chat-input-btn">
           <Button size="sm" onClick={handleSendAsAvatar} disabled={!inputText.trim()}>
             <Send size={14} color="#fff" />
           </Button>
