@@ -171,6 +171,7 @@ export default function ProfilePage() {
                 </View>
               </>
             )}
+          </View>
 
           <View className="card-actions">
             <View className="action-btn-light" onClick={() => navigateTo({ url: '/package-profile/pages/notifications/index' })}>
