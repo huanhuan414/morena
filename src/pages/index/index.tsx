@@ -49,7 +49,7 @@ const Index: React.FC = () => {
   const [generatedContents, setGeneratedContents] = useState(0)
   const [growthCampaign, setGrowthCampaign] = useState<any>(null)
   const [trackedCampaignId, setTrackedCampaignId] = useState('')
-  const { avatarId: currentAvatarId, setAvatarId } = useUserStore(state => state)
+  const { avatarId: currentAvatarId, setAvatarId, isLoggedIn } = useUserStore(state => state)
 
   const [showOrderModal, setShowOrderModal] = useState(false)
   const [orderModalData, setOrderModalData] = useState<any>(null)
@@ -432,6 +432,10 @@ const Index: React.FC = () => {
   }
 
   const enableAllTrust = async () => {
+    if (!isLoggedIn) {
+      Taro.navigateTo({ url: '/pages/login/index?redirect=/pages/index/index' })
+      return
+    }
     if (trustAllLoading) return
     setTrustAllLoading(true)
     try {
