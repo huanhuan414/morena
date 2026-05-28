@@ -160,9 +160,6 @@ export default function ProfilePage() {
                 <Image src={logoImage} className="user-avatar" mode="aspectFill" />
                 <Text className="login-text">去登录</Text>
               </View>
-<<<<<<< HEAD
-            )}
-=======
             </View>
             <View className="user-text-info">
               <Text className="user-name">{userInfo?.nickname || '探索者'}</Text>
@@ -172,7 +169,6 @@ export default function ProfilePage() {
                 <Text className="user-coin-text">{coinBalance.toLocaleString()} 币</Text>
               </View>
             </View>
->>>>>>> 59975f88 (实现币系统完整功能：充值微信支付、技能广场权益、订单优先级、自动接单、修复多个Bug)
           </View>
 
           <View className="card-actions">
