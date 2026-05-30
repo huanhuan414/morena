@@ -87,10 +87,17 @@ export default function OrderCreate() {
       return
     }
     try {
-      // chooseMedia 同时支持图片和视频，统一入口
+      // 根据内容类型决定素材类型
+      // 图文笔记(image)只能上传图片，短视频(video)只能上传视频
+      const mediaType = form.contentType === 'image'
+        ? ['image']
+        : form.contentType === 'video'
+          ? ['video']
+          : ['image', 'video']
+
       const res = await Taro.chooseMedia({
         count: 9,
-        mediaType: ['image', 'video'],
+        mediaType: mediaType as ('image' | 'video')[],
         sourceType: ['album', 'camera'],
         sizeType: ['compressed'],
         maxDuration: 60,
@@ -99,6 +106,17 @@ export default function OrderCreate() {
       for (const media of res.tempFiles) {
         try {
           const isVideo = media.fileType === 'video' || media.tempFilePath.endsWith('.mp4') || media.tempFilePath.endsWith('.mov')
+
+          // 验证素材类型是否符合内容类型要求
+          if (form.contentType === 'image' && isVideo) {
+            Taro.showToast({ title: '图文笔记只能上传图片', icon: 'none' })
+            continue
+          }
+          if (form.contentType === 'video' && !isVideo) {
+            Taro.showToast({ title: '短视频只能上传视频', icon: 'none' })
+            continue
+          }
+
           const uploadUrl = isVideo ? '/api/upload/video' : '/api/upload/image'
           const uploadRes = await Network.uploadFile({ url: uploadUrl, filePath: media.tempFilePath, name: 'file' })
           const data = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data
@@ -178,6 +196,13 @@ export default function OrderCreate() {
           if (pollTimer) clearInterval(pollTimer)
 
           const data = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data
+
+          // 检查后端返回的错误码
+          if (data?.code !== 200) {
+            const errorMsg = data?.message || data?.msg || data?.error || '上传失败，请重试'
+            throw new Error(errorMsg)
+          }
+
           const extracted = data?.data
           if (extracted) {
             const newAssets: typeof uploadedAssets = []
@@ -190,9 +215,11 @@ export default function OrderCreate() {
             setUploadedAssets(prev => [...prev, ...newAssets])
             Taro.showToast({ title: `提取${newAssets.length}个文件`, icon: 'success' })
           }
-        } catch (e) {
+        } catch (e: any) {
           console.error('压缩包上传失败:', e)
-          Taro.showToast({ title: '上传失败', icon: 'none' })
+          // 提取后端返回的错误信息并显示给用户
+          const errorMsg = e?.data?.msg || e?.data?.message || e?.message || '上传失败，请重试'
+          Taro.showToast({ title: errorMsg, icon: 'none', duration: 3000 })
         }
         setZipProgress(null)
       } catch (e) { /* 用户取消 */ }
