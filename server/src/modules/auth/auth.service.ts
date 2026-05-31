@@ -274,7 +274,7 @@ export class AuthService {
       if (userByOpenid) {
         // 找到用户，检查手机号是否需要更新
         const updateData: Record<string, any> = {};
-        if (userByOpenid.phone !== phone) {
+        if (phone && !userByOpenid.phone) {
           updateData.phone = phone;
         }
         if (nickname && !userByOpenid.nickname) {
