@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { normalizeOrderProcessingStatus } from '@/adapters/core-chain-dto'
 import { getPlatformLabel } from '@/constants/publish-platform'
 import { ArrowLeft, Bell, ExternalLink, CircleCheck, Play } from 'lucide-react-taro'
+import { getStatusBarHeight } from '@/utils/safe-area'
 import './index.css'
 
 export default function OrderAcceptanceFeedback() {
@@ -147,6 +148,7 @@ export default function OrderAcceptanceFeedback() {
 
   // 获取内容类型
   const contentType = data.contentType || generatedContent.type || 'image'
+  const statusBarHeight = getStatusBarHeight()
 
   // 解析内容文本（支持换行和基本格式）
   const parseContent = (text: string) => {
@@ -185,13 +187,21 @@ export default function OrderAcceptanceFeedback() {
 
   return (
     <View className="page-container">
-      {/* 顶部导航 */}
-      <View className="nav-bar">
-        <View className="nav-left" onClick={() => navigateBack()}>
-          <ArrowLeft size={20} color="#333" />
+      {/* 头部 */}
+      <View className="oaf-header" style={{ paddingTop: `${statusBarHeight + 12}px` }}>
+        <View className="oaf-header-deco">
+          <View className="oaf-header-circle circle-a" />
+          <View className="oaf-header-circle circle-b" />
         </View>
-        <Text className="nav-title">待验收</Text>
-        <View className="nav-right"></View>
+        <View className="oaf-header-bar">
+          <View className="oaf-back-btn" onClick={() => Taro.navigateBack()}>
+            <ArrowLeft size={20} color="#fff" />
+          </View>
+          <View className="oaf-header-center">
+            <Text className="oaf-header-title">待验收</Text>
+          </View>
+          <View className="oaf-header-placeholder" />
+        </View>
       </View>
 
       <ScrollView scrollY className="content-scroll">
