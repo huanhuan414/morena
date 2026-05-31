@@ -397,6 +397,22 @@ export default function AvatarCreate() {
       Taro.showToast({ title: '请输入分身昵称', icon: 'none' })
       return
     }
+    if (!formData.gender) {
+      Taro.showToast({ title: '请选择性别', icon: 'none' })
+      return
+    }
+    if (!formData.birthday) {
+      Taro.showToast({ title: '请选择年龄', icon: 'none' })
+      return
+    }
+    if (!formData.identity) {
+      Taro.showToast({ title: '请选择职业', icon: 'none' })
+      return
+    }
+    if (!formData.location) {
+      Taro.showToast({ title: '请选择位置', icon: 'none' })
+      return
+    }
     if (currentStep < STEP_LABELS.length) {
       setCurrentStep(currentStep + 1)
     } else {
@@ -725,63 +741,6 @@ export default function AvatarCreate() {
         </View>
       </View>
 
-      {/* 性别选择弹窗 */}
-      {showGenderPicker && (
-        <View className="picker-mask" onClick={() => setShowGenderPicker(false)}>
-          <View className="picker-panel" onClick={(e) => e.stopPropagation()}>
-            <View className="picker-header">
-              <Text className="picker-title">选择性别</Text>
-              <View className="picker-close" onClick={() => setShowGenderPicker(false)}>
-                <Text className="picker-close-text">✕</Text>
-              </View>
-            </View>
-            <View className="picker-options">
-              {GENDER_OPTIONS.map(option => (
-                <View
-                  key={option.key}
-                  className={`picker-option ${formData.gender === option.key ? 'selected' : ''}`}
-                  onClick={() => selectGender(option.key)}
-                >
-                  <Text className="picker-option-icon">{option.icon}</Text>
-                  <Text className="picker-option-name">{option.name}</Text>
-                  {formData.gender === option.key && (
-                    <Check size={16} color="#8B5CF6" />
-                  )}
-                </View>
-              ))}
-            </View>
-          </View>
-        </View>
-      )}
-
-      {/* 身份选择弹窗 */}
-      {showIdentityPicker && (
-        <View className="picker-mask" onClick={() => setShowIdentityPicker(false)}>
-          <View className="picker-panel" onClick={(e) => e.stopPropagation()}>
-            <View className="picker-header">
-              <Text className="picker-title">选择职业</Text>
-              <View className="picker-close" onClick={() => setShowIdentityPicker(false)}>
-                <Text className="picker-close-text">✕</Text>
-              </View>
-            </View>
-            <View className="picker-options">
-              {IDENTITY_OPTIONS.map(option => (
-                <View
-                  key={option.key}
-                  className={`picker-option ${formData.identity === option.key ? 'selected' : ''}`}
-                  onClick={() => selectIdentity(option.key)}
-                >
-                  <Text className="picker-option-icon">{option.icon}</Text>
-                  <Text className="picker-option-name">{option.name}</Text>
-                  {formData.identity === option.key && (
-                    <Check size={16} color="#8B5CF6" />
-                  )}
-                </View>
-              ))}
-            </View>
-          </View>
-        </View>
-      )}
     </View>
   )
 
@@ -1114,6 +1073,64 @@ export default function AvatarCreate() {
           <Text className="bottom-hint">0元创建，创建后可随时修改</Text>
         )}
       </View>
+
+      {/* 性别选择弹窗 - 移到 ScrollView 外部避免机型兼容问题 */}
+      {showGenderPicker && (
+        <View className="picker-mask" onClick={() => setShowGenderPicker(false)}>
+          <View className="picker-panel" onClick={(e) => e.stopPropagation()}>
+            <View className="picker-header">
+              <Text className="picker-title">选择性别</Text>
+              <View className="picker-close" onClick={() => setShowGenderPicker(false)}>
+                <Text className="picker-close-text">✕</Text>
+              </View>
+            </View>
+            <View className="picker-options">
+              {GENDER_OPTIONS.map(option => (
+                <View
+                  key={option.key}
+                  className={`picker-option ${formData.gender === option.key ? 'selected' : ''}`}
+                  onClick={() => selectGender(option.key)}
+                >
+                  <Text className="picker-option-icon">{option.icon}</Text>
+                  <Text className="picker-option-name">{option.name}</Text>
+                  {formData.gender === option.key && (
+                    <Check size={16} color="#8B5CF6" />
+                  )}
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* 身份选择弹窗 - 移到 ScrollView 外部避免机型兼容问题 */}
+      {showIdentityPicker && (
+        <View className="picker-mask" onClick={() => setShowIdentityPicker(false)}>
+          <View className="picker-panel" onClick={(e) => e.stopPropagation()}>
+            <View className="picker-header">
+              <Text className="picker-title">选择职业</Text>
+              <View className="picker-close" onClick={() => setShowIdentityPicker(false)}>
+                <Text className="picker-close-text">✕</Text>
+              </View>
+            </View>
+            <View className="picker-options">
+              {IDENTITY_OPTIONS.map(option => (
+                <View
+                  key={option.key}
+                  className={`picker-option ${formData.identity === option.key ? 'selected' : ''}`}
+                  onClick={() => selectIdentity(option.key)}
+                >
+                  <Text className="picker-option-icon">{option.icon}</Text>
+                  <Text className="picker-option-name">{option.name}</Text>
+                  {formData.identity === option.key && (
+                    <Check size={16} color="#8B5CF6" />
+                  )}
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   )
 }
