@@ -77,7 +77,6 @@ const Index: React.FC = () => {
   const [acceptingOrderIds, setAcceptingOrderIds] = useState<Record<string, boolean>>({})
   const [orderPage, setOrderPage] = useState(1)
   const [, setOrderTotal] = useState(0)
-  const [hasMoreOrders, setHasMoreOrders] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const ordersFetchInFlightRef = useRef(false)
   const lastOrdersFetchAtRef = useRef(0)
@@ -101,7 +100,7 @@ const Index: React.FC = () => {
     lastOrdersFetchAtRef.current = now
     try {
       if (page === 1) setOrdersLoading(true)
-      const pageSize = 10
+      const pageSize = 20
       const res = await Network.request({
         url: '/api/order/open',
         data: {
@@ -147,7 +146,6 @@ const Index: React.FC = () => {
         })
         setOrderTotal(total)
         setOrderPage(page)
-        setHasMoreOrders(nextLength < total)
       } else {
         if (!append) setOrders([])
       }
@@ -371,13 +369,6 @@ const Index: React.FC = () => {
     setIsRefreshing(false)
   }, [activePlatform])
 
-  // 上拉加载更多
-  const handleLoadMore = useCallback(() => {
-    if (!ordersLoading && hasMoreOrders) {
-      fetchOrders(orderPage + 1, true)
-    }
-  }, [ordersLoading, hasMoreOrders, orderPage, activePlatform])
-
   const getGreeting = () => {
     const hour = new Date().getHours()
     if (hour < 6) return '夜深了'
@@ -549,8 +540,6 @@ const Index: React.FC = () => {
         refresherEnabled
         refresherTriggered={isRefreshing}
         onRefresherRefresh={handleRefresh}
-        onScrollToLower={handleLoadMore}
-        lowerThreshold={200}
       >
 
         {/* 新用户引导（仅无分身时显示） */}
@@ -791,7 +780,7 @@ const Index: React.FC = () => {
                 <Text className="po-loading-text">加载中...</Text>
               </View>
             ) : orders.length > 0 ? (
-              orders.slice(0, 6).map(order => {
+              orders.map(order => {
                 const urgencyTag = getUrgencyTag(order)
                 const contentTypeTag = getContentTypeTag(order)
                 const priorityColor = urgencyTag ? urgencyTag.color : '#6366F1'
@@ -1008,19 +997,6 @@ const Index: React.FC = () => {
             )}
           </View>
         </View>
-
-        {/* 加载更多提示 */}
-        {orders.length > 0 && (
-          <View className="load-more-wrapper">
-            {ordersLoading && orderPage > 1 ? (
-              <Text className="load-more-text">加载中...</Text>
-            ) : hasMoreOrders ? (
-              <Text className="load-more-text">上拉加载更多</Text>
-            ) : (
-              <Text className="load-more-text">没有更多订单了</Text>
-            )}
-          </View>
-        )}
 
         {/* 底部留白 */}
         <View className="bottom-spacer" />

@@ -4,7 +4,7 @@ import { View, Text, ScrollView } from '@tarojs/components'
 import { Bell, Settings, Users, ArrowLeft, ArrowUp, FileText, Coins, Plus, Zap, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye, ShoppingBag, ChevronRight, Gift, Rocket, Clock, CircleCheckBig, ChevronDown } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { BANNER_TITLE, BANNER_DESC } from '@/constants/referral-rewards'
-import { PLATFORM_UI_ORDER, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
+import { PLATFORM_UI_ORDER, PLATFORM_META_MAP, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
 import { useUserStore } from '@/stores/user'
 import { useNotifications } from '@/hooks/useNotifications'
 import { Avatar as UiAvatar } from '@/components/ui/avatar'
@@ -82,7 +82,12 @@ const Index: React.FC = () => {
   const platformTabs = [
     { key: 'all', label: '全部' },
     ...PLATFORM_UI_ORDER.map((key) => ({ key, label: getPlatformLabel(key) }))
+      .filter((item) => {
+        const meta = getPlatformMeta(item.key)
+        return Array.isArray(meta?.requirements)
+      })
   ]
+
   // 精心设计的示例数据 — 刺激用户接单欲望
   const DEMO_ORDERS = [
     {
@@ -350,9 +355,14 @@ const Index: React.FC = () => {
     const currentScrollTop = e.detail.scrollTop
     setShowBackToTop(currentScrollTop > 300)
   }
-  // 回到顶部
+  // 回到顶部（通过改变 scrollTop 值触发滚动）
   const scrollToTop = () => {
-    setScrollTop(prev => prev + 1)
+    setScrollTop(prev => prev === 0 ? 0.001 : 0)
+  }
+  // 切换平台并回到顶部
+  const handlePlatformChange = (platform: string) => {
+    setActivePlatform(platform)
+    setScrollTop(prev => prev === 0 ? 0.001 : 0)
   }
   // 下拉刷新
   const handleRefresh = useCallback(async () => {
@@ -454,19 +464,19 @@ const Index: React.FC = () => {
         </View>
 
         {/* 平台筛选 */}
-        <ScrollView className="platform-scroll" scrollX scrollWithAnimation>
-          <View className="platform-tags">
+        <View className="order-square-filter">
+          <ScrollView className="order-square-scroll" scrollX>
             {platformTabs.map(p => (
               <View
                 key={p.key}
-                className={`platform-tag ${activePlatform === p.key ? 'active' : ''}`}
-                onClick={() => setActivePlatform(p.key)}
+                className={`order-square-tag ${activePlatform === p.key ? 'active' : ''}`}
+                onClick={() => handlePlatformChange(p.key)}
               >
-                <Text className="platform-tag-text">{p.label}</Text>
+                <Text className={`order-square-tag-text ${activePlatform === p.key ? 'active' : ''}`}>{p.label}</Text>
               </View>
             ))}
-          </View>
-        </ScrollView>
+          </ScrollView>
+        </View>
       </View>
       {/* 主内容区 */}
       <ScrollView
@@ -492,7 +502,7 @@ const Index: React.FC = () => {
                 <Text className="po-loading-text">加载中...</Text>
               </View>
             ) : orders.length > 0 ? (
-              orders.slice(0, 6).map(order => {
+              orders.map(order => {
                 const urgencyTag = getUrgencyTag(order)
                 const contentTypeTag = getContentTypeTag(order)
                 const priorityColor = urgencyTag ? urgencyTag.color : '#6366F1'
