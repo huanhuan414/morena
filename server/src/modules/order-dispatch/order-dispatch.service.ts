@@ -1518,8 +1518,9 @@ async getExecutionProgress(orderId: string) {
           const needMoreVideos = orderAiAutoFill && orderContentType === 'video' && readyVideoCount < defaultVideoCount
           
           if (readyImageCount === 0 || needMoreImages || needMoreVideos) {
-            const maxWaitMs = 60000
-            const pollIntervalMs = 3000
+            const isVideoOrder = orderContentType === 'video'
+            const maxWaitMs = isVideoOrder ? 600000 : 60000
+            const pollIntervalMs = isVideoOrder ? 5000 : 3000
             const startTime = Date.now()
             
             while (Date.now() - startTime < maxWaitMs) {

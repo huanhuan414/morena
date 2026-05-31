@@ -493,7 +493,32 @@ const MindChat: React.FC = () => {
         throw new Error(res.data?.msg || '更新失败')
       }
       if (checked) {
-        Taro.showToast({ title: '托管已开启，分身将自动接单赚钱', icon: 'none', duration: 2000 })
+        const userId = useUserStore.getState().userInfo?.id
+        if (userId) {
+          const subRes = await Network.request({
+            url: `/api/subscription/status?userId=${userId}`,
+            method: 'GET',
+          })
+          const planId = subRes?.data?.data?.plan?.id || subRes?.data?.data?.planId || 'plan_free'
+          const isAutoAccept = planId === 'plan_pro' || planId === 'plan_enterprise'
+          if (isAutoAccept) {
+            Taro.showToast({ title: '托管已开启，分身将自动接单赚钱', icon: 'none', duration: 2000 })
+          } else {
+            Taro.showModal({
+              title: '托管开启成功 ✨',
+              content: '免费版/基础版用户托管后需手动确认订单\n\n升级专业版即可解锁：\n① 订单优先派发，快速响应\n② 自动接单，无需确认，躺着赚钱\n\n限时优惠价：99.9元/月',
+              confirmText: '立即升级',
+              cancelText: '稍后再说',
+              success: (res) => {
+                if (res.confirm) {
+                  Taro.navigateTo({ url: '/package-avatar/pages/subscription/index' })
+                }
+              }
+            })
+          }
+        } else {
+          Taro.showToast({ title: '托管已开启', icon: 'none', duration: 2000 })
+        }
       }
     } catch (error) {
       setMyClones(previous)

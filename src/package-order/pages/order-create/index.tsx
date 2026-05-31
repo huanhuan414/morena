@@ -21,7 +21,7 @@ import { getStatusBarHeight } from '@/utils/safe-area'
 import { subscribePolling } from '@/utils/polling'
 import './index.css'
 
-const CONTENT_TYPES = [
+const DEFAULT_CONTENT_TYPES = [
   { id: 'simple', label: '简单任务', icon: '✅', basePrice: 0.5, contentPrice: 0, desc: '关注/点赞/转发等', output: '个任务' },
   { id: 'text', label: '纯文案', icon: '📝', basePrice: 2, contentPrice: 0, desc: '文字内容创作', output: '篇原创文案' },
   { id: 'image', label: '图文笔记', icon: '🖼️', basePrice: 3, contentPrice: 1, desc: '图文搭配呈现', output: '篇图文笔记' },
@@ -33,6 +33,7 @@ const PLATFORM_OPTIONS = PLATFORM_UI_ORDER
   .filter((item) => Array.isArray(item.requirements))
 
 export default function OrderCreate() {
+  const [contentTypes, setContentTypes] = useState(DEFAULT_CONTENT_TYPES)
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -73,6 +74,20 @@ export default function OrderCreate() {
   }
 
   useEffect(() => { return () => { stopAiPolling() } }, [])
+
+  useEffect(() => {
+    const fetchPriceConfig = async () => {
+      try {
+        const res = await Network.request({ url: '/api/order/price-config' })
+        if (res.data?.code === 200 && Array.isArray(res.data.data) && res.data.data.length > 0) {
+          setContentTypes(res.data.data)
+        }
+      } catch (e) {
+        console.warn('获取价格配置失败，使用默认配置:', e)
+      }
+    }
+    fetchPriceConfig()
+  }, [])
 
   // ========== 素材上传相关 ==========
   const totalCount = uploadedAssets.length
@@ -208,7 +223,7 @@ export default function OrderCreate() {
 
   // ========== END 素材上传 ==========
 
-  const selectedType = CONTENT_TYPES.find(t => t.id === form.contentType)
+  const selectedType = contentTypes.find(t => t.id === form.contentType)
   const basePricePerUnit = selectedType?.basePrice || 2
   const contentPricePerUnit = selectedType?.contentPrice || 0
   const totalPrice = {
@@ -486,6 +501,8 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         preferred_niche: form.preferredNiche,
         avatar_count: form.avatarCount,
         quantity_per_avatar: form.quantityPerAvatar,
+        base_price: totalPrice.base,
+        content_price: totalPrice.content,
         total_price: totalPrice.total,
         requirements: { ...form.optionalRequirements, platformRemarks: form.platformRemarks, ai_auto_fill: form.aiAutoFill, asset_distribute_mode: form.assetDistributeMode, use_custom_copywriting: form.useCustomCopywriting, custom_copywriting: form.customCopywriting },
         openid,
@@ -837,7 +854,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
             </View>
           </View>
           <View className="type-grid">
-            {CONTENT_TYPES.map(type => (
+            {contentTypes.map(type => (
               <View
                 key={type.id}
                 className={`type-card ${form.contentType === type.id ? 'active' : ''}`}

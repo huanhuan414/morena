@@ -153,7 +153,7 @@ export default function ProfilePage() {
                 <View className="user-text-info">
                   <Text className="user-name">{userInfo?.nickname || '探索者'}</Text>
                   <Text className="user-id">ID: {userInfo?.id?.slice(-8) || 'guest'}</Text>
-                  <View className="user-coin-row">
+                  <View className="user-coin-row" onClick={() => navigateTo({ url: '/package-coin/pages/index/index' })}>
                     <Coins size={14} color="#F59E0B" />
                     <Text className="user-coin-text">{coinBalance.toLocaleString()} 币</Text>
                   </View>

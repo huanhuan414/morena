@@ -117,7 +117,7 @@ const Index: React.FC = () => {
           platforms: Array.isArray(o.platforms) ? o.platforms : (o.platform ? [o.platform] : []),
           budget: Number(o.budget || o.price || 0),
           avatarCountRaw: Number(o.avatarCount || o.avatar_count || 0),
-          estimatedEarning: Number(o.budget || o.price || 0) / Math.max(Number(o.avatarCount || o.avatar_count || 0) || 1, 1),
+          estimatedEarning: Number(o.expectedEarnings || o.expected_earnings || 0),
           deliveryDays: o.deliveryDays || o.delivery_days || 3,
           acceptCount: o.acceptCount || o.accept_count || 0,
           requirements: o.requirements || {},
@@ -203,29 +203,69 @@ const Index: React.FC = () => {
 
   // 接单
   const handleAcceptOrder = async (orderId: string) => {
-    // demo 订单不能真正接单
     if (orderId.startsWith('demo_')) {
       Taro.showToast({ title: '示例订单，请先创建分身', icon: 'none' })
       return
     }
     if (acceptingOrderIds[orderId]) return
     setAcceptingOrderIds(prev => ({ ...prev, [orderId]: true }))
+    
     try {
-      let avatarIdToUse = currentAvatarId
-      if (!avatarIdToUse || avatarIdToUse === 'undefined') {
-        const avatarRes = await Network.request({ url: '/api/avatar' })
-        if (avatarRes.data?.code === 200 && avatarRes.data?.data?.length > 0) {
-          avatarIdToUse = avatarRes.data.data[0].id || ''
-          if (!avatarIdToUse) {
-            Taro.showToast({ title: '分身数据异常', icon: 'none' })
-            return
-          }
-          setAvatarId(avatarIdToUse)
-        } else {
-          Taro.showToast({ title: '请先创建分身', icon: 'none' })
+      const avatarRes = await Network.request({ url: '/api/avatar' })
+      if (avatarRes.data?.code !== 200 || !avatarRes.data?.data?.length) {
+        Taro.showToast({ title: '请先创建分身', icon: 'none' })
+        return
+      }
+      const avatars = avatarRes.data.data
+      
+      const userId = useUserStore.getState().userInfo?.id
+      let planId = 'plan_free'
+      if (userId) {
+        const subRes = await Network.request({
+          url: `/api/subscription/status?userId=${userId}`,
+          method: 'GET',
+        })
+        planId = subRes?.data?.data?.plan?.id || 'plan_free'
+      }
+      const isPro = planId === 'plan_pro' || planId === 'plan_enterprise'
+      
+      let avatarIdToUse: string
+      
+      if (avatars.length === 1) {
+        avatarIdToUse = avatars[0].id
+      } else if (isPro) {
+        const avatarNames = avatars.map((a: any) => a.name)
+        const selectedIndex = await new Promise<number>((resolve) => {
+          Taro.showActionSheet({
+            itemList: avatarNames,
+            success: (r) => resolve(r.tapIndex),
+            fail: () => resolve(-1),
+          })
+        })
+        if (selectedIndex === -1) {
           return
         }
+        avatarIdToUse = avatars[selectedIndex].id
+      } else {
+        const goToUpgrade = await new Promise<boolean>((resolve) => {
+          Taro.showModal({
+            title: '升级解锁分身选择',
+            content: `您有${avatars.length}个分身，升级专业版后可选择特定分身接单\n\n当前将使用默认分身「${avatars[0].name}」接单`,
+            confirmText: '立即升级',
+            cancelText: '继续接单',
+            success: (r) => resolve(r.confirm),
+            fail: () => resolve(false),
+          })
+        })
+        if (goToUpgrade) {
+          Taro.navigateTo({ url: '/package-avatar/pages/subscription/index' })
+          return
+        }
+        avatarIdToUse = avatars[0].id
       }
+      
+      setAvatarId(avatarIdToUse)
+      
       const res = await Network.request({
         url: `/api/order-dispatch/avatar/${avatarIdToUse}/accept/${orderId}`,
         method: 'POST'
@@ -234,7 +274,6 @@ const Index: React.FC = () => {
         Taro.showToast({ title: '接单成功，正在生成内容', icon: 'success' })
         fetchOrders()
         fetchStats()
-        // 跳转到内容生成页面
         const result = res.data?.data || {}
         const nextRequestId = result.requestId || ''
         const nextAvatarId = result.avatarId || avatarIdToUse
@@ -456,16 +495,9 @@ const Index: React.FC = () => {
   }
 
   // 紧急程度标签
-  // 截止时间格式化
+  // 截止时间格式化 - 暂时禁用期限功能
   const formatDeadline = (deadline: string | null) => {
-    if (!deadline) return null
-    const diff = new Date(deadline).getTime() - Date.now()
-    if (diff <= 0) return { text: '已截止', color: '#EF4444', urgent: true }
-    const hours = Math.floor(diff / 3600000)
-    const days = Math.floor(hours / 24)
-    if (days > 0) return { text: `${days}天后`, color: '#6B7280', urgent: false }
-    if (hours > 6) return { text: `${hours}小时后`, color: '#F59E0B', urgent: false }
-    return { text: `${hours}小时后`, color: '#EF4444', urgent: true }
+    return null
   }
 
   const getUrgencyTag = (order: OrderItem) => {

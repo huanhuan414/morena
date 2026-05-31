@@ -14,6 +14,24 @@ const SKILL_NAMES: Record<string, string> = {
   content_writing: '公众号文章生成',
   palm_reading: '看手相',
   fashion_advice: '衣品改造',
+  wechat_mp_article: '公众号文章生成',
+  fashion_makeover: '衣品改造',
+}
+
+const SKILL_TYPE_TO_ID_MAP: Record<string, string> = {
+  wechat_mp_article: 'content_writing',
+  article: 'content_writing',
+  fashion_makeover: 'fashion_advice',
+  clothing: 'fashion_advice',
+  palm_reading: 'palm_reading',
+  palm: 'palm_reading',
+  image_gen: 'image_gen',
+  image: 'image_gen',
+  video_gen: 'video_gen',
+  video: 'video_gen',
+  text: 'content_writing',
+  content_writing: 'content_writing',
+  fashion_advice: 'fashion_advice',
 }
 
 @Injectable()
@@ -32,7 +50,8 @@ export class CoinService {
    */
   async getSkillPrice(skillType: string): Promise<number> {
     const db = getMySQLClient()
-    const skill = await db.queryOne('skills', { id: skillType })
+    const skillId = SKILL_TYPE_TO_ID_MAP[skillType] || skillType
+    const skill = await db.queryOne('skills', { id: skillId })
     return Number(skill?.price || 0)
   }
 

@@ -83,7 +83,12 @@ export default function SkillsSquare() {
     try {
       setLoading(true)
       const res = await Network.request({ url: '/api/skills' })
-      const allSkills = res?.data?.data || []
+      const rawSkills = res?.data?.data || []
+      // 映射字段名：usage_count -> usageCount
+      const allSkills = rawSkills.map((s: any) => ({
+        ...s,
+        usageCount: s.usage_count || s.usageCount || 0
+      }))
       setSkills(allSkills)
 
       if (avatarId) {

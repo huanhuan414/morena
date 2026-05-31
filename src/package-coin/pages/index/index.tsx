@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
-import Taro, { useDidShow } from '@tarojs/taro'
+import Taro, { useDidShow, useLoad } from '@tarojs/taro'
 import { Network } from '@/network'
 import { ArrowLeft, Coins, ChevronRight, TrendingUp, Clock, Gift } from 'lucide-react-taro'
-import { getStatusBarHeight } from '@/utils/safe-area'
 import './index.css'
 
 interface Transaction {
@@ -17,10 +16,15 @@ interface Transaction {
 }
 
 export default function CoinCenter() {
-  const statusBarHeight = getStatusBarHeight()
   const [balance, setBalance] = useState<number>(0)
   const [loading, setLoading] = useState(true)
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([])
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
+
+  useLoad(() => {
+    const systemInfo = Taro.getSystemInfoSync()
+    setStatusBarHeight(systemInfo.statusBarHeight || 20)
+  })
 
   useDidShow(() => {
     loadData()

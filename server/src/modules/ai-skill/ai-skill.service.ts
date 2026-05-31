@@ -5,6 +5,23 @@ import { VolcengineService } from '../upload/volcengine.service';
 import { CoinService } from '../coin/coin.service';
 import * as crypto from 'crypto';
 
+/** 技能名称映射 */
+const SKILL_NAMES: Record<string, string> = {
+  text: '文本生成',
+  image: '图片生成',
+  video: '视频生成',
+  article: '公众号文章生成',
+  clothing: '衣品改造',
+  palm: '看手相',
+  image_gen: '图片生成',
+  video_gen: '视频生成',
+  content_writing: '公众号文章生成',
+  palm_reading: '看手相',
+  fashion_advice: '衣品改造',
+  wechat_mp_article: '公众号文章生成',
+  fashion_makeover: '衣品改造',
+}
+
 /** 技能类型 */
 export type SkillType = 'palm_reading' | 'fashion_makeover' | 'wechat_mp_article';
 
@@ -173,7 +190,7 @@ export class AiSkillService {
           await this.coinService.gift(
             record.user_id,
             Number(record.coin_consumed),
-            `${record.skill_type}生成失败退款`
+            `${SKILL_NAMES[record.skill_type] || record.skill_type}生成失败退款`
           );
           console.log(`[AiSkillService] 已退款 ${record.coin_consumed} 币给用户 ${record.user_id}`);
         }
@@ -530,7 +547,7 @@ ${imageHint}
           await this.coinService.gift(
             record.user_id,
             Number(record.coin_consumed),
-            `${record.skill_type}生成失败退款`
+            `${SKILL_NAMES[record.skill_type] || record.skill_type}生成失败退款`
           );
           console.log(`[AiSkillService] 已退款 ${record.coin_consumed} 币给用户 ${record.user_id}`);
         }

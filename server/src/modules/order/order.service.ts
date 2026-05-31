@@ -8,6 +8,7 @@ import { OrderDispatchService } from '../order-dispatch/order-dispatch.service'
 import { WechatPayService } from '../payment/wechat-pay.service'
 import { ContentGenerationService } from '../content-generation/content-generation.service'
 import { RedisService } from '../redis/redis.service'
+import { PriceConfigService } from './price-config.service'
 
 /**
  * 字段命名规则说明：
@@ -25,6 +26,7 @@ export class OrderService {
     @Inject(forwardRef(() => WechatPayService)) private readonly wechatPayService: WechatPayService,
     @Inject(forwardRef(() => ContentGenerationService)) private readonly contentGenService: ContentGenerationService,
     @Inject(RedisService) private readonly redisService: RedisService,
+    @Inject(PriceConfigService) private readonly priceConfigService: PriceConfigService,
   ) {}
 
   private safeParseJson<T>(value: any, fallback: T): T {
@@ -202,9 +204,28 @@ export class OrderService {
     }
     const priorityValue = priorityMap[orderData.priority] || priorityMap['normal']
     
-    const budget = orderData.totalPrice || orderData.total_price || orderData.budget || 0
+    const contentType = orderData.contentType || orderData.content_type || 'text'
+    const quantityPerAvatar = Number(orderData.quantityPerAvatar || orderData.quantity_per_avatar || 1)
+    
+    const priceCalc = await this.priceConfigService.calculatePrice(contentType, avatarCount, quantityPerAvatar)
+    
+    if (orderData.basePrice !== undefined || orderData.contentPrice !== undefined) {
+      const validation = await this.priceConfigService.validatePrice(
+        contentType,
+        avatarCount,
+        quantityPerAvatar,
+        Number(orderData.basePrice || 0),
+        Number(orderData.contentPrice || 0)
+      )
+      if (!validation.valid) {
+        console.warn(`[OrderService] 价格校验失败: userId=${userId}, contentType=${contentType}, 预期={base:${orderData.basePrice}, content:${orderData.contentPrice}}, 实际={base:${validation.actual.base}, content:${validation.actual.content}}`)
+      }
+    }
+    
+    const baseAmount = priceCalc.base
+    const contentAmount = priceCalc.content
+    const budget = priceCalc.total
 
-    // 写入DB → snake_case
     const insertData: Record<string, any> = {
       id,
       user_id: userId,
@@ -214,6 +235,8 @@ export class OrderService {
       platforms: JSON.stringify(orderData.platforms || []),
       requirements: JSON.stringify(orderData.requirements || {}),
       budget,
+      base_amount: baseAmount,
+      content_amount: contentAmount,
       status: 'pending_payment',
       expected_quantity: avatarCount,
       avatar_count: avatarCount,
@@ -293,7 +316,7 @@ export class OrderService {
     
     const orderRows = await db.query(
       `SELECT id, user_id, avatar_id, title, description, content_type, 
-       platforms, requirements, budget, status, result, created_at, updated_at,
+       platforms, requirements, budget, base_amount, content_amount, status, result, created_at, updated_at,
        completed_at, latitude, longitude, location_text, target_audience,
        expected_quantity, deadline, order_type, priority, assigned_to,
        avatar_count, quantity_per_avatar, is_paid
@@ -385,6 +408,8 @@ export class OrderService {
       : String(order.createdAt)
 
     const budget = Number(order.budget) || 0
+    const baseAmount = Number(order.baseAmount || order.base_amount) || budget
+    const contentAmount = Number(order.contentAmount || order.content_amount) || 0
     const expectedQuantity = Number(order.expectedQuantity)
     const avatarCount = Number(order.avatarCount)
     const requiredCount =
@@ -394,9 +419,9 @@ export class OrderService {
           ? avatarCount
           : 1
     const expectedEarnings =
-      budget > 0 && requiredCount > 0
-        ? Math.round((budget / requiredCount) * 100) / 100
-        : budget
+      baseAmount > 0 && requiredCount > 0
+        ? Math.round((baseAmount / requiredCount) * 100) / 100
+        : baseAmount
     
     return {
       ...order,
@@ -433,7 +458,7 @@ export class OrderService {
     
     const rows = await db.query(
       `SELECT id, title, description, content_type, platforms, requirements, 
-              budget, status, expected_quantity, avatar_count, is_paid, created_at
+              budget, base_amount, content_amount, status, expected_quantity, avatar_count, is_paid, created_at
        FROM orders ${whereClause} ORDER BY created_at DESC LIMIT 100`,
       params
     )
@@ -562,7 +587,9 @@ export class OrderService {
       const dispatchedCount = dispatchCounts[row.id] || 0
       const needAvatarCount = row.expectedQuantity || row.avatarCount || 0
       const budget = Number(row.budget) || 0
-      const expectedEarnings = needAvatarCount > 0 ? Math.round(budget / needAvatarCount * 100) / 100 : budget
+      const baseAmount = Number(row.baseAmount || row.base_amount) || budget
+      const contentAmount = Number(row.contentAmount || row.content_amount) || 0
+      const expectedEarnings = needAvatarCount > 0 ? Math.round(baseAmount / needAvatarCount * 100) / 100 : baseAmount
 
       return {
         id: row.id,
@@ -691,7 +718,7 @@ export class OrderService {
     const rows = await db.query(
       `SELECT o.id, o.user_id, o.avatar_id, o.title, o.description, o.content_type, o.platforms, o.platform,
               o.requirements, o.target_audience, o.priority, o.deadline, o.content_deadline_at,
-              o.budget, o.price, o.status, o.expected_quantity, o.avatar_count, o.quantity_per_avatar, o.is_paid,
+              o.budget, o.base_amount, o.content_amount, o.price, o.status, o.expected_quantity, o.avatar_count, o.quantity_per_avatar, o.is_paid,
               o.created_at, o.updated_at,
               COALESCE(a_order.name, a_latest.name, u.nickname) as publisher_nickname,
               COALESCE(a_order.avatar_url, a_latest.avatar_url, u.avatar) as publisher_avatar,
@@ -761,6 +788,8 @@ export class OrderService {
       deadline: row.deadline || null,
       contentDeadlineAt: row.contentDeadlineAt || row.content_deadline_at || null,
       budget: Number(row.budget || 0),
+      baseAmount: Number(row.baseAmount || row.base_amount || row.budget || 0),
+      contentAmount: Number(row.contentAmount || row.content_amount || 0),
       price: Number(row.price || row.price || 0),
       status: row.status,
       avatarCount: (() => {
@@ -779,6 +808,15 @@ export class OrderService {
           return Number.isFinite(n) && n > 0 ? n : 1
         })()) - Number(row.acceptCount || row.accept_count || 0) - Number(row.pendingCount || row.pending_count || 0)
       ),
+      expectedEarnings: (() => {
+        const baseAmount = Number(row.baseAmount || row.base_amount || row.budget || 0)
+        const avatarCount = (() => {
+          const raw = row.expectedQuantity ?? row.expected_quantity ?? row.avatarCount ?? row.avatar_count ?? 1
+          const n = Number(raw)
+          return Number.isFinite(n) && n > 0 ? n : 1
+        })()
+        return avatarCount > 0 ? Math.round(baseAmount / avatarCount * 100) / 100 : baseAmount
+      })(),
       createdAt: row.createdAt || row.created_at || new Date().toISOString(),
       updatedAt: row.updatedAt || row.updated_at || null,
       publisherNickname: row.publisherNickname || row.publisher_nickname || '发布方',
@@ -1177,8 +1215,8 @@ export class OrderService {
       return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1
     })()
 
-    const totalAmount = Number(order.budget || 0)
-    const totalCents = Math.max(0, Math.round(totalAmount * 100))
+    const baseAmount = Number(order.baseAmount || order.base_amount || order.budget || 0)
+    const totalCents = Math.max(0, Math.round(baseAmount * 100))
     if (totalCents <= 0) return
 
     const dispatchRequests = await db.query(

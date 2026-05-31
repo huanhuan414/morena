@@ -362,36 +362,38 @@ export default function SubscriptionPage() {
                       </View>
                     </View>
 
-                    {/* 权益摘要 */}
+                    {/* 权益摘要 - 与权益对比表保持一致 */}
                     <View className="sub-plan-highlights">
                       {theme === 'free' && (
                         <>
                           <View className="sub-highlight"><Check size={12} color="#94a3b8" /><Text className="sub-highlight-text">1个AI分身</Text></View>
-                          <View className="sub-highlight"><Check size={12} color="#94a3b8" /><Text className="sub-highlight-text">3次技能/天</Text></View>
-                          <View className="sub-highlight"><Check size={12} color="#94a3b8" /><Text className="sub-highlight-text">100MB存储</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#94a3b8" /><Text className="sub-highlight-text">5单/天</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#94a3b8" /><Text className="sub-highlight-text">衣品3次/日</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#94a3b8" /><Text className="sub-highlight-text">看手相3次/日</Text></View>
                         </>
                       )}
                       {theme === 'basic' && (
                         <>
                           <View className="sub-highlight"><Check size={12} color="#3b82f6" /><Text className="sub-highlight-text">3个AI分身</Text></View>
-                          <View className="sub-highlight"><Check size={12} color="#3b82f6" /><Text className="sub-highlight-text">自定义性格</Text></View>
-                          <View className="sub-highlight"><Check size={12} color="#3b82f6" /><Text className="sub-highlight-text">1GB存储</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#3b82f6" /><Text className="sub-highlight-text">20单/天</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#3b82f6" /><Text className="sub-highlight-text">衣品10次/日</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#3b82f6" /><Text className="sub-highlight-text">看手相10次/日</Text></View>
                         </>
                       )}
                       {theme === 'pro' && (
                         <>
                           <View className="sub-highlight"><Check size={12} color="#10b981" /><Text className="sub-highlight-text">10个AI分身</Text></View>
-                          <View className="sub-highlight"><Check size={12} color="#10b981" /><Text className="sub-highlight-text">接单赚钱</Text></View>
-                          <View className="sub-highlight"><Check size={12} color="#10b981" /><Text className="sub-highlight-text">批量发布+分析</Text></View>
-                          <View className="sub-highlight"><Check size={12} color="#10b981" /><Text className="sub-highlight-text">10GB存储</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#10b981" /><Text className="sub-highlight-text">自动接单赚钱</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#10b981" /><Text className="sub-highlight-text">衣品20次/日</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#10b981" /><Text className="sub-highlight-text">看手相20次/日</Text></View>
                         </>
                       )}
                       {theme === 'enterprise' && (
                         <>
                           <View className="sub-highlight"><Check size={12} color="#f59e0b" /><Text className="sub-highlight-text">无限AI分身</Text></View>
-                          <View className="sub-highlight"><Check size={12} color="#f59e0b" /><Text className="sub-highlight-text">全类目+专属技能</Text></View>
-                          <View className="sub-highlight"><Check size={12} color="#f59e0b" /><Text className="sub-highlight-text">最高优先级</Text></View>
-                          <View className="sub-highlight"><Check size={12} color="#f59e0b" /><Text className="sub-highlight-text">100GB存储</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#f59e0b" /><Text className="sub-highlight-text">全类目技能不限</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#f59e0b" /><Text className="sub-highlight-text">无限接单</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#f59e0b" /><Text className="sub-highlight-text">最低5%抽成</Text></View>
                         </>
                       )}
                     </View>

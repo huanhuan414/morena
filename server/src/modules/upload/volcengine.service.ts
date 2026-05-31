@@ -23,6 +23,7 @@ export class VolcengineService {
 
   // 视频服务
   private readonly VIDEO_SHORT_ID = '4rj1sb5o2t';
+  private readonly VIDEO_DOMAIN = 'voicsc.51webjs.com';
 
   constructor() {
     this.client = new ImageXClient({
@@ -223,10 +224,14 @@ export class VolcengineService {
       }
 
       // 4. 构建视频访问URL
-      // 视频URL格式与图片类似：https://{domain}/{serviceId}/user%2F{file}~tplv-{shortId}-video.mp4
+      // 视频URL格式：https://{domain}/user%2F{file}
       const uri = result.Uri;
-      const encodedUri = uri.replace('user/', 'user%2F');
-      const url = `https://${this.CUSTOM_DOMAIN}/${encodedUri}~tplv-${this.VIDEO_SHORT_ID}-video.mp4`;
+      // 火山引擎返回的URI格式：tos-cn-i-{serviceId}/user/{file}
+      // 需要去掉服务ID前缀，只保留 user/{file} 部分
+      const serviceIdPrefix = `tos-cn-i-${this.VIDEO_SHORT_ID}/`;
+      const cleanUri = uri.startsWith(serviceIdPrefix) ? uri.substring(serviceIdPrefix.length) : uri;
+      const encodedUri = cleanUri.replace('user/', 'user%2F');
+      const url = `https://${this.VIDEO_DOMAIN}/${encodedUri}`;
 
       this.logger.log(`[VolcengineService] 视频URL: ${url}`);
       return { url };

@@ -3,6 +3,22 @@ import { ImageGenService } from './image-gen.service';
 import { CoinService } from '../coin/coin.service';
 import { AiSkillService } from '../ai-skill/ai-skill.service';
 
+const SKILL_NAMES: Record<string, string> = {
+  text: '文本生成',
+  image: '图片生成',
+  video: '视频生成',
+  article: '公众号文章生成',
+  clothing: '衣品改造',
+  palm: '看手相',
+  image_gen: '图片生成',
+  video_gen: '视频生成',
+  content_writing: '公众号文章生成',
+  palm_reading: '看手相',
+  fashion_advice: '衣品改造',
+  wechat_mp_article: '公众号文章生成',
+  fashion_makeover: '衣品改造',
+}
+
 @Controller('image-gen')
 export class ImageGenController {
   private readonly imageGenService: ImageGenService;
@@ -90,7 +106,7 @@ export class ImageGenController {
           await this.coinService.gift(
             userId, 
             consumeResult.amount, 
-            `${skillType}生成失败退款`
+            `${SKILL_NAMES[skillType] || skillType}生成失败退款`
           );
         } catch (refundError: any) {
           console.error('[ImageGenController] 退款失败:', refundError.message);
