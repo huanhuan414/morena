@@ -607,7 +607,7 @@ export default function GeneratedContentPage() {
                 <View className="card-footer">
                   <View className="footer-left">
                     <Clock size={12} color="#94A3B8" />
-                    <Text className="footer-time">{content.createdAt ? new Date(content.createdAt).toLocaleDateString() : ''}</Text>
+                    <Text className="footer-time">{content.createdAt ? new Date(content.createdAt).toLocaleDateString('zh-CN') : ''}</Text>
                   </View>
                   <View className="footer-actions">
                     {actions.map(action => {
