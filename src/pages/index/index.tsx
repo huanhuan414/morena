@@ -638,7 +638,7 @@ const Index: React.FC = () => {
               <View className="stat-icon-small" style={{ background: '#FDF2F8' }}>
                 <Coins size={28} color="#EC4899" />
               </View>
-              <Text className="stat-value-small" style={{ color: '#EC4899' }}>¥{totalEarnings > 0 ? totalEarnings.toFixed(0) : '0'}</Text>
+              <Text className="stat-value-small" style={{ color: '#EC4899' }}>¥{totalEarnings > 0 ? totalEarnings.toFixed(2) : '0.00'}</Text>
               <Text className="stat-label-small">累计收益</Text>
               <Text className="stat-hint" style={{ color: totalEarnings > 0 ? '#EC4899' : '#94A3B8' }}>
                 {totalEarnings > 0 ? '去提现' : '开始赚取'}

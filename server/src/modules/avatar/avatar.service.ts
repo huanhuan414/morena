@@ -537,17 +537,24 @@ export class AvatarService {
       console.warn('[AvatarService] 删除分身记忆失败:', e.message)
     }
 
-    // 6. 清除内存缓存
-    const userAvatars = sharedMemoryAvatars.get(userId) || []
-    sharedMemoryAvatars.set(userId, userAvatars.filter(a => a.id !== avatarId))
-
-    // 7. 最后删除分身本体
+    // 6. 先删除分身本体（数据库操作）
     const result = await db.delete('avatars', { id: avatarId, user_id: userId })
     const affectedRows = (result as any)?.data?.affectedRows || 0
     if (affectedRows === 0) {
       console.error('[AvatarService] 分身删除失败，未匹配到记录:', avatarId, 'userId:', userId)
       return { success: false, error: '分身删除失败，请重试' }
     }
+
+    // 7. 数据库删除成功后，再清理内存缓存
+    const userAvatars = sharedMemoryAvatars.get(userId) || []
+    sharedMemoryAvatars.set(userId, userAvatars.filter(a => a.id !== avatarId))
+
+    // 同时清理全局共享缓存（供 UserStatsService 使用）
+    const sharedCache = getSharedCache()
+    const cacheKey = `avatars_${userId}`
+    const cachedAvatars = sharedCache.get(cacheKey) || []
+    sharedCache.set(cacheKey, cachedAvatars.filter((a: any) => a.id !== avatarId))
+
     return { success: true }
   }
 
