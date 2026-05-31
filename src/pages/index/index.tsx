@@ -4,7 +4,7 @@ import { View, Text, ScrollView } from '@tarojs/components'
 import { Bell, Settings, Users, FileText, Coins, Plus, Zap, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye, ShoppingBag, ChevronRight, Gift, Rocket, Clock, CircleCheckBig, ChevronDown } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { BANNER_TITLE, BANNER_DESC } from '@/constants/referral-rewards'
-import { PLATFORM_UI_ORDER, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
+import { PLATFORM_UI_ORDER, PLATFORM_META_MAP, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
 import { useUserStore } from '@/stores/user'
 import { useNotifications } from '@/hooks/useNotifications'
 import { Avatar as UiAvatar } from '@/components/ui/avatar'
@@ -82,9 +82,14 @@ const Index: React.FC = () => {
   const ordersFetchInFlightRef = useRef(false)
   const lastOrdersFetchAtRef = useRef(0)
 
+
   const platformTabs = [
     { key: 'all', label: '全部' },
     ...PLATFORM_UI_ORDER.map((key) => ({ key, label: getPlatformLabel(key) }))
+      .filter((item) => {
+        const meta = getPlatformMeta(item.key)
+        return Array.isArray(meta?.requirements)
+      })
   ]
 
   // 获取公开订单列表（订单广场数据）
@@ -764,19 +769,19 @@ const Index: React.FC = () => {
           </View>
 
           {/* 平台筛选 Tab */}
-          <ScrollView scrollX className="platform-scroll" enhanced showScrollbar={false}>
-            <View className="platform-tags">
+          <View className="platform-tab-filter">
+            <View className="platform-tab-scroll">
               {platformTabs.map(tab => (
                 <View
                   key={tab.key}
-                  className={`platform-tag ${activePlatform === tab.key ? 'active' : ''}`}
+                  className={`platform-tab-item ${activePlatform === tab.key ? 'active' : ''}`}
                   onClick={() => setActivePlatform(tab.key)}
                 >
-                  <Text className="platform-tag-text">{tab.label}</Text>
+                  <Text className={`platform-tab-text ${activePlatform === tab.key ? 'active' : ''}`}>{tab.label}</Text>
                 </View>
               ))}
             </View>
-          </ScrollView>
+          </View>
 
           {/* 订单列表 - 待接订单风格卡片 orders.length=${orders.length} */}
           <View className="home-order-list">
