@@ -240,11 +240,6 @@ const Login: React.FC = () => {
   }
 
   const handleGetPhoneNumber = async (e: any) => {
-    if (!agreed) {
-      Taro.showToast({ title: '请先同意用户协议', icon: 'none' })
-      return
-    }
-
     if (e.detail.errMsg !== 'getPhoneNumber:ok' || !e.detail.code) {
       Taro.showToast({ title: '获取手机号授权失败', icon: 'none' })
       return

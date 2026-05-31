@@ -102,10 +102,17 @@ export default function OrderCreate() {
       return
     }
     try {
-      // chooseMedia 同时支持图片和视频，统一入口
+      // 根据内容类型决定素材类型
+      // 图文笔记(image)只能上传图片，短视频(video)只能上传视频
+      const mediaType = form.contentType === 'image'
+        ? ['image']
+        : form.contentType === 'video'
+          ? ['video']
+          : ['image', 'video']
+
       const res = await Taro.chooseMedia({
         count: 9,
-        mediaType: ['image', 'video'],
+        mediaType: mediaType as ('image' | 'video')[],
         sourceType: ['album', 'camera'],
         sizeType: ['compressed'],
         maxDuration: 60,
@@ -114,6 +121,17 @@ export default function OrderCreate() {
       for (const media of res.tempFiles) {
         try {
           const isVideo = media.fileType === 'video' || media.tempFilePath.endsWith('.mp4') || media.tempFilePath.endsWith('.mov')
+
+          // 验证素材类型是否符合内容类型要求
+          if (form.contentType === 'image' && isVideo) {
+            Taro.showToast({ title: '图文笔记只能上传图片', icon: 'none' })
+            continue
+          }
+          if (form.contentType === 'video' && !isVideo) {
+            Taro.showToast({ title: '短视频只能上传视频', icon: 'none' })
+            continue
+          }
+
           const uploadUrl = isVideo ? '/api/upload/video' : '/api/upload/image'
           const uploadRes = await Network.uploadFile({ url: uploadUrl, filePath: media.tempFilePath, name: 'file' })
           const data = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data
@@ -193,21 +211,30 @@ export default function OrderCreate() {
           if (pollTimer) clearInterval(pollTimer)
 
           const data = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data
+
+          // 检查后端返回的错误码
+          if (data?.code !== 200) {
+            const errorMsg = data?.message || data?.msg || data?.error || '上传失败，请重试'
+            throw new Error(errorMsg)
+          }
+
           const extracted = data?.data
           if (extracted) {
             const newAssets: typeof uploadedAssets = []
-            ;(extracted.images || []).forEach((img: { url: string; filename: string; size?: number; mimeType?: string }, idx: number) => {
-              newAssets.push({ id: `zip_img_${Date.now()}_${idx}`, url: img.url, type: 'image', filename: img.filename, size: img.size || 0, mimeType: img.mimeType || 'image/jpeg' })
-            })
-            ;(extracted.videos || []).forEach((vid: { url: string; filename: string; size?: number; mimeType?: string }, idx: number) => {
-              newAssets.push({ id: `zip_vid_${Date.now()}_${idx}`, url: vid.url, type: 'video', filename: vid.filename, size: vid.size || 0, mimeType: vid.mimeType || 'video/mp4' })
-            })
+              ; (extracted.images || []).forEach((img: { url: string; filename: string; size?: number; mimeType?: string }, idx: number) => {
+                newAssets.push({ id: `zip_img_${Date.now()}_${idx}`, url: img.url, type: 'image', filename: img.filename, size: img.size || 0, mimeType: img.mimeType || 'image/jpeg' })
+              })
+              ; (extracted.videos || []).forEach((vid: { url: string; filename: string; size?: number; mimeType?: string }, idx: number) => {
+                newAssets.push({ id: `zip_vid_${Date.now()}_${idx}`, url: vid.url, type: 'video', filename: vid.filename, size: vid.size || 0, mimeType: vid.mimeType || 'video/mp4' })
+              })
             setUploadedAssets(prev => [...prev, ...newAssets])
             Taro.showToast({ title: `提取${newAssets.length}个文件`, icon: 'success' })
           }
-        } catch (e) {
+        } catch (e: any) {
           console.error('压缩包上传失败:', e)
-          Taro.showToast({ title: '上传失败', icon: 'none' })
+          // 提取后端返回的错误信息并显示给用户
+          const errorMsg = e?.data?.msg || e?.data?.message || e?.message || '上传失败，请重试'
+          Taro.showToast({ title: errorMsg, icon: 'none', duration: 3000 })
         }
         setZipProgress(null)
       } catch (e) { /* 用户取消 */ }
@@ -972,57 +999,57 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
 
         {/* 自定义文案 - 简单任务不需要 */}
         {form.contentType !== 'simple' && (
-        <View className="section">
-          <View className="section-header">
-            <View className="section-title-row">
-              <View className="title-dot accent" />
-              <FileText size={16} color="#6366F1" />
-              <Text className="section-title">文案设置</Text>
+          <View className="section">
+            <View className="section-header">
+              <View className="section-title-row">
+                <View className="title-dot accent" />
+                <FileText size={16} color="#6366F1" />
+                <Text className="section-title">文案设置</Text>
+              </View>
+              <View
+                className={`asset-ai-switch ${form.useCustomCopywriting ? 'active' : ''}`}
+                onClick={() => setForm(prev => ({ ...prev, useCustomCopywriting: !prev.useCustomCopywriting }))}
+              >
+                <View className={`asset-ai-switch-dot ${form.useCustomCopywriting ? 'active' : ''}`} />
+              </View>
             </View>
-            <View
-              className={`asset-ai-switch ${form.useCustomCopywriting ? 'active' : ''}`}
-              onClick={() => setForm(prev => ({ ...prev, useCustomCopywriting: !prev.useCustomCopywriting }))}
-            >
-              <View className={`asset-ai-switch-dot ${form.useCustomCopywriting ? 'active' : ''}`} />
-            </View>
-          </View>
-          <View className="asset-ai-toggle-row" style={{ marginTop: '8px', marginBottom: '8px' }}>
-            <View className="asset-ai-toggle-left">
-              <Sparkles size={14} color="#8B5CF6" />
-              <Text className="asset-ai-toggle-label">
-                {form.useCustomCopywriting ? '自定义文案' : 'AI生成文案'}
+            <View className="asset-ai-toggle-row" style={{ marginTop: '8px', marginBottom: '8px' }}>
+              <View className="asset-ai-toggle-left">
+                <Sparkles size={14} color="#8B5CF6" />
+                <Text className="asset-ai-toggle-label">
+                  {form.useCustomCopywriting ? '自定义文案' : 'AI生成文案'}
+                </Text>
+              </View>
+              <Text className="section-hint" style={{ fontSize: '12px' }}>
+                {form.useCustomCopywriting ? '分身将使用您输入的文案' : '分身接单时AI自动生成'}
               </Text>
             </View>
-            <Text className="section-hint" style={{ fontSize: '12px' }}>
-              {form.useCustomCopywriting ? '分身将使用您输入的文案' : '分身接单时AI自动生成'}
-            </Text>
-          </View>
-          {form.useCustomCopywriting && (
-            <View>
-              <View className="textarea-wrapper">
-                <Textarea
-                  className="desc-textarea"
-                  style={{ height: '200px' }}
-                  placeholder="请输入文案内容，分身将直接使用此文案发布..."
-                  value={form.customCopywriting}
-                  onInput={e => setForm(prev => ({ ...prev, customCopywriting: e.detail.value }))}
-                  maxlength={5000}
-                />
-              </View>
-              <View className="desc-footer">
-                <View className="ai-hint">
-                  <Lightbulb size={12} color="#8B5CF6" />
-                  <Text className="ai-hint-text">每个分身将直接使用此文案，不再AI生成</Text>
+            {form.useCustomCopywriting && (
+              <View>
+                <View className="textarea-wrapper">
+                  <Textarea
+                    className="desc-textarea"
+                    style={{ height: '200px' }}
+                    placeholder="请输入文案内容，分身将直接使用此文案发布..."
+                    value={form.customCopywriting}
+                    onInput={e => setForm(prev => ({ ...prev, customCopywriting: e.detail.value }))}
+                    maxlength={5000}
+                  />
                 </View>
-                <Text className="char-count">{form.customCopywriting.length}/5000</Text>
+                <View className="desc-footer">
+                  <View className="ai-hint">
+                    <Lightbulb size={12} color="#8B5CF6" />
+                    <Text className="ai-hint-text">每个分身将直接使用此文案，不再AI生成</Text>
+                  </View>
+                  <Text className="char-count">{form.customCopywriting.length}/5000</Text>
+                </View>
               </View>
-            </View>
-          )}
-        </View>
+            )}
+          </View>
         )}
 
         {/* 素材上传（可选） */}
-        <View className="section">
+        {selectedType?.id != 'text' && (<View className="section">
           <View className="section-header">
             <View className="section-title-row">
               <View className="title-dot accent" />
@@ -1136,7 +1163,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                   <Text className="asset-mode-hint-text">共享模式：所有分身使用相同的素材</Text>
                 </View>
               )}
-                      {form.assetDistributeMode === 'exclusive' && (
+              {form.assetDistributeMode === 'exclusive' && (
                 <View className="asset-mode-hint">
                   <Text className="asset-mode-hint-text">
                     独占模式：每个分身分配不同素材
@@ -1177,6 +1204,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
             </>
           )}
         </View>
+        )}
 
         {/* 分身设置 - 增加价值说明 */}
         <View className="section">

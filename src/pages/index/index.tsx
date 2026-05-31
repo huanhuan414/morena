@@ -4,7 +4,7 @@ import { View, Text, ScrollView } from '@tarojs/components'
 import { Bell, Settings, Users, FileText, Coins, Plus, Zap, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye, ShoppingBag, ChevronRight, Gift, Rocket, Clock, CircleCheckBig, ChevronDown } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { BANNER_TITLE, BANNER_DESC } from '@/constants/referral-rewards'
-import { PLATFORM_UI_ORDER, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
+import { PLATFORM_UI_ORDER, PLATFORM_META_MAP, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
 import { useUserStore } from '@/stores/user'
 import { useNotifications } from '@/hooks/useNotifications'
 import { Avatar as UiAvatar } from '@/components/ui/avatar'
@@ -49,7 +49,7 @@ const Index: React.FC = () => {
   const [generatedContents, setGeneratedContents] = useState(0)
   const [growthCampaign, setGrowthCampaign] = useState<any>(null)
   const [trackedCampaignId, setTrackedCampaignId] = useState('')
-  const { avatarId: currentAvatarId, setAvatarId } = useUserStore(state => state)
+  const { avatarId: currentAvatarId, setAvatarId, isLoggedIn } = useUserStore(state => state)
 
   const [showOrderModal, setShowOrderModal] = useState(false)
   const [orderModalData, setOrderModalData] = useState<any>(null)
@@ -77,14 +77,18 @@ const Index: React.FC = () => {
   const [acceptingOrderIds, setAcceptingOrderIds] = useState<Record<string, boolean>>({})
   const [orderPage, setOrderPage] = useState(1)
   const [, setOrderTotal] = useState(0)
-  const [hasMoreOrders, setHasMoreOrders] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const ordersFetchInFlightRef = useRef(false)
   const lastOrdersFetchAtRef = useRef(0)
 
+
   const platformTabs = [
     { key: 'all', label: '全部' },
     ...PLATFORM_UI_ORDER.map((key) => ({ key, label: getPlatformLabel(key) }))
+      .filter((item) => {
+        const meta = getPlatformMeta(item.key)
+        return Array.isArray(meta?.requirements)
+      })
   ]
 
   // 获取公开订单列表（订单广场数据）
@@ -96,7 +100,7 @@ const Index: React.FC = () => {
     lastOrdersFetchAtRef.current = now
     try {
       if (page === 1) setOrdersLoading(true)
-      const pageSize = 10
+      const pageSize = 20
       const res = await Network.request({
         url: '/api/order/open',
         data: {
@@ -142,7 +146,6 @@ const Index: React.FC = () => {
         })
         setOrderTotal(total)
         setOrderPage(page)
-        setHasMoreOrders(nextLength < total)
       } else {
         if (!append) setOrders([])
       }
@@ -405,13 +408,6 @@ const Index: React.FC = () => {
     setIsRefreshing(false)
   }, [activePlatform])
 
-  // 上拉加载更多
-  const handleLoadMore = useCallback(() => {
-    if (!ordersLoading && hasMoreOrders) {
-      fetchOrders(orderPage + 1, true)
-    }
-  }, [ordersLoading, hasMoreOrders, orderPage, activePlatform])
-
   const getGreeting = () => {
     const hour = new Date().getHours()
     if (hour < 6) return '夜深了'
@@ -471,6 +467,10 @@ const Index: React.FC = () => {
   }
 
   const enableAllTrust = async () => {
+    if (!isLoggedIn) {
+      Taro.navigateTo({ url: '/pages/login/index?redirect=/pages/index/index' })
+      return
+    }
     if (trustAllLoading) return
     setTrustAllLoading(true)
     try {
@@ -572,8 +572,6 @@ const Index: React.FC = () => {
         refresherEnabled
         refresherTriggered={isRefreshing}
         onRefresherRefresh={handleRefresh}
-        onScrollToLower={handleLoadMore}
-        lowerThreshold={200}
       >
 
         {/* 新用户引导（仅无分身时显示） */}
@@ -666,7 +664,7 @@ const Index: React.FC = () => {
               <View className="stat-icon-small" style={{ background: '#FDF2F8' }}>
                 <Coins size={28} color="#EC4899" />
               </View>
-              <Text className="stat-value-small" style={{ color: '#EC4899' }}>¥{totalEarnings > 0 ? totalEarnings.toFixed(0) : '0'}</Text>
+              <Text className="stat-value-small" style={{ color: '#EC4899' }}>¥{totalEarnings > 0 ? totalEarnings.toFixed(2) : '0.00'}</Text>
               <Text className="stat-label-small">累计收益</Text>
               <Text className="stat-hint" style={{ color: totalEarnings > 0 ? '#EC4899' : '#94A3B8' }}>
                 {totalEarnings > 0 ? '去提现' : '开始赚取'}
@@ -792,19 +790,19 @@ const Index: React.FC = () => {
           </View>
 
           {/* 平台筛选 Tab */}
-          <ScrollView scrollX className="platform-scroll" enhanced showScrollbar={false}>
-            <View className="platform-tags">
+          <View className="platform-tab-filter">
+            <View className="platform-tab-scroll">
               {platformTabs.map(tab => (
                 <View
                   key={tab.key}
-                  className={`platform-tag ${activePlatform === tab.key ? 'active' : ''}`}
+                  className={`platform-tab-item ${activePlatform === tab.key ? 'active' : ''}`}
                   onClick={() => setActivePlatform(tab.key)}
                 >
-                  <Text className="platform-tag-text">{tab.label}</Text>
+                  <Text className={`platform-tab-text ${activePlatform === tab.key ? 'active' : ''}`}>{tab.label}</Text>
                 </View>
               ))}
             </View>
-          </ScrollView>
+          </View>
 
           {/* 订单列表 - 待接订单风格卡片 orders.length=${orders.length} */}
           <View className="home-order-list">
@@ -814,7 +812,7 @@ const Index: React.FC = () => {
                 <Text className="po-loading-text">加载中...</Text>
               </View>
             ) : orders.length > 0 ? (
-              orders.slice(0, 6).map(order => {
+              orders.map(order => {
                 const urgencyTag = getUrgencyTag(order)
                 const contentTypeTag = getContentTypeTag(order)
                 const priorityColor = urgencyTag ? urgencyTag.color : '#6366F1'
@@ -1031,19 +1029,6 @@ const Index: React.FC = () => {
             )}
           </View>
         </View>
-
-        {/* 加载更多提示 */}
-        {orders.length > 0 && (
-          <View className="load-more-wrapper">
-            {ordersLoading && orderPage > 1 ? (
-              <Text className="load-more-text">加载中...</Text>
-            ) : hasMoreOrders ? (
-              <Text className="load-more-text">上拉加载更多</Text>
-            ) : (
-              <Text className="load-more-text">没有更多订单了</Text>
-            )}
-          </View>
-        )}
 
         {/* 底部留白 */}
         <View className="bottom-spacer" />

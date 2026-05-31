@@ -264,39 +264,81 @@ export class AuthService {
       const phone = phoneResult.phone;
 
       const db = getMySQLClient();
-      const result = await db.query("users", { phone });
-      const existingUser = Array.isArray(result)
-        ? result[0]
-        : (result as any)?.data?.[0];
-      if (existingUser) {
+      
+      // 1. 先用 openid 查找用户（优先使用 openid）
+      const openidResult = await db.query("users", { openid });
+      const userByOpenid = Array.isArray(openidResult)
+        ? openidResult[0]
+        : (openidResult as any)?.data?.[0];
+      
+      if (userByOpenid) {
+        // 找到用户，检查手机号是否需要更新
         const updateData: Record<string, any> = {};
-        if (!existingUser.openid || existingUser.openid.startsWith("phone_")) {
-          updateData.openid = openid;
+        if (userByOpenid.phone !== phone) {
+          updateData.phone = phone;
         }
-        if (nickname && !existingUser.nickname) {
+        if (nickname && !userByOpenid.nickname) {
           updateData.nickname = nickname;
         }
-        if (avatar && !existingUser.avatar) {
+        if (avatar && !userByOpenid.avatar) {
           updateData.avatar = avatar;
         }
         if (Object.keys(updateData).length > 0) {
-          await db.update("users", existingUser.id, updateData);
-          const updatedResult = await db.query("users", {
-            id: existingUser.id,
-          });
+          await db.update("users", userByOpenid.id, updateData);
+          const updatedResult = await db.query("users", { id: userByOpenid.id });
           const updatedUser = Array.isArray(updatedResult)
             ? updatedResult[0]
             : (updatedResult as any)?.data?.[0];
           return {
-            user: updatedUser || existingUser,
+            user: updatedUser || userByOpenid,
             isNewUser: false,
-            token: this.generateToken(existingUser.id),
+            token: this.generateToken(userByOpenid.id),
           };
         }
         return {
-          user: existingUser,
+          user: userByOpenid,
           isNewUser: false,
-          token: this.generateToken(existingUser.id),
+          token: this.generateToken(userByOpenid.id),
+        };
+      }
+      
+      // 2. openid 不存在，再用手机号查找（兼容老数据）
+      const userByPhoneResult = await db.query("users", { phone });
+      const userByPhone = Array.isArray(userByPhoneResult)
+        ? userByPhoneResult[0]
+        : (userByPhoneResult as any)?.data?.[0];
+      
+      if (userByPhone) {
+        // 找到用户，检查 openid 是否需要更新
+        const updateData: Record<string, any> = {};
+        // 只有当 openid 为空或临时值时才更新，避免覆盖其他微信号的 openid
+        if (!userByPhone.openid || userByPhone.openid.startsWith("phone_") || 
+          userByPhone.openid.startsWith("auto_")|| 
+          userByPhone.openid.startsWith("orphan_")) {
+          updateData.openid = openid;
+        }
+        if (nickname && !userByPhone.nickname) {
+          updateData.nickname = nickname;
+        }
+        if (avatar && !userByPhone.avatar) {
+          updateData.avatar = avatar;
+        }
+        if (Object.keys(updateData).length > 0) {
+          await db.update("users", userByPhone.id, updateData);
+          const updatedResult = await db.query("users", { id: userByPhone.id });
+          const updatedUser = Array.isArray(updatedResult)
+            ? updatedResult[0]
+            : (updatedResult as any)?.data?.[0];
+          return {
+            user: updatedUser || userByPhone,
+            isNewUser: false,
+            token: this.generateToken(userByPhone.id),
+          };
+        }
+        return {
+          user: userByPhone,
+          isNewUser: false,
+          token: this.generateToken(userByPhone.id),
         };
       }
 

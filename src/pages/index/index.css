@@ -434,32 +434,46 @@
   color: #9CA3AF;
 }
 
-/* 平台筛选 Tab */
-.platform-scroll {
+/* Tab 筛选 */
+.platform-tab-filter {
+  padding: 20rpx 0 0;
+  margin-left: -24rpx;
+  margin-right: -24rpx;
+  padding-left: 24rpx;
+  padding-right: 24rpx;
+}
+
+.platform-tab-scroll {
   white-space: nowrap;
-  margin-bottom: 20rpx;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
-.platform-tags {
-  display: flex;
-  flex-direction: row;
-  gap: 12rpx;
-  padding-bottom: 8rpx;
+
+.platform-tab-scroll::-webkit-scrollbar {
+  display: none;
 }
-.platform-tag {
-  flex-shrink: 0;
+
+.platform-tab-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 10rpx 24rpx;
   border-radius: 32rpx;
   background: #F1F5F9;
+  margin-right: 16rpx;
 }
-.platform-tag.active {
+
+.platform-tab-item.active {
   background: #6366F1;
 }
-.platform-tag-text {
+
+.platform-tab-text {
   font-size: 24rpx;
   color: #64748B;
   font-weight: 500;
 }
-.platform-tag.active .platform-tag-text {
+
+.platform-tab-text.active {
   color: #FFFFFF;
   font-weight: 600;
 }
@@ -469,6 +483,7 @@
   display: flex;
   flex-direction: column;
   gap: 20rpx;
+  margin-top: 20rpx;
 }
 
 /* po-card 卡片容器 */
@@ -1129,15 +1144,4 @@
   font-size: 28rpx;
   font-weight: 600;
   color: #FFFFFF;
-}
-.load-more-wrapper {
-  padding: 30rpx 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12rpx;
-}
-.load-more-text {
-  font-size: 24rpx;
-  color: #999;
 }

@@ -915,8 +915,8 @@
 }
 
 .picker-options {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 16rpx;
 }
 
@@ -928,7 +928,6 @@
   background: #f8fafc;
   border-radius: 16rpx;
   border: 2rpx solid transparent;
-  min-width: calc(50% - 8rpx);
   box-sizing: border-box;
 }
 
