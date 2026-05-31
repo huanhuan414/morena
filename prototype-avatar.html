@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>人机共生平台 · 分身进化</title>
+<title>莫瑞娜 · 分身界面</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f8; color: #1e293b; overflow-x: hidden; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f8; color: #1e293b; overflow-x: hidden; display: flex; justify-content: center; gap: 32px; padding: 24px; flex-wrap: wrap; }
 
 /* 手机壳 */
-.phone-frame { width: 390px; height: 844px; margin: 20px auto; border-radius: 44px; overflow: hidden; background: #f5f5f8; box-shadow: 0 20px 60px rgba(0,0,0,0.15); position: relative; display: flex; flex-direction: column; }
+.phone-frame { width: 390px; height: 844px; border-radius: 44px; overflow: hidden; background: #f5f5f8; box-shadow: 0 20px 60px rgba(0,0,0,0.15); position: relative; display: flex; flex-direction: column; flex-shrink: 0; }
 
 /* 顶部渐变 Header */
 .page-header { position: relative; width: 100%; padding: 0 20px 16px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%); flex-shrink: 0; border-radius: 0 0 28px 28px; }
@@ -17,14 +17,26 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .decoration-circle { position: absolute; border-radius: 50%; background: rgba(255,255,255,0.1); }
 .circle-1 { width: 80px; height: 80px; top: -20px; right: -15px; }
 .circle-2 { width: 56px; height: 56px; top: 30px; right: 40px; }
-.header-title { color: #fff; font-size: 18px; font-weight: 700; padding: 52px 0 4px; letter-spacing: 0.5px; }
-.header-subtitle { color: rgba(255,255,255,0.7); font-size: 12px; }
+
+/* Tab切换 */
+.header-tabs { position: relative; display: flex; align-items: center; justify-content: center; gap: 56px; padding: 48px 0 8px; z-index: 10; }
+.header-tab { position: relative; display: flex; flex-direction: column; align-items: center; padding: 4px 16px; opacity: 0.6; cursor: pointer; transition: all 0.3s; }
+.header-tab.active { opacity: 1; }
+.tab-label { font-size: 17px; font-weight: 600; color: #fff; letter-spacing: 0.5px; }
+.tab-indicator { position: absolute; bottom: 0; width: 24px; height: 3px; background: #fff; border-radius: 3px; box-shadow: 0 1px 4px rgba(255,255,255,0.3); }
+
+/* 搜索栏 */
+.search-section { display: flex; align-items: center; gap: 10px; padding: 6px 0; z-index: 10; }
+.search-wrapper { flex: 1; position: relative; display: flex; align-items: center; }
+.search-icon { position: absolute; left: 12px; color: #9ca3af; font-size: 14px; }
+.search-input { width: 100%; height: 36px; padding-left: 32px; padding-right: 12px; background: #fff; border-radius: 12px; border: none; font-size: 13px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); outline: none; }
+.add-button { display: flex; align-items: center; gap: 3px; padding: 0 14px; height: 36px; background: linear-gradient(135deg, #6366f1, #8b5cf6); border-radius: 12px; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 2px 8px rgba(99,102,241,0.3); cursor: pointer; border: none; }
 
 /* 底部导航 */
 .bottom-tabs { position: absolute; bottom: 0; left: 0; right: 0; height: 64px; background: #fff; border-top: 1px solid #e2e8f0; display: flex; z-index: 50; padding-bottom: 8px; }
 .tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; transition: all 0.2s; }
-.tab-icon { font-size: 20px; color: #94a3b8; transition: color 0.2s; }
-.tab-label { font-size: 10px; color: #94a3b8; font-weight: 500; transition: color 0.2s; }
+.tab-icon { font-size: 20px; }
+.tab-label { font-size: 10px; color: #94a3b8; font-weight: 500; }
 .tab-item.active .tab-icon { color: #6366f1; }
 .tab-item.active .tab-label { color: #6366f1; font-weight: 600; }
 
@@ -32,867 +44,1075 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .content-area { flex: 1; overflow-y: auto; padding-bottom: 72px; }
 .content-area::-webkit-scrollbar { width: 0; }
 
-/* 页面通用 */
-.page-content { padding: 16px 20px 20px; display: none; }
-.page-content.active { display: block; }
+/* 页面容器 */
+.page-view { display: none; height: 100%; flex-direction: column; }
+.page-view.active { display: flex; }
 
-/* 分身切换 */
-.avatar-switcher { display: flex; gap: 12px; padding: 12px 0; overflow-x: auto; }
-.avatar-switcher::-webkit-scrollbar { height: 0; }
-.avatar-chip { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 24px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.04); cursor: pointer; flex-shrink: 0; border: 2px solid transparent; transition: all 0.2s; }
-.avatar-chip.active { border-color: #6366f1; background: rgba(99,102,241,0.06); }
-.avatar-chip-img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
-.avatar-chip-name { font-size: 13px; font-weight: 600; color: #1e293b; }
-.avatar-chip-role { font-size: 10px; color: #94a3b8; }
-.avatar-chip.active .avatar-chip-name { color: #6366f1; }
+/* ========== 分身卡片 ========== */
+.my-clones-list { padding: 14px 18px 20px; display: flex; flex-direction: column; gap: 18px; }
 
-/* 卡片 */
-.card { background: #fff; border-radius: 22px; overflow: hidden; box-shadow: 0 2px 16px rgba(0,0,0,0.04); margin-bottom: 16px; }
-.card-header { padding: 16px 18px 10px; display: flex; align-items: center; justify-content: space-between; }
-.card-title { font-size: 15px; font-weight: 700; color: #1e293b; }
-.card-badge { font-size: 11px; padding: 3px 10px; border-radius: 12px; font-weight: 600; }
-.card-body { padding: 0 18px 16px; }
+.clone-card { background: #fff; border-radius: 22px; overflow: hidden; box-shadow: 0 2px 16px rgba(0,0,0,0.04); }
+.clone-cover { position: relative; height: 160px; overflow: hidden; }
+.cover-image { width: 100%; height: 100%; object-fit: cover; }
+.cover-gradient { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 50%, transparent 100%); }
 
-/* 聊天气泡 */
-.chat-container { padding: 0 18px 16px; }
-.chat-bubble { max-width: 80%; padding: 10px 14px; border-radius: 16px; margin-bottom: 10px; font-size: 13px; line-height: 1.6; }
-.chat-bubble.user { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; margin-left: auto; border-bottom-right-radius: 4px; }
-.chat-bubble.avatar { background: #f1f5f9; color: #334155; border-bottom-left-radius: 4px; }
-.chat-learn-tag { display: inline-flex; align-items: center; gap: 3px; margin-top: 6px; padding: 2px 8px; border-radius: 8px; font-size: 10px; font-weight: 600; }
-.chat-learn-tag.bottom-line { background: rgba(239,68,68,0.1); color: #ef4444; }
-.chat-learn-tag.style { background: rgba(99,102,241,0.1); color: #6366f1; }
-.chat-learn-tag.judgment { background: rgba(245,158,11,0.1); color: #f59e0b; }
-.chat-learn-tag.knowledge { background: rgba(16,185,129,0.1); color: #10b981; }
-.chat-avatar-row { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 10px; }
-.chat-avatar-img { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; }
-.chat-input-bar { display: flex; gap: 8px; padding: 10px 18px 14px; background: #fff; border-top: 1px solid #f1f5f9; }
-.chat-input { flex: 1; height: 36px; border-radius: 18px; border: 1px solid #e2e8f0; padding: 0 14px; font-size: 13px; outline: none; background: #f8fafc; }
-.chat-send-btn { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; border: none; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(99,102,241,0.3); }
+/* 等级标签 */
+.level-badge { position: absolute; top: 12px; left: 12px; display: flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; color: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+.level-badge.lv3 { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+.level-badge.lv2 { background: linear-gradient(135deg, #14b8a6, #0d9488); }
+.level-badge.lv1 { background: linear-gradient(135deg, #94a3b8, #64748b); }
+.level-badge.lv4 { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
 
-/* 群聊 */
-.group-item { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
-.group-item:last-child { border-bottom: none; }
-.group-avatar { width: 44px; height: 44px; border-radius: 12px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
-.group-info { flex: 1; }
-.group-name { font-size: 14px; font-weight: 600; color: #1e293b; }
-.group-desc { font-size: 11px; color: #94a3b8; margin-top: 2px; }
-.group-status { font-size: 11px; padding: 3px 10px; border-radius: 10px; font-weight: 600; }
-.group-status.on { background: rgba(16,185,129,0.1); color: #10b981; }
-.group-status.off { background: #f1f5f9; color: #94a3b8; }
+/* 托管状态 */
+.status-badge { position: absolute; top: 12px; right: 12px; display: flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 10px; backdrop-filter: blur(8px); font-size: 11px; font-weight: 600; }
+.status-badge.hosting { background: rgba(34,197,94,0.9); color: #fff; }
+.status-badge.offline { background: rgba(148,163,184,0.9); color: #fff; }
+.status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-/* 纠正框 */
-.correct-box { margin: 8px 0; padding: 10px 14px; border-radius: 12px; border: 1px dashed #f59e0b; background: rgba(245,158,11,0.04); }
-.correct-label { font-size: 11px; color: #f59e0b; font-weight: 600; margin-bottom: 6px; }
-.correct-old { font-size: 12px; color: #94a3b8; text-decoration: line-through; }
-.correct-new { font-size: 12px; color: #1e293b; font-weight: 500; margin-top: 4px; }
-.correct-diff { margin-top: 8px; padding: 6px 10px; border-radius: 8px; background: rgba(99,102,241,0.06); font-size: 11px; color: #6366f1; font-weight: 500; }
+/* 收益指示器 */
+.earning-indicator { position: absolute; top: 38px; right: 12px; display: flex; align-items: center; gap: 4px; padding: 3px 9px; background: rgba(0,0,0,0.5); backdrop-filter: blur(12px); border-radius: 9px; border: 1px solid rgba(251,191,36,0.3); font-size: 11px; color: #fbbf24; font-weight: 600; }
 
-/* 关键时刻 */
-.scene-card { background: #fff; border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
-.scene-title { font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 10px; }
-.scene-compare { display: flex; gap: 10px; }
-.scene-col { flex: 1; }
-.scene-label { font-size: 11px; font-weight: 600; margin-bottom: 6px; }
-.scene-label.me { color: #6366f1; }
-.scene-label.av { color: #8b5cf6; }
-.scene-text { font-size: 12px; line-height: 1.6; color: #475569; padding: 10px; border-radius: 10px; background: #f8fafc; }
-.scene-match { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
-.scene-match-bar { flex: 1; height: 6px; border-radius: 3px; background: #f1f5f9; overflow: hidden; }
-.scene-match-fill { height: 100%; border-radius: 3px; transition: width 0.6s; }
-.scene-match-text { font-size: 11px; font-weight: 700; min-width: 36px; text-align: right; }
+/* 封面底部信息 */
+.cover-footer { position: absolute; bottom: 12px; left: 12px; right: 12px; display: flex; align-items: flex-end; justify-content: space-between; }
+.clone-profile { display: flex; align-items: center; gap: 10px; }
+.profile-avatar { width: 44px; height: 44px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.2); object-fit: cover; }
+.profile-info { display: flex; flex-direction: column; gap: 2px; }
+.profile-name { font-size: 15px; font-weight: 700; color: #fff; }
+.profile-detail { font-size: 11px; color: rgba(255,255,255,0.7); }
+.profile-total-earn { font-size: 11px; color: #34d399; font-weight: 500; }
 
-/* 进化曲线 */
-.evolution-card { background: #fff; border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
-.evolution-title { font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 12px; }
-.evolution-chart { display: flex; align-items: flex-end; gap: 4px; height: 80px; padding: 0 4px; }
-.evo-bar { flex: 1; border-radius: 4px 4px 0 0; min-height: 4px; transition: height 0.4s; }
-.evo-labels { display: flex; gap: 4px; padding: 4px 4px 0; }
-.evo-label { flex: 1; text-align: center; font-size: 9px; color: #94a3b8; }
+/* 技能标签区 */
+.skills-section { padding: 14px 16px 8px; border-bottom: 1px solid #f1f5f9; }
+.skills-header { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.skills-title { font-size: 12px; font-weight: 600; color: #64748b; }
+.skills-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.skill-tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 7px; font-size: 11px; font-weight: 500; }
+.skill-tag.blue { background: rgba(59,130,246,0.08); color: #3b82f6; }
+.skill-tag.purple { background: rgba(139,92,246,0.08); color: #8b5cf6; }
+.skill-tag.teal { background: rgba(20,184,166,0.08); color: #14b8a6; }
+.skill-tag.amber { background: rgba(245,158,11,0.08); color: #d97706; }
+.skill-tag.rose { background: rgba(244,63,94,0.08); color: #f43f5e; }
+.add-skill-tag { border: 1px dashed #8b5cf6; background: rgba(139,92,246,0.04) !important; color: #8b5cf6 !important; cursor: pointer; }
 
-/* 人格引擎四层 */
-.engine-layer { padding: 14px 18px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.2s; }
-.engine-layer:last-child { border-bottom: none; }
-.engine-layer:hover { background: #f8fafc; }
-.engine-layer-header { display: flex; align-items: center; gap: 10px; }
-.engine-layer-icon { width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
-.engine-layer-name { font-size: 14px; font-weight: 700; color: #1e293b; }
-.engine-layer-desc { font-size: 11px; color: #94a3b8; margin-top: 1px; }
-.engine-layer-priority { margin-left: auto; font-size: 10px; padding: 2px 8px; border-radius: 8px; font-weight: 600; }
-.engine-layer-detail { display: none; padding: 12px 0 4px 42px; }
-.engine-layer.expanded .engine-layer-detail { display: block; }
-.engine-item { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
-.engine-item-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
-.engine-item-text { font-size: 12px; color: #475569; line-height: 1.5; }
-.engine-item-source { font-size: 10px; color: #94a3b8; margin-top: 2px; }
+/* 风格+领域 */
+.tags-section { padding: 10px 16px; border-bottom: 1px solid #f1f5f9; display: flex; flex-direction: column; gap: 8px; }
+.tags-row { display: flex; align-items: center; gap: 8px; }
+.tags-label { font-size: 11px; color: #94a3b8; flex-shrink: 0; width: 28px; }
+.tags-list { display: flex; flex-wrap: wrap; gap: 5px; }
+.style-tag { padding: 2px 10px; border-radius: 8px; font-size: 11px; font-weight: 500; background: rgba(99,102,241,0.08); color: #6366f1; }
+.niche-tag { padding: 2px 10px; border-radius: 8px; font-size: 11px; font-weight: 500; background: rgba(20,184,166,0.08); color: #14b8a6; }
 
-/* 技能卡片 */
-.skill-card { background: #fff; border-radius: 22px; overflow: hidden; box-shadow: 0 2px 16px rgba(0,0,0,0.04); margin-bottom: 16px; }
-.skill-cover { position: relative; height: 100px; overflow: hidden; }
-.skill-cover-bg { width: 100%; height: 100%; }
-.skill-cover-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%); }
-.skill-cover-title { position: absolute; bottom: 12px; left: 16px; color: #fff; font-size: 16px; font-weight: 700; }
-.skill-cover-badge { position: absolute; top: 10px; right: 10px; padding: 3px 10px; border-radius: 10px; font-size: 10px; font-weight: 600; color: #fff; }
-.skill-body { padding: 14px 16px; }
-.skill-meta { display: flex; gap: 16px; margin-bottom: 12px; }
-.skill-meta-item { display: flex; flex-direction: column; }
-.skill-meta-value { font-size: 16px; font-weight: 700; color: #1e293b; }
-.skill-meta-label { font-size: 10px; color: #94a3b8; }
-.workflow-steps { display: flex; flex-direction: column; gap: 0; }
-.workflow-step { display: flex; align-items: flex-start; gap: 10px; position: relative; }
-.workflow-step-dot { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0; z-index: 1; }
-.workflow-step-line { position: absolute; left: 9px; top: 20px; width: 2px; height: calc(100% + 4px); }
-.workflow-step-content { flex: 1; padding-bottom: 14px; }
-.workflow-step-title { font-size: 13px; font-weight: 600; color: #1e293b; }
-.workflow-step-desc { font-size: 11px; color: #64748b; margin-top: 2px; }
-.workflow-step-evidence { font-size: 10px; color: #94a3b8; margin-top: 3px; }
+/* 等级进度 */
+.level-progress-section { padding: 10px 16px; border-bottom: 1px solid #f1f5f9; }
+.level-progress-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.level-progress-current { font-size: 12px; font-weight: 600; color: #6366f1; }
+.level-progress-next { font-size: 10px; color: #94a3b8; }
+.level-progress-bar { height: 5px; background: #f1f5f9; border-radius: 5px; overflow: hidden; }
+.level-progress-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg, #6366f1, #8b5cf6); }
+.level-progress-stats { display: flex; justify-content: space-between; margin-top: 5px; font-size: 10px; color: #94a3b8; }
 
-/* 技能市场 */
-.market-card { background: #fff; border-radius: 18px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.04); margin-bottom: 14px; }
-.market-header { display: flex; align-items: center; gap: 12px; padding: 14px 16px 10px; }
-.market-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
-.market-name { font-size: 14px; font-weight: 700; color: #1e293b; }
-.market-skill { font-size: 12px; color: #6366f1; font-weight: 500; }
-.market-stats { display: flex; gap: 12px; padding: 0 16px 10px; }
-.market-stat { font-size: 11px; color: #94a3b8; }
-.market-stat b { color: #1e293b; font-weight: 600; }
-.market-price { padding: 0 16px 14px; display: flex; align-items: center; justify-content: space-between; }
-.market-price-val { font-size: 20px; font-weight: 700; color: #f59e0b; }
-.market-price-unit { font-size: 11px; color: #94a3b8; }
-.market-hire-btn { padding: 8px 20px; border-radius: 20px; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; border: none; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(99,102,241,0.3); }
+/* 操作栏 */
+.clone-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; }
+.toolbar-actions { display: flex; gap: 4px; }
+.toolbar-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 10px; background: #f8f9fc; border-radius: 10px; cursor: pointer; transition: all 0.2s; }
+.toolbar-btn:hover { background: #eef0f6; }
+.toolbar-btn-primary { background: rgba(99,102,241,0.08); }
+.toolbar-label { font-size: 11px; font-weight: 500; color: #64748b; }
+.toolbar-label-primary { font-size: 11px; font-weight: 500; color: #6366f1; }
 
-/* 执行模拟 */
-.execution-panel { background: #f8fafc; border-radius: 14px; padding: 14px; margin: 10px 16px 16px; border: 1px solid #e2e8f0; }
-.exec-step { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
-.exec-step:last-child { margin-bottom: 0; }
-.exec-step-num { width: 18px; height: 18px; border-radius: 50%; background: #6366f1; color: #fff; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
-.exec-step-num.warn { background: #f59e0b; }
-.exec-step-num.danger { background: #ef4444; }
-.exec-step-content { font-size: 12px; color: #475569; line-height: 1.5; }
-.exec-step-content b { color: #1e293b; }
-.exec-step-content .reject { color: #ef4444; text-decoration: line-through; }
-.exec-step-content .recommend { color: #10b981; font-weight: 600; }
+.hosting-control { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 10px; background: rgba(99,102,241,0.06); }
+.hosting-label { font-size: 11px; font-weight: 500; color: #7c3aed; }
+.hosting-label-active { font-size: 11px; font-weight: 600; color: #d97706; }
+.hosting-switch { width: 32px; height: 18px; background: #cbd5e1; border-radius: 9px; position: relative; cursor: pointer; transition: background 0.3s; }
+.hosting-switch.on { background: #8b5cf6; }
+.hosting-switch::after { content: ''; position: absolute; width: 14px; height: 14px; background: #fff; border-radius: 50%; top: 2px; left: 2px; transition: transform 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+.hosting-switch.on::after { transform: translateX(14px); }
 
-/* 收入页 */
-.income-overview { background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-radius: 22px; padding: 20px; margin-bottom: 16px; border: 1px solid rgba(245,158,11,0.15); }
-.income-total { font-size: 32px; font-weight: 700; color: #d97706; }
-.income-total-label { font-size: 12px; color: #92400e; margin-bottom: 4px; }
-.income-row { display: flex; gap: 12px; margin-top: 12px; }
-.income-stat { flex: 1; text-align: center; }
-.income-stat-val { font-size: 16px; font-weight: 700; color: #78350f; }
-.income-stat-label { font-size: 10px; color: #a16207; }
-.income-divider { width: 1px; background: rgba(217,119,6,0.2); }
-.income-item { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid #f1f5f9; }
-.income-item-icon { width: 36px; height: 36px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
-.income-item-info { flex: 1; }
-.income-item-title { font-size: 13px; font-weight: 600; color: #1e293b; }
-.income-item-desc { font-size: 11px; color: #94a3b8; margin-top: 2px; }
-.income-item-amount { font-size: 15px; font-weight: 700; color: #10b981; }
+/* ========== 收益概览条 ========== */
+.earnings-overview { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: linear-gradient(135deg, #fffbeb, #fef3c7); border-radius: 16px; margin-bottom: 16px; border: 1px solid rgba(245,158,11,0.2); }
+.earnings-overview-left { display: flex; align-items: center; gap: 10px; }
+.earnings-overview-info { display: flex; flex-direction: column; }
+.earnings-overview-label { font-size: 11px; color: #92400e; }
+.earnings-overview-value { font-size: 20px; font-weight: 700; color: #d97706; }
+.earnings-overview-right { display: flex; align-items: center; gap: 12px; }
+.earnings-stat { display: flex; flex-direction: column; align-items: center; }
+.earnings-stat-value { font-size: 13px; font-weight: 600; color: #78350f; }
+.earnings-stat-label { font-size: 9px; color: #a16207; }
+.earnings-divider { width: 1px; height: 24px; background: rgba(217,119,6,0.3); }
 
-/* 社会价值 */
-.value-card { background: linear-gradient(135deg, rgba(99,102,241,0.04) 0%, rgba(168,85,247,0.04) 100%); border-radius: 14px; padding: 14px; margin-top: 12px; border: 1px solid rgba(99,102,241,0.08); }
-.value-stat-row { display: flex; gap: 10px; margin-bottom: 12px; }
-.value-stat { flex: 1; text-align: center; padding: 8px; background: #fff; border-radius: 10px; }
-.value-stat-val { font-size: 18px; font-weight: 700; color: #6366f1; }
-.value-stat-label { font-size: 10px; color: #94a3b8; }
-.value-story { font-size: 12px; color: #475569; line-height: 1.7; padding: 10px; background: #fff; border-radius: 10px; }
+/* ========== 群聊值守页面 ========== */
+.group-page { display: none; flex-direction: column; height: 100%; }
+.group-page.active { display: flex; }
 
-/* 知识库 */
-.knowledge-section { margin-bottom: 16px; }
-.knowledge-section-title { font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
-.knowledge-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #f8fafc; border-radius: 12px; margin-bottom: 6px; }
-.knowledge-item-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
-.knowledge-item-content { flex: 1; }
-.knowledge-item-title { font-size: 12px; font-weight: 600; color: #1e293b; }
-.knowledge-item-desc { font-size: 10px; color: #94a3b8; }
-.knowledge-add-btn { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 10px; border: 2px dashed #e2e8f0; border-radius: 12px; color: #94a3b8; font-size: 12px; cursor: pointer; transition: all 0.2s; }
-.knowledge-add-btn:hover { border-color: #6366f1; color: #6366f1; }
-.knowledge-note { font-size: 11px; color: #94a3b8; line-height: 1.6; padding: 10px 12px; background: rgba(245,158,11,0.04); border-radius: 10px; border: 1px solid rgba(245,158,11,0.1); margin-top: 8px; }
+.group-header { padding: 52px 20px 16px; background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+.group-header-title { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+.group-header-desc { font-size: 12px; color: rgba(255,255,255,0.7); }
 
-/* 分身详情顶卡 */
-.profile-card { background: #fff; border-radius: 22px; overflow: hidden; box-shadow: 0 2px 16px rgba(0,0,0,0.04); margin-bottom: 16px; }
-.profile-cover { position: relative; height: 80px; overflow: hidden; }
-.profile-cover-bg { width: 100%; height: 100%; }
-.profile-cover-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 100%); }
-.profile-info-row { display: flex; align-items: flex-end; gap: 12px; padding: 0 16px; margin-top: -24px; position: relative; z-index: 2; }
-.profile-avatar-img { width: 48px; height: 48px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.15); object-fit: cover; }
-.profile-name { font-size: 16px; font-weight: 700; color: #1e293b; }
-.profile-tags { display: flex; gap: 6px; padding: 10px 16px 14px; flex-wrap: wrap; }
-.profile-tag { padding: 3px 10px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+.group-list { padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; flex: 1; overflow-y: auto; }
 
-/* 三层变现 */
-.monetize-layer { padding: 14px; border-radius: 14px; margin-bottom: 10px; }
-.monetize-layer-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
-.monetize-layer-desc { font-size: 11px; line-height: 1.5; opacity: 0.8; }
-.monetize-layer-income { font-size: 12px; font-weight: 700; margin-top: 6px; opacity: 0.9; }
+.group-card { background: #fff; border-radius: 18px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
+.group-card-header { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
+.group-platform-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.group-platform-icon.feishu { background: rgba(59,130,246,0.1); }
+.group-platform-icon.wecom { background: rgba(34,197,94,0.1); }
+.group-card-info { flex: 1; }
+.group-card-name { font-size: 14px; font-weight: 600; color: #1e293b; }
+.group-card-meta { font-size: 11px; color: #94a3b8; display: flex; align-items: center; gap: 8px; }
+.group-card-status { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; }
+.group-card-status.on { color: #22c55e; }
+.group-card-status.off { color: #94a3b8; }
+.group-switch { width: 36px; height: 20px; background: #cbd5e1; border-radius: 10px; position: relative; cursor: pointer; transition: background 0.3s; }
+.group-switch.on { background: #6366f1; }
+.group-switch::after { content: ''; position: absolute; width: 16px; height: 16px; background: #fff; border-radius: 50%; top: 2px; left: 2px; transition: transform 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+.group-switch.on::after { transform: translateX(16px); }
 
-/* 动画 */
-@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-.fade-in { animation: fadeIn 0.3s ease; }
+.group-card-stats { display: flex; gap: 0; padding: 0 16px 12px; }
+.group-stat { flex: 1; text-align: center; border-right: 1px solid #f1f5f9; }
+.group-stat:last-child { border-right: none; }
+.group-stat-value { font-size: 16px; font-weight: 700; color: #1e293b; }
+.group-stat-label { font-size: 10px; color: #94a3b8; }
+
+.group-card-avatars { display: flex; padding: 0 16px 14px; gap: 6px; }
+.group-avatar-chip { display: flex; align-items: center; gap: 4px; padding: 3px 8px; background: rgba(99,102,241,0.06); border-radius: 8px; }
+.group-avatar-chip img { width: 18px; height: 18px; border-radius: 50%; }
+.group-avatar-chip span { font-size: 10px; color: #6366f1; font-weight: 500; }
+
+.add-group-card { background: #fff; border-radius: 18px; padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; border: 2px dashed #e2e8f0; transition: all 0.2s; }
+.add-group-card:hover { border-color: #8b5cf6; background: rgba(139,92,246,0.02); }
+.add-group-icon { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(168,85,247,0.1)); display: flex; align-items: center; justify-content: center; font-size: 22px; color: #6366f1; }
+.add-group-text { font-size: 13px; color: #64748b; font-weight: 500; }
+.add-group-hint { font-size: 11px; color: #94a3b8; }
+
+/* ========== 群聊详情页 ========== */
+.chat-page { display: none; flex-direction: column; height: 100%; }
+.chat-page.active { display: flex; }
+
+.chat-header { display: flex; align-items: center; gap: 10px; padding: 52px 16px 12px; background: #fff; border-bottom: 1px solid #f1f5f9; }
+.chat-back { font-size: 18px; color: #64748b; cursor: pointer; }
+.chat-header-info { flex: 1; }
+.chat-header-name { font-size: 16px; font-weight: 600; color: #1e293b; }
+.chat-header-meta { font-size: 11px; color: #94a3b8; }
+.chat-header-action { font-size: 13px; color: #6366f1; font-weight: 500; cursor: pointer; }
+
+.chat-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.chat-messages::-webkit-scrollbar { width: 0; }
+
+.msg-row { display: flex; gap: 8px; }
+.msg-row.self { flex-direction: row-reverse; }
+.msg-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.msg-bubble { max-width: 72%; padding: 10px 14px; border-radius: 14px; font-size: 13px; line-height: 1.6; }
+.msg-row:not(.self) .msg-bubble { background: #fff; color: #1e293b; border-top-left-radius: 4px; }
+.msg-row.self .msg-bubble { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; border-top-right-radius: 4px; }
+.msg-bubble-clone { background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.08)) !important; color: #1e293b !important; border: 1px solid rgba(99,102,241,0.15); position: relative; }
+.msg-clone-tag { position: absolute; top: -8px; left: 8px; font-size: 9px; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; padding: 1px 6px; border-radius: 4px; font-weight: 600; }
+
+.msg-correct-bar { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(99,102,241,0.2); }
+.msg-correct-btn { font-size: 10px; color: #8b5cf6; font-weight: 500; cursor: pointer; }
+
+.msg-learn-hint { display: flex; align-items: center; gap: 4px; margin-top: 6px; padding: 4px 8px; background: rgba(251,191,36,0.08); border-radius: 6px; font-size: 10px; color: #d97706; }
+
+.chat-input-bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #fff; border-top: 1px solid #f1f5f9; }
+.chat-input { flex: 1; height: 36px; padding: 0 12px; background: #f5f5f8; border-radius: 18px; border: none; font-size: 13px; outline: none; }
+.chat-send-btn { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none; color: #fff; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+/* ========== 人格引擎页面 ========== */
+.engine-page { display: none; flex-direction: column; height: 100%; }
+.engine-page.active { display: flex; }
+
+.engine-header { padding: 52px 20px 16px; background: linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7); border-radius: 0 0 28px 28px; }
+.engine-header-title { font-size: 20px; font-weight: 700; color: #fff; }
+.engine-header-desc { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 4px; }
+
+.engine-content { flex: 1; overflow-y: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+
+.engine-identity-card { background: #fff; border-radius: 20px; padding: 18px; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
+.engine-identity-top { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.engine-identity-avatar { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 3px solid #f1f5f9; }
+.engine-identity-info { flex: 1; }
+.engine-identity-name { font-size: 16px; font-weight: 700; color: #1e293b; }
+.engine-identity-sub { font-size: 11px; color: #94a3b8; }
+.engine-identity-score { display: flex; align-items: center; gap: 4px; padding: 4px 10px; background: linear-gradient(135deg, #6366f1, #8b5cf6); border-radius: 10px; }
+.engine-identity-score span { font-size: 12px; font-weight: 700; color: #fff; }
+
+.engine-layers { display: flex; flex-direction: column; gap: 10px; }
+.engine-layer { background: #fff; border-radius: 16px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
+.engine-layer-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.engine-layer-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.engine-layer-icon.red { background: rgba(239,68,68,0.1); }
+.engine-layer-icon.blue { background: rgba(59,130,246,0.1); }
+.engine-layer-icon.purple { background: rgba(139,92,246,0.1); }
+.engine-layer-icon.green { background: rgba(34,197,94,0.1); }
+.engine-layer-title { font-size: 13px; font-weight: 600; color: #1e293b; }
+.engine-layer-count { font-size: 10px; color: #94a3b8; margin-left: auto; }
+.engine-layer-items { display: flex; flex-direction: column; gap: 6px; }
+.engine-layer-item { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: #f8f9fc; border-radius: 8px; }
+.engine-layer-item-text { font-size: 12px; color: #334155; }
+.engine-layer-item-confidence { font-size: 10px; color: #6366f1; font-weight: 600; }
+
+/* ========== 技能提炼页面 ========== */
+.skill-page { display: none; flex-direction: column; height: 100%; }
+.skill-page.active { display: flex; }
+
+.skill-header { padding: 52px 20px 16px; background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 0 0 28px 28px; }
+.skill-header-title { font-size: 20px; font-weight: 700; color: #fff; }
+.skill-header-desc { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 4px; }
+
+.skill-content { flex: 1; overflow-y: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+
+.skill-extract-card { background: #fff; border-radius: 20px; padding: 18px; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
+.skill-extract-title { font-size: 14px; font-weight: 600; color: #1e293b; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+.skill-extract-flow { display: flex; flex-direction: column; gap: 8px; }
+.skill-step { display: flex; gap: 10px; }
+.skill-step-line { display: flex; flex-direction: column; align-items: center; }
+.skill-step-dot { width: 20px; height: 20px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; font-weight: 600; flex-shrink: 0; }
+.skill-step-connector { width: 2px; height: 16px; background: #e2e8f0; }
+.skill-step-content { flex: 1; }
+.skill-step-title { font-size: 12px; font-weight: 600; color: #1e293b; }
+.skill-step-desc { font-size: 11px; color: #94a3b8; line-height: 1.5; }
+.skill-step-judgment { display: inline-flex; align-items: center; gap: 3px; margin-top: 4px; padding: 2px 8px; background: rgba(251,191,36,0.1); border-radius: 4px; font-size: 10px; color: #d97706; font-weight: 500; }
+
+.skill-list { display: flex; flex-direction: column; gap: 10px; }
+.skill-item { background: #fff; border-radius: 14px; padding: 14px 16px; box-shadow: 0 1px 6px rgba(0,0,0,0.03); }
+.skill-item-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.skill-item-name { font-size: 13px; font-weight: 600; color: #1e293b; }
+.skill-item-level { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 6px; }
+.skill-item-level.expert { background: rgba(139,92,246,0.1); color: #8b5cf6; }
+.skill-item-level.skilled { background: rgba(59,130,246,0.1); color: #3b82f6; }
+.skill-item-level.learning { background: rgba(20,184,166,0.1); color: #14b8a6; }
+.skill-item-desc { font-size: 11px; color: #94a3b8; line-height: 1.5; }
+.skill-item-stats { display: flex; gap: 12px; margin-top: 8px; }
+.skill-item-stat { font-size: 10px; color: #64748b; display: flex; align-items: center; gap: 3px; }
+
+/* ========== 技能市场 ========== */
+.market-page { display: none; flex-direction: column; height: 100%; }
+.market-page.active { display: flex; }
+
+.market-header { padding: 52px 20px 16px; background: linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7); border-radius: 0 0 28px 28px; }
+.market-header-title { font-size: 20px; font-weight: 700; color: #fff; }
+.market-header-desc { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 4px; }
+
+.market-content { flex: 1; overflow-y: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+
+.market-income-card { background: linear-gradient(135deg, #1e293b, #334155); border-radius: 18px; padding: 18px; display: flex; align-items: center; justify-content: space-between; }
+.market-income-left { display: flex; flex-direction: column; }
+.market-income-label { font-size: 11px; color: rgba(255,255,255,0.5); }
+.market-income-value { font-size: 28px; font-weight: 700; color: #fbbf24; }
+.market-income-right { display: flex; flex-direction: column; gap: 6px; }
+.market-income-stat { text-align: right; }
+.market-income-stat-value { font-size: 14px; font-weight: 600; color: #fff; }
+.market-income-stat-label { font-size: 10px; color: rgba(255,255,255,0.4); }
+
+.market-section-title { font-size: 14px; font-weight: 600; color: #1e293b; margin-top: 4px; }
+
+.market-skill-card { background: #fff; border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+.market-skill-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.market-skill-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+.market-skill-info { flex: 1; }
+.market-skill-name { font-size: 13px; font-weight: 600; color: #1e293b; }
+.market-skill-owner { font-size: 11px; color: #94a3b8; }
+.market-skill-price { text-align: right; }
+.market-skill-price-value { font-size: 16px; font-weight: 700; color: #6366f1; }
+.market-skill-price-unit { font-size: 10px; color: #94a3b8; }
+.market-skill-desc { font-size: 11px; color: #64748b; line-height: 1.5; margin-bottom: 10px; }
+.market-skill-tags { display: flex; gap: 5px; margin-bottom: 10px; }
+.market-skill-footer { display: flex; align-items: center; justify-content: space-between; }
+.market-skill-stats { display: flex; gap: 10px; }
+.market-skill-stat { font-size: 10px; color: #94a3b8; }
+.market-skill-btn { padding: 6px 16px; background: linear-gradient(135deg, #6366f1, #8b5cf6); border-radius: 12px; border: none; color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; }
+
+/* 页面标题标注 */
+.page-label { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); font-size: 10px; color: #94a3b8; background: rgba(255,255,255,0.8); padding: 2px 10px; border-radius: 8px; z-index: 100; white-space: nowrap; }
 </style>
 </head>
 <body>
 
+<!-- ==================== 手机1：分身首页 ==================== -->
 <div class="phone-frame">
-  <!-- 顶部Header -->
+  <div class="page-label">分身首页 · 我的分身</div>
   <div class="page-header">
     <div class="header-decoration">
       <div class="decoration-circle circle-1"></div>
       <div class="decoration-circle circle-2"></div>
     </div>
-    <div class="header-title" id="headerTitle">和分身聊天</div>
-    <div class="header-subtitle" id="headerSubtitle">聊着聊着，它就越来越像你了</div>
+    <div class="header-tabs">
+      <div class="header-tab active">
+        <span class="tab-label">我的分身</span>
+        <div class="tab-indicator"></div>
+      </div>
+      <div class="header-tab">
+        <span class="tab-label">分身广场</span>
+      </div>
+    </div>
+    <div class="search-section">
+      <div class="search-wrapper">
+        <span class="search-icon">🔍</span>
+        <input class="search-input" placeholder="搜索分身名称..." readonly>
+      </div>
+      <button class="add-button">+ 创建</button>
+    </div>
   </div>
-
-  <!-- 内容区 -->
   <div class="content-area">
-
-    <!-- 页面1：和分身聊天 -->
-    <div class="page-content active" id="page-chat">
-      <div class="avatar-switcher" id="chatAvatarSwitcher"></div>
-      <div class="profile-card">
-        <div class="profile-cover">
-          <div class="profile-cover-bg" id="chatCoverBg" style="background:linear-gradient(135deg,#6366f1,#a855f7)"></div>
-          <div class="profile-cover-overlay"></div>
-        </div>
-        <div class="profile-info-row">
-          <img class="profile-avatar-img" id="chatAvatarImg" src="" alt="">
-          <div>
-            <div class="profile-name" id="chatAvatarName">林姐</div>
+    <div class="my-clones-list">
+      <!-- 收益概览 -->
+      <div class="earnings-overview">
+        <div class="earnings-overview-left">
+          <span style="font-size:22px">💰</span>
+          <div class="earnings-overview-info">
+            <span class="earnings-overview-label">累计收益</span>
+            <span class="earnings-overview-value">¥328.50</span>
           </div>
         </div>
-        <div class="profile-tags" id="chatAvatarTags"></div>
-      </div>
-      <div class="chat-container" id="chatBubbles"></div>
-      <div class="chat-input-bar">
-        <input class="chat-input" placeholder="跟分身聊天，它会偷学你..." id="chatInput">
-        <button class="chat-send-btn" onclick="sendChat()">↑</button>
-      </div>
-    </div>
-
-    <!-- 页面2：替你回消息 -->
-    <div class="page-content" id="page-group">
-      <div class="avatar-switcher" id="groupAvatarSwitcher"></div>
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">已接入的群</div>
-          <div class="card-badge" style="background:rgba(99,102,241,0.1);color:#6366f1">+ 接入</div>
-        </div>
-        <div id="groupList"></div>
-      </div>
-      <div class="card" id="groupChatCard" style="display:none">
-        <div class="card-header">
-          <div class="card-title" id="groupChatName">群聊</div>
-          <div class="card-badge" style="background:rgba(16,185,129,0.1);color:#10b981">值守中</div>
-        </div>
-        <div class="chat-container" id="groupBubbles"></div>
-      </div>
-    </div>
-
-    <!-- 页面3：关键时刻 -->
-    <div class="page-content" id="page-critical">
-      <div class="avatar-switcher" id="criticalAvatarSwitcher"></div>
-      <div class="evolution-card">
-        <div class="evolution-title">进化曲线：分身匹配度</div>
-        <div class="evolution-chart" id="evoChart"></div>
-        <div class="evo-labels" id="evoLabels"></div>
-      </div>
-      <div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:10px">关键时刻测试</div>
-      <div id="sceneCards"></div>
-    </div>
-
-    <!-- 页面4：人格引擎 -->
-    <div class="page-content" id="page-engine">
-      <div class="avatar-switcher" id="engineAvatarSwitcher"></div>
-      <div style="font-size:12px;color:#94a3b8;margin-bottom:12px;line-height:1.6">人格引擎四层架构，优先级从高到低。点击每层展开详情。</div>
-      <div class="card">
-        <div id="engineLayers"></div>
-      </div>
-    </div>
-
-    <!-- 页面5：技能提炼 -->
-    <div class="page-content" id="page-skill">
-      <div class="avatar-switcher" id="skillAvatarSwitcher"></div>
-      <div id="skillCards"></div>
-    </div>
-
-    <!-- 页面6：技能市场 -->
-    <div class="page-content" id="page-market">
-      <div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:4px">技能市场</div>
-      <div style="font-size:11px;color:#94a3b8;margin-bottom:14px">雇佣别人的分身，用TA的方式帮你干活</div>
-      <div id="marketCards"></div>
-      <div class="execution-panel" id="execPanel" style="display:none">
-        <div style="font-size:12px;font-weight:700;color:#1e293b;margin-bottom:10px">执行模拟：林姐分身优化标题</div>
-        <div id="execSteps"></div>
-      </div>
-    </div>
-
-    <!-- 页面7：知识库 -->
-    <div class="page-content" id="page-knowledge">
-      <div class="avatar-switcher" id="knowledgeAvatarSwitcher"></div>
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">自动积累</div>
-          <div class="card-badge" style="background:rgba(16,185,129,0.1);color:#10b981">运行中</div>
-        </div>
-        <div class="card-body" id="autoKnowledge"></div>
-      </div>
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">手动补充</div>
-        </div>
-        <div class="card-body" id="manualKnowledge"></div>
-        <div class="knowledge-add-btn" onclick="alert('上传文档/粘贴文本/录音')">+ 添加知识</div>
-        <div style="height:12px"></div>
-      </div>
-      <div class="knowledge-note">知识决定分身「有没有用」，人格决定分身「像不像」。两者缺一不可。</div>
-    </div>
-
-    <!-- 页面8：我的收入 -->
-    <div class="page-content" id="page-income">
-      <div class="income-overview">
-        <div class="income-total-label">累计收入</div>
-        <div class="income-total" id="incomeTotal">¥3,280</div>
-        <div class="income-row">
-          <div class="income-stat"><div class="income-stat-val" id="incomeMonth">¥860</div><div class="income-stat-label">本月</div></div>
-          <div class="income-divider"></div>
-          <div class="income-stat"><div class="income-stat-val" id="incomeLastMonth">¥720</div><div class="income-stat-label">上月</div></div>
-          <div class="income-divider"></div>
-          <div class="income-stat"><div class="income-stat-val" style="color:#10b981">+19%</div><div class="income-stat-label">环比</div></div>
+        <div class="earnings-overview-right">
+          <div class="earnings-stat">
+            <span class="earnings-stat-value">¥12.80</span>
+            <span class="earnings-stat-label">今日</span>
+          </div>
+          <div class="earnings-divider"></div>
+          <div class="earnings-stat">
+            <span class="earnings-stat-value">3</span>
+            <span class="earnings-stat-label">值守中</span>
+          </div>
         </div>
       </div>
-      <div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:10px">收入明细</div>
-      <div id="incomeItems"></div>
-      <div style="font-size:13px;font-weight:700;color:#1e293b;margin:16px 0 10px">三层变现</div>
-      <div id="monetizeLayers"></div>
-      <div style="font-size:13px;font-weight:700;color:#1e293b;margin:16px 0 10px">社会价值</div>
-      <div class="value-card">
-        <div class="value-stat-row" id="valueStats"></div>
-        <div class="value-story" id="valueStory"></div>
+
+      <!-- 分身卡片1：在线托管 -->
+      <div class="clone-card">
+        <div class="clone-cover">
+          <img class="cover-image" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='390' height='160'%3E%3Cdefs%3E%3ClinearGradient id='g1' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%236366f1'/%3E%3Cstop offset='100%25' stop-color='%23a855f7'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill='url(%23g1)' width='390' height='160'/%3E%3C/svg%3E">
+          <div class="cover-gradient"></div>
+          <div class="level-badge lv3">⭐ Lv.3 资深分身</div>
+          <div class="status-badge hosting"><span class="status-dot"></span> 托管中</div>
+          <div class="earning-indicator">💰 +¥8.60</div>
+          <div class="cover-footer">
+            <div class="clone-profile">
+              <img class="profile-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Ccircle cx='22' cy='22' r='22' fill='%23e0e7ff'/%3E%3Ctext x='22' y='28' text-anchor='middle' font-size='18' fill='%236366f1'%3E林%3C/text%3E%3C/svg%3E">
+              <div class="profile-info">
+                <span class="profile-name">小林分身</span>
+                <span class="profile-detail">上班族 · 28岁 · 深圳</span>
+                <span class="profile-total-earn">累计 ¥186.30</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="skills-section">
+          <div class="skills-header">
+            <span>⚡</span>
+            <span class="skills-title">技能</span>
+          </div>
+          <div class="skills-tags">
+            <span class="skill-tag blue">客户沟通</span>
+            <span class="skill-tag purple">方案撰写</span>
+            <span class="skill-tag teal">数据分析</span>
+            <span class="skill-tag amber">项目管理</span>
+            <span class="add-skill-tag">+ 添加</span>
+          </div>
+        </div>
+        <div class="tags-section">
+          <div class="tags-row">
+            <span class="tags-label">风格</span>
+            <div class="tags-list">
+              <span class="style-tag">专业严谨</span>
+              <span class="style-tag">逻辑清晰</span>
+            </div>
+          </div>
+          <div class="tags-row">
+            <span class="tags-label">领域</span>
+            <div class="tags-list">
+              <span class="niche-tag">互联网</span>
+              <span class="niche-tag">SaaS</span>
+            </div>
+          </div>
+        </div>
+        <div class="level-progress-section">
+          <div class="level-progress-header">
+            <span class="level-progress-current">⭐ Lv.3 资深分身</span>
+            <span class="level-progress-next">距 Lv.4 精英分身</span>
+          </div>
+          <div class="level-progress-bar">
+            <div class="level-progress-fill" style="width:65%"></div>
+          </div>
+          <div class="level-progress-stats">
+            <span>经验值 325/500</span>
+            <span>发帖 86 · 收益 ¥186.30</span>
+          </div>
+        </div>
+        <div class="clone-toolbar">
+          <div class="toolbar-actions">
+            <div class="toolbar-btn toolbar-btn-primary">
+              <span>🤖</span>
+              <span class="toolbar-label-primary">群聊值守</span>
+            </div>
+            <div class="toolbar-btn">
+              <span>💬</span>
+              <span class="toolbar-label">聊天</span>
+            </div>
+            <div class="toolbar-btn">
+              <span>🎙️</span>
+              <span class="toolbar-label">语音</span>
+            </div>
+            <div class="toolbar-btn">
+              <span>📊</span>
+              <span class="toolbar-label">数据</span>
+            </div>
+          </div>
+          <div class="hosting-control">
+            <span class="hosting-label-active">托管</span>
+            <div class="hosting-switch on"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 分身卡片2：离线 -->
+      <div class="clone-card">
+        <div class="clone-cover">
+          <img class="cover-image" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='390' height='160'%3E%3Cdefs%3E%3ClinearGradient id='g2' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2314b8a6'/%3E%3Cstop offset='100%25' stop-color='%2306b6d4'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill='url(%23g2)' width='390' height='160'/%3E%3C/svg%3E">
+          <div class="cover-gradient"></div>
+          <div class="level-badge lv2">✨ Lv.2 进阶分身</div>
+          <div class="status-badge offline">离线</div>
+          <div class="cover-footer">
+            <div class="clone-profile">
+              <img class="profile-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Ccircle cx='22' cy='22' r='22' fill='%23ccfbf1'/%3E%3Ctext x='22' y='28' text-anchor='middle' font-size='18' fill='%2314b8a6'%3E陈%3C/text%3E%3C/svg%3E">
+              <div class="profile-info">
+                <span class="profile-name">小陈分身</span>
+                <span class="profile-detail">创业者 · 32岁 · 杭州</span>
+                <span class="profile-total-earn">累计 ¥92.40</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="skills-section">
+          <div class="skills-header">
+            <span>⚡</span>
+            <span class="skills-title">技能</span>
+          </div>
+          <div class="skills-tags">
+            <span class="skill-tag rose">商务谈判</span>
+            <span class="skill-tag amber">投资分析</span>
+            <span class="skill-tag blue">路演PPT</span>
+            <span class="add-skill-tag">+ 添加</span>
+          </div>
+        </div>
+        <div class="tags-section">
+          <div class="tags-row">
+            <span class="tags-label">风格</span>
+            <div class="tags-list">
+              <span class="style-tag">果断自信</span>
+              <span class="style-tag">数据驱动</span>
+            </div>
+          </div>
+          <div class="tags-row">
+            <span class="tags-label">领域</span>
+            <div class="tags-list">
+              <span class="niche-tag">投资</span>
+              <span class="niche-tag">AI</span>
+            </div>
+          </div>
+        </div>
+        <div class="level-progress-section">
+          <div class="level-progress-header">
+            <span class="level-progress-current">✨ Lv.2 进阶分身</span>
+            <span class="level-progress-next">距 Lv.3 资深分身</span>
+          </div>
+          <div class="level-progress-bar">
+            <div class="level-progress-fill" style="width:38%"></div>
+          </div>
+          <div class="level-progress-stats">
+            <span>经验值 76/200</span>
+            <span>发帖 32 · 收益 ¥92.40</span>
+          </div>
+        </div>
+        <div class="clone-toolbar">
+          <div class="toolbar-actions">
+            <div class="toolbar-btn toolbar-btn-primary">
+              <span>🤖</span>
+              <span class="toolbar-label-primary">群聊值守</span>
+            </div>
+            <div class="toolbar-btn">
+              <span>💬</span>
+              <span class="toolbar-label">聊天</span>
+            </div>
+            <div class="toolbar-btn">
+              <span>🎙️</span>
+              <span class="toolbar-label">语音</span>
+            </div>
+            <div class="toolbar-btn">
+              <span>📊</span>
+              <span class="toolbar-label">数据</span>
+            </div>
+          </div>
+          <div class="hosting-control">
+            <span class="hosting-label">托管</span>
+            <div class="hosting-switch"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
-
-  <!-- 底部导航 -->
+  <!-- 底部Tab -->
   <div class="bottom-tabs">
-    <div class="tab-item active" onclick="switchPage('chat',0)"><div class="tab-icon">💬</div><div class="tab-label">聊天</div></div>
-    <div class="tab-item" onclick="switchPage('group',1)"><div class="tab-icon">👥</div><div class="tab-label">回消息</div></div>
-    <div class="tab-item" onclick="switchPage('critical',2)"><div class="tab-icon">⚡</div><div class="tab-label">关键时刻</div></div>
-    <div class="tab-item" onclick="switchPage('engine',3)"><div class="tab-icon">🧠</div><div class="tab-label">人格引擎</div></div>
-    <div class="tab-item" onclick="switchPage('skill',4)"><div class="tab-icon">🎯</div><div class="tab-label">技能</div></div>
-    <div class="tab-item" onclick="switchPage('market',5)"><div class="tab-icon">🏪</div><div class="tab-label">市场</div></div>
-    <div class="tab-item" onclick="switchPage('knowledge',6)"><div class="tab-icon">📚</div><div class="tab-label">知识库</div></div>
-    <div class="tab-item" onclick="switchPage('income',7)"><div class="tab-icon">💰</div><div class="tab-label">收入</div></div>
+    <div class="tab-item active"><span class="tab-icon">🏠</span><span class="tab-label">分身</span></div>
+    <div class="tab-item"><span class="tab-icon">🤖</span><span class="tab-label">群聊</span></div>
+    <div class="tab-item"><span class="tab-icon">🧠</span><span class="tab-label">人格</span></div>
+    <div class="tab-item"><span class="tab-icon">⚡</span><span class="tab-label">技能</span></div>
+    <div class="tab-item"><span class="tab-icon">🏪</span><span class="tab-label">市场</span></div>
   </div>
 </div>
 
-<script>
-// ========== 数据 ==========
-const AVATARS = {
-  lin: {
-    id: 'lin', name: '林姐', role: '公众号运营·8年',
-    img: 'https://mrlweb.51webjs.com/avatar-lin.jpg',
-    gradient: 'linear-gradient(135deg,#6366f1,#a855f7)',
-    tags: ['内容运营', '数据分析', '用户洞察'],
-    chats: [
-      { from: 'user', text: '我写标题从来不用焦虑感，就是那种\"不看就亏大了\"的，太low了' },
-      { from: 'avatar', text: '记住了。你偏好干货型标题，用数据或经验说服读者，不用制造焦虑来吸引点击。', tag: { text: '底线确认', type: 'bottom-line' } },
-      { from: 'user', text: '对，而且我一般会先看这个号的历史打开率数据再决定走什么方向' },
-      { from: 'avatar', text: '明白了，你是数据驱动的决策方式——先分析再行动，而不是凭感觉。', tag: { text: '判断模式', type: 'judgment' } },
-      { from: 'avatar', text: '还有一个问题：遇到客户要求用焦虑标题，你会怎么处理？', tag: { text: '底线确认', type: 'bottom-line' } },
-      { from: 'user', text: '直接拒绝，这个没商量。我可以不接这个单，但不会违背自己的原则' },
-      { from: 'avatar', text: '底线确认：不用焦虑营销——不可协商。已记录为最高优先级规则。', tag: { text: '底线确认', type: 'bottom-line' } },
-    ],
-    groups: [
-      { name: '母婴品牌运营群', desc: '32人 · 活跃', on: true, msgs: [
-        { from: 'other', name: '客户A', text: '我们想做个标题\"不学这个孩子就落后了\"可以吗？' },
-        { from: 'avatar', text: '不太建议用焦虑感标题哦。根据林姐的风格，建议改成\"3个方法帮孩子建立阅读习惯\"，用正向引导效果更持久😊', correct: { old: '我觉得可以试试', new: '不太建议用焦虑感标题哦', diff: '识别到林姐底线：不用焦虑营销' } },
-        { from: 'other', name: '客户A', text: '好的，那就用你推荐的标题吧' },
-      ]},
-      { name: '内容创作者交流群', desc: '128人 · 活跃', on: true, msgs: [] },
-      { name: '甲方对接群', desc: '5人', on: false, msgs: [] },
-    ],
-    scenes: [
-      { title: '客户说\"你们太贵了\"', me: '贵是有原因的，我上个月帮一个号从3%打开率做到8.2%，你可以算算ROI', avatar: '我理解您的顾虑，我们可以先试一期看效果，用数据说话', match: 82, color: '#10b981' },
-      { title: '甲方要求用焦虑标题', me: '这个我做不了，我不用焦虑营销，换一种方式效果更好', avatar: '好的，我们试试看能不能换一个不那么极端的标题？', match: 35, color: '#f59e0b' },
-      { title: '同事用虚假数据夸大效果', me: '这个数据不对吧？我们真实数据是XX，不能这么写', avatar: '可能需要再核实一下数据准确性', match: 10, color: '#ef4444' },
-    ],
-    evolution: [15, 28, 40, 52, 63, 72, 78, 84, 89, 92, 94],
-    engine: [
-      { icon: '🚫', name: '底线层', desc: '绝对不做什么', color: '#ef4444', bg: 'rgba(239,68,68,0.1)', priority: '最高', items: [
-        { text: '不使用焦虑营销话术', source: '3次拒绝焦虑标题订单', dot: '#ef4444' },
-        { text: '不对效果做虚假承诺', source: '2次修改了夸大效果的文案', dot: '#ef4444' },
-        { text: '不接低于¥50的单', source: '1次明确拒绝低价订单', dot: '#ef4444' },
-      ]},
-      { icon: '⚖️', name: '判断层', desc: '遇到情况怎么判断', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', priority: '高', items: [
-        { text: '先看数据再动笔', source: '20次先查看历史数据再写标题', dot: '#f59e0b' },
-        { text: '客户砍价→用ROI数据说服', source: '5次用数据说服客户接受报价', dot: '#f59e0b' },
-        { text: '走干货型而非焦虑型', source: '分析数据后发现干货型打开率更高', dot: '#f59e0b' },
-      ]},
-      { icon: '🗣️', name: '风格层', desc: '怎么说话', color: '#6366f1', bg: 'rgba(99,102,241,0.1)', priority: '中', items: [
-        { text: '用数据和案例说服，不用情绪', source: '15次修改文案去掉感叹号和情绪词', dot: '#6366f1' },
-        { text: '简短有力，不啰嗦', source: '8次删减冗余段落', dot: '#6366f1' },
-        { text: '口头禅\"说实话\"', source: '聊天中高频出现', dot: '#6366f1' },
-      ]},
-      { icon: '📚', name: '知识层', desc: '知道什么', color: '#10b981', bg: 'rgba(16,185,129,0.1)', priority: '基础', items: [
-        { text: '公众号运营方法论', source: '8年经验积累', dot: '#10b981' },
-        { text: '母婴/教育行业数据', source: '30+项目经验', dot: '#10b981' },
-        { text: '内容策划工作流', source: '从聊天中提炼', dot: '#10b981' },
-      ]},
-    ],
-    skills: [
-      { name: '公众号标题优化', type: 'content', gradient: 'linear-gradient(135deg,#6366f1,#8b5cf6)', status: '已验证', executions: 23, satisfaction: 89, returnRate: 78, steps: [
-        { title: '分析历史数据', desc: '查看该号打开率、阅读完成率、分享率', evidence: '20次先看数据再动笔' },
-        { title: '确定标题方向', desc: '干货型 or 案例型，数据驱动决策', evidence: '15次选择干货型标题效果更好' },
-        { title: '生成3个备选', desc: '覆盖不同风格供客户选择', evidence: '总是给3个备选而不是1个' },
-        { title: '底线自检', desc: '是否有焦虑感/夸大/虚假承诺', evidence: '5次修改了焦虑标题' },
-        { title: '推荐最优', desc: '数据+底线+风格都过的那个', evidence: '客户满意度89%' },
-      ]},
-      { name: '内容策略规划', type: 'strategy', gradient: 'linear-gradient(135deg,#10b981,#14b8a6)', status: '学习中', executions: 8, satisfaction: 75, returnRate: 50, steps: [
-        { title: '了解品牌定位', desc: '目标用户、调性、竞争环境' },
-        { title: '分析现有内容', desc: '哪些有效、哪些无效' },
-        { title: '制定内容日历', desc: '选题节奏、发布频率' },
-        { title: '设定KPI', desc: '打开率、转化率目标' },
-      ]},
-    ],
-    knowledge: {
-      auto: [
-        { icon: '💬', bg: 'rgba(99,102,241,0.1)', title: '公众号打开率提升方法', desc: '从聊天中提取 · 3次提及' },
-        { icon: '📊', bg: 'rgba(16,185,129,0.1)', title: '母婴行业数据洞察', desc: '从群聊中提取 · 5次引用' },
-        { icon: '🎯', bg: 'rgba(245,158,11,0.1)', title: '标题A/B测试方法论', desc: '从修改记录中提炼 · 12次验证' },
-      ],
-      manual: [
-        { icon: '📄', bg: 'rgba(99,102,241,0.1)', title: '公众号运营手册.pdf', desc: '上传于3天前' },
-        { icon: '🔗', bg: 'rgba(16,185,129,0.1)', title: '内容策略课程笔记', desc: '粘贴于1周前' },
-      ]
-    },
-    income: { total: 3280, month: 860, lastMonth: 720, items: [
-      { icon: '📝', bg: 'rgba(99,102,241,0.1)', title: '标题优化 × 3单', desc: '来自技能市场 · 单次', amount: '+¥150' },
-      { icon: '📅', bg: 'rgba(245,158,11,0.1)', title: '月度内容托管', desc: '小美母婴店 · 月度', amount: '+¥500' },
-      { icon: '📝', bg: 'rgba(16,185,129,0.1)', title: '标题优化 × 5单', desc: '来自技能市场 · 批量', amount: '+¥210' },
-    ], valueStats: [
-      { val: '47', label: '帮过的人' },
-      { val: '126h', label: '节省的时间' },
-      { val: '89%', label: '客户满意度' },
-    ], valueStory: '张姐是个新手运营，不会写公众号标题。雇佣林姐分身后，分身用林姐\"先看数据再动笔\"的方法帮她优化了3个标题，打开率从2.1%提升到5.8%。张姐说：\"我终于理解了什么叫数据驱动的内容运营。\"' }
-  },
-  chen: {
-    id: 'chen', name: '陈老师', role: '初中数学·12年',
-    img: 'https://mrlweb.51webjs.com/avatar-chen.jpg',
-    gradient: 'linear-gradient(135deg,#10b981,#14b8a6)',
-    tags: ['教学沟通', '学习诊断', '教案设计'],
-    chats: [
-      { from: 'user', text: '我从来不跟家长说\"你家孩子不行\"，我会先找到孩子的优点再说问题' },
-      { from: 'avatar', text: '明白了，你的沟通模式是\"先共情再引导\"——让家长感受到被理解，才更容易接受建议。', tag: { text: '风格偏好', type: 'style' } },
-      { from: 'user', text: '对，而且我不做\"保证提分\"这种承诺，教育不是买东西' },
-      { from: 'avatar', text: '底线确认：不做虚假承诺。已记录。', tag: { text: '底线确认', type: 'bottom-line' } },
-    ],
-    groups: [
-      { name: '初二3班家长群', desc: '45人 · 活跃', on: true, msgs: [
-        { from: 'other', name: '家长B', text: '陈老师，我家孩子数学才考了65分，是不是太差了？' },
-        { from: 'avatar', text: '65分在班里算中等水平，别着急。小明的几何其实很有天赋，上次那道证明题全班就他做出来了。我们先把计算部分的粗心问题解决了，成绩一定能上来。', correct: { old: '65分确实不太理想，需要加把劲', new: '65分在班里算中等水平，别着急', diff: '识别到陈老师风格：先肯定再引导' } },
-      ]},
-      { name: '数学教研组', desc: '12人', on: false, msgs: [] },
-    ],
-    scenes: [
-      { title: '家长焦虑地问\"孩子考差了\"', me: '别急，XX其实XX方面很有天赋，我们先解决XX问题', avatar: '确实需要重视，建议加强练习', match: 30, color: '#f59e0b' },
-      { title: '家长要求保证提分', me: '我不能保证具体分数，但可以保证认真对待每个孩子', avatar: '我们会尽力的，但效果因人而异', match: 55, color: '#f59e0b' },
-    ],
-    evolution: [20, 35, 48, 58, 66, 74, 80, 85, 90, 93, 95],
-    engine: [
-      { icon: '🚫', name: '底线层', desc: '绝对不做什么', color: '#ef4444', bg: 'rgba(239,68,68,0.1)', priority: '最高', items: [
-        { text: '不做虚假提分承诺', source: '2次拒绝\"保证提分\"要求', dot: '#ef4444' },
-        { text: '不说\"你家孩子不行\"', source: '聊天中明确表达', dot: '#ef4444' },
-      ]},
-      { icon: '⚖️', name: '判断层', desc: '遇到情况怎么判断', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', priority: '高', items: [
-        { text: '先找优点再说问题', source: '12次跟家长沟通都是这个模式', dot: '#f59e0b' },
-        { text: '用具体案例代替空泛评价', source: '8次举出学生具体表现', dot: '#f59e0b' },
-      ]},
-      { icon: '🗣️', name: '风格层', desc: '怎么说话', color: '#6366f1', bg: 'rgba(99,102,241,0.1)', priority: '中', items: [
-        { text: '先共情再引导', source: '15次家长沟通的模式', dot: '#6366f1' },
-        { text: '用数据说话（成绩趋势、班级排名）', source: '聊天中高频使用数据', dot: '#6366f1' },
-      ]},
-      { icon: '📚', name: '知识层', desc: '知道什么', color: '#10b981', bg: 'rgba(16,185,129,0.1)', priority: '基础', items: [
-        { text: '初中数学教学方法论', source: '12年教学经验', dot: '#10b981' },
-        { text: '常见学习问题诊断', source: '从沟通中提炼', dot: '#10b981' },
-      ]},
-    ],
-    skills: [
-      { name: '家长沟通指导', type: 'communication', gradient: 'linear-gradient(135deg,#10b981,#14b8a6)', status: '已验证', executions: 35, satisfaction: 92, returnRate: 85, steps: [
-        { title: '理解家长焦虑', desc: '先倾听，不要急着给方案', evidence: '12次家长沟通都是先倾听' },
-        { title: '找到孩子亮点', desc: '用具体案例肯定孩子', evidence: '每次都先说优点' },
-        { title: '客观分析问题', desc: '用数据说明，不做主观评价', evidence: '8次使用成绩趋势图' },
-        { title: '提供可行建议', desc: '具体到每天做什么', evidence: '家长满意度92%' },
-        { title: '底线自检', desc: '没有虚假承诺/负面评价', evidence: '0次违反底线' },
-      ]},
-    ],
-    knowledge: {
-      auto: [
-        { icon: '📋', bg: 'rgba(16,185,129,0.1)', title: '初中数学常见错题分析', desc: '从教案中提取 · 8次引用' },
-        { icon: '💬', bg: 'rgba(99,102,241,0.1)', title: '家长焦虑应对话术', desc: '从群聊中提炼 · 12次验证' },
-      ],
-      manual: [
-        { icon: '📄', bg: 'rgba(245,158,11,0.1)', title: '教学反思日记', desc: '上传于2天前' },
-      ]
-    },
-    income: { total: 1680, month: 450, lastMonth: 380, items: [
-      { icon: '💬', bg: 'rgba(16,185,129,0.1)', title: '家长沟通指导 × 5次', desc: '来自技能市场 · 单次', amount: '+¥250' },
-      { icon: '📅', bg: 'rgba(99,102,241,0.1)', title: '月度沟通托管', desc: '希望教育 · 月度', amount: '+¥200' },
-    ], valueStats: [
-      { val: '32', label: '帮过的家长' },
-      { val: '89h', label: '节省的时间' },
-      { val: '92%', label: '满意度' },
-    ], valueStory: '李老师是乡村中学的数学老师，不会跟家长沟通。雇佣陈老师分身后，分身用\"先共情再引导\"的方式帮李老师回复了8位家长，家长满意度从60%提升到90%。' }
-  },
-  wang: {
-    id: 'wang', name: '小王', role: '美食博主·2年',
-    img: 'https://mrlweb.51webjs.com/avatar-wang.jpg',
-    gradient: 'linear-gradient(135deg,#f59e0b,#d97706)',
-    tags: ['美食内容', '视频脚本', '品牌合作'],
-    chats: [
-      { from: 'user', text: '我写美食文案一定要有感官描写，就是那种\"筷子一夹就断\"的感觉' },
-      { from: 'avatar', text: '明白了，你的风格是用感官细节代替空洞夸赞。不说\"好吃到哭\"，而是描写具体的触感、声音、气味。', tag: { text: '风格偏好', type: 'style' } },
-      { from: 'user', text: '对，而且我不做虚假内容，东西不好吃我就直说' },
-      { from: 'avatar', text: '底线确认：不做虚假推荐。已记录。', tag: { text: '底线确认', type: 'bottom-line' } },
-    ],
-    groups: [],
-    scenes: [
-      { title: '品牌方要求夸大产品效果', me: '不好意思，我试了之后觉得口感一般，没法推荐给粉丝', avatar: '我试试看能不能找到推荐的角度', match: 15, color: '#ef4444' },
-    ],
-    evolution: [8, 18, 30, 42, 55, 65, 74, 82, 88, 92, 94],
-    engine: [
-      { icon: '🚫', name: '底线层', desc: '绝对不做什么', color: '#ef4444', bg: 'rgba(239,68,68,0.1)', priority: '最高', items: [
-        { text: '不做虚假推荐', source: '3次拒绝不好吃的产品合作', dot: '#ef4444' },
-      ]},
-      { icon: '⚖️', name: '判断层', desc: '遇到情况怎么判断', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', priority: '高', items: [
-        { text: '先试吃再决定接不接', source: '5次试吃后做决定', dot: '#f59e0b' },
-      ]},
-      { icon: '🗣️', name: '风格层', desc: '怎么说话', color: '#6366f1', bg: 'rgba(99,102,241,0.1)', priority: '中', items: [
-        { text: '感官描写代替空洞夸赞', source: '8次修改\"好吃\"为具体描写', dot: '#6366f1' },
-      ]},
-      { icon: '📚', name: '知识层', desc: '知道什么', color: '#10b981', bg: 'rgba(16,185,129,0.1)', priority: '基础', items: [
-        { text: '美食内容创作技巧', source: '2年经验', dot: '#10b981' },
-      ]},
-    ],
-    skills: [
-      { name: '美食视频脚本', type: 'content', gradient: 'linear-gradient(135deg,#f59e0b,#d97706)', status: '已验证', executions: 18, satisfaction: 86, returnRate: 72, steps: [
-        { title: '试吃/体验', desc: '亲自体验，记录感官细节', evidence: '5次试吃后写脚本' },
-        { title: '提炼核心卖点', desc: '最打动人的1-2个细节', evidence: '总是聚焦1-2个感官点' },
-        { title: '写脚本', desc: '用感官描写构建叙事', evidence: '8次用感官细节替代空洞词' },
-        { title: '底线自检', desc: '是否真实？有没有夸大？', evidence: '3次拒绝虚假推荐' },
-        { title: '定稿', desc: '真实+感官+节奏都过', evidence: '客户复购率72%' },
-      ]},
-    ],
-    knowledge: {
-      auto: [
-        { icon: '🍜', bg: 'rgba(245,158,11,0.1)', title: '感官描写技巧库', desc: '从修改记录中提炼 · 8次验证' },
-      ],
-      manual: []
-    },
-    income: { total: 960, month: 320, lastMonth: 280, items: [
-      { icon: '🎬', bg: 'rgba(245,158,11,0.1)', title: '美食脚本 × 2单', desc: '来自技能市场 · 单次', amount: '+¥200' },
-      { icon: '📝', bg: 'rgba(99,102,241,0.1)', title: '品牌合作筛选', desc: '来自技能市场 · 单次', amount: '+¥120' },
-    ], valueStats: [
-      { val: '18', label: '帮过的人' },
-      { val: '45h', label: '节省的时间' },
-      { val: '86%', label: '满意度' },
-    ], valueStory: '小张刚做美食博主，不知道怎么写脚本。雇佣小王分身后，分身用\"感官描写\"的方法帮她写了一个面条测评脚本，播放量是之前的3倍。' },
-  },
-};
-
-let currentAvatar = 'lin';
-
-// ========== 页面切换 ==========
-const PAGE_CONFIG = {
-  chat: { title: '和分身聊天', subtitle: '聊着聊着，它就越来越像你了', tab: 0 },
-  group: { title: '替你回消息', subtitle: '分身在群里用你的方式回复', tab: 1 },
-  critical: { title: '关键时刻', subtitle: '分身的选择和你一样吗？', tab: 2 },
-  engine: { title: '人格引擎', subtitle: '四层架构，底线最高', tab: 3 },
-  skill: { title: '技能提炼', subtitle: '从你的行为中提炼可执行工作流', tab: 4 },
-  market: { title: '技能市场', subtitle: '雇佣别人的分身帮你干活', tab: 5 },
-  knowledge: { title: '知识库', subtitle: '知识决定\"有没有用\"', tab: 6 },
-  income: { title: '我的收入', subtitle: '分身为你创造的价值', tab: 7 },
-};
-
-function switchPage(pageId, tabIdx) {
-  document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
-  document.getElementById('page-' + pageId).classList.add('active');
-  document.querySelectorAll('.tab-item').forEach((t, i) => { t.classList.toggle('active', i === tabIdx); });
-  const cfg = PAGE_CONFIG[pageId];
-  document.getElementById('headerTitle').textContent = cfg.title;
-  document.getElementById('headerSubtitle').textContent = cfg.subtitle;
-}
-
-// ========== 分身切换 ==========
-function renderAvatarSwitcher(containerId) {
-  const c = document.getElementById(containerId);
-  c.innerHTML = Object.values(AVATARS).map(a => `
-    <div class="avatar-chip ${a.id === currentAvatar ? 'active' : ''}" onclick="switchAvatar('${a.id}')">
-      <div class="avatar-chip-img" style="background:${a.gradient};display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700">${a.name[0]}</div>
-      <div><div class="avatar-chip-name">${a.name}</div><div class="avatar-chip-role">${a.role.split('·')[0]}</div></div>
+<!-- ==================== 手机2：群聊值守列表 ==================== -->
+<div class="phone-frame">
+  <div class="page-label">群聊值守 · 群列表</div>
+  <div class="group-page active">
+    <div class="group-header">
+      <div class="group-header-title">群聊值守</div>
+      <div class="group-header-desc">分身替你在飞书/企微群实时回复</div>
     </div>
-  `).join('');
-}
-
-function switchAvatar(id) {
-  currentAvatar = id;
-  renderAll();
-}
-
-function renderAll() {
-  ['chatAvatarSwitcher','groupAvatarSwitcher','criticalAvatarSwitcher','engineAvatarSwitcher','skillAvatarSwitcher','knowledgeAvatarSwitcher'].forEach(renderAvatarSwitcher);
-  renderChat(); renderGroups(); renderCritical(); renderEngine(); renderSkills(); renderMarket(); renderKnowledge(); renderIncome();
-}
-
-// ========== 页面1：聊天 ==========
-function renderChat() {
-  const a = AVATARS[currentAvatar];
-  document.getElementById('chatCoverBg').style.background = a.gradient;
-  document.getElementById('chatAvatarImg').style.background = a.gradient;
-  document.getElementById('chatAvatarImg').style.display = 'flex';
-  document.getElementById('chatAvatarName').textContent = a.name;
-  document.getElementById('chatAvatarTags').innerHTML = a.tags.map(t => `<span class="profile-tag" style="background:rgba(99,102,241,0.08);color:#6366f1">${t}</span>`).join('');
-  
-  const bubbles = document.getElementById('chatBubbles');
-  bubbles.innerHTML = a.chats.map(c => {
-    if (c.from === 'user') {
-      return `<div class="chat-bubble user">${c.text}</div>`;
-    } else {
-      const tagHtml = c.tag ? `<div class="chat-learn-tag ${c.tag.type}">${c.tag.text}</div>` : '';
-      return `<div class="chat-avatar-row"><div class="chat-avatar-img" style="background:${a.gradient};display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700">${a.name[0]}</div><div><div class="chat-bubble avatar">${c.text}</div>${tagHtml}</div></div>`;
-    }
-  }).join('');
-}
-
-function sendChat() {
-  const input = document.getElementById('chatInput');
-  if (!input.value.trim()) return;
-  const a = AVATARS[currentAvatar];
-  a.chats.push({ from: 'user', text: input.value });
-  a.chats.push({ from: 'avatar', text: '我在学习你的表达方式...', tag: { text: '风格学习', type: 'style' } });
-  input.value = '';
-  renderChat();
-  const bubbles = document.getElementById('chatBubbles');
-  bubbles.scrollTop = bubbles.scrollHeight;
-}
-
-// ========== 页面2：群聊 ==========
-function renderGroups() {
-  const a = AVATARS[currentAvatar];
-  const list = document.getElementById('groupList');
-  list.innerHTML = a.groups.map((g, i) => `
-    <div class="group-item" onclick="openGroupChat(${i})">
-      <div class="group-avatar">${g.name[0]}</div>
-      <div class="group-info"><div class="group-name">${g.name}</div><div class="group-desc">${g.desc}</div></div>
-      <div class="group-status ${g.on ? 'on' : 'off'}">${g.on ? '值守中' : '未开启'}</div>
-    </div>
-  `).join('');
-  if (a.groups.length === 0) {
-    list.innerHTML = '<div style=\"padding:40px;text-align:center;color:#94a3b8;font-size:13px\">暂未接入群聊<br><span style=\"font-size:11px\">需先对接企业微信</span></div>';
-  }
-}
-
-function openGroupChat(idx) {
-  const a = AVATARS[currentAvatar];
-  const g = a.groups[idx];
-  if (!g.msgs.length) return;
-  const card = document.getElementById('groupChatCard');
-  card.style.display = 'block';
-  document.getElementById('groupChatName').textContent = g.name;
-  const bubbles = document.getElementById('groupBubbles');
-  bubbles.innerHTML = g.msgs.map(m => {
-    if (m.from === 'avatar') {
-      let correctHtml = '';
-      if (m.correct) {
-        correctHtml = `<div class="correct-box"><div class="correct-label">✏️ 你纠正了分身</div><div class="correct-old">${m.correct.old}</div><div class="correct-new">${m.correct.new}</div><div class="correct-diff">🧠 ${m.correct.diff}</div></div>`;
-      }
-      return `<div class="chat-avatar-row"><div class="chat-avatar-img" style="background:${a.gradient};display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700">${a.name[0]}</div><div><div class="chat-bubble avatar">${m.text}</div>${correctHtml}</div></div>`;
-    }
-    return `<div class="chat-bubble user" style="background:#e2e8f0;color:#1e293b">${m.name}: ${m.text}</div>`;
-  }).join('');
-}
-
-// ========== 页面3：关键时刻 ==========
-function renderCritical() {
-  const a = AVATARS[currentAvatar];
-  // 进化曲线
-  const chart = document.getElementById('evoChart');
-  const labels = document.getElementById('evoLabels');
-  const weeks = a.evolution;
-  chart.innerHTML = weeks.map((v, i) => {
-    const color = v < 40 ? '#ef4444' : v < 70 ? '#f59e0b' : '#10b981';
-    return `<div class="evo-bar" style="height:${v}%;background:${color}"></div>`;
-  }).join('');
-  labels.innerHTML = weeks.map((v, i) => `<div class="evo-label">W${i+1}</div>`).join('');
-  
-  // 场景卡
-  const cards = document.getElementById('sceneCards');
-  cards.innerHTML = a.scenes.map(s => `
-    <div class="scene-card">
-      <div class="scene-title">${s.title}</div>
-      <div class="scene-compare">
-        <div class="scene-col"><div class="scene-label me">👤 我的做法</div><div class="scene-text">${s.me}</div></div>
-        <div class="scene-col"><div class="scene-label av">🤖 分身做法</div><div class="scene-text">${s.avatar}</div></div>
-      </div>
-      <div class="scene-match">
-        <div class="scene-match-bar"><div class="scene-match-fill" style="width:${s.match}%;background:${s.color}"></div></div>
-        <div class="scene-match-text" style="color:${s.color}">${s.match}%</div>
-      </div>
-    </div>
-  `).join('');
-}
-
-// ========== 页面4：人格引擎 ==========
-function renderEngine() {
-  const a = AVATARS[currentAvatar];
-  const container = document.getElementById('engineLayers');
-  container.innerHTML = a.engine.map((layer, li) => `
-    <div class="engine-layer" onclick="this.classList.toggle('expanded')">
-      <div class="engine-layer-header">
-        <div class="engine-layer-icon" style="background:${layer.bg}">${layer.icon}</div>
-        <div><div class="engine-layer-name">${layer.name}</div><div class="engine-layer-desc">${layer.desc}</div></div>
-        <div class="engine-layer-priority" style="background:${layer.bg};color:${layer.color}">优先级：${layer.priority}</div>
-      </div>
-      <div class="engine-layer-detail">
-        ${layer.items.map(item => `
-          <div class="engine-item">
-            <div class="engine-item-dot" style="background:${item.dot}"></div>
-            <div><div class="engine-item-text">${item.text}</div><div class="engine-item-source">来源：${item.source}</div></div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `).join('');
-}
-
-// ========== 页面5：技能提炼 ==========
-function renderSkills() {
-  const a = AVATARS[currentAvatar];
-  const container = document.getElementById('skillCards');
-  container.innerHTML = a.skills.map(s => `
-    <div class="skill-card">
-      <div class="skill-cover"><div class="skill-cover-bg" style="background:${s.gradient}"></div><div class="skill-cover-overlay"></div><div class="skill-cover-title">${s.name}</div><div class="skill-cover-badge" style="background:${s.status === '已验证' ? 'rgba(16,185,129,0.9)' : 'rgba(245,158,11,0.9)'}">${s.status}</div></div>
-      <div class="skill-body">
-        <div class="skill-meta">
-          <div class="skill-meta-item"><div class="skill-meta-value">${s.executions}</div><div class="skill-meta-label">执行次数</div></div>
-          <div class="skill-meta-item"><div class="skill-meta-value">${s.satisfaction}%</div><div class="skill-meta-label">满意度</div></div>
-          <div class="skill-meta-item"><div class="skill-meta-value">${s.returnRate}%</div><div class="skill-meta-label">复购率</div></div>
-        </div>
-        <div style="font-size:12px;font-weight:700;color:#1e293b;margin-bottom:10px">工作流</div>
-        <div class="workflow-steps">
-          ${s.steps.map((step, si) => `
-            <div class="workflow-step">
-              <div class="workflow-step-dot" style="background:${s.status === '已验证' ? '#6366f1' : '#94a3b8'}">${si + 1}</div>
-              ${si < s.steps.length - 1 ? `<div class="workflow-step-line" style="background:${s.status === '已验证' ? '#e2e8f0' : '#f1f5f9'}"></div>` : ''}
-              <div class="workflow-step-content">
-                <div class="workflow-step-title">${step.title}</div>
-                <div class="workflow-step-desc">${step.desc}</div>
-                ${step.evidence ? `<div class="workflow-step-evidence">📎 ${step.evidence}</div>` : ''}
-              </div>
+    <div class="group-list">
+      <!-- 飞书群1 -->
+      <div class="group-card">
+        <div class="group-card-header">
+          <div class="group-platform-icon feishu">🐦</div>
+          <div class="group-card-info">
+            <div class="group-card-name">产品需求讨论群</div>
+            <div class="group-card-meta">
+              <span class="group-card-status on">● 值守中</span>
+              <span>飞书</span>
+              <span>23人</span>
             </div>
-          `).join('')}
+          </div>
+          <div class="group-switch on"></div>
+        </div>
+        <div class="group-card-stats">
+          <div class="group-stat">
+            <div class="group-stat-value">156</div>
+            <div class="group-stat-label">今日回复</div>
+          </div>
+          <div class="group-stat">
+            <div class="group-stat-value">94%</div>
+            <div class="group-stat-label">响应率</div>
+          </div>
+          <div class="group-stat">
+            <div class="group-stat-value">3</div>
+            <div class="group-stat-label">纠正次数</div>
+          </div>
+        </div>
+        <div class="group-card-avatars">
+          <div class="group-avatar-chip">
+            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18'%3E%3Ccircle cx='9' cy='9' r='9' fill='%23e0e7ff'/%3E%3Ctext x='9' y='13' text-anchor='middle' font-size='10' fill='%236366f1'%3E林%3C/text%3E%3C/svg%3E">
+            <span>小林分身</span>
+          </div>
+          <div class="group-avatar-chip">
+            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18'%3E%3Ccircle cx='9' cy='9' r='9' fill='%23ccfbf1'/%3E%3Ctext x='9' y='13' text-anchor='middle' font-size='10' fill='%2314b8a6'%3E陈%3C/text%3E%3C/svg%3E">
+            <span>小陈分身</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 飞书群2 -->
+      <div class="group-card">
+        <div class="group-card-header">
+          <div class="group-platform-icon feishu">🐦</div>
+          <div class="group-card-info">
+            <div class="group-card-name">技术方案评审群</div>
+            <div class="group-card-meta">
+              <span class="group-card-status on">● 值守中</span>
+              <span>飞书</span>
+              <span>15人</span>
+            </div>
+          </div>
+          <div class="group-switch on"></div>
+        </div>
+        <div class="group-card-stats">
+          <div class="group-stat">
+            <div class="group-stat-value">89</div>
+            <div class="group-stat-label">今日回复</div>
+          </div>
+          <div class="group-stat">
+            <div class="group-stat-value">97%</div>
+            <div class="group-stat-label">响应率</div>
+          </div>
+          <div class="group-stat">
+            <div class="group-stat-value">1</div>
+            <div class="group-stat-label">纠正次数</div>
+          </div>
+        </div>
+        <div class="group-card-avatars">
+          <div class="group-avatar-chip">
+            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18'%3E%3Ccircle cx='9' cy='9' r='9' fill='%23e0e7ff'/%3E%3Ctext x='9' y='13' text-anchor='middle' font-size='10' fill='%236366f1'%3E林%3C/text%3E%3C/svg%3E">
+            <span>小林分身</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 企业微信群 -->
+      <div class="group-card">
+        <div class="group-card-header">
+          <div class="group-platform-icon wecom">💚</div>
+          <div class="group-card-info">
+            <div class="group-card-name">客户服务群-A区</div>
+            <div class="group-card-meta">
+              <span class="group-card-status off">○ 未开启</span>
+              <span>企业微信</span>
+              <span>48人</span>
+            </div>
+          </div>
+          <div class="group-switch"></div>
+        </div>
+        <div class="group-card-stats">
+          <div class="group-stat">
+            <div class="group-stat-value">0</div>
+            <div class="group-stat-label">今日回复</div>
+          </div>
+          <div class="group-stat">
+            <div class="group-stat-value">-</div>
+            <div class="group-stat-label">响应率</div>
+          </div>
+          <div class="group-stat">
+            <div class="group-stat-value">0</div>
+            <div class="group-stat-label">纠正次数</div>
+          </div>
+        </div>
+        <div class="group-card-avatars">
+          <div class="group-avatar-chip">
+            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18'%3E%3Ccircle cx='9' cy='9' r='9' fill='%23ccfbf1'/%3E%3Ctext x='9' y='13' text-anchor='middle' font-size='10' fill='%2314b8a6'%3E陈%3C/text%3E%3C/svg%3E">
+            <span>小陈分身</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 添加群 -->
+      <div class="add-group-card">
+        <div class="add-group-icon">+</div>
+        <span class="add-group-text">接入新的群聊</span>
+        <span class="add-group-hint">支持飞书、企业微信群</span>
+      </div>
+    </div>
+  </div>
+  <!-- 底部Tab -->
+  <div class="bottom-tabs">
+    <div class="tab-item"><span class="tab-icon">🏠</span><span class="tab-label">分身</span></div>
+    <div class="tab-item active"><span class="tab-icon">🤖</span><span class="tab-label">群聊</span></div>
+    <div class="tab-item"><span class="tab-icon">🧠</span><span class="tab-label">人格</span></div>
+    <div class="tab-item"><span class="tab-icon">⚡</span><span class="tab-label">技能</span></div>
+    <div class="tab-item"><span class="tab-icon">🏪</span><span class="tab-label">市场</span></div>
+  </div>
+</div>
+
+<!-- ==================== 手机3：群聊详情 ==================== -->
+<div class="phone-frame">
+  <div class="page-label">群聊值守 · 消息详情</div>
+  <div class="chat-page active">
+    <div class="chat-header">
+      <span class="chat-back">←</span>
+      <div class="chat-header-info">
+        <div class="chat-header-name">产品需求讨论群</div>
+        <div class="chat-header-meta">飞书 · 23人 · 小林分身值守中</div>
+      </div>
+      <span class="chat-header-action">设置</span>
+    </div>
+    <div class="chat-messages">
+      <!-- 普通用户消息 -->
+      <div class="msg-row">
+        <img class="msg-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23fef3c7'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-size='14' fill='%23d97706'%3E张%3C/text%3E%3C/svg%3E">
+        <div class="msg-bubble">@小林 这周的PRD什么时候能出来？客户那边催得紧</div>
+      </div>
+      <!-- 分身回复 -->
+      <div class="msg-row">
+        <img class="msg-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23e0e7ff'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-size='14' fill='%236366f1'%3E林%3C/text%3E%3C/svg%3E">
+        <div class="msg-bubble msg-bubble-clone">
+          <span class="msg-clone-tag">分身回复</span>
+          张总好，PRD初稿我计划本周四下午完成，周五上午安排评审。客户侧的核心诉求我已经梳理了，主要是三个功能点：1) 订单导出 2) 批量审核 3) 权限分级。我会在文档里重点标注优先级。
+          <div class="msg-correct-bar">
+            <span class="msg-correct-btn">✏️ 纠正回复</span>
+            <span class="msg-correct-btn">👍 回复满意</span>
+          </div>
+          <div class="msg-learn-hint">💡 每次纠正都会让分身更懂你</div>
+        </div>
+      </div>
+      <!-- 另一个用户 -->
+      <div class="msg-row">
+        <img class="msg-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23fce7f3'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-size='14' fill='%23ec4899'%3E李%3C/text%3E%3C/svg%3E">
+        <div class="msg-bubble">权限分级这块之前客户有提过要按部门区分，小林你有更细的方案吗？</div>
+      </div>
+      <!-- 分身回复2 -->
+      <div class="msg-row">
+        <img class="msg-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23e0e7ff'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-size='14' fill='%236366f1'%3E林%3C/text%3E%3C/svg%3E">
+        <div class="msg-bubble msg-bubble-clone">
+          <span class="msg-clone-tag">分身回复</span>
+          有的。按部门区分的话，建议采用RBAC模型：管理员→部门主管→普通成员三级，每个角色绑定不同的数据可见范围和操作权限。我会把这个方案细化到PRD里。
+          <div class="msg-correct-bar">
+            <span class="msg-correct-btn">✏️ 纠正回复</span>
+            <span class="msg-correct-btn">👍 回复满意</span>
+          </div>
+        </div>
+      </div>
+      <!-- 自己的消息 -->
+      <div class="msg-row self">
+        <img class="msg-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23e0e7ff'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-size='14' fill='%236366f1'%3E林%3C/text%3E%3C/svg%3E">
+        <div class="msg-bubble">对，权限分级这块我之前和客户沟通过，他们要的是按部门+岗位两个维度来控制，不是简单的三级。小陈你之前做的那个权限表可以复用</div>
+      </div>
+    </div>
+    <div class="chat-input-bar">
+      <input class="chat-input" placeholder="以本人身份发送..." readonly>
+      <button class="chat-send-btn">↑</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 手机4：人格引擎 ==================== -->
+<div class="phone-frame">
+  <div class="page-label">人格引擎 · 四层架构</div>
+  <div class="engine-page active">
+    <div class="engine-header">
+      <div class="engine-header-title">人格引擎</div>
+      <div class="engine-header-desc">四层架构，让分身越来越像你</div>
+    </div>
+    <div class="engine-content">
+      <!-- 分身信息卡 -->
+      <div class="engine-identity-card">
+        <div class="engine-identity-top">
+          <img class="engine-identity-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Ccircle cx='28' cy='28' r='28' fill='%23e0e7ff'/%3E%3Ctext x='28' y='36' text-anchor='middle' font-size='24' fill='%236366f1'%3E林%3C/text%3E%3C/svg%3E">
+          <div class="engine-identity-info">
+            <div class="engine-identity-name">小林分身</div>
+            <div class="engine-identity-sub">上班族 · 28岁 · 深圳 · 交互设计师</div>
+          </div>
+          <div class="engine-identity-score"><span>相似度 82%</span></div>
+        </div>
+      </div>
+
+      <!-- 四层架构 -->
+      <div class="engine-layers">
+        <!-- 底线层 -->
+        <div class="engine-layer">
+          <div class="engine-layer-header">
+            <div class="engine-layer-icon red">🛡️</div>
+            <span class="engine-layer-title">底线层 · Hard Rules</span>
+            <span class="engine-layer-count">3条规则</span>
+          </div>
+          <div class="engine-layer-items">
+            <div class="engine-layer-item">
+              <span class="engine-layer-item-text">绝不透露公司未公开的产品规划</span>
+              <span class="engine-layer-item-confidence">强制</span>
+            </div>
+            <div class="engine-layer-item">
+              <span class="engine-layer-item-text">涉及报价时必须转交本人处理</span>
+              <span class="engine-layer-item-confidence">强制</span>
+            </div>
+            <div class="engine-layer-item">
+              <span class="engine-layer-item-text">不参与涉及竞品的讨论</span>
+              <span class="engine-layer-item-confidence">强制</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 判断层 -->
+        <div class="engine-layer">
+          <div class="engine-layer-header">
+            <div class="engine-layer-icon blue">⚖️</div>
+            <span class="engine-layer-title">判断层 · Case-Based</span>
+            <span class="engine-layer-count">12个案例</span>
+          </div>
+          <div class="engine-layer-items">
+            <div class="engine-layer-item">
+              <span class="engine-layer-item-text">客户催交付 → 先安抚+给出具体时间线</span>
+              <span class="engine-layer-item-confidence">92%</span>
+            </div>
+            <div class="engine-layer-item">
+              <span class="engine-layer-item-text">技术质疑 → 用数据回应，不回避</span>
+              <span class="engine-layer-item-confidence">87%</span>
+            </div>
+            <div class="engine-layer-item">
+              <span class="engine-layer-item-text">需求变更 → 评估影响后再回应</span>
+              <span class="engine-layer-item-confidence">85%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 风格层 -->
+        <div class="engine-layer">
+          <div class="engine-layer-header">
+            <div class="engine-layer-icon purple">🎨</div>
+            <span class="engine-layer-title">风格层 · Style Injection</span>
+            <span class="engine-layer-count">8个偏好</span>
+          </div>
+          <div class="engine-layer-items">
+            <div class="engine-layer-item">
+              <span class="engine-layer-item-text">回答习惯用分点列表</span>
+              <span class="engine-layer-item-confidence">96%</span>
+            </div>
+            <div class="engine-layer-item">
+              <span class="engine-layer-item-text">常用"我计划""我建议"等主动句</span>
+              <span class="engine-layer-item-confidence">89%</span>
+            </div>
+            <div class="engine-layer-item">
+              <span class="engine-layer-item-text">回复时附带时间节点</span>
+              <span class="engine-layer-item-confidence">83%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 知识层 -->
+        <div class="engine-layer">
+          <div class="engine-layer-header">
+            <div class="engine-layer-icon green">📚</div>
+            <span class="engine-layer-title">知识层 · RAG</span>
+            <span class="engine-layer-count">156条知识</span>
+          </div>
+          <div class="engine-layer-items">
+            <div class="engine-layer-item">
+              <span class="engine-layer-item-text">公司产品功能清单与路线图</span>
+              <span class="engine-layer-item-confidence">核心</span>
+            </div>
+            <div class="engine-layer-item">
+              <span class="engine-layer-item-text">历史项目方案与交付标准</span>
+              <span class="engine-layer-item-confidence">核心</span>
+            </div>
+            <div class="engine-layer-item">
+              <span class="engine-layer-item-text">客户沟通记录与反馈</span>
+              <span class="engine-layer-item-confidence">重要</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-  `).join('');
-}
+  </div>
+  <!-- 底部Tab -->
+  <div class="bottom-tabs">
+    <div class="tab-item"><span class="tab-icon">🏠</span><span class="tab-label">分身</span></div>
+    <div class="tab-item"><span class="tab-icon">🤖</span><span class="tab-label">群聊</span></div>
+    <div class="tab-item active"><span class="tab-icon">🧠</span><span class="tab-label">人格</span></div>
+    <div class="tab-item"><span class="tab-icon">⚡</span><span class="tab-label">技能</span></div>
+    <div class="tab-item"><span class="tab-icon">🏪</span><span class="tab-label">市场</span></div>
+  </div>
+</div>
 
-// ========== 页面6：技能市场 ==========
-function renderMarket() {
-  const allSkills = [];
-  Object.values(AVATARS).forEach(a => {
-    a.skills.filter(s => s.status === '已验证').forEach(s => {
-      allSkills.push({ ...s, avatar: a });
-    });
-  });
-  const container = document.getElementById('marketCards');
-  container.innerHTML = allSkills.map(s => `
-    <div class="market-card">
-      <div class="market-header">
-        <div class="market-avatar" style="background:${s.avatar.gradient};display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:700">${s.avatar.name[0]}</div>
-        <div><div class="market-name">${s.avatar.name}的分身</div><div class="market-skill">${s.name}</div></div>
+<!-- ==================== 手机5：技能提炼 ==================== -->
+<div class="phone-frame">
+  <div class="page-label">技能提炼 · 从行为到能力</div>
+  <div class="skill-page active">
+    <div class="skill-header">
+      <div class="skill-header-title">技能提炼</div>
+      <div class="skill-header-desc">从你的行为中提取可复用技能</div>
+    </div>
+    <div class="skill-content">
+      <!-- 提炼流程 -->
+      <div class="skill-extract-card">
+        <div class="skill-extract-title">🔄 技能提炼流程</div>
+        <div class="skill-extract-flow">
+          <div class="skill-step">
+            <div class="skill-step-line">
+              <div class="skill-step-dot">1</div>
+              <div class="skill-step-connector"></div>
+            </div>
+            <div class="skill-step-content">
+              <div class="skill-step-title">观察行为模式</div>
+              <div class="skill-step-desc">分身在群聊中帮你回复了 156 次</div>
+            </div>
+          </div>
+          <div class="skill-step">
+            <div class="skill-step-line">
+              <div class="skill-step-dot">2</div>
+              <div class="skill-step-connector"></div>
+            </div>
+            <div class="skill-step-content">
+              <div class="skill-step-title">提取关键步骤</div>
+              <div class="skill-step-desc">识别出可复用的行为模式</div>
+              <span class="skill-step-judgment">🧠 包含判断力节点</span>
+            </div>
+          </div>
+          <div class="skill-step">
+            <div class="skill-step-line">
+              <div class="skill-step-dot">3</div>
+              <div class="skill-step-connector"></div>
+            </div>
+            <div class="skill-step-content">
+              <div class="skill-step-title">验证可迁移性</div>
+              <div class="skill-step-desc">在不同场景下验证技能有效性</div>
+              <span class="skill-step-judgment">✅ 3/5 场景通过</span>
+            </div>
+          </div>
+          <div class="skill-step">
+            <div class="skill-step-line">
+              <div class="skill-step-dot">4</div>
+            </div>
+            <div class="skill-step-content">
+              <div class="skill-step-title">上架技能市场</div>
+              <div class="skill-step-desc">其他用户可以租用你的分身技能</div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="market-stats">
-        <div class="market-stat"><b>${s.executions}</b>次执行</div>
-        <div class="market-stat">满意度<b>${s.satisfaction}%</b></div>
-        <div class="market-stat">复购<b>${s.returnRate}%</b></div>
+
+      <!-- 已提炼技能 -->
+      <div class="skill-list">
+        <div class="skill-item">
+          <div class="skill-item-top">
+            <span class="skill-item-name">🎯 需求澄清术</span>
+            <span class="skill-item-level expert">专家级</span>
+          </div>
+          <div class="skill-item-desc">当客户提出模糊需求时，自动追问3层：业务目标→使用场景→验收标准</div>
+          <div class="skill-item-stats">
+            <span class="skill-item-stat">📊 使用 89 次</span>
+            <span class="skill-item-stat">⭐ 评分 4.8</span>
+            <span class="skill-item-stat">💰 收入 ¥156</span>
+          </div>
+        </div>
+        <div class="skill-item">
+          <div class="skill-item-top">
+            <span class="skill-item-name">📋 方案评审法</span>
+            <span class="skill-item-level skilled">熟练级</span>
+          </div>
+          <div class="skill-item-desc">收到方案后，从可行性/风险/工作量三个维度给出结构化评审意见</div>
+          <div class="skill-item-stats">
+            <span class="skill-item-stat">📊 使用 45 次</span>
+            <span class="skill-item-stat">⭐ 评分 4.5</span>
+            <span class="skill-item-stat">💰 收入 ¥68</span>
+          </div>
+        </div>
+        <div class="skill-item">
+          <div class="skill-item-top">
+            <span class="skill-item-name">⚡ 快速排期术</span>
+            <span class="skill-item-level learning">学习中</span>
+          </div>
+          <div class="skill-item-desc">根据需求复杂度和团队产能，给出合理的排期建议和里程碑划分</div>
+          <div class="skill-item-stats">
+            <span class="skill-item-stat">📊 使用 12 次</span>
+            <span class="skill-item-stat">⭐ 评分 4.2</span>
+            <span class="skill-item-stat">💰 收入 ¥18</span>
+          </div>
+        </div>
       </div>
-      <div class="market-price">
-        <div><span class="market-price-val">¥50</span><span class="market-price-unit">/次</span></div>
-        <button class="market-hire-btn" onclick="showExecution()">雇佣分身</button>
+    </div>
+  </div>
+  <!-- 底部Tab -->
+  <div class="bottom-tabs">
+    <div class="tab-item"><span class="tab-icon">🏠</span><span class="tab-label">分身</span></div>
+    <div class="tab-item"><span class="tab-icon">🤖</span><span class="tab-label">群聊</span></div>
+    <div class="tab-item"><span class="tab-icon">🧠</span><span class="tab-label">人格</span></div>
+    <div class="tab-item active"><span class="tab-icon">⚡</span><span class="tab-label">技能</span></div>
+    <div class="tab-item"><span class="tab-icon">🏪</span><span class="tab-label">市场</span></div>
+  </div>
+</div>
+
+<!-- ==================== 手机6：技能市场 ==================== -->
+<div class="phone-frame">
+  <div class="page-label">技能市场 · 变现</div>
+  <div class="market-page active">
+    <div class="market-header">
+      <div class="market-header-title">技能市场</div>
+      <div class="market-header-desc">出租分身技能，让能力变现</div>
+    </div>
+    <div class="market-content">
+      <!-- 收入卡 -->
+      <div class="market-income-card">
+        <div class="market-income-left">
+          <span class="market-income-label">技能总收入</span>
+          <span class="market-income-value">¥328.50</span>
+        </div>
+        <div class="market-income-right">
+          <div class="market-income-stat">
+            <span class="market-income-stat-value">¥242</span>
+            <span class="market-income-stat-label">按次出租</span>
+          </div>
+          <div class="market-income-stat">
+            <span class="market-income-stat-value">¥86.50</span>
+            <span class="market-income-stat-label">分身托管</span>
+          </div>
+        </div>
+      </div>
+
+      <span class="market-section-title">🔥 热门技能</span>
+
+      <!-- 技能卡片1 -->
+      <div class="market-skill-card">
+        <div class="market-skill-top">
+          <img class="market-skill-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Ccircle cx='18' cy='18' r='18' fill='%23e0e7ff'/%3E%3Ctext x='18' y='24' text-anchor='middle' font-size='16' fill='%236366f1'%3E林%3C/text%3E%3C/svg%3E">
+          <div class="market-skill-info">
+            <div class="market-skill-name">需求澄清术</div>
+            <div class="market-skill-owner">小林分身 · 专家级</div>
+          </div>
+          <div class="market-skill-price">
+            <div class="market-skill-price-value">¥2</div>
+            <div class="market-skill-price-unit">/次</div>
+          </div>
+        </div>
+        <div class="market-skill-desc">当客户提出模糊需求时，自动追问3层：业务目标→使用场景→验收标准</div>
+        <div class="market-skill-tags">
+          <span class="skill-tag blue">产品</span>
+          <span class="skill-tag purple">沟通</span>
+          <span class="skill-tag teal">需求分析</span>
+        </div>
+        <div class="market-skill-footer">
+          <div class="market-skill-stats">
+            <span class="market-skill-stat">📊 使用 89 次</span>
+            <span class="market-skill-stat">⭐ 4.8分</span>
+          </div>
+          <button class="market-skill-btn">租用</button>
+        </div>
+      </div>
+
+      <!-- 技能卡片2 -->
+      <div class="market-skill-card">
+        <div class="market-skill-top">
+          <img class="market-skill-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Ccircle cx='18' cy='18' r='18' fill='%23ccfbf1'/%3E%3Ctext x='18' y='24' text-anchor='middle' font-size='16' fill='%2314b8a6'%3E陈%3C/text%3E%3C/svg%3E">
+          <div class="market-skill-info">
+            <div class="market-skill-name">商务谈判策略</div>
+            <div class="market-skill-owner">小陈分身 · 熟练级</div>
+          </div>
+          <div class="market-skill-price">
+            <div class="market-skill-price-value">¥5</div>
+            <div class="market-skill-price-unit">/次</div>
+          </div>
+        </div>
+        <div class="market-skill-desc">识别谈判对手意图，给出策略性回应和让步方案</div>
+        <div class="market-skill-tags">
+          <span class="skill-tag rose">商务</span>
+          <span class="skill-tag amber">谈判</span>
+          <span class="skill-tag blue">策略</span>
+        </div>
+        <div class="market-skill-footer">
+          <div class="market-skill-stats">
+            <span class="market-skill-stat">📊 使用 56 次</span>
+            <span class="market-skill-stat">⭐ 4.6分</span>
+          </div>
+          <button class="market-skill-btn">租用</button>
+        </div>
+      </div>
+
+      <!-- 托管方案 -->
+      <span class="market-section-title">🏠 分身托管</span>
+      <div class="market-skill-card">
+        <div class="market-skill-top">
+          <img class="market-skill-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Ccircle cx='18' cy='18' r='18' fill='%23e0e7ff'/%3E%3Ctext x='18' y='24' text-anchor='middle' font-size='16' fill='%236366f1'%3E林%3C/text%3E%3C/svg%3E">
+          <div class="market-skill-info">
+            <div class="market-skill-name">小林分身全天值守</div>
+            <div class="market-skill-owner">含需求澄清+方案评审两个技能</div>
+          </div>
+          <div class="market-skill-price">
+            <div class="market-skill-price-value">¥99</div>
+            <div class="market-skill-price-unit">/月</div>
+          </div>
+        </div>
+        <div class="market-skill-desc">分身7×24小时在飞书/企微群值守，自动回复+纠正学习</div>
+        <div class="market-skill-footer">
+          <div class="market-skill-stats">
+            <span class="market-skill-stat">👥 3个群已接入</span>
+            <span class="market-skill-stat">📊 今日回复 156 条</span>
+          </div>
+          <button class="market-skill-btn">托管</button>
+        </div>
       </div>
     </div>
-  `).join('');
-}
+  </div>
+  <!-- 底部Tab -->
+  <div class="bottom-tabs">
+    <div class="tab-item"><span class="tab-icon">🏠</span><span class="tab-label">分身</span></div>
+    <div class="tab-item"><span class="tab-icon">🤖</span><span class="tab-label">群聊</span></div>
+    <div class="tab-item"><span class="tab-icon">🧠</span><span class="tab-label">人格</span></div>
+    <div class="tab-item"><span class="tab-icon">⚡</span><span class="tab-label">技能</span></div>
+    <div class="tab-item active"><span class="tab-icon">🏪</span><span class="tab-label">市场</span></div>
+  </div>
+</div>
 
-function showExecution() {
-  const panel = document.getElementById('execPanel');
-  panel.style.display = 'block';
-  document.getElementById('execSteps').innerHTML = `
-    <div class="exec-step"><div class="exec-step-num">1</div><div class="exec-step-content"><b>分析数据</b><br>母婴号历史打开率4.2%，粉丝画像25-35岁女性，走<b>干货型</b>更合适</div></div>
-    <div class="exec-step"><div class="exec-step-num">2</div><div class="exec-step-content"><b>生成3个备选标题</b><br>A. 6个月宝宝辅食添加指南，这5样<span class="reject">别碰</span><br>B. 辅食怎么做？儿科医生妈妈的经验分享<br>C. 宝宝第一次吃辅食，我踩过的3个坑</div></div>
-    <div class="exec-step"><div class="exec-step-num warn">3</div><div class="exec-step-content"><b>底线自检</b><br>A标题<span class="reject">"别碰"有焦虑感</span>，淘汰<br>B、C通过底线检查 ✅</div></div>
-    <div class="exec-step"><div class="exec-step-num" style="background:#10b981">✓</div><div class="exec-step-content"><b>推荐最优</b><br><span class="recommend">推荐B：数据+经验双重说服力</span></div></div>
-  `;
-}
-
-// ========== 页面7：知识库 ==========
-function renderKnowledge() {
-  const a = AVATARS[currentAvatar];
-  const autoC = document.getElementById('autoKnowledge');
-  autoC.innerHTML = a.knowledge.auto.map(k => `
-    <div class="knowledge-item"><div class="knowledge-item-icon" style="background:${k.bg}">${k.icon}</div><div class="knowledge-item-content"><div class="knowledge-item-title">${k.title}</div><div class="knowledge-item-desc">${k.desc}</div></div></div>
-  `).join('');
-  
-  const manualC = document.getElementById('manualKnowledge');
-  manualC.innerHTML = a.knowledge.manual.map(k => `
-    <div class="knowledge-item"><div class="knowledge-item-icon" style="background:${k.bg}">${k.icon}</div><div class="knowledge-item-content"><div class="knowledge-item-title">${k.title}</div><div class="knowledge-item-desc">${k.desc}</div></div></div>
-  `).join('');
-  if (!a.knowledge.manual.length) {
-    manualC.innerHTML = '<div style=\"color:#94a3b8;font-size:12px;text-align:center;padding:10px\">暂无手动补充的知识</div>';
-  }
-}
-
-// ========== 页面8：收入 ==========
-function renderIncome() {
-  const a = AVATARS[currentAvatar];
-  document.getElementById('incomeTotal').textContent = '¥' + a.income.total.toLocaleString();
-  document.getElementById('incomeMonth').textContent = '¥' + a.income.month;
-  document.getElementById('incomeLastMonth').textContent = '¥' + a.income.lastMonth;
-  
-  document.getElementById('incomeItems').innerHTML = a.income.items.map(item => `
-    <div class="income-item">
-      <div class="income-item-icon" style="background:${item.bg}">${item.icon}</div>
-      <div class="income-item-info"><div class="income-item-title">${item.title}</div><div class="income-item-desc">${item.desc}</div></div>
-      <div class="income-item-amount">${item.amount}</div>
-    </div>
-  `).join('');
-  
-  document.getElementById('monetizeLayers').innerHTML = `
-    <div class="monetize-layer" style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.1)">
-      <div class="monetize-layer-title" style="color:#6366f1">第1层：技能出租</div>
-      <div class="monetize-layer-desc" style="color:#475569">别人花钱用你的分身做一次活，你不需要在线</div>
-      <div class="monetize-layer-income" style="color:#6366f1">¥50/次，分身7×24待命</div>
-    </div>
-    <div class="monetize-layer" style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.1)">
-      <div class="monetize-layer-title" style="color:#d97706">第2层：分身托管</div>
-      <div class="monetize-layer-desc" style="color:#475569">别人按月雇佣你的分身当"数字员工"</div>
-      <div class="monetize-layer-income" style="color:#d97706">¥2000/月/客户</div>
-    </div>
-    <div class="monetize-layer" style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.1)">
-      <div class="monetize-layer-title" style="color:#10b981">第3层：技能授权</div>
-      <div class="monetize-layer-desc" style="color:#475569">你的技能被打包成标准服务，平台批量分发</div>
-      <div class="monetize-layer-income" style="color:#10b981">按使用量分成</div>
-    </div>
-  `;
-  
-  document.getElementById('valueStats').innerHTML = a.income.valueStats.map(s => `
-    <div class="value-stat"><div class="value-stat-val">${s.val}</div><div class="value-stat-label">${s.label}</div></div>
-  `).join('');
-  document.getElementById('valueStory').textContent = a.income.valueStory;
-}
-
-// ========== 初始化 ==========
-renderAll();
-</script>
 </body>
 </html>
