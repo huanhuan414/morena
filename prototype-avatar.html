@@ -2,107 +2,133 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>莫瑞娜 · 分身产品架构原型 v9</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>莫瑞娜 · 分身完整原型</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f172a;color:#1e293b;display:flex;flex-direction:column;align-items:center;gap:24px;padding:30px 20px}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif;background:#0f172a;display:flex;justify-content:center;align-items:center}
 
-/* 全局标题 */
-.doc-title{color:#fff;font-size:28px;font-weight:800;text-align:center;letter-spacing:-0.5px}
-.doc-sub{color:rgba(255,255,255,0.4);font-size:13px;text-align:center;max-width:600px;line-height:1.6}
+/* 手机壳 */
+.device{width:375px;height:812px;background:#f5f5f8;border-radius:44px;overflow:hidden;position:relative;box-shadow:0 0 0 3px #1e293b,0 20px 60px rgba(0,0,0,0.5)}
 
-/* 主线图 */
-.mainline{display:flex;align-items:center;justify-content:center;gap:0;max-width:900px;width:100%}
-.ml-node{display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 24px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;min-width:160px}
-.ml-node.highlight{background:rgba(99,102,241,0.12);border-color:rgba(99,102,241,0.4)}
-.ml-icon{font-size:28px}
-.ml-label{color:#fff;font-size:15px;font-weight:700}
-.ml-desc{color:rgba(255,255,255,0.5);font-size:10px;text-align:center;line-height:1.4}
-.ml-arrow{color:rgba(255,255,255,0.2);font-size:24px;font-weight:300;padding:0 4px;align-self:center}
-.ml-sub{color:rgba(99,102,241,0.7);font-size:9px;font-weight:600;margin-top:2px}
+/* 状态栏 */
+.statusbar{height:44px;background:transparent;position:absolute;top:0;left:0;right:0;z-index:200;display:flex;align-items:flex-end;justify-content:center;padding-bottom:2px}
+.statusbar-time{font-size:12px;font-weight:600;color:#fff}
 
-/* 页面导航 */
-.proto-nav{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:1200px}
-.proto-nav-btn{padding:6px 14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;color:rgba(255,255,255,0.4);font-size:11px;cursor:pointer;transition:all 0.2s}
-.proto-nav-btn:hover,.proto-nav-btn.active{background:rgba(99,102,241,0.2);border-color:rgba(99,102,241,0.5);color:#fff}
+/* 页面容器 */
+.pages{position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden}
+.page{position:absolute;top:0;left:0;right:0;bottom:60px;overflow-y:auto;overflow-x:hidden;display:none;-webkit-overflow-scrolling:touch}
+.page.active{display:block}
+.page::-webkit-scrollbar{width:0}
 
-/* 手机框架 */
-.phone-row{display:flex;gap:20px;flex-wrap:wrap;justify-content:center}
-.phone-frame{width:375px;height:812px;border-radius:40px;overflow:hidden;background:#f5f5f8;box-shadow:0 20px 60px rgba(0,0,0,0.5);position:relative;display:flex;flex-direction:column;flex-shrink:0}
-.page-label{position:absolute;top:8px;left:50%;transform:translateX(-50%);font-size:9px;color:#fff;background:rgba(99,102,241,0.85);padding:2px 10px;border-radius:8px;z-index:100;white-space:nowrap}
+/* 子页面（从右侧滑入） */
+.subpage{position:absolute;top:0;left:0;right:0;bottom:0;z-index:150;background:#f5f5f8;display:none;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.subpage.active{display:block;animation:slideIn 0.25s ease}
+@keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
+
+/* 弹窗 */
+.modal-overlay{position:absolute;top:0;left:0;right:0;bottom:0;z-index:300;background:rgba(0,0,0,0.4);display:none;justify-content:flex-end;align-items:stretch;flex-direction:column}
+.modal-overlay.active{display:flex}
+.modal-sheet{background:#fff;border-radius:20px 20px 0 0;max-height:85%;overflow-y:auto;animation:slideUp 0.25s ease}
+@keyframes slideIn{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-center{background:#fff;border-radius:16px;width:calc(100% - 64px);max-width:300px;margin:auto;animation:popIn 0.2s ease;overflow:hidden}
+@keyframes popIn{from{transform:scale(0.9);opacity:0}to{transform:scale(1);opacity:1}}
+.modal-handle{width:36px;height:4px;background:#e2e8f0;border-radius:2px;margin:8px auto 0}
+
+/* TabBar */
+.tabbar{position:absolute;bottom:0;left:0;right:0;height:60px;background:#fff;border-top:1px solid #f1f5f9;display:flex;z-index:100;padding-bottom:8px}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;cursor:pointer}
+.tab-icon{font-size:20px;line-height:1}
+.tab-text{font-size:9px;color:#94a3b8;font-weight:500}
+.tab.active .tab-text{color:#6366f1;font-weight:600}
 
 /* Header */
-.page-header{position:relative;width:100%;padding:0 18px 14px;flex-shrink:0;border-radius:0 0 24px 24px}
-.page-header.purple{background:linear-gradient(135deg,#6366f1,#8b5cf6,#a855f7)}
-.page-header.green{background:linear-gradient(135deg,#059669,#10b981)}
-.page-header.amber{background:linear-gradient(135deg,#d97706,#f59e0b)}
-.page-header.blue{background:linear-gradient(135deg,#2563eb,#3b82f6)}
-.header-deco{position:absolute;top:0;right:0;width:120px;height:100%;overflow:hidden;pointer-events:none}
-.h-circle{position:absolute;border-radius:50%;background:rgba(255,255,255,0.08)}
-.hc1{width:70px;height:70px;top:-15px;right:-10px}
-.hc2{width:50px;height:50px;top:25px;right:35px}
-.header-title{color:#fff;font-size:18px;font-weight:700;padding:46px 0 2px}
-.header-sub{color:rgba(255,255,255,0.65);font-size:11px}
-
-.content-area{flex:1;overflow-y:auto;padding:12px 16px 72px}
-.content-area::-webkit-scrollbar{width:0}
-
-/* 底部Tab */
-.bottom-tabs{position:absolute;bottom:0;left:0;right:0;height:60px;background:#fff;border-top:1px solid #e2e8f0;display:flex;z-index:50;padding-bottom:6px}
-.tab-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer}
-.tab-icon{font-size:16px}
-.tab-text{font-size:9px;color:#94a3b8;font-weight:500}
-.tab-item.active .tab-text{color:#6366f1;font-weight:600}
+.hdr{position:relative;padding:0 18px 14px;flex-shrink:0;border-radius:0 0 24px 24px}
+.hdr.purple{background:linear-gradient(135deg,#6366f1,#8b5cf6,#a855f7)}
+.hdr.blue{background:linear-gradient(135deg,#2563eb,#3b82f6,#60a5fa)}
+.hdr.amber{background:linear-gradient(135deg,#d97706,#f59e0b)}
+.hdr.green{background:linear-gradient(135deg,#059669,#10b981)}
+.hdr.rose{background:linear-gradient(135deg,#e11d48,#f43f5e)}
+.hdr-deco{position:absolute;top:0;right:0;width:120px;height:100%;overflow:hidden;pointer-events:none}
+.hdr-c{position:absolute;border-radius:50%;background:rgba(255,255,255,0.08)}
+.hdr-c1{width:70px;height:70px;top:-15px;right:-10px}
+.hdr-c2{width:50px;height:50px;top:25px;right:35px}
+.hdr-title{color:#fff;font-size:18px;font-weight:700;padding:46px 0 2px}
+.hdr-sub{color:rgba(255,255,255,0.65);font-size:11px}
+.hdr-back{position:absolute;top:46px;left:18px;color:#fff;font-size:20px;cursor:pointer;z-index:5;padding:4px}
+.hdr-back+.hdr-title{padding-left:38px}
 
 /* 通用 */
+.pad{padding:14px 16px}
 .card{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 1px 8px rgba(0,0,0,0.04)}
 .card-pad{padding:14px}
 .sec-title{font-size:13px;font-weight:600;color:#1e293b;margin-bottom:10px;display:flex;align-items:center;gap:4px}
-.sec-desc{font-size:10px;color:#94a3b8;margin-bottom:8px;line-height:1.5}
+.sec-desc{font-size:10px;color:#94a3b8;line-height:1.5}
+.gap8{gap:8px}.gap10{gap:10px}.mb6{margin-bottom:6px}.mb8{margin-bottom:8px}.mb10{margin-bottom:10px}.mb14{margin-bottom:14px}.mt6{margin-top:6px}.mt10{margin-top:10px}
 
-/* 相似度仪表 */
-.similarity-gauge{display:flex;align-items:center;gap:14px;padding:14px;background:linear-gradient(135deg,rgba(99,102,241,0.04),rgba(139,92,246,0.04));border-radius:14px;border:1px solid rgba(99,102,241,0.08)}
-.sim-ring{width:64px;height:64px;border-radius:50%;background:conic-gradient(#6366f1 0% 82%,#e2e8f0 82% 100%);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.sim-ring-inner{width:50px;height:50px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column}
-.sim-value{font-size:16px;font-weight:800;color:#6366f1}
-.sim-label{font-size:7px;color:#94a3b8}
-.sim-details{flex:1;display:flex;flex-direction:column;gap:4px}
+/* 相似度 */
+.sim-gauge{display:flex;align-items:center;gap:14px;padding:14px;background:linear-gradient(135deg,rgba(99,102,241,0.04),rgba(139,92,246,0.04));border-radius:14px;border:1px solid rgba(99,102,241,0.08)}
+.sim-ring{width:64px;height:64px;border-radius:50%;background:conic-gradient(#6366f1 0% var(--pct),#e2e8f0 var(--pct) 100%);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sim-ring-in{width:50px;height:50px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column}
+.sim-v{font-size:16px;font-weight:800;color:#6366f1}
+.sim-l{font-size:7px;color:#94a3b8}
+.sim-rows{flex:1;display:flex;flex-direction:column;gap:4px}
 .sim-row{display:flex;align-items:center;gap:6px}
-.sim-row-label{font-size:9px;color:#64748b;width:48px;flex-shrink:0}
-.sim-bar{flex:1;height:6px;background:#f1f5f9;border-radius:3px;overflow:hidden}
-.sim-bar-fill{height:100%;border-radius:3px}
-.sim-bar-fill.high{background:#6366f1}
-.sim-bar-fill.mid{background:#3b82f6}
-.sim-bar-fill.low{background:#f59e0b}
-.sim-bar-fill.fix{background:#ef4444}
+.sim-rl{font-size:9px;color:#64748b;width:42px;flex-shrink:0}
+.sim-bar{flex:1;height:5px;background:#f1f5f9;border-radius:3px;overflow:hidden}
+.sim-bf{height:100%;border-radius:3px}
+.sim-bf.h{background:#6366f1}.sim-bf.m{background:#3b82f6}.sim-bf.l{background:#f59e0b}.sim-bf.f{background:#ef4444}
 .sim-pct{font-size:9px;color:#64748b;width:26px;text-align:right;flex-shrink:0}
 
-/* 学习方式卡片 */
-.learn-method{display:flex;align-items:center;gap:10px;padding:12px;background:#fff;border-radius:14px;box-shadow:0 1px 6px rgba(0,0,0,0.03);cursor:pointer;border:1px solid transparent;transition:0.2s}
-.learn-method:hover{border-color:rgba(99,102,241,0.2)}
-.learn-method-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
-.learn-method-info{flex:1}
-.learn-method-title{font-size:12px;font-weight:600;color:#1e293b}
-.learn-method-desc{font-size:9px;color:#94a3b8;line-height:1.4;margin-top:1px}
-.learn-method-meta{display:flex;align-items:center;gap:6px;margin-top:3px}
+/* 统计条 */
+.stats-row{display:flex;gap:0;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.03)}
+.stat-item{flex:1;text-align:center;padding:10px 4px}
+.stat-item+.stat-item{border-left:1px solid #f8f9fc}
+.stat-v{font-size:16px;font-weight:700;color:#1e293b}
+.stat-l{font-size:8px;color:#94a3b8;margin-top:1px}
+
+/* 分身卡片 */
+.avatar-card{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 1px 8px rgba(0,0,0,0.04)}
+.avatar-cover{position:relative;height:100px;overflow:hidden}
+.avatar-cover-bg{position:absolute;inset:0;background:linear-gradient(135deg,#6366f1,#8b5cf6)}
+.avatar-cover-mask{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.7),transparent)}
+.avatar-badge{position:absolute;padding:2px 8px;border-radius:6px;font-size:9px;color:#fff;font-weight:600}
+.avatar-lvl{top:8px;left:8px;background:rgba(255,255,255,0.2)}
+.avatar-status{top:8px;right:8px;background:rgba(34,197,94,0.8)}
+.avatar-info{position:absolute;bottom:8px;left:10px;display:flex;align-items:center;gap:6px}
+.avatar-face{width:32px;height:32px;border-radius:50%;background:#e0e7ff;display:flex;align-items:center;justify-content:center;font-size:14px;color:#6366f1;font-weight:700;border:2px solid #fff;flex-shrink:0}
+.avatar-name{font-size:13px;font-weight:700;color:#fff}
+.avatar-desc{font-size:9px;color:rgba(255,255,255,0.6)}
+.avatar-tags{display:flex;flex-wrap:wrap;gap:4px;padding:8px 12px;border-bottom:1px solid #f8f9fc}
+.atag{padding:2px 8px;border-radius:6px;font-size:9px;font-weight:500}
+.atag-blue{background:rgba(59,130,246,0.06);color:#3b82f6}
+.atag-purple{background:rgba(139,92,246,0.06);color:#8b5cf6}
+.atag-green{background:rgba(34,197,94,0.06);color:#16a34a}
+.atag-amber{background:rgba(245,158,11,0.06);color:#d97706}
+.atag-rose{background:rgba(244,63,94,0.06);color:#f43f5e}
+.avatar-actions{display:flex;justify-content:space-between;align-items:center;padding:8px 12px}
+.avatar-btn{padding:4px 10px;border-radius:6px;font-size:9px;font-weight:600;cursor:pointer;border:none}
+.avatar-btn.primary{background:rgba(99,102,241,0.08);color:#6366f1}
+.avatar-btn.blue{background:rgba(59,130,246,0.08);color:#3b82f6}
+
+/* 学习方式 */
+.learn-method{display:flex;align-items:center;gap:10px;padding:12px;background:#fff;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.03);cursor:pointer;margin-bottom:6px}
+.lm-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.lm-info{flex:1}
+.lm-title{font-size:12px;font-weight:600;color:#1e293b}
+.lm-desc{font-size:9px;color:#94a3b8;line-height:1.4;margin-top:1px}
+.lm-meta{display:flex;gap:4px;margin-top:3px}
 .lm-tag{font-size:8px;padding:1px 5px;border-radius:3px;font-weight:500}
 .lm-tag.fast{background:rgba(34,197,94,0.08);color:#16a34a}
 .lm-tag.deep{background:rgba(139,92,246,0.08);color:#8b5cf6}
 .lm-tag.layer{background:rgba(59,130,246,0.08);color:#3b82f6}
-.learn-method-arrow{color:#94a3b8;font-size:14px}
-
-/* 今日学习 */
-.today-learn{display:flex;gap:8px;padding:10px 12px;background:#fff;border-radius:12px;border:1px solid #f1f5f9}
-.tl-item{flex:1;text-align:center}
-.tl-value{font-size:16px;font-weight:700;color:#1e293b}
-.tl-label{font-size:8px;color:#94a3b8}
+.lm-arrow{color:#94a3b8;font-size:14px}
 
 /* 上传区域 */
-.upload-grid{display:flex;gap:8px;flex-wrap:wrap}
-.upload-item{width:calc(50% - 4px);padding:12px 10px;background:#f8f9fc;border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;border:1.5px dashed #e2e8f0;transition:0.2s}
-.upload-item:hover{border-color:#6366f1;background:rgba(99,102,241,0.02)}
-.upload-icon{font-size:24px}
+.upload-grid{display:flex;gap:6px;flex-wrap:wrap}
+.upload-item{width:calc(50% - 3px);padding:12px 8px;background:#f8f9fc;border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;border:1.5px dashed #e2e8f0;transition:0.2s}
+.upload-icon{font-size:22px}
 .upload-label{font-size:11px;font-weight:600;color:#334155}
 .upload-hint{font-size:8px;color:#94a3b8;text-align:center;line-height:1.3}
 
@@ -114,10 +140,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .file-meta{font-size:8px;color:#94a3b8}
 .file-status{font-size:8px;font-weight:600;padding:2px 5px;border-radius:3px;flex-shrink:0}
 .file-status.done{background:rgba(139,92,246,0.08);color:#8b5cf6}
-.file-status.processing{background:rgba(59,130,246,0.08);color:#3b82f6}
+.file-status.proc{background:rgba(59,130,246,0.08);color:#3b82f6}
 
 /* 学习结果 */
-.learn-result{padding:10px 12px;background:#f8f9fc;border-radius:10px;margin-bottom:6px;display:flex;align-items:flex-start;gap:8px}
+.lr{padding:10px 12px;background:#f8f9fc;border-radius:10px;margin-bottom:5px;display:flex;align-items:flex-start;gap:8px}
 .lr-icon{font-size:12px;flex-shrink:0;margin-top:1px}
 .lr-text{font-size:10px;color:#475569;line-height:1.5}
 .lr-target{display:inline-flex;padding:1px 4px;border-radius:3px;font-size:8px;font-weight:500;margin-left:3px}
@@ -127,683 +153,990 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .t-knowledge{background:rgba(34,197,94,0.08);color:#16a34a}
 .t-skill{background:rgba(245,158,11,0.08);color:#d97706}
 
-/* 对话教学 */
-.chat-msg{padding:8px 10px;border-radius:10px;font-size:10px;line-height:1.6;margin-bottom:6px}
-.chat-msg.question{background:linear-gradient(135deg,rgba(99,102,241,0.05),rgba(139,92,246,0.05));border:1px solid rgba(99,102,241,0.08)}
-.chat-msg.answer{background:#f1f5f9}
-.chat-msg-label{font-size:8px;font-weight:600;margin-bottom:2px;color:#6366f1}
-.chat-msg.answer .chat-msg-label{color:#64748b}
-.chat-input{display:flex;align-items:center;gap:6px;padding:8px 12px;border-top:1px solid #f1f5f9;margin-top:6px}
-.chat-input-field{flex:1;height:30px;padding:0 10px;background:#f5f5f8;border-radius:15px;border:none;font-size:10px;outline:none}
-.chat-input-send{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;color:#fff;font-size:12px;cursor:pointer}
+/* 聊天气泡 */
+.chat-bubble{padding:8px 10px;border-radius:10px;font-size:10px;line-height:1.6;margin-bottom:6px}
+.chat-bubble.q{background:linear-gradient(135deg,rgba(99,102,241,0.05),rgba(139,92,246,0.05));border:1px solid rgba(99,102,241,0.08)}
+.chat-bubble.a{background:#f1f5f9}
+.chat-label{font-size:8px;font-weight:600;margin-bottom:2px;color:#6366f1}
+.chat-bubble.a .chat-label{color:#64748b}
+.chat-input-bar{display:flex;align-items:center;gap:6px;padding:8px 12px;border-top:1px solid #f1f5f9;margin-top:6px}
+.chat-input{flex:1;height:30px;padding:0 10px;background:#f5f5f8;border-radius:15px;border:none;font-size:10px;outline:none}
+.chat-send{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;color:#fff;font-size:12px;cursor:pointer}
 
-/* 人格画像 */
-.persona-layer{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,0.03);margin-bottom:8px}
-.pl-header{display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer}
+/* 人格层 */
+.pl-card{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.03);margin-bottom:8px}
+.pl-hdr{display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer}
 .pl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.pl-dot.red{background:#ef4444}
-.pl-dot.blue{background:#3b82f6}
-.pl-dot.purple{background:#8b5cf6}
-.pl-dot.green{background:#16a34a}
+.pl-dot.red{background:#ef4444}.pl-dot.blue{background:#3b82f6}.pl-dot.purple{background:#8b5cf6}.pl-dot.green{background:#16a34a}
 .pl-name{font-size:12px;font-weight:600;color:#1e293b;flex:1}
 .pl-count{font-size:9px;color:#94a3b8;background:#f1f5f9;padding:1px 6px;border-radius:4px}
 .pl-arrow{color:#94a3b8;font-size:12px;transition:0.2s}
 .pl-body{padding:0 12px 10px;display:flex;flex-direction:column;gap:4px}
-.pl-item{display:flex;align-items:flex-start;gap:6px;padding:6px 8px;background:#f8f9fc;border-radius:6px;font-size:9px;color:#475569;line-height:1.4}
-.pl-item-source{font-size:7px;padding:1px 4px;border-radius:2px;font-weight:500;flex-shrink:0;margin-top:1px}
+.pl-item{display:flex;align-items:flex-start;gap:4px;padding:6px 8px;background:#f8f9fc;border-radius:6px;font-size:9px;color:#475569;line-height:1.4;cursor:pointer}
+.pl-src{font-size:7px;padding:1px 4px;border-radius:2px;font-weight:500;flex-shrink:0;margin-top:1px;white-space:nowrap}
 .src-manual{background:rgba(99,102,241,0.08);color:#6366f1}
 .src-chat{background:rgba(34,197,94,0.08);color:#16a34a}
 .src-doc{background:rgba(245,158,11,0.08);color:#d97706}
 .src-correct{background:rgba(239,68,68,0.08);color:#ef4444}
-.pl-item-conf{font-size:7px;padding:1px 4px;border-radius:2px;font-weight:500;flex-shrink:0;margin-top:1px}
-.conf-high{background:rgba(34,197,94,0.08);color:#16a34a}
-.conf-mid{background:rgba(245,158,11,0.08);color:#d97706}
-.conf-low{background:rgba(239,68,68,0.08);color:#ef4444}
+.src-observe{background:rgba(59,130,246,0.08);color:#3b82f6}
+.pl-conf{font-size:7px;padding:1px 4px;border-radius:2px;font-weight:500;flex-shrink:0;margin-top:1px}
+.conf-h{background:rgba(34,197,94,0.08);color:#16a34a}
+.conf-m{background:rgba(245,158,11,0.08);color:#d97706}
+.conf-l{background:rgba(239,68,68,0.08);color:#ef4444}
 
-/* 技能卡片 */
-.skill-card{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,0.03);margin-bottom:8px}
+/* 技能卡 */
+.skill-card{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.03);margin-bottom:8px;cursor:pointer}
 .skill-top{display:flex;align-items:center;gap:8px;padding:10px 12px 4px}
-.skill-avatar{width:32px;height:32px;border-radius:50%;flex-shrink:0}
+.skill-face{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
 .skill-info{flex:1}
 .skill-name{font-size:12px;font-weight:600;color:#1e293b}
 .skill-origin{font-size:8px;color:#94a3b8}
 .skill-price{text-align:right;flex-shrink:0}
-.skill-price-val{font-size:14px;font-weight:700;color:#6366f1}
-.skill-price-unit{font-size:8px;color:#94a3b8}
+.skill-pv{font-size:14px;font-weight:700;color:#6366f1}
+.skill-pu{font-size:8px;color:#94a3b8}
 .skill-desc{font-size:9px;color:#64748b;line-height:1.5;padding:0 12px 6px}
 .skill-tags{display:flex;gap:3px;padding:0 12px 6px;flex-wrap:wrap}
-.skill-tag{padding:1px 6px;border-radius:4px;font-size:8px;font-weight:500}
-.st-blue{background:rgba(59,130,246,0.06);color:#3b82f6}
-.st-purple{background:rgba(139,92,246,0.06);color:#8b5cf6}
-.st-green{background:rgba(34,197,94,0.06);color:#16a34a}
-.st-amber{background:rgba(245,158,11,0.06);color:#d97706}
-.skill-footer{display:flex;align-items:center;justify-content:space-between;padding:6px 12px 10px;border-top:1px solid #f8f9fc}
+.skill-ft{display:flex;align-items:center;justify-content:space-between;padding:6px 12px 10px;border-top:1px solid #f8f9fc}
 .skill-stats{display:flex;gap:8px}
 .skill-stat{font-size:8px;color:#94a3b8}
 .skill-btn{padding:4px 12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:8px;border:none;color:#fff;font-size:9px;font-weight:600;cursor:pointer}
 
 /* 提炼通知 */
-.extract-notify{display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:linear-gradient(135deg,rgba(245,158,11,0.04),rgba(217,119,6,0.04));border:1px solid rgba(245,158,11,0.15);border-radius:12px}
+.extract-note{display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:linear-gradient(135deg,rgba(245,158,11,0.04),rgba(217,119,6,0.04));border:1px solid rgba(245,158,11,0.15);border-radius:12px;cursor:pointer}
 .en-icon{font-size:18px;flex-shrink:0}
 .en-info{flex:1}
 .en-title{font-size:11px;font-weight:600;color:#92400e}
 .en-desc{font-size:9px;color:#78350f;line-height:1.4;margin-top:2px}
-.en-actions{display:flex;gap:6px;margin-top:6px}
+.en-btns{display:flex;gap:6px;margin-top:6px}
 .en-btn{padding:3px 10px;border-radius:6px;border:none;font-size:9px;font-weight:600;cursor:pointer}
-.en-btn-confirm{background:#6366f1;color:#fff}
-.en-btn-ignore{background:#f1f5f9;color:#64748b}
+.en-btn.ok{background:#6366f1;color:#fff}
+.en-btn.no{background:#f1f5f9;color:#64748b}
 
-/* 工作台场景 */
-.scene-card{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,0.03);margin-bottom:8px}
-.scene-header{display:flex;align-items:center;gap:8px;padding:10px 12px}
-.scene-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
-.scene-icon.feishu{background:rgba(59,130,246,0.08)}
-.scene-icon.wecom{background:rgba(34,197,94,0.08)}
-.scene-icon.miniapp{background:rgba(139,92,246,0.08)}
-.scene-icon.other{background:rgba(245,158,11,0.08)}
+/* 场景卡 */
+.scene-card{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.03);margin-bottom:8px;cursor:pointer}
+.scene-hdr{display:flex;align-items:center;gap:8px;padding:10px 12px}
+.scene-ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.scene-ico.feishu{background:rgba(59,130,246,0.08)}.scene-ico.wecom{background:rgba(34,197,94,0.08)}.scene-ico.miniapp{background:rgba(139,92,246,0.08)}.scene-ico.other{background:rgba(245,158,11,0.08)}
 .scene-info{flex:1}
 .scene-name{font-size:12px;font-weight:600;color:#1e293b}
 .scene-desc{font-size:9px;color:#94a3b8}
 .scene-status{display:flex;align-items:center;gap:3px;font-size:9px;font-weight:600}
-.scene-status.on{color:#16a34a}
-.scene-status.off{color:#94a3b8}
+.scene-status.on{color:#16a34a}.scene-status.off{color:#94a3b8}
 .scene-stats{display:flex;padding:0 12px 8px;gap:0}
-.scene-stat{flex:1;text-align:center}
-.scene-stat-value{font-size:14px;font-weight:700;color:#1e293b}
-.scene-stat-label{font-size:7px;color:#94a3b8}
-.scene-stat-divider{width:1px;background:#f1f5f9;margin:0 4px}
-.scene-clone{display:flex;align-items:center;gap:4px;padding:4px 12px 8px}
-.scene-clone-chip{display:flex;align-items:center;gap:2px;padding:2px 6px;background:rgba(99,102,241,0.05);border-radius:4px;font-size:8px;color:#6366f1;font-weight:500}
-.scene-clone-avatar{width:12px;height:12px;border-radius:50%}
+.scene-st{flex:1;text-align:center}
+.scene-st-v{font-size:14px;font-weight:700;color:#1e293b}
+.scene-st-l{font-size:7px;color:#94a3b8}
+.scene-div{width:1px;background:#f1f5f9;margin:0 2px}
 
 /* 添加场景 */
-.add-scene{display:flex;align-items:center;gap:8px;padding:14px;background:#fff;border-radius:14px;border:1.5px dashed #e2e8f0;cursor:pointer;transition:0.2s;margin-bottom:8px}
+.add-scene{display:flex;align-items:center;gap:8px;padding:14px;background:#fff;border-radius:14px;border:1.5px dashed #e2e8f0;cursor:pointer;margin-bottom:8px}
 .add-scene:hover{border-color:#6366f1}
 .add-scene-icon{font-size:20px}
 .add-scene-text{font-size:12px;color:#64748b;font-weight:500}
 
 /* 收益 */
 .income-card{background:linear-gradient(135deg,#1e293b,#334155);border-radius:16px;padding:16px;display:flex;align-items:center;justify-content:space-between}
-.income-total-label{font-size:10px;color:rgba(255,255,255,0.4)}
-.income-total-value{font-size:28px;font-weight:800;color:#fbbf24}
-.income-breakdown{display:flex;flex-direction:column;gap:4px}
-.income-row{display:flex;align-items:center;gap:6px;justify-content:flex-end}
-.income-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
-.income-row-label{font-size:9px;color:rgba(255,255,255,0.5)}
-.income-row-value{font-size:11px;font-weight:600;color:#fff;width:60px;text-align:right}
-
-.income-list{display:flex;flex-direction:column;gap:6px;margin-top:10px}
-.income-item{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.03)}
-.income-item-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
-.income-item-info{flex:1}
-.income-item-name{font-size:11px;font-weight:600;color:#1e293b}
-.income-item-meta{font-size:8px;color:#94a3b8}
-.income-item-value{font-size:13px;font-weight:700;color:#16a34a;flex-shrink:0}
+.inc-total-label{font-size:10px;color:rgba(255,255,255,0.4)}
+.inc-total-value{font-size:28px;font-weight:800;color:#fbbf24}
+.inc-breakdown{display:flex;flex-direction:column;gap:4px}
+.inc-row{display:flex;align-items:center;gap:6px;justify-content:flex-end}
+.inc-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.inc-rl{font-size:9px;color:rgba(255,255,255,0.5)}
+.inc-rv{font-size:11px;font-weight:600;color:#fff;width:60px;text-align:right}
 
 /* 纠正对比 */
-.correct-box{border-radius:10px;padding:8px 10px;margin-bottom:6px}
-.correct-box.wrong{background:#fef2f2;border-left:3px solid #fca5a5}
-.correct-box.right{background:#f0fdf4;border-left:3px solid #86efac}
-.correct-label{font-size:8px;font-weight:600;margin-bottom:2px}
-.correct-label.wrong{color:#ef4444}
-.correct-label.right{color:#16a34a}
-.correct-text{font-size:10px;line-height:1.5}
-.correct-text.wrong{color:#991b1b}
-.correct-text.right{color:#166534}
+.corr-box{border-radius:10px;padding:8px 10px;margin-bottom:6px}
+.corr-box.wrong{background:#fef2f2;border-left:3px solid #fca5a5}
+.corr-box.right{background:#f0fdf4;border-left:3px solid #86efac}
+.corr-label{font-size:8px;font-weight:600;margin-bottom:2px}
+.corr-label.wrong{color:#ef4444}.corr-label.right{color:#16a34a}
+.corr-text{font-size:10px;line-height:1.5}
+.corr-text.wrong{color:#991b1b}.corr-text.right{color:#166534}
+
+/* 弹窗按钮 */
+.btn{padding:8px 20px;border-radius:10px;border:none;font-size:12px;font-weight:600;cursor:pointer}
+.btn-primary{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff}
+.btn-ghost{background:#f1f5f9;color:#64748b}
+.btn-danger{background:#fef2f2;color:#ef4444}
+.btn-sm{padding:5px 12px;font-size:10px;border-radius:8px}
+
+/* 表单 */
+.form-group{margin-bottom:14px}
+.form-label{font-size:11px;font-weight:600;color:#1e293b;margin-bottom:4px;display:block}
+.form-input{width:100%;height:38px;padding:0 12px;background:#f8f9fc;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;outline:none;transition:0.2s}
+.form-input:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,0.1)}
+.form-textarea{width:100%;padding:10px 12px;background:#f8f9fc;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;outline:none;resize:none;min-height:80px;transition:0.2s}
+.form-textarea:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,0.1)}
+.form-hint{font-size:9px;color:#94a3b8;margin-top:3px}
+
+/* 快问快答选项 */
+.qa-option{padding:10px 12px;background:#f8f9fc;border:1.5px solid #e2e8f0;border-radius:12px;font-size:11px;color:#334155;line-height:1.4;cursor:pointer;margin-bottom:6px;transition:0.2s}
+.qa-option:hover,.qa-option.selected{border-color:#6366f1;background:rgba(99,102,241,0.04);color:#4338ca}
+
+/* 进度条 */
+.progress-bar{height:4px;background:#f1f5f9;border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:2px;transition:width 0.3s}
+
+/* 步骤指示 */
+.steps{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:16px}
+.step{display:flex;align-items:center;gap:0}
+.step-dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+.step-dot.done{background:#6366f1;color:#fff}
+.step-dot.current{background:#6366f1;color:#fff;box-shadow:0 0 0 3px rgba(99,102,241,0.2)}
+.step-dot.pending{background:#e2e8f0;color:#94a3b8}
+.step-line{width:24px;height:2px;background:#e2e8f0}
+.step-line.done{background:#6366f1}
+
+/* 开关 */
+.switch{width:44px;height:24px;border-radius:12px;background:#e2e8f0;position:relative;cursor:pointer;transition:0.2s}
+.switch.on{background:#6366f1}
+.switch::after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+.switch.on::after{left:22px}
+
+/* 提示框 */
+.tip{padding:10px 12px;border-radius:10px;font-size:9px;line-height:1.5}
+.tip-blue{background:rgba(59,130,246,0.04);border:1px solid rgba(59,130,246,0.1);color:#3b82f6}
+.tip-amber{background:rgba(245,158,11,0.04);border:1px solid rgba(245,158,11,0.1);color:#92400e}
+.tip-green{background:rgba(34,197,94,0.04);border:1px solid rgba(34,197,94,0.1);color:#166534}
+
+/* 列表项 */
+.list-item{display:flex;align-items:center;gap:10px;padding:12px;background:#fff;border-bottom:1px solid #f8f9fc;cursor:pointer}
+.list-item:active{background:#f8f9fc}
+.list-icon{font-size:18px;flex-shrink:0}
+.list-info{flex:1;min-width:0}
+.list-title{font-size:12px;font-weight:600;color:#1e293b}
+.list-desc{font-size:9px;color:#94a3b8;margin-top:1px}
+.list-arrow{color:#cbd5e1;font-size:12px;flex-shrink:0}
+
+/* Tag选择 */
+.tag-select{display:flex;flex-wrap:wrap;gap:6px}
+.tag-opt{padding:5px 12px;border-radius:16px;font-size:11px;border:1.5px solid #e2e8f0;color:#64748b;cursor:pointer;transition:0.2s}
+.tag-opt.selected{border-color:#6366f1;background:rgba(99,102,241,0.06);color:#6366f1;font-weight:600}
+
+/* 收入列表 */
+.inc-item{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.03);margin-bottom:6px}
+.inc-ico{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.inc-info{flex:1}
+.inc-name{font-size:11px;font-weight:600;color:#1e293b}
+.inc-meta{font-size:8px;color:#94a3b8}
+.inc-val{font-size:13px;font-weight:700;color:#16a34a;flex-shrink:0}
+
+/* 消息流 */
+.msg{display:flex;gap:8px;margin-bottom:10px}
+.msg-avatar{width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+.msg-body{flex:1;max-width:80%}
+.msg-name{font-size:8px;color:#94a3b8;margin-bottom:2px}
+.msg-bubble{padding:8px 10px;border-radius:10px;font-size:10px;line-height:1.5}
+.msg.user .msg-bubble{background:#e0e7ff;color:#3730a3}
+.msg.bot .msg-bubble{background:#fff;border:1px solid #e2e8f0;color:#1e293b;position:relative}
+.msg.bot-tag{display:inline-flex;padding:1px 5px;background:rgba(99,102,241,0.08);color:#6366f1;font-size:7px;font-weight:600;border-radius:3px;margin-top:3px}
+.msg-actions{display:flex;gap:4px;margin-top:4px}
+.msg-act{padding:2px 6px;border-radius:4px;font-size:8px;border:none;cursor:pointer;font-weight:500}
+.msg-act.correct{background:rgba(245,158,11,0.08);color:#d97706}
+.msg-act.good{background:rgba(34,197,94,0.08);color:#16a34a}
+
+/* 空状态 */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:8px}
+.empty-icon{font-size:40px}
+.empty-text{font-size:13px;font-weight:600;color:#94a3b8}
+.empty-hint{font-size:10px;color:#cbd5e1;text-align:center;line-height:1.5}
+
+/* 浮动按钮 */
+.fab{position:absolute;bottom:72px;right:16px;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);box-shadow:0 4px 12px rgba(99,102,241,0.4);display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;cursor:pointer;z-index:50;border:none}
 </style>
 </head>
 <body>
+<div class="device">
+  <div class="statusbar"><span class="statusbar-time" id="clock">9:41</span></div>
+  <div class="pages">
 
-<div class="doc-title">莫瑞娜 · 分身产品架构</div>
-<div class="doc-sub">核心主线：像你 → 有技能 → 能变现。分身越来越像真实用户，用户的经验成为分身独有技能，技能进入工作/生活场景解决问题或变现。</div>
+<!-- ===== 主页面 ===== -->
 
-<!-- 主线图 -->
-<div class="mainline">
-  <div class="ml-node highlight">
-    <span class="ml-icon">🧑</span>
-    <span class="ml-label">像你</span>
-    <span class="ml-desc">说话方式、决策方式<br>知识体系、底线规则</span>
-    <span class="ml-sub">← 学习</span>
-  </div>
-  <span class="ml-arrow">→</span>
-  <div class="ml-node highlight">
-    <span class="ml-icon">⚡</span>
-    <span class="ml-label">有技能</span>
-    <span class="ml-desc">专业经验提炼为<br>可复用的决策+行动模式</span>
-    <span class="ml-sub">← 提炼</span>
-  </div>
-  <span class="ml-arrow">→</span>
-  <div class="ml-node highlight">
-    <span class="ml-icon">💰</span>
-    <span class="ml-label">能变现</span>
-    <span class="ml-desc">技能出租 / 分身托管<br>接入工作/生活场景</span>
-    <span class="ml-sub">← 部署</span>
-  </div>
-</div>
-
-<!-- 页面导航 -->
-<div class="proto-nav">
-  <div class="proto-nav-btn active">① 分身首页</div>
-  <div class="proto-nav-btn">② 学习中心</div>
-  <div class="proto-nav-btn">③ 人格画像</div>
-  <div class="proto-nav-btn">④ 技能工坊</div>
-  <div class="proto-nav-btn">⑤ 工作台</div>
-  <div class="proto-nav-btn">⑥ 收益中心</div>
-</div>
-
-<div class="phone-row">
-
-<!-- ==================== ① 分身首页 ==================== -->
-<div class="phone-frame">
-  <div class="page-label">① 分身首页 — 一眼看到像不像、在不在干活</div>
-  <div class="page-header purple">
-    <div class="header-deco"><div class="h-circle hc1"></div><div class="h-circle hc2"></div></div>
-    <div class="header-title">我的分身</div>
-    <div class="header-sub">3个分身 · 2个值守中 · 今日学习12条</div>
-  </div>
-  <div class="content-area">
-    <!-- 相似度仪表 -->
-    <div class="similarity-gauge" style="margin-bottom:10px">
-      <div class="sim-ring"><div class="sim-ring-inner"><span class="sim-value">82%</span><span class="sim-label">相似度</span></div></div>
-      <div class="sim-details">
-        <div class="sim-row"><span class="sim-row-label">底线层</span><div class="sim-bar"><div class="sim-bar-fill high" style="width:100%"></div></div><span class="sim-pct">100%</span></div>
-        <div class="sim-row"><span class="sim-row-label">判断层</span><div class="sim-bar"><div class="sim-bar-fill mid" style="width:78%"></div></div><span class="sim-pct">78%</span></div>
-        <div class="sim-row"><span class="sim-row-label">风格层</span><div class="sim-bar"><div class="sim-bar-fill mid" style="width:85%"></div></div><span class="sim-pct">85%</span></div>
-        <div class="sim-row"><span class="sim-row-label">知识层</span><div class="sim-bar"><div class="sim-bar-fill low" style="width:64%"></div></div><span class="sim-pct">64%</span></div>
+<!-- 分身首页 -->
+<div class="page active" id="page-home">
+  <div class="hdr purple"><div class="hdr-deco"><div class="hdr-c hdr-c1"></div><div class="hdr-c hdr-c2"></div></div><div class="hdr-title">我的分身</div><div class="hdr-sub">3个分身 · 2个值守中 · 今日学习12条</div></div>
+  <div class="pad">
+    <div class="sim-gauge mb10" onclick="showSub('persona')" style="cursor:pointer">
+      <div class="sim-ring" style="--pct:82%"><div class="sim-ring-in"><span class="sim-v">82%</span><span class="sim-l">相似度</span></div></div>
+      <div class="sim-rows">
+        <div class="sim-row"><span class="sim-rl">底线层</span><div class="sim-bar"><div class="sim-bf h" style="width:100%"></div></div><span class="sim-pct">100%</span></div>
+        <div class="sim-row"><span class="sim-rl">判断层</span><div class="sim-bar"><div class="sim-bf m" style="width:78%"></div></div><span class="sim-pct">78%</span></div>
+        <div class="sim-row"><span class="sim-rl">风格层</span><div class="sim-bar"><div class="sim-bf m" style="width:85%"></div></div><span class="sim-pct">85%</span></div>
+        <div class="sim-row"><span class="sim-rl">知识层</span><div class="sim-bar"><div class="sim-bf l" style="width:64%"></div></div><span class="sim-pct">64%</span></div>
       </div>
     </div>
-
-    <!-- 今日学习 -->
-    <div class="today-learn" style="margin-bottom:10px">
-      <div class="tl-item"><div class="tl-value">5</div><div class="tl-label">新偏好</div></div>
-      <div class="tl-item"><div class="tl-value">2</div><div class="tl-label">纠正学习</div></div>
-      <div class="tl-item"><div class="tl-value">1</div><div class="tl-label">新技能⚠️</div></div>
-      <div class="tl-item"><div class="tl-value">¥48</div><div class="tl-label">今日收益</div></div>
+    <div class="stats-row mb10">
+      <div class="stat-item"><div class="stat-v">5</div><div class="stat-l">新偏好</div></div>
+      <div class="stat-item"><div class="stat-v">2</div><div class="stat-l">纠正学习</div></div>
+      <div class="stat-item"><div class="stat-v">1</div><div class="stat-l">新技能⚠️</div></div>
+      <div class="stat-item"><div class="stat-v" style="color:#16a34a">¥48</div><div class="stat-l">今日收益</div></div>
     </div>
-
-    <!-- 分身卡片 -->
-    <div class="card" style="margin-bottom:10px">
-      <div style="position:relative;height:100px;background:linear-gradient(135deg,#6366f1,#8b5cf6);overflow:hidden">
-        <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.7),transparent)"></div>
-        <div style="position:absolute;top:8px;left:8px;padding:2px 8px;background:rgba(255,255,255,0.2);border-radius:6px;font-size:9px;color:#fff;font-weight:600">⭐ Lv.3</div>
-        <div style="position:absolute;top:8px;right:8px;display:flex;align-items:center;gap:3px;padding:2px 8px;background:rgba(34,197,94,0.8);border-radius:6px;font-size:9px;color:#fff;font-weight:600">● 值守中</div>
-        <div style="position:absolute;bottom:8px;left:10px;display:flex;align-items:center;gap:6px">
-          <div style="width:32px;height:32px;border-radius:50%;background:#e0e7ff;display:flex;align-items:center;justify-content:center;font-size:14px;color:#6366f1;font-weight:700;border:2px solid #fff">林</div>
-          <div><div style="font-size:13px;font-weight:700;color:#fff">小林分身</div><div style="font-size:9px;color:rgba(255,255,255,0.6)">上班族 · 28岁 · 深圳</div></div>
-        </div>
-      </div>
-      <div style="padding:8px 12px;display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid #f8f9fc">
-        <span class="skill-tag st-blue">客户沟通</span>
-        <span class="skill-tag st-purple">方案撰写</span>
-        <span class="skill-tag st-green">需求澄清</span>
-        <span class="skill-tag st-amber">价格谈判<span style="display:inline-block;width:4px;height:4px;border-radius:50%;background:#f43f5e;vertical-align:middle;margin-left:2px;animation:pulse 1.5s infinite"></span></span>
-      </div>
-      <div style="padding:8px 12px;display:flex;justify-content:space-between;align-items:center">
-        <div style="display:flex;gap:4px">
-          <div style="padding:4px 8px;background:rgba(99,102,241,0.06);border-radius:6px;font-size:9px;color:#6366f1;font-weight:600;cursor:pointer">📚 喂资料</div>
-          <div style="padding:4px 8px;background:rgba(59,130,246,0.06);border-radius:6px;font-size:9px;color:#3b82f6;font-weight:600;cursor:pointer">💬 对话学</div>
-        </div>
-        <div style="font-size:9px;color:#16a34a;font-weight:600">托管中 · 2场景</div>
+    <div class="avatar-card mb10" onclick="showSub('avatar-detail')">
+      <div class="avatar-cover"><div class="avatar-cover-bg"></div><div class="avatar-cover-mask"></div><span class="avatar-badge avatar-lvl">⭐ Lv.3</span><span class="avatar-badge avatar-status">● 值守中</span><div class="avatar-info"><div class="avatar-face">林</div><div><div class="avatar-name">小林分身</div><div class="avatar-desc">上班族 · 28岁 · 深圳</div></div></div></div>
+      <div class="avatar-tags"><span class="atag atag-blue">客户沟通</span><span class="atag atag-purple">方案撰写</span><span class="atag atag-green">需求澄清</span><span class="atag atag-amber">价格谈判</span></div>
+      <div class="avatar-actions">
+        <div style="display:flex;gap:4px"><button class="avatar-btn primary" onclick="event.stopPropagation();showSub('feed')">📚 喂资料</button><button class="avatar-btn blue" onclick="event.stopPropagation();showSub('dialogue-teach')">💬 对话学</button></div>
+        <span style="font-size:9px;color:#16a34a;font-weight:600">托管中 · 2场景</span>
       </div>
     </div>
-
-    <!-- 快速学习入口 -->
-    <div class="sec-title">🚀 快速让分身像你</div>
-    <div style="display:flex;gap:8px;margin-bottom:10px">
-      <div style="flex:1;padding:10px;background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.03);cursor:pointer">
-        <div style="font-size:18px;margin-bottom:3px">📚</div>
-        <div style="font-size:11px;font-weight:600;color:#1e293b">喂资料</div>
-        <div style="font-size:8px;color:#94a3b8">30分钟学会知识</div>
-        <div style="font-size:8px;color:#6366f1;font-weight:500;margin-top:2px">知识层 + 风格层</div>
-      </div>
-      <div style="flex:1;padding:10px;background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.03);cursor:pointer">
-        <div style="font-size:18px;margin-bottom:3px">💬</div>
-        <div style="font-size:11px;font-weight:600;color:#1e293b">对话学</div>
-        <div style="font-size:8px;color:#94a3b8">5轮学会说话方式</div>
-        <div style="font-size:8px;color:#3b82f6;font-weight:500;margin-top:2px">风格层 + 判断层</div>
-      </div>
-      <div style="flex:1;padding:10px;background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.03);cursor:pointer">
-        <div style="font-size:18px;margin-bottom:3px">📋</div>
-        <div style="font-size:11px;font-weight:600;color:#1e293b">导入聊天</div>
-        <div style="font-size:8px;color:#94a3b8">1小时学会风格</div>
-        <div style="font-size:8px;color:#8b5cf6;font-weight:500;margin-top:2px">风格层 + 判断层</div>
-      </div>
+    <div class="avatar-card mb10" onclick="showSub('avatar-detail2')">
+      <div class="avatar-cover"><div class="avatar-cover-bg" style="background:linear-gradient(135deg,#059669,#10b981)"></div><div class="avatar-cover-mask"></div><span class="avatar-badge avatar-lvl">⭐ Lv.2</span><div class="avatar-info"><div class="avatar-face" style="background:#ccfbf1;color:#14b8a6">陈</div><div><div class="avatar-name">小陈分身</div><div class="avatar-desc">创业者 · 32岁 · 杭州</div></div></div></div>
+      <div class="avatar-tags"><span class="atag atag-green">快速排期</span><span class="atag atag-blue">团队管理</span></div>
+      <div class="avatar-actions"><div style="display:flex;gap:4px"><button class="avatar-btn primary" onclick="event.stopPropagation();showSub('feed')">📚 喂资料</button><button class="avatar-btn blue" onclick="event.stopPropagation();showSub('dialogue-teach')">💬 对话学</button></div><span style="font-size:9px;color:#94a3b8">未托管</span></div>
     </div>
-
-    <!-- 提炼通知 -->
-    <div class="extract-notify">
+    <div class="extract-note" onclick="showModal('extract-modal')">
       <span class="en-icon">⚡</span>
-      <div class="en-info">
-        <div class="en-title">发现新技能：价格异议化解术</div>
-        <div class="en-desc">你在鲜果优选客服对话中，客户嫌贵时3次使用了"拆解单价→强调差异→提供试用"的模式。确认提炼为技能？</div>
-        <div class="en-actions"><button class="en-btn en-btn-confirm">确认提炼</button><button class="en-btn en-btn-ignore">暂不</button></div>
-      </div>
+      <div class="en-info"><div class="en-title">发现新技能：价格异议化解术</div><div class="en-desc">鲜果优选客服893条对话，客户嫌贵时3次使用"拆解单价→强调差异→提供试用"</div><div class="en-btns"><button class="en-btn ok" onclick="event.stopPropagation();showSub('extract-confirm')">确认提炼</button><button class="en-btn no">暂不</button></div></div>
     </div>
   </div>
-  <div class="bottom-tabs">
-    <div class="tab-item active"><span class="tab-icon">🏠</span><span class="tab-text">分身</span></div>
-    <div class="tab-item"><span class="tab-icon">📚</span><span class="tab-text">学习</span></div>
-    <div class="tab-item"><span class="tab-icon">🧠</span><span class="tab-text">人格</span></div>
-    <div class="tab-item"><span class="tab-icon">⚡</span><span class="tab-text">技能</span></div>
-    <div class="tab-item"><span class="tab-icon">🖥️</span><span class="tab-text">工作台</span></div>
+  <button class="fab" onclick="showSub('create-avatar')">+</button>
+</div>
+
+<!-- 学习中心 -->
+<div class="page" id="page-learn">
+  <div class="hdr blue"><div class="hdr-deco"><div class="hdr-c hdr-c1"></div><div class="hdr-c hdr-c2"></div></div><div class="hdr-title">学习中心</div><div class="hdr-sub">喂资料学知识 · 对话学风格 · 纠正学决策</div></div>
+  <div class="pad">
+    <div class="learn-method" onclick="showSub('feed')"><div class="lm-icon" style="background:rgba(34,197,94,0.08)">📚</div><div class="lm-info"><div class="lm-title">喂资料</div><div class="lm-desc">上传文档、聊天记录、网页链接</div><div class="lm-meta"><span class="lm-tag fast">⚡ 30分钟</span><span class="lm-tag layer">知识层</span></div></div><span class="lm-arrow">›</span></div>
+    <div class="learn-method" onclick="showSub('dialogue-teach')"><div class="lm-icon" style="background:rgba(139,92,246,0.08)">💬</div><div class="lm-info"><div class="lm-title">对话教学</div><div class="lm-desc">你给场景+示范回复，分身学你的方式</div><div class="lm-meta"><span class="lm-tag fast">⚡ 5轮对话</span><span class="lm-tag deep">风格+判断</span></div></div><span class="lm-arrow">›</span></div>
+    <div class="learn-method" onclick="showSub('import-chat')"><div class="lm-icon" style="background:rgba(59,130,246,0.08)">📋</div><div class="lm-info"><div class="lm-title">导入聊天记录</div><div class="lm-desc">导出微信/QQ聊天，分身学你的习惯</div><div class="lm-meta"><span class="lm-tag fast">⚡ 1小时</span><span class="lm-tag deep">风格+知识</span></div></div><span class="lm-arrow">›</span></div>
+    <div class="learn-method" onclick="showSub('corrections')"><div class="lm-icon" style="background:rgba(239,68,68,0.08)">✏️</div><div class="lm-info"><div class="lm-title">纠正学习</div><div class="lm-desc">分身回复不对时你纠正，持续进化</div><div class="lm-meta"><span class="lm-tag deep">持续进化</span><span class="lm-tag layer">全层</span></div></div><span class="lm-arrow">›</span></div>
+    <div class="sec-title mt10">🧠 最近学到的</div>
+    <div class="lr"><span class="lr-icon">🎨</span><span class="lr-text">你习惯先报价再反问需求<span class="lr-target t-style">→ 风格层</span></span></div>
+    <div class="lr"><span class="lr-icon">⚖️</span><span class="lr-text">客户嫌贵时：算单次成本对比，不直接降价<span class="lr-target t-judge">→ 判断层</span></span></div>
+    <div class="lr"><span class="lr-icon">📚</span><span class="lr-text">产品定价：基础版298/月，超出0.5元/次<span class="lr-target t-knowledge">→ 知识层</span></span></div>
+    <div class="lr"><span class="lr-icon">🚫</span><span class="lr-text">涉及报价超过8折必须转交本人<span class="lr-target t-bottom">→ 底线层</span></span></div>
+    <div class="lr"><span class="lr-icon">⚡</span><span class="lr-text">5轮对话提炼出新技能："报价说服术"<span class="lr-target t-skill">→ 新技能</span></span></div>
   </div>
 </div>
 
-<!-- ==================== ② 学习中心 ==================== -->
-<div class="phone-frame">
-  <div class="page-label">② 学习中心 — 让分身越来越像你</div>
-  <div class="page-header blue">
-    <div class="header-deco"><div class="h-circle hc1"></div><div class="h-circle hc2"></div></div>
-    <div class="header-title">学习中心</div>
-    <div class="header-sub">喂资料学知识 · 对话学风格 · 纠正学决策</div>
-  </div>
-  <div class="content-area">
-    <!-- 学习方式 -->
-    <div class="sec-title">选择学习方式</div>
-
-    <div class="learn-method" style="margin-bottom:6px">
-      <div class="learn-method-icon" style="background:rgba(34,197,94,0.08)">📚</div>
-      <div class="learn-method-info">
-        <div class="learn-method-title">喂资料</div>
-        <div class="learn-method-desc">上传文档、聊天记录、网页链接，分身自动提取知识</div>
-        <div class="learn-method-meta"><span class="lm-tag fast">⚡ 30分钟</span><span class="lm-tag layer">知识层</span></div>
-      </div>
-      <span class="learn-method-arrow">›</span>
-    </div>
-
-    <div class="learn-method" style="margin-bottom:6px">
-      <div class="learn-method-icon" style="background:rgba(139,92,246,0.08)">💬</div>
-      <div class="learn-method-info">
-        <div class="learn-method-title">对话教学</div>
-        <div class="learn-method-desc">你给场景+示范回复，分身学你的说话方式和决策逻辑</div>
-        <div class="learn-method-meta"><span class="lm-tag fast">⚡ 5轮对话</span><span class="lm-tag deep">风格+判断</span></div>
-      </div>
-      <span class="learn-method-arrow">›</span>
-    </div>
-
-    <div class="learn-method" style="margin-bottom:6px">
-      <div class="learn-method-icon" style="background:rgba(59,130,246,0.08)">📋</div>
-      <div class="learn-method-info">
-        <div class="learn-method-title">导入聊天记录</div>
-        <div class="learn-method-desc">导出微信/QQ聊天，分身学你的说话习惯和日常决策</div>
-        <div class="learn-method-meta"><span class="lm-tag fast">⚡ 1小时</span><span class="lm-tag deep">风格+知识</span></div>
-      </div>
-      <span class="learn-method-arrow">›</span>
-    </div>
-
-    <div class="learn-method" style="margin-bottom:10px">
-      <div class="learn-method-icon" style="background:rgba(239,68,68,0.08)">✏️</div>
-      <div class="learn-method-info">
-        <div class="learn-method-title">纠正学习</div>
-        <div class="learn-method-desc">分身回复不对时你纠正，持续修正（所有场景自动生效）</div>
-        <div class="learn-method-meta"><span class="lm-tag deep">持续进化</span><span class="lm-tag layer">全层</span></div>
-      </div>
-      <span class="learn-method-arrow">›</span>
-    </div>
-
-    <!-- 喂资料示例 -->
-    <div class="sec-title">📚 喂资料</div>
-    <div class="upload-grid" style="margin-bottom:8px">
-      <div class="upload-item"><span class="upload-icon">📄</span><span class="upload-label">文档</span><span class="upload-hint">PDF/Word/Excel<br>产品手册、方案、FAQ</span></div>
-      <div class="upload-item"><span class="upload-icon">💬</span><span class="upload-label">聊天记录</span><span class="upload-hint">导出微信聊天<br>学说话方式+决策</span></div>
-      <div class="upload-item"><span class="upload-icon">🔗</span><span class="upload-label">网页链接</span><span class="upload-hint">粘贴URL<br>自动抓取内容</span></div>
-      <div class="upload-item"><span class="upload-icon">✍️</span><span class="upload-label">手动输入</span><span class="upload-hint">写你遇到的情况<br>和你怎么处理的</span></div>
-    </div>
-    <div class="file-item"><span class="file-icon">📄</span><div class="file-info"><div class="file-name">产品手册v3.2.pdf</div><div class="file-meta">38个功能点 · 12个FAQ</div></div><span class="file-status done">已学习</span></div>
-    <div class="file-item"><span class="file-icon">💬</span><div class="file-info"><div class="file-name">客户群聊天记录.txt</div><div class="file-meta">2,340条 · 23条决策偏好</div></div><span class="file-status done">已学习</span></div>
-
-    <!-- 对话教学示例 -->
-    <div class="sec-title" style="margin-top:10px">💬 对话教学</div>
-    <div class="card" style="margin-bottom:10px">
-      <div class="card-pad" style="padding:10px 12px">
-        <div class="chat-msg question"><div class="chat-msg-label">🧑 模拟场景：客户问"怎么收费的"</div>你会怎么回复？教教分身</div>
-        <div class="chat-msg answer"><div class="chat-msg-label">✍️ 你的示范</div>您好！我们按使用量收费，基础版298/月含500次调用。要不帮您测算一下用量？推荐最划算的方案 😊</div>
-        <div class="chat-msg question"><div class="chat-msg-label">🧑 客户说"太贵了"</div>你怎么回？</div>
-        <div class="chat-msg answer"><div class="chat-msg-label">✍️ 你的示范</div>理解！单次成本不到6毛，比人工客服便宜多了。前期免费试用2周，体验了再决定？</div>
-        <div class="chat-input"><input class="chat-input-field" placeholder="继续教更多场景..." readonly><button class="chat-input-send">↑</button></div>
+<!-- 人格画像 -->
+<div class="page" id="page-persona">
+  <div class="hdr purple"><div class="hdr-deco"><div class="hdr-c hdr-c1"></div><div class="hdr-c hdr-c2"></div></div><div class="hdr-title">人格画像</div><div class="hdr-sub">小林分身 · 相似度82%</div></div>
+  <div class="pad">
+    <div class="sim-gauge mb10">
+      <div class="sim-ring" style="--pct:82%"><div class="sim-ring-in"><span class="sim-v">82%</span><span class="sim-l">相似度</span></div></div>
+      <div class="sim-rows">
+        <div class="sim-row"><span class="sim-rl">底线层</span><div class="sim-bar"><div class="sim-bf h" style="width:100%"></div></div><span class="sim-pct">100%</span></div>
+        <div class="sim-row"><span class="sim-rl">判断层</span><div class="sim-bar"><div class="sim-bf m" style="width:78%"></div></div><span class="sim-pct">78%</span></div>
+        <div class="sim-row"><span class="sim-rl">风格层</span><div class="sim-bar"><div class="sim-bf m" style="width:85%"></div></div><span class="sim-pct">85%</span></div>
+        <div class="sim-row"><span class="sim-rl">知识层</span><div class="sim-bar"><div class="sim-bf l" style="width:64%"></div></div><span class="sim-pct">64%</span></div>
       </div>
     </div>
-
-    <!-- 学习结果 -->
-    <div class="sec-title">🧠 分身从你这儿学到了</div>
-    <div class="learn-result"><span class="lr-icon">🎨</span><span class="lr-text">你习惯先报价再反问需求，不会一上来就问预算<span class="lr-target t-style">→ 风格层</span></span></div>
-    <div class="learn-result"><span class="lr-icon">⚖️</span><span class="lr-text">客户嫌贵时：算单次成本对比，不直接降价<span class="lr-target t-judge">→ 判断层</span></span></div>
-    <div class="learn-result"><span class="lr-icon">📚</span><span class="lr-text">产品定价：基础版298/月，超出0.5元/次<span class="lr-target t-knowledge">→ 知识层</span></span></div>
-    <div class="learn-result"><span class="lr-icon">🎨</span><span class="lr-text">回复结尾喜欢加😊表情<span class="lr-target t-style">→ 风格层</span></span></div>
-    <div class="learn-result"><span class="lr-icon">⚡</span><span class="lr-text">5轮对话提炼出新技能："报价说服术"<span class="lr-target t-skill">→ 新技能</span></span></div>
-  </div>
-  <div class="bottom-tabs">
-    <div class="tab-item"><span class="tab-icon">🏠</span><span class="tab-text">分身</span></div>
-    <div class="tab-item active"><span class="tab-icon">📚</span><span class="tab-text">学习</span></div>
-    <div class="tab-item"><span class="tab-icon">🧠</span><span class="tab-text">人格</span></div>
-    <div class="tab-item"><span class="tab-icon">⚡</span><span class="tab-text">技能</span></div>
-    <div class="tab-item"><span class="tab-icon">🖥️</span><span class="tab-text">工作台</span></div>
+    <div class="pl-card"><div class="pl-hdr" onclick="togglePl(this)"><div class="pl-dot red"></div><span class="pl-name">底线层 · 绝不做什么</span><span class="pl-count">3条</span><span class="pl-arrow">▼</span></div><div class="pl-body">
+      <div class="pl-item" onclick="showModal('rule-detail')"><span class="pl-src src-manual">手动设置</span><span class="pl-conf conf-h">高</span>涉及报价必须转交本人确认，不可自行定价</div>
+      <div class="pl-item"><span class="pl-src src-correct">纠正学习</span><span class="pl-conf conf-h">高</span>不可评价竞品或贬低对手</div>
+      <div class="pl-item"><span class="pl-src src-manual">手动设置</span><span class="pl-conf conf-h">高</span>涉及用户隐私数据不外泄</div>
+    </div></div>
+    <div class="pl-card"><div class="pl-hdr" onclick="togglePl(this)"><div class="pl-dot blue"></div><span class="pl-name">判断层 · 怎么做决策</span><span class="pl-count">7条</span><span class="pl-arrow">▼</span></div><div class="pl-body">
+      <div class="pl-item" onclick="showModal('rule-detail')"><span class="pl-src src-chat">聊天纠正</span><span class="pl-conf conf-h">高</span>客户嫌贵：先共情→拆解单价→强调差异→降低门槛</div>
+      <div class="pl-item"><span class="pl-src src-chat">聊天纠正</span><span class="pl-conf conf-h">高</span>催促时：先安抚+给时间节点+说明进展</div>
+      <div class="pl-item"><span class="pl-src src-correct">纠正学习</span><span class="pl-conf conf-m">中</span>模糊需求：追问3层（业务目标→场景→验收标准）</div>
+      <div class="pl-item"><span class="pl-src src-doc">资料导入</span><span class="pl-conf conf-m">中</span>项目延期：先梳理阻塞点→按影响排序→给2+方案</div>
+      <div class="pl-item"><span class="pl-src src-observe">群聊观察</span><span class="pl-conf conf-l">低</span>新人提问：先确认背景再给建议 ⚠️待确认</div>
+    </div></div>
+    <div class="pl-card"><div class="pl-hdr" onclick="togglePl(this)"><div class="pl-dot purple"></div><span class="pl-name">风格层 · 怎么说话</span><span class="pl-count">9条</span><span class="pl-arrow">▼</span></div><div class="pl-body">
+      <div class="pl-item"><span class="pl-src src-chat">聊天记录</span><span class="pl-conf conf-h">高</span>习惯用结构化分点表达（73%使用分点）</div>
+      <div class="pl-item"><span class="pl-src src-chat">聊天记录</span><span class="pl-conf conf-h">高</span>回复结尾喜欢加😊表情</div>
+      <div class="pl-item"><span class="pl-src src-correct">纠正学习</span><span class="pl-conf conf-h">高</span>先报价再反问需求，不先问预算</div>
+      <div class="pl-item"><span class="pl-src src-doc">资料导入</span><span class="pl-conf conf-m">中</span>多用短句，少用长段落</div>
+    </div></div>
+    <div class="pl-card"><div class="pl-hdr" onclick="togglePl(this)"><div class="pl-dot green"></div><span class="pl-name">知识层 · 知道什么</span><span class="pl-count">23条</span><span class="pl-arrow">▼</span></div><div class="pl-body">
+      <div class="pl-item"><span class="pl-src src-doc">产品手册</span><span class="pl-conf conf-h">高</span>产品定价：基础版298/月，超出0.5元/次</div>
+      <div class="pl-item"><span class="pl-src src-doc">产品手册</span><span class="pl-conf conf-h">高</span>售后政策：24小时内按颗赔付，不啰嗦</div>
+      <div class="pl-item"><span class="pl-src src-chat">聊天记录</span><span class="pl-conf conf-m">中</span>智利JJJ级车厘子34mm+，128元/斤</div>
+      <div class="pl-item"><span class="pl-src src-doc">项目文档</span><span class="pl-conf conf-m">中</span>Sprint周期2周，需求冻结后不插需求</div>
+    </div></div>
+    <div class="tip tip-blue mt6">💡 知识层相似度最低(64%)，建议上传更多行业文档提升覆盖度</div>
+    <button class="btn btn-primary btn-sm mt10" onclick="showModal('add-rule-modal')">+ 添加规则</button>
   </div>
 </div>
 
-<!-- ==================== ③ 人格画像 ==================== -->
-<div class="phone-frame">
-  <div class="page-label">③ 人格画像 — 分身学到了什么，全透明</div>
-  <div class="page-header purple">
-    <div class="header-deco"><div class="h-circle hc1"></div><div class="h-circle hc2"></div></div>
-    <div class="header-title">人格画像</div>
-    <div class="header-sub">小林分身 · 相似度82%</div>
-  </div>
-  <div class="content-area">
-    <div class="similarity-gauge" style="margin-bottom:10px">
-      <div class="sim-ring"><div class="sim-ring-inner"><span class="sim-value">82%</span><span class="sim-label">相似度</span></div></div>
-      <div class="sim-details">
-        <div class="sim-row"><span class="sim-row-label">底线层</span><div class="sim-bar"><div class="sim-bar-fill high" style="width:100%"></div></div><span class="sim-pct">100%</span></div>
-        <div class="sim-row"><span class="sim-row-label">判断层</span><div class="sim-bar"><div class="sim-bar-fill mid" style="width:78%"></div></div><span class="sim-pct">78%</span></div>
-        <div class="sim-row"><span class="sim-row-label">风格层</span><div class="sim-bar"><div class="sim-bar-fill mid" style="width:85%"></div></div><span class="sim-pct">85%</span></div>
-        <div class="sim-row"><span class="sim-row-label">知识层</span><div class="sim-bar"><div class="sim-bar-fill low" style="width:64%"></div></div><span class="sim-pct">64%</span></div>
-      </div>
-    </div>
-
-    <!-- 底线层 -->
-    <div class="persona-layer">
-      <div class="pl-header"><div class="pl-dot red"></div><span class="pl-name">底线层 · 绝不做什么</span><span class="pl-count">3条</span><span class="pl-arrow">▼</span></div>
-      <div class="pl-body">
-        <div class="pl-item"><span class="pl-item-source src-manual">手动设置</span><span class="pl-item-conf conf-high">高置信</span>涉及报价必须转交本人确认，不可自行定价</div>
-        <div class="pl-item"><span class="pl-item-source src-correct">纠正学习</span><span class="pl-item-conf conf-high">高置信</span>不可评价竞品或贬低对手</div>
-        <div class="pl-item"><span class="pl-item-source src-manual">手动设置</span><span class="pl-item-conf conf-high">高置信</span>涉及用户隐私数据不外泄</div>
-      </div>
-    </div>
-
-    <!-- 判断层 -->
-    <div class="persona-layer">
-      <div class="pl-header"><div class="pl-dot blue"></div><span class="pl-name">判断层 · 怎么做决策</span><span class="pl-count">7条</span><span class="pl-arrow">▼</span></div>
-      <div class="pl-body">
-        <div class="pl-item"><span class="pl-item-source src-chat">聊天纠正</span><span class="pl-item-conf conf-high">高置信</span>客户嫌贵时：先共情→拆解单价→强调差异→降低门槛</div>
-        <div class="pl-item"><span class="pl-item-source src-chat">聊天纠正</span><span class="pl-item-conf conf-high">高置信</span>催促时：先安抚+给时间节点+说明当前进展</div>
-        <div class="pl-item"><span class="pl-item-source src-chat">聊天纠正</span><span class="pl-item-conf conf-mid">中置信</span>模糊需求：追问3层（业务目标→场景→验收标准）</div>
-        <div class="pl-item"><span class="pl-item-source src-doc">资料导入</span><span class="pl-item-conf conf-mid">中置信</span>项目延期：先梳理阻塞点→按影响排序→给2个以上方案</div>
-        <div class="pl-item"><span class="pl-item-source src-chat">群聊观察</span><span class="pl-item-conf conf-low">低置信</span>新人提问：先确认背景再给建议 ⚠️待确认</div>
-      </div>
-    </div>
-
-    <!-- 风格层 -->
-    <div class="persona-layer">
-      <div class="pl-header"><div class="pl-dot purple"></div><span class="pl-name">风格层 · 怎么说话</span><span class="pl-count">9条</span><span class="pl-arrow">▼</span></div>
-      <div class="pl-body">
-        <div class="pl-item"><span class="pl-item-source src-chat">聊天记录</span><span class="pl-item-conf conf-high">高置信</span>习惯用结构化分点表达（73%的回复使用分点）</div>
-        <div class="pl-item"><span class="pl-item-source src-chat">聊天记录</span><span class="pl-item-conf conf-high">高置信</span>回复结尾喜欢加😊表情</div>
-        <div class="pl-item"><span class="pl-item-source src-chat">聊天纠正</span><span class="pl-item-conf conf-high">高置信</span>先报价再反问需求，不先问预算</div>
-        <div class="pl-item"><span class="pl-item-source src-doc">资料导入</span><span class="pl-item-conf conf-mid">中置信</span>多用短句，少用长段落</div>
-      </div>
-    </div>
-
-    <!-- 知识层 -->
-    <div class="persona-layer">
-      <div class="pl-header"><div class="pl-dot green"></div><span class="pl-name">知识层 · 知道什么</span><span class="pl-count">23条</span><span class="pl-arrow">▼</span></div>
-      <div class="pl-body">
-        <div class="pl-item"><span class="pl-item-source src-doc">产品手册</span><span class="pl-item-conf conf-high">高置信</span>产品定价：基础版298/月，超出0.5元/次</div>
-        <div class="pl-item"><span class="pl-item-source src-doc">产品手册</span><span class="pl-item-conf conf-high">高置信</span>售后政策：24小时内按颗赔付，不啰嗦</div>
-        <div class="pl-item"><span class="pl-item-source src-chat">聊天记录</span><span class="pl-item-conf conf-mid">中置信</span>智利JJJ级车厘子34mm+果径，128元/斤</div>
-        <div class="pl-item"><span class="pl-item-source src-doc">项目文档</span><span class="pl-item-conf conf-mid">中置信</span>Sprint周期2周，需求冻结后不插需求</div>
-      </div>
-    </div>
-
-    <!-- 提示 -->
-    <div style="padding:10px;background:rgba(59,130,246,0.04);border-radius:10px;border:1px solid rgba(59,130,246,0.1);margin-top:6px">
-      <div style="font-size:10px;color:#3b82f6;font-weight:600;margin-bottom:3px">💡 知识层相似度最低(64%)</div>
-      <div style="font-size:9px;color:#64748b;line-height:1.5">建议上传更多行业文档、产品手册，或导入更多聊天记录来提升知识覆盖度。</div>
-    </div>
-  </div>
-  <div class="bottom-tabs">
-    <div class="tab-item"><span class="tab-icon">🏠</span><span class="tab-text">分身</span></div>
-    <div class="tab-item"><span class="tab-icon">📚</span><span class="tab-text">学习</span></div>
-    <div class="tab-item active"><span class="tab-icon">🧠</span><span class="tab-text">人格</span></div>
-    <div class="tab-item"><span class="tab-icon">⚡</span><span class="tab-text">技能</span></div>
-    <div class="tab-item"><span class="tab-icon">🖥️</span><span class="tab-text">工作台</span></div>
-  </div>
-</div>
-
-<!-- ==================== ④ 技能工坊 ==================== -->
-<div class="phone-frame">
-  <div class="page-label">④ 技能工坊 — 经验提炼为可变现技能</div>
-  <div class="page-header amber">
-    <div class="header-deco"><div class="h-circle hc1"></div><div class="h-circle hc2"></div></div>
-    <div class="header-title">技能工坊</div>
-    <div class="header-sub">3个技能 · 1个待确认 · 本月收入¥642</div>
-  </div>
-  <div class="content-area">
-    <!-- 提炼通知 -->
-    <div class="extract-notify" style="margin-bottom:10px">
+<!-- 技能工坊 -->
+<div class="page" id="page-skill">
+  <div class="hdr amber"><div class="hdr-deco"><div class="hdr-c hdr-c1"></div><div class="hdr-c hdr-c2"></div></div><div class="hdr-title">技能工坊</div><div class="hdr-sub">3个技能 · 1个待确认 · 本月¥642</div></div>
+  <div class="pad">
+    <div class="extract-note mb10" onclick="showSub('extract-confirm')">
       <span class="en-icon">⚡</span>
-      <div class="en-info">
-        <div class="en-title">发现新技能：价格异议化解术</div>
-        <div class="en-desc">鲜果优选客服对话893条，客户嫌贵时3次使用"拆解单价→强调差异→提供试用"模式</div>
-        <div class="en-actions"><button class="en-btn en-btn-confirm">确认提炼</button><button class="en-btn en-btn-ignore">暂不</button></div>
-      </div>
+      <div class="en-info"><div class="en-title">发现新技能：价格异议化解术</div><div class="en-desc">鲜果优选893条对话·23次纠正中提炼</div><div class="en-btns"><button class="en-btn ok" onclick="event.stopPropagation();showSub('extract-confirm')">确认提炼</button><button class="en-btn no">暂不</button></div></div>
     </div>
-
     <div class="sec-title">我的技能</div>
-
-    <div class="skill-card">
-      <div class="skill-top">
-        <div class="skill-avatar" style="background:#e0e7ff;display:flex;align-items:center;justify-content:center;font-size:12px;color:#6366f1;font-weight:700;border-radius:50%">林</div>
-        <div class="skill-info"><div class="skill-name">💰 价格异议化解术</div><div class="skill-origin">来源：鲜果优选实战 · 893条对话 · 23次纠正</div></div>
-        <div class="skill-price"><div class="skill-price-val">¥3</div><div class="skill-price-unit">/次</div></div>
-      </div>
-      <div class="skill-desc">客户嫌贵时：拆解单价对比→强调品质差异→提供试用方案。比直接降价成交率高3倍。</div>
-      <div class="skill-tags"><span class="skill-tag st-green">电商</span><span class="skill-tag st-amber">议价</span><span class="skill-tag st-blue">客服</span></div>
-      <div class="skill-footer">
-        <div class="skill-stats"><span class="skill-stat">📊 324次</span><span class="skill-stat">⭐ 4.7</span><span class="skill-stat">🏪 6个小程序</span></div>
-        <button class="skill-btn">管理</button>
-      </div>
+    <div class="skill-card" onclick="showSub('skill-detail')">
+      <div class="skill-top"><div class="skill-face" style="background:#e0e7ff;color:#6366f1">林</div><div class="skill-info"><div class="skill-name">💰 价格异议化解术</div><div class="skill-origin">鲜果优选实战 · 893条 · 23次纠正</div></div><div class="skill-price"><div class="skill-pv">¥3</div><div class="skill-pu">/次</div></div></div>
+      <div class="skill-desc">客户嫌贵时：拆解单价→强调差异→提供试用</div>
+      <div class="skill-tags"><span class="atag atag-green">电商</span><span class="atag atag-amber">议价</span><span class="atag atag-blue">客服</span></div>
+      <div class="skill-ft"><div class="skill-stats"><span class="skill-stat">📊 324次</span><span class="skill-stat">⭐ 4.7</span><span class="skill-stat">🏪 6个小程序</span></div><button class="skill-btn">管理</button></div>
     </div>
-
-    <div class="skill-card">
-      <div class="skill-top">
-        <div class="skill-avatar" style="background:#e0e7ff;display:flex;align-items:center;justify-content:center;font-size:12px;color:#6366f1;font-weight:700;border-radius:50%">林</div>
-        <div class="skill-info"><div class="skill-name">🎯 需求澄清术</div><div class="skill-origin">来源：飞书群聊+微信客服 · 12次纠正</div></div>
-        <div class="skill-price"><div class="skill-price-val">¥2</div><div class="skill-price-unit">/次</div></div>
-      </div>
+    <div class="skill-card" onclick="showSub('skill-detail')">
+      <div class="skill-top"><div class="skill-face" style="background:#e0e7ff;color:#6366f1">林</div><div class="skill-info"><div class="skill-name">🎯 需求澄清术</div><div class="skill-origin">飞书群聊+微信客服 · 12次纠正</div></div><div class="skill-price"><div class="skill-pv">¥2</div><div class="skill-pu">/次</div></div></div>
       <div class="skill-desc">模糊需求追问3层：业务目标→使用场景→验收标准</div>
-      <div class="skill-tags"><span class="skill-tag st-purple">SaaS</span><span class="skill-tag st-blue">需求</span></div>
-      <div class="skill-footer">
-        <div class="skill-stats"><span class="skill-stat">📊 89次</span><span class="skill-stat">⭐ 4.8</span><span class="skill-stat">🏪 3个小程序</span></div>
-        <button class="skill-btn">管理</button>
-      </div>
+      <div class="skill-tags"><span class="atag atag-purple">SaaS</span><span class="atag atag-blue">需求</span></div>
+      <div class="skill-ft"><div class="skill-stats"><span class="skill-stat">📊 89次</span><span class="skill-stat">⭐ 4.8</span><span class="skill-stat">🏪 3个小程序</span></div><button class="skill-btn">管理</button></div>
     </div>
-
-    <div class="skill-card">
-      <div class="skill-top">
-        <div class="skill-avatar" style="background:#ccfbf1;display:flex;align-items:center;justify-content:center;font-size:12px;color:#14b8a6;font-weight:700;border-radius:50%">陈</div>
-        <div class="skill-info"><div class="skill-name">⚡ 快速排期术</div><div class="skill-origin">来源：飞书群聊观察 · 5次纠正</div></div>
-        <div class="skill-price"><div class="skill-price-val">¥2</div><div class="skill-price-unit">/次</div></div>
-      </div>
-      <div class="skill-desc">收到排期需求时：确认优先级→评估依赖→给出2个方案（保守/激进）</div>
-      <div class="skill-tags"><span class="skill-tag st-blue">项目管理</span><span class="skill-tag st-amber">排期</span></div>
-      <div class="skill-footer">
-        <div class="skill-stats"><span class="skill-stat">📊 56次</span><span class="skill-stat">⭐ 4.5</span><span class="skill-stat">🏪 2个小程序</span></div>
-        <button class="skill-btn">管理</button>
-      </div>
+    <div class="skill-card" onclick="showSub('skill-detail')">
+      <div class="skill-top"><div class="skill-face" style="background:#ccfbf1;color:#14b8a6">陈</div><div class="skill-info"><div class="skill-name">⚡ 快速排期术</div><div class="skill-origin">飞书群聊观察 · 5次纠正</div></div><div class="skill-price"><div class="skill-pv">¥2</div><div class="skill-pu">/次</div></div></div>
+      <div class="skill-desc">确认优先级→评估依赖→给出2个方案</div>
+      <div class="skill-tags"><span class="atag atag-blue">项目管理</span><span class="atag atag-amber">排期</span></div>
+      <div class="skill-ft"><div class="skill-stats"><span class="skill-stat">📊 56次</span><span class="skill-stat">⭐ 4.5</span><span class="skill-stat">🏪 2个小程序</span></div><button class="skill-btn">管理</button></div>
     </div>
-
-    <!-- 技能构成说明 -->
-    <div style="padding:10px 12px;background:rgba(245,158,11,0.04);border:1px solid rgba(245,158,11,0.1);border-radius:12px;margin-top:4px">
-      <div style="font-size:10px;font-weight:600;color:#92400e;margin-bottom:4px">⚡ 技能怎么来的？</div>
-      <div style="font-size:9px;color:#78350f;line-height:1.6">
-        技能不是手动创建的，是从你的真实对话和纠正中<b>自动提炼</b>的。<br>
-        · 同类场景3次+ → 系统识别模式<br>
-        · 同方向纠正3次+ → 确认为你的固定偏好<br>
-        · 你确认后 → 上架技能市场<br>
-        · 每个技能都附<b>来源证据链</b>，不是凭空编的
-      </div>
-    </div>
-  </div>
-  <div class="bottom-tabs">
-    <div class="tab-item"><span class="tab-icon">🏠</span><span class="tab-text">分身</span></div>
-    <div class="tab-item"><span class="tab-icon">📚</span><span class="tab-text">学习</span></div>
-    <div class="tab-item"><span class="tab-icon">🧠</span><span class="tab-text">人格</span></div>
-    <div class="tab-item active"><span class="tab-icon">⚡</span><span class="tab-text">技能</span></div>
-    <div class="tab-item"><span class="tab-icon">🖥️</span><span class="tab-text">工作台</span></div>
+    <div class="tip tip-amber mt6">⚡ 技能不是手动创建的，是从你的真实对话和纠正中自动提炼的。同类场景5次+或同方向纠正3次+ → 系统识别模式 → 你确认后上架。</div>
   </div>
 </div>
 
-<!-- ==================== ⑤ 工作台 ==================== -->
-<div class="phone-frame">
-  <div class="page-label">⑤ 工作台 — 分身在哪些场景替你干活</div>
-  <div class="page-header green">
-    <div class="header-deco"><div class="h-circle hc1"></div><div class="h-circle hc2"></div></div>
-    <div class="header-title">工作台</div>
-    <div class="header-sub">2个场景值守中 · 今日处理134条消息</div>
-  </div>
-  <div class="content-area">
-    <!-- 我的场景 -->
+<!-- 工作台 -->
+<div class="page" id="page-workbench">
+  <div class="hdr green"><div class="hdr-deco"><div class="hdr-c hdr-c1"></div><div class="hdr-c hdr-c2"></div></div><div class="hdr-title">工作台</div><div class="hdr-sub">2个场景值守中 · 今日处理134条</div></div>
+  <div class="pad">
     <div class="sec-title">我的工作场景</div>
-
-    <div class="scene-card">
-      <div class="scene-header">
-        <div class="scene-icon feishu">🐦</div>
-        <div class="scene-info"><div class="scene-name">飞书 · 产品组群</div><div class="scene-desc">小林分身值守中</div></div>
-        <div class="scene-status on">● 在线</div>
-      </div>
-      <div class="scene-stats">
-        <div class="scene-stat"><div class="scene-stat-value">45</div><div class="scene-stat-label">今日回复</div></div>
-        <div class="scene-stat-divider"></div>
-        <div class="scene-stat"><div class="scene-stat-value">2.1s</div><div class="scene-stat-label">响应</div></div>
-        <div class="scene-stat-divider"></div>
-        <div class="scene-stat"><div class="scene-stat-value">2</div><div class="scene-stat-label">纠正</div></div>
-      </div>
+    <div class="scene-card" onclick="showSub('scene-detail')">
+      <div class="scene-hdr"><div class="scene-ico feishu">🐦</div><div class="scene-info"><div class="scene-name">飞书 · 产品组群</div><div class="scene-desc">小林分身值守中</div></div><div class="scene-status on">● 在线</div></div>
+      <div class="scene-stats"><div class="scene-st"><div class="scene-st-v">45</div><div class="scene-st-l">今日回复</div></div><div class="scene-div"></div><div class="scene-st"><div class="scene-st-v">2.1s</div><div class="scene-st-l">响应</div></div><div class="scene-div"></div><div class="scene-st"><div class="scene-st-v">2</div><div class="scene-st-l">纠正</div></div></div>
     </div>
-
-    <div class="scene-card">
-      <div class="scene-header">
-        <div class="scene-icon miniapp">🛒</div>
-        <div class="scene-info"><div class="scene-name">鲜果优选 · 小程序客服</div><div class="scene-desc">小林分身值守中</div></div>
-        <div class="scene-status on">● 在线</div>
-      </div>
-      <div class="scene-stats">
-        <div class="scene-stat"><div class="scene-stat-value">89</div><div class="scene-stat-label">今日回复</div></div>
-        <div class="scene-stat-divider"></div>
-        <div class="scene-stat"><div class="scene-stat-value">96%</div><div class="scene-stat-label">满意度</div></div>
-        <div class="scene-stat-divider"></div>
-        <div class="scene-stat"><div class="scene-stat-value">5</div><div class="scene-stat-label">纠正</div></div>
-      </div>
+    <div class="scene-card" onclick="showSub('scene-detail2')">
+      <div class="scene-hdr"><div class="scene-ico miniapp">🛒</div><div class="scene-info"><div class="scene-name">鲜果优选 · 小程序客服</div><div class="scene-desc">小林分身值守中</div></div><div class="scene-status on">● 在线</div></div>
+      <div class="scene-stats"><div class="scene-st"><div class="scene-st-v">89</div><div class="scene-st-l">今日回复</div></div><div class="scene-div"></div><div class="scene-st"><div class="scene-st-v">96%</div><div class="scene-st-l">满意度</div></div><div class="scene-div"></div><div class="scene-st"><div class="scene-st-v">5</div><div class="scene-st-l">纠正</div></div></div>
     </div>
-
-    <div class="scene-card" style="opacity:0.6">
-      <div class="scene-header">
-        <div class="scene-icon wecom">💬</div>
-        <div class="scene-info"><div class="scene-name">企业微信 · 客户群</div><div class="scene-desc">暂停值守</div></div>
-        <div class="scene-status off">○ 离线</div>
+    <div class="scene-card" style="opacity:0.5">
+      <div class="scene-hdr"><div class="scene-ico wecom">💬</div><div class="scene-info"><div class="scene-name">企业微信 · 客户群</div><div class="scene-desc">暂停值守</div></div><div class="scene-status off">○ 离线</div></div>
+    </div>
+    <div class="add-scene" onclick="showSub('add-scene')"><span class="add-scene-icon">+</span><span class="add-scene-text">添加新工作场景</span></div>
+    <div class="sec-title mt10">🏪 接入别的小程序当客服</div>
+    <div class="card mb10"><div class="card-pad">
+      <div style="font-size:11px;font-weight:600;color:#1e293b;margin-bottom:6px">两种接入方式</div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <div style="flex:1;padding:8px;background:#f8f9fc;border-radius:8px"><div style="font-size:10px;font-weight:600;color:#16a34a">A. 托管回调</div><div style="font-size:8px;color:#94a3b8;line-height:1.4;margin-top:2px">对方小程序后台填我们URL → 零开发</div></div>
+        <div style="flex:1;padding:8px;background:#f8f9fc;border-radius:8px"><div style="font-size:10px;font-weight:600;color:#6366f1">B. API调用</div><div style="font-size:8px;color:#94a3b8;line-height:1.4;margin-top:2px">对方后端调我们API → 更灵活</div></div>
       </div>
-    </div>
-
-    <!-- 添加新场景 -->
-    <div class="add-scene">
-      <span class="add-scene-icon">+</span>
-      <span class="add-scene-text">添加新工作场景</span>
-    </div>
-
-    <!-- 接入别的小程序 -->
-    <div class="sec-title" style="margin-top:6px">🏪 接入别的小程序当客服</div>
-    <div class="card" style="margin-bottom:8px">
-      <div class="card-pad">
-        <div style="font-size:11px;font-weight:600;color:#1e293b;margin-bottom:6px">两种接入方式</div>
-        <div style="display:flex;gap:6px;margin-bottom:8px">
-          <div style="flex:1;padding:8px;background:#f8f9fc;border-radius:8px">
-            <div style="font-size:10px;font-weight:600;color:#16a34a">A. 托管回调</div>
-            <div style="font-size:8px;color:#94a3b8;line-height:1.4;margin-top:2px">对方小程序后台填我们URL → 我们替他回复 → 对方零开发</div>
-          </div>
-          <div style="flex:1;padding:8px;background:#f8f9fc;border-radius:8px">
-            <div style="font-size:10px;font-weight:600;color:#6366f1">B. API调用</div>
-            <div style="font-size:8px;color:#94a3b8;line-height:1.4;margin-top:2px">对方后端调我们API → 拿到回复自己发 → 更灵活</div>
-          </div>
-        </div>
-        <div style="font-size:9px;color:#64748b;line-height:1.5">
-          <b>分身怎么学？</b>商家上传产品资料 + 纠正3-5次 = 分身学会该商家风格。通用技巧回流到你的分身本体，商家专属知识只在那个小程序用。
-        </div>
-      </div>
-    </div>
-
-    <!-- 纠正示例 -->
+      <div style="font-size:9px;color:#64748b;line-height:1.5"><b>分身怎么学？</b>商家上传产品资料+纠正3-5次=学会商家风格。通用技巧回流你的分身，商家专属知识只在那个小程序用。</div>
+    </div></div>
     <div class="sec-title">✏️ 今天的纠正</div>
-    <div class="card" style="margin-bottom:6px">
-      <div class="card-pad" style="padding:10px 12px">
-        <div style="font-size:9px;color:#94a3b8;margin-bottom:4px">鲜果优选 · 用户问"坏果怎么赔"</div>
-        <div class="correct-box wrong"><div class="correct-label wrong">❌ 分身原版</div><div class="correct-text wrong">坏果包赔的，放心买。</div></div>
-        <div class="correct-box right"><div class="correct-label right">✅ 你纠正后</div><div class="correct-text right">坏果包赔！收到24小时内拍照发来，按颗赔付不啰嗦。每年售后率不到2%，品质放心。</div></div>
-        <div style="padding:4px 8px;background:rgba(99,102,241,0.04);border-radius:4px;font-size:8px;color:#475569;line-height:1.5;margin-top:4px">
-          🧠 学到：售后承诺要具体化+数据佐证 <span class="lr-target t-style">→ 鲜果优选风格</span>
-        </div>
+    <div class="card"><div class="card-pad" style="padding:10px 12px">
+      <div style="font-size:9px;color:#94a3b8;margin-bottom:4px">鲜果优选 · 用户问"坏果怎么赔"</div>
+      <div class="corr-box wrong"><div class="corr-label wrong">❌ 分身原版</div><div class="corr-text wrong">坏果包赔的，放心买。</div></div>
+      <div class="corr-box right"><div class="corr-label right">✅ 你纠正后</div><div class="corr-text right">坏果包赔！收到24小时内拍照发来，按颗赔付不啰嗦。每年售后率不到2%，品质放心。</div></div>
+      <div style="padding:4px 8px;background:rgba(99,102,241,0.04);border-radius:4px;font-size:8px;color:#475569;line-height:1.5;margin-top:4px">🧠 学到：售后承诺要具体化+数据佐证 <span class="lr-target t-style">→ 鲜果优选风格</span></div>
+    </div></div>
+    <div style="margin-top:10px;padding:10px 12px;background:rgba(34,197,94,0.04);border:1px solid rgba(34,197,94,0.1);border-radius:12px">
+      <div style="font-size:10px;font-weight:600;color:#166534;margin-bottom:4px">💰 收益入口</div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div><span style="font-size:20px;font-weight:800;color:#16a34a">¥1,286</span><span style="font-size:10px;color:#94a3b8;margin-left:4px">累计收益</span></div>
+        <button class="btn btn-primary btn-sm" onclick="showSub('income')">查看收益 →</button>
       </div>
     </div>
-  </div>
-  <div class="bottom-tabs">
-    <div class="tab-item"><span class="tab-icon">🏠</span><span class="tab-text">分身</span></div>
-    <div class="tab-item"><span class="tab-icon">📚</span><span class="tab-text">学习</span></div>
-    <div class="tab-item"><span class="tab-icon">🧠</span><span class="tab-text">人格</span></div>
-    <div class="tab-item"><span class="tab-icon">⚡</span><span class="tab-text">技能</span></div>
-    <div class="tab-item active"><span class="tab-icon">🖥️</span><span class="tab-text">工作台</span></div>
   </div>
 </div>
 
-<!-- ==================== ⑥ 收益中心 ==================== -->
-<div class="phone-frame">
-  <div class="page-label">⑥ 收益中心 — 变现闭环</div>
-  <div class="page-header amber">
-    <div class="header-deco"><div class="h-circle hc1"></div><div class="h-circle hc2"></div></div>
-    <div class="header-title">收益中心</div>
-    <div class="header-sub">你的分身 · 你的技能 · 你的收入</div>
+<!-- ===== 子页面 ===== -->
+
+<!-- 分身详情 -->
+<div class="subpage" id="sub-avatar-detail">
+  <div class="hdr purple"><span class="hdr-back" onclick="hideSub()">‹</span><div class="hdr-title">小林分身</div></div>
+  <div class="pad">
+    <div class="sim-gauge mb10"><div class="sim-ring" style="--pct:82%"><div class="sim-ring-in"><span class="sim-v">82%</span><span class="sim-l">相似度</span></div></div><div class="sim-rows"><div class="sim-row"><span class="sim-rl">底线层</span><div class="sim-bar"><div class="sim-bf h" style="width:100%"></div></div><span class="sim-pct">100%</span></div><div class="sim-row"><span class="sim-rl">判断层</span><div class="sim-bar"><div class="sim-bf m" style="width:78%"></div></div><span class="sim-pct">78%</span></div><div class="sim-row"><span class="sim-rl">风格层</span><div class="sim-bar"><div class="sim-bf m" style="width:85%"></div></div><span class="sim-pct">85%</span></div><div class="sim-row"><span class="sim-rl">知识层</span><div class="sim-bar"><div class="sim-bf l" style="width:64%"></div></div><span class="sim-pct">64%</span></div></div></div>
+    <div class="stats-row mb10"><div class="stat-item"><div class="stat-v">42</div><div class="stat-l">总学习条</div></div><div class="stat-item"><div class="stat-v">3</div><div class="stat-l">技能</div></div><div class="stat-item"><div class="stat-v">2</div><div class="stat-l">工作场景</div></div><div class="stat-item"><div class="stat-v" style="color:#16a34a">¥642</div><div class="stat-l">本月收入</div></div></div>
+    <div class="sec-title">最近动态</div>
+    <div class="lr"><span class="lr-icon">💬</span><span class="lr-text">在鲜果优选纠正了1条回复 → 学到"售后要具体化+数据佐证"<span class="lr-target t-style">→ 风格层</span></span></div>
+    <div class="lr"><span class="lr-icon">📚</span><span class="lr-text">上传了"产品手册v3.2.pdf" → 提取38个功能点+12个FAQ<span class="lr-target t-knowledge">→ 知识层</span></span></div>
+    <div class="lr"><span class="lr-icon">⚡</span><span class="lr-text">提炼出新技能"价格异议化解术" → 已上架<span class="lr-target t-skill">→ 新技能</span></span></div>
+    <div class="sec-title mt10">快捷操作</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-primary btn-sm" onclick="showSub('feed')">📚 喂资料</button>
+      <button class="btn btn-sm" style="background:rgba(59,130,246,0.08);color:#3b82f6" onclick="showSub('dialogue-teach')">💬 对话教学</button>
+      <button class="btn btn-sm" style="background:rgba(245,158,11,0.08);color:#d97706" onclick="switchTab(2)">🧠 人格画像</button>
+      <button class="btn btn-sm" style="background:rgba(34,197,94,0.08);color:#16a34a" onclick="switchTab(4)">🖥️ 工作台</button>
+    </div>
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid #f1f5f9">
+      <button class="btn btn-danger btn-sm" onclick="showModal('delete-avatar-modal')">删除分身</button>
+    </div>
   </div>
-  <div class="content-area">
-    <div class="income-card" style="margin-bottom:10px">
-      <div><div class="income-total-label">累计收益</div><div class="income-total-value">¥1,286</div></div>
-      <div class="income-breakdown">
-        <div class="income-row"><div class="income-dot" style="background:#6366f1"></div><span class="income-row-label">技能出租</span><span class="income-row-value">¥642</span></div>
-        <div class="income-row"><div class="income-dot" style="background:#16a34a"></div><span class="income-row-label">小程序客服</span><span class="income-row-value">¥386</span></div>
-        <div class="income-row"><div class="income-dot" style="background:#3b82f6"></div><span class="income-row-label">飞书群聊</span><span class="income-row-value">¥258</span></div>
+</div>
+
+<!-- 喂资料 -->
+<div class="subpage" id="sub-feed">
+  <div class="hdr blue"><span class="hdr-back" onclick="hideSub()">‹</span><div class="hdr-title">喂资料</div></div>
+  <div class="pad">
+    <div class="sec-desc mb10">上传文档、聊天记录、网页链接，分身自动提取知识和说话习惯</div>
+    <div class="upload-grid mb10">
+      <div class="upload-item" onclick="showModal('upload-modal')"><span class="upload-icon">📄</span><span class="upload-label">文档</span><span class="upload-hint">PDF/Word/Excel<br>产品手册、方案</span></div>
+      <div class="upload-item" onclick="showSub('import-chat')"><span class="upload-icon">💬</span><span class="upload-label">聊天记录</span><span class="upload-hint">导出微信聊天<br>学说话方式</span></div>
+      <div class="upload-item" onclick="showModal('url-modal')"><span class="upload-icon">🔗</span><span class="upload-label">网页链接</span><span class="upload-hint">粘贴URL<br>自动抓取</span></div>
+      <div class="upload-item" onclick="showModal('manual-input-modal')"><span class="upload-icon">✍️</span><span class="upload-label">手动输入</span><span class="upload-hint">写你遇到的<br>情况和处理</span></div>
+    </div>
+    <div class="sec-title">已上传资料</div>
+    <div class="file-item"><span class="file-icon">📄</span><div class="file-info"><div class="file-name">产品手册v3.2.pdf</div><div class="file-meta">38个功能点 · 12个FAQ · 写入知识层</div></div><span class="file-status done">已学习</span></div>
+    <div class="file-item"><span class="file-icon">💬</span><div class="file-info"><div class="file-name">客户群聊天记录.txt</div><div class="file-meta">2,340条 · 23条决策偏好 · 写入风格+判断</div></div><span class="file-status done">已学习</span></div>
+    <div class="file-item"><span class="file-icon">📄</span><div class="file-info"><div class="file-name">竞品分析报告.docx</div><div class="file-meta">解析中...</div></div><span class="file-status proc">学习中</span></div>
+  </div>
+</div>
+
+<!-- 对话教学 -->
+<div class="subpage" id="sub-dialogue-teach">
+  <div class="hdr blue"><span class="hdr-back" onclick="hideSub()">‹</span><div class="hdr-title">对话教学</div></div>
+  <div class="pad">
+    <div class="steps mb10"><div class="step"><div class="step-dot done">1</div></div><div class="step-line done"></div><div class="step"><div class="step-dot current">2</div></div><div class="step-line"></div><div class="step"><div class="step-dot pending">3</div></div><div class="step-line"></div><div class="step"><div class="step-dot pending">4</div></div><div class="step-line"></div><div class="step"><div class="step-dot pending">5</div></div></div>
+    <div style="text-align:center;font-size:9px;color:#94a3b8;margin-bottom:10px">第2轮 / 共5轮 · 预计3分钟</div>
+    <div class="card mb10"><div class="card-pad" style="padding:10px 12px">
+      <div class="chat-bubble q"><div class="chat-label">🧑 模拟场景：客户问"怎么收费的"</div>你会怎么回复？教教分身</div>
+      <div class="chat-bubble a"><div class="chat-label">✍️ 你的示范</div>您好！我们按使用量收费，基础版298/月含500次调用。要不帮您测算一下用量？推荐最划算的方案 😊</div>
+      <div class="chat-bubble q"><div class="chat-label">🧑 客户说"太贵了"</div>你怎么回？</div>
+      <div class="chat-input-bar"><input class="chat-input" placeholder="输入你的回复方式..." readonly><button class="chat-send">↑</button></div>
+    </div></div>
+    <div class="tip tip-green">💡 示范越具体，分身学得越好。不光写"说什么"，也可以写"为什么这么说"</div>
+    <div class="sec-title mt10">本轮已学到</div>
+    <div class="lr"><span class="lr-icon">🎨</span><span class="lr-text">先报价再反问需求，不先问预算<span class="lr-target t-style">→ 风格层</span></span></div>
+    <div class="lr"><span class="lr-icon">⚖️</span><span class="lr-text">嫌贵时：算单次成本对比+降低门槛<span class="lr-target t-judge">→ 判断层</span></span></div>
+  </div>
+</div>
+
+<!-- 导入聊天记录 -->
+<div class="subpage" id="sub-import-chat">
+  <div class="hdr blue"><span class="hdr-back" onclick="hideSub()">‹</span><div class="hdr-title">导入聊天记录</div></div>
+  <div class="pad">
+    <div class="sec-desc mb10">导出微信/QQ聊天记录，分身自动提取你的说话习惯、决策模式、知识信息</div>
+    <div class="card mb10"><div class="card-pad">
+      <div style="font-size:11px;font-weight:600;color:#1e293b;margin-bottom:8px">📋 如何导出微信聊天记录？</div>
+      <div style="font-size:9px;color:#64748b;line-height:1.6">
+        1. 打开微信 → 进入聊天 → 右上角"..."→ 聊天记录迁移<br>
+        2. 选择"导出聊天记录"→ 以文本形式发送到邮箱<br>
+        3. 将导出的txt文件上传到此处<br>
+        4. 分身自动解析 → 提取风格+判断+知识
+      </div>
+    </div></div>
+    <div style="padding:30px;background:#f8f9fc;border-radius:14px;border:1.5px dashed #e2e8f0;text-align:center;margin-bottom:10px;cursor:pointer" onclick="showModal('upload-modal')">
+      <div style="font-size:32px;margin-bottom:6px">📤</div>
+      <div style="font-size:12px;font-weight:600;color:#334155">点击上传聊天记录文件</div>
+      <div style="font-size:9px;color:#94a3b8;margin-top:2px">支持 .txt / .csv 格式</div>
+    </div>
+    <div class="tip tip-amber">⚠️ 聊天记录仅在你的分身中使用，不会上传到任何第三方。你可以选择只导入部分聊天。</div>
+  </div>
+</div>
+
+<!-- 纠正记录 -->
+<div class="subpage" id="sub-corrections">
+  <div class="hdr blue"><span class="hdr-back" onclick="hideSub()">‹</span><div class="hdr-title">纠正记录</div></div>
+  <div class="pad">
+    <div class="stats-row mb10"><div class="stat-item"><div class="stat-v">23</div><div class="stat-l">总纠正</div></div><div class="stat-item"><div class="stat-v">5</div><div class="stat-l">已升级硬规则</div></div><div class="stat-item"><div class="stat-v">18%</div><div class="stat-l">纠正率</div></div></div>
+    <div class="sec-title">纠正分级机制</div>
+    <div class="card mb10"><div class="card-pad" style="padding:10px 12px">
+      <div style="display:flex;flex-direction:column;gap:6px;font-size:9px;color:#475569;line-height:1.5">
+        <div><span style="display:inline-block;padding:1px 6px;background:rgba(59,130,246,0.08);color:#3b82f6;border-radius:3px;font-weight:600;font-size:8px">1次</span> 纠正 → 标记"待观察"，写入风格层</div>
+        <div><span style="display:inline-block;padding:1px 6px;background:rgba(139,92,246,0.08);color:#8b5cf6;border-radius:3px;font-weight:600;font-size:8px">2次</span> 同方向 → 标记"已学习"，强化风格层</div>
+        <div><span style="display:inline-block;padding:1px 6px;background:rgba(239,68,68,0.08);color:#ef4444;border-radius:3px;font-weight:600;font-size:8px">3次</span> 同方向 → 升级为"硬规则"，写入判断层，强制执行</div>
+        <div><span style="display:inline-block;padding:1px 6px;background:rgba(220,38,38,0.08);color:#dc2626;border-radius:3px;font-weight:600;font-size:8px">触碰红线</span> → 直接写入底线层</div>
+      </div>
+    </div></div>
+    <div class="sec-title">今日纠正</div>
+    <div class="card mb6"><div class="card-pad" style="padding:10px 12px">
+      <div style="font-size:9px;color:#94a3b8;margin-bottom:4px">鲜果优选 · 用户问"坏果怎么赔"</div>
+      <div class="corr-box wrong"><div class="corr-label wrong">❌ 分身原版</div><div class="corr-text wrong">坏果包赔的，放心买。</div></div>
+      <div class="corr-box right"><div class="corr-label right">✅ 你纠正后</div><div class="corr-text right">坏果包赔！收到24小时内拍照发来，按颗赔付不啰嗦。每年售后率不到2%，品质放心。</div></div>
+      <div style="padding:4px 8px;background:rgba(99,102,241,0.04);border-radius:4px;font-size:8px;color:#475569;margin-top:4px">🧠 学到：售后承诺要具体化+数据佐证 <span class="lr-target t-style">→ 风格层(第1次)</span></div>
+    </div></div>
+    <div class="card mb6"><div class="card-pad" style="padding:10px 12px">
+      <div style="font-size:9px;color:#94a3b8;margin-bottom:4px">飞书群 · 同事问"方案A还是B"</div>
+      <div class="corr-box wrong"><div class="corr-label wrong">❌ 分身原版</div><div class="corr-text wrong">方案A比较好，我推荐A。</div></div>
+      <div class="corr-box right"><div class="corr-label right">✅ 你纠正后</div><div class="corr-text right">两个方案各有利弊：A快但风险高，B稳但周期长。如果时间紧选A，求稳选B。你的优先级是？</div></div>
+      <div style="padding:4px 8px;background:rgba(239,68,68,0.04);border-radius:4px;font-size:8px;color:#475569;margin-top:4px">🧠 学到：不给单一推荐，列利弊让对方选 <span class="lr-target t-judge">→ 判断层(第3次同类，升级硬规则)</span></div>
+    </div></div>
+  </div>
+</div>
+
+<!-- 技能详情 -->
+<div class="subpage" id="sub-skill-detail">
+  <div class="hdr amber"><span class="hdr-back" onclick="hideSub()">‹</span><div class="hdr-title">价格异议化解术</div></div>
+  <div class="pad">
+    <div class="stats-row mb10"><div class="stat-item"><div class="stat-v">324</div><div class="stat-l">总使用</div></div><div class="stat-item"><div class="stat-v">4.7</div><div class="stat-l">评分</div></div><div class="stat-item"><div class="stat-v">6</div><div class="stat-l">小程序</div></div><div class="stat-item"><div class="stat-v" style="color:#16a34a">¥642</div><div class="stat-l">总收入</div></div></div>
+    <div class="sec-title">技能构成</div>
+    <div class="card mb10"><div class="card-pad" style="padding:10px 12px;font-size:9px;color:#475569;line-height:1.7">
+      <div><b style="color:#1e293b">场景：</b>客户/用户认为价格过高时</div>
+      <div><b style="color:#1e293b">触发：</b>消息含"贵""太贵""便宜""优惠""别人家"</div>
+      <div><b style="color:#1e293b">决策链：</b></div>
+      <div style="padding-left:8px">1. 先共情（理解比较/确实不便宜）</div>
+      <div style="padding-left:8px">2. 拆解单价（算到每次/每天/每件成本）</div>
+      <div style="padding-left:8px">3. 强调差异（和低价选项的品质/服务差异）</div>
+      <div style="padding-left:8px">4. 降低门槛（试用/小份量/首单优惠）</div>
+      <div><b style="color:#1e293b">底线：</b>不主动降价超10%，不贬低竞品</div>
+      <div><b style="color:#1e293b">风格：</b>使用小林分身的说话方式</div>
+    </div></div>
+    <div class="sec-title">来源证据</div>
+    <div class="card mb10"><div class="card-pad" style="padding:10px 12px;font-size:9px;color:#475569;line-height:1.6">
+      <div>📍 鲜果优选客服对话 · 893条</div>
+      <div>📍 客户嫌贵纠正 · 23次（含5次硬规则纠正）</div>
+      <div>📍 飞书群聊价格讨论 · 12条</div>
+      <div style="margin-top:6px;font-size:8px;color:#94a3b8">提炼时间：2024-12-15 · 确认人：小林</div>
+    </div></div>
+    <div class="sec-title">定价设置</div>
+    <div class="card mb10"><div class="card-pad" style="padding:10px 12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:10px;color:#1e293b;font-weight:600">按次付费</span><span style="font-size:14px;font-weight:700;color:#6366f1">¥3/次</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:10px;color:#1e293b;font-weight:600">状态</span><span style="font-size:10px;color:#16a34a;font-weight:600">已上架</span></div>
+    </div></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary btn-sm" style="flex:1" onclick="showModal('skill-price-modal')">修改定价</button>
+      <button class="btn btn-ghost btn-sm" style="flex:1">下架</button>
+    </div>
+  </div>
+</div>
+
+<!-- 提炼确认 -->
+<div class="subpage" id="sub-extract-confirm">
+  <div class="hdr amber"><span class="hdr-back" onclick="hideSub()">‹</span><div class="hdr-title">提炼新技能</div></div>
+  <div class="pad">
+    <div style="text-align:center;padding:10px 0 14px"><span style="font-size:40px">⚡</span><div style="font-size:16px;font-weight:700;color:#1e293b;margin-top:4px">价格异议化解术</div><div style="font-size:10px;color:#94a3b8;margin-top:2px">从你的真实行为中提炼</div></div>
+    <div class="sec-title">技能构成（AI生成，你可以修改）</div>
+    <div class="form-group"><label class="form-label">场景描述</label><input class="form-input" value="客户/用户认为价格过高时"></div>
+    <div class="form-group"><label class="form-label">触发条件</label><input class="form-input" value="消息含"贵""太贵""便宜""优惠""></div>
+    <div class="form-group"><label class="form-label">决策链</label><textarea class="form-textarea" style="min-height:100px">1. 先共情（理解比较/确实不便宜）
+2. 拆解单价（算到每次/每天/每件成本）
+3. 强调差异（和低价选项的品质/服务差异）
+4. 降低门槛（试用/小份量/首单优惠）</textarea></div>
+    <div class="form-group"><label class="form-label">底线约束</label><input class="form-input" value="不主动降价超10%，不贬低竞品"></div>
+    <div class="sec-title">来源证据</div>
+    <div class="card mb10"><div class="card-pad" style="padding:8px 10px;font-size:9px;color:#475569;line-height:1.6">
+      <div>📍 鲜果优选客服对话 · 893条</div>
+      <div>📍 客户嫌贵纠正 · 23次</div>
+      <div>📍 飞书群聊价格讨论 · 12条</div>
+    </div></div>
+    <div class="sec-title">模拟测试</div>
+    <div class="card mb10"><div class="card-pad" style="padding:10px 12px">
+      <div style="font-size:9px;color:#94a3b8;margin-bottom:4px">测试场景：客户说"你们比别家贵了20%"</div>
+      <div class="chat-bubble a" style="margin-bottom:0"><div class="chat-label">分身回复</div>理解您的比较！确实价格稍高，但算到每天不到6毛钱，而且我们用的是智利JJJ级，果径34mm+。要不先来半斤试试？满意再买大的 😊</div>
+    </div></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" style="flex:1" onclick="showModal('extract-success-modal')">✅ 确认提炼并上架</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="hideSub()">暂不提炼</button>
+    </div>
+  </div>
+</div>
+
+<!-- 创建分身 -->
+<div class="subpage" id="sub-create-avatar">
+  <div class="hdr purple"><span class="hdr-back" onclick="hideSub()">‹</span><div class="hdr-title">创建分身</div></div>
+  <div class="pad">
+    <div class="steps mb10"><div class="step"><div class="step-dot current">1</div></div><div class="step-line"></div><div class="step"><div class="step-dot pending">2</div></div><div class="step-line"></div><div class="step"><div class="step-dot pending">3</div></div></div>
+    <div style="text-align:center;font-size:9px;color:#94a3b8;margin-bottom:14px">Step 1 / 3 · 基本信息</div>
+    <div class="form-group"><label class="form-label">分身名称</label><input class="form-input" placeholder="给你的分身起个名字"></div>
+    <div class="form-group"><label class="form-label">你的职业</label><div class="tag-select"><span class="tag-opt">上班族</span><span class="tag-opt">创业者</span><span class="tag-opt">自由职业</span><span class="tag-opt">学生</span><span class="tag-opt">管理者</span><span class="tag-opt">其他</span></div></div>
+    <div class="form-group"><label class="form-label">你的行业</label><div class="tag-select"><span class="tag-opt">互联网</span><span class="tag-opt">电商</span><span class="tag-opt">教育</span><span class="tag-opt">金融</span><span class="tag-opt">医疗</span><span class="tag-opt">其他</span></div></div>
+    <div class="form-group"><label class="form-label">年龄段</label><div class="tag-select"><span class="tag-opt">18-24</span><span class="tag-opt">25-30</span><span class="tag-opt">31-35</span><span class="tag-opt">36-40</span><span class="tag-opt">40+</span></div></div>
+    <div class="tip tip-amber">💡 这些信息用于生成初始人格模板，创建后可随时修改</div>
+    <button class="btn btn-primary" style="width:100%;margin-top:10px" onclick="showSub('create-avatar-2')">下一步：5个场景快问快答 →</button>
+  </div>
+</div>
+
+<!-- 创建分身 Step2 -->
+<div class="subpage" id="sub-create-avatar-2">
+  <div class="hdr purple"><span class="hdr-back" onclick="hideSub()">‹</span><div class="hdr-title">快速画像</div></div>
+  <div class="pad">
+    <div class="steps mb10"><div class="step"><div class="step-dot done">✓</div></div><div class="step-line done"></div><div class="step"><div class="step-dot current">2</div></div><div class="step-line"></div><div class="step"><div class="step-dot pending">3</div></div></div>
+    <div style="text-align:center;font-size:9px;color:#94a3b8;margin-bottom:6px">第 1 题 / 共 5 题 · 预计3分钟</div>
+    <div class="progress-bar mb14"><div class="progress-fill" style="width:20%"></div></div>
+    <div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:4px">客户问你"你们怎么收费的"，你会怎么回？</div>
+    <div style="font-size:10px;color:#94a3b8;margin-bottom:14px">选择最接近你风格的回复</div>
+    <div class="qa-option" onclick="this.classList.toggle('selected')">A. 先问客户需求和预算，再推荐合适的方案</div>
+    <div class="qa-option" onclick="this.classList.toggle('selected')">B. 直接报价，再说包含什么，最后问要不要试</div>
+    <div class="qa-option" onclick="this.classList.toggle('selected')">C. 不说具体价格，先约个电话详细聊</div>
+    <div class="qa-option" onclick="this.classList.toggle('selected')">D. 给一个价格区间，让客户选</div>
+    <div style="margin-top:10px"><div class="form-label" style="margin-bottom:4px">或者自己写：</div><textarea class="form-textarea" style="min-height:60px" placeholder="用你自己的方式回复..."></textarea></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:10px">下一题 →</button>
+  </div>
+</div>
+
+<!-- 场景详情 -->
+<div class="subpage" id="sub-scene-detail">
+  <div class="hdr green"><span class="hdr-back" onclick="hideSub()">‹</span><div class="hdr-title">飞书 · 产品组群</div></div>
+  <div class="pad">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div><span style="font-size:9px;color:#94a3b8">值守状态</span><div style="font-size:12px;font-weight:600;color:#16a34a">● 在线</div></div>
+      <div class="switch on" onclick="this.classList.toggle('on')"></div>
+    </div>
+    <div class="stats-row mb10"><div class="stat-item"><div class="stat-v">45</div><div class="stat-l">今日回复</div></div><div class="stat-item"><div class="stat-v">2.1s</div><div class="stat-l">响应</div></div><div class="stat-item"><div class="stat-v">2</div><div class="stat-l">纠正</div></div><div class="stat-item"><div class="stat-v">96%</div><div class="stat-l">满意率</div></div></div>
+    <div class="sec-title">实时消息</div>
+    <div class="msg user"><div class="msg-avatar" style="background:#fef3c7;color:#d97706">张</div><div class="msg-body"><div class="msg-name">张伟 · 10:32</div><div class="msg-bubble">@小林 这个接口什么时候能好？客户催了</div></div></div>
+    <div class="msg bot"><div class="msg-avatar" style="background:#e0e7ff;color:#6366f1">林</div><div class="msg-body"><div class="msg-name">小林分身 · 10:32</div><div class="msg-bubble">理解催得急！当前进展：接口开发完成80%，预计明天下午联调。我会跟进确保按时交付，有变动第一时间同步 👍<div class="msg-bot-tag">分身回复</div><div class="msg-actions"><button class="msg-act correct" onclick="showModal('correct-modal')">✏️ 纠正</button><button class="msg-act good">👍 满意</button></div></div></div></div>
+    <div class="msg user"><div class="msg-avatar" style="background:#fce7f3;color:#db2777">李</div><div class="msg-body"><div class="msg-name">李梅 · 10:35</div><div class="msg-bubble">好的，明天下午能联调就行</div></div></div>
+    <div class="tip tip-blue mt6">💡 分身只在你被@时回复，不会主动发言。你可以随时纠正它的回复。</div>
+  </div>
+</div>
+
+<!-- 鲜果优选场景详情 -->
+<div class="subpage" id="sub-scene-detail2">
+  <div class="hdr green"><span class="hdr-back" onclick="hideSub()">‹</span><div class="hdr-title">鲜果优选 · 小程序客服</div></div>
+  <div class="pad">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div><span style="font-size:9px;color:#94a3b8">值守状态</span><div style="font-size:12px;font-weight:600;color:#16a34a">● 在线</div></div>
+      <div class="switch on" onclick="this.classList.toggle('on')"></div>
+    </div>
+    <div class="stats-row mb10"><div class="stat-item"><div class="stat-v">89</div><div class="stat-l">今日回复</div></div><div class="stat-item"><div class="stat-v">96%</div><div class="stat-l">满意度</div></div><div class="stat-item"><div class="stat-v">5</div><div class="stat-l">纠正</div></div><div class="stat-item"><div class="stat-v" style="color:#16a34a">¥386</div><div class="stat-l">本月收入</div></div></div>
+    <div class="sec-title">接入配置</div>
+    <div class="card mb10"><div class="card-pad" style="padding:10px 12px">
+      <div style="font-size:10px;font-weight:600;color:#1e293b;margin-bottom:6px">回调URL（复制给对方小程序后台）</div>
+      <div style="padding:8px;background:#f8f9fc;border-radius:6px;font-size:9px;color:#475569;word-break:break-all">https://mrlweb.51webjs.com/api/wechat-callback/xcx_freshfruit</div>
+      <button class="btn btn-sm btn-ghost mt6" style="margin-top:6px">📋 复制</button>
+    </div></div>
+    <div class="sec-title">今日纠正</div>
+    <div class="card mb6"><div class="card-pad" style="padding:10px 12px">
+      <div style="font-size:9px;color:#94a3b8;margin-bottom:4px">用户问"坏果怎么赔"</div>
+      <div class="corr-box wrong"><div class="corr-label wrong">❌ 分身原版</div><div class="corr-text wrong">坏果包赔的，放心买。</div></div>
+      <div class="corr-box right"><div class="corr-label right">✅ 你纠正后</div><div class="corr-text right">坏果包赔！收到24小时内拍照发来，按颗赔付不啰嗦。每年售后率不到2%，品质放心。</div></div>
+      <div style="padding:4px 8px;background:rgba(99,102,241,0.04);border-radius:4px;font-size:8px;color:#475569;margin-top:4px">🧠 学到：售后承诺要具体化+数据佐证 <span class="lr-target t-style">→ 鲜果优选风格</span></div>
+    </div></div>
+  </div>
+</div>
+
+<!-- 添加场景 -->
+<div class="subpage" id="sub-add-scene">
+  <div class="hdr green"><span class="hdr-back" onclick="hideSub()">‹</span><div class="hdr-title">添加工作场景</div></div>
+  <div class="pad">
+    <div class="sec-title">选择场景类型</div>
+    <div class="list-item" onclick="showSub('add-scene-feishu')"><span class="list-icon">🐦</span><div class="list-info"><div class="list-title">飞书群聊</div><div class="list-desc">WebSocket长连接，无需公网IP</div></div><span class="list-arrow">›</span></div>
+    <div class="list-item"><span class="list-icon">💬</span><div class="list-info"><div class="list-title">企业微信群</div><div class="list-desc">需备案域名（暂不可用）</div></div><span class="list-arrow" style="color:#ef4444;font-size:9px">需备案</span></div>
+    <div class="list-item" onclick="showSub('add-scene-miniapp')"><span class="list-icon">📱</span><div class="list-info"><div class="list-title">自己的小程序客服</div><div class="list-desc">微信小程序客服消息推送</div></div><span class="list-arrow">›</span></div>
+    <div class="list-item" onclick="showSub('add-scene-other')"><span class="list-icon">🏪</span><div class="list-info"><div class="list-title">别的小程序客服</div><div class="list-desc">你的分身去别人小程序当客服</div></div><span class="list-arrow">›</span></div>
+  </div>
+</div>
+
+<!-- 添加飞书群 -->
+<div class="subpage" id="sub-add-scene-feishu">
+  <div class="hdr green"><span class="hdr-back" onclick="hideSub()">‹</span><div class="hdr-title">接入飞书群聊</div></div>
+  <div class="pad">
+    <div class="card mb10"><div class="card-pad">
+      <div style="font-size:11px;font-weight:600;color:#1e293b;margin-bottom:8px">接入步骤</div>
+      <div style="font-size:9px;color:#475569;line-height:1.7">
+        <div><b>1.</b> 在飞书群中添加"莫瑞娜分身"机器人</div>
+        <div><b>2.</b> 选择你的哪个分身值守此群</div>
+        <div><b>3.</b> 设置值守规则（什么时候回复、什么时候转交你）</div>
+        <div><b>4.</b> 开启值守 → 分身开始自动回复</div>
+      </div>
+    </div></div>
+    <div class="form-group"><label class="form-label">选择分身</label>
+      <div style="display:flex;gap:8px">
+        <div style="padding:8px 12px;background:rgba(99,102,241,0.06);border:1.5px solid #6366f1;border-radius:10px;font-size:10px;color:#6366f1;font-weight:600">🧑 小林分身</div>
+        <div style="padding:8px 12px;background:#f8f9fc;border:1.5px solid #e2e8f0;border-radius:10px;font-size:10px;color:#64748b">🧑 小陈分身</div>
       </div>
     </div>
-
-    <div class="sec-title">本月收入明细</div>
-
-    <div class="income-item">
-      <div class="income-item-icon" style="background:rgba(34,197,94,0.08)">🛒</div>
-      <div class="income-item-info"><div class="income-item-name">鲜果优选 · 小程序客服</div><div class="income-item-meta">小林分身值守 · 893条回复 · 96%满意度</div></div>
-      <div class="income-item-value">¥386</div>
+    <div class="form-group"><label class="form-label">回复规则</label>
+      <div class="qa-option selected">仅在@分身时回复</div>
+      <div class="qa-option">所有消息都回复（谨慎使用）</div>
     </div>
-
-    <div class="income-item">
-      <div class="income-item-icon" style="background:rgba(59,130,246,0.08)">🐦</div>
-      <div class="income-item-info"><div class="income-item-name">飞书 · 产品组群</div><div class="income-item-meta">小林分身值守 · 234条回复</div></div>
-      <div class="income-item-value">¥258</div>
+    <div class="form-group"><label class="form-label">转交规则</label>
+      <div class="qa-option">涉及报价/合同 → 转交本人</div>
+      <div class="qa-option">无法回答时 → 转交本人</div>
+      <div class="qa-option">从不转交，分身全权处理</div>
     </div>
+    <button class="btn btn-primary" style="width:100%">开启值守</button>
+  </div>
+</div>
 
-    <div class="income-item">
-      <div class="income-item-icon" style="background:rgba(99,102,241,0.08)">💰</div>
-      <div class="income-item-info"><div class="income-item-name">价格异议化解术 · 按次出租</div><div class="income-item-meta">324次使用 · 6个小程序</div></div>
-      <div class="income-item-value">¥642</div>
+<!-- 接入别的小程序 -->
+<div class="subpage" id="sub-add-scene-other">
+  <div class="hdr green"><span class="hdr-back" onclick="hideSub()">‹</span><div class="hdr-title">接入别的小程序</div></div>
+  <div class="pad">
+    <div class="sec-desc mb10">你的分身去别人的小程序当客服，帮别人处理用户问题，你赚服务费。</div>
+    <div class="form-group"><label class="form-label">商家小程序名称</label><input class="form-input" placeholder="输入商家小程序名称"></div>
+    <div class="form-group"><label class="form-label">接入方式</label>
+      <div class="qa-option selected">A. 托管回调（对方零开发，最简单）</div>
+      <div class="qa-option">B. API调用（对方后端调我们，更灵活）</div>
     </div>
-
-    <div style="margin-top:10px;padding:10px 12px;background:rgba(34,197,94,0.04);border:1px solid rgba(34,197,94,0.1);border-radius:12px">
-      <div style="font-size:10px;font-weight:600;color:#166534;margin-bottom:4px">🔄 收入 → 学习 → 更高收入</div>
+    <div class="card mb10"><div class="card-pad" style="padding:10px 12px">
+      <div style="font-size:10px;font-weight:600;color:#1e293b;margin-bottom:6px">方式A：让对方小程序管理员操作</div>
       <div style="font-size:9px;color:#475569;line-height:1.6">
-        分身在鲜果优选值守2周 → 处理893条消息 → 被纠正23次 → 提炼出"价格异议化解术" → 上架技能市场 → 6个小程序租用 → 又赚了¥642。<br><br>
-        <b>越干活 → 越学习 → 技能越多 → 收入越高</b>
+        1. 复制下方回调URL<br>
+        2. 让对方在小程序后台 → 设置 → 消息推送 → 填入URL<br>
+        3. 我们自动接管客服消息<br>
+        4. 商家纠正3-5次 → 分身学会商家风格
+      </div>
+      <div style="margin-top:6px;padding:8px;background:#f8f9fc;border-radius:6px;font-size:9px;color:#475569;word-break:break-all">https://mrlweb.51webjs.com/api/wechat-callback/{接入码}</div>
+      <button class="btn btn-sm btn-ghost" style="margin-top:6px">📋 复制回调URL</button>
+    </div></div>
+    <div class="form-group"><label class="form-label">选择分身</label>
+      <div style="display:flex;gap:8px">
+        <div style="padding:8px 12px;background:rgba(99,102,241,0.06);border:1.5px solid #6366f1;border-radius:10px;font-size:10px;color:#6366f1;font-weight:600">🧑 小林分身</div>
+        <div style="padding:8px 12px;background:#f8f9fc;border:1.5px solid #e2e8f0;border-radius:10px;font-size:10px;color:#64748b">🧑 小陈分身</div>
       </div>
     </div>
+    <div class="form-group"><label class="form-label">月租定价</label><input class="form-input" value="299元/月"><div class="form-hint">平台抽成30%，你实收209元/月</div></div>
+    <button class="btn btn-primary" style="width:100%">生成接入码</button>
+  </div>
+</div>
 
-    <!-- 提现 -->
-    <div style="margin-top:10px;padding:14px;background:#fff;border-radius:14px;box-shadow:0 1px 6px rgba(0,0,0,0.03);text-align:center">
+<!-- 接入自己的小程序 -->
+<div class="subpage" id="sub-add-scene-miniapp">
+  <div class="hdr green"><span class="hdr-back" onclick="hideSub()">‹</span><div class="hdr-title">接入自己的小程序客服</div></div>
+  <div class="pad">
+    <div class="card mb10"><div class="card-pad">
+      <div style="font-size:11px;font-weight:600;color:#1e293b;margin-bottom:8px">配置步骤</div>
+      <div style="font-size:9px;color:#475569;line-height:1.7">
+        <div><b>1.</b> 登录小程序后台 → 设置 → 消息推送</div>
+        <div><b>2.</b> 下方回调URL填入</div>
+        <div><b>3.</b> 选择你的分身</div>
+        <div><b>4.</b> 开启 → 用户点"联系客服"时分身自动回复</div>
+      </div>
+    </div></div>
+    <div style="margin-bottom:10px;padding:10px;background:#f8f9fc;border-radius:10px">
+      <div style="font-size:10px;font-weight:600;color:#1e293b;margin-bottom:4px">回调URL</div>
+      <div style="font-size:9px;color:#475569;word-break:break-all">https://mrlweb.51webjs.com/api/wechat-callback/my_xcx</div>
+      <button class="btn btn-sm btn-ghost" style="margin-top:4px">📋 复制</button>
+    </div>
+    <div class="tip tip-amber">⚠️ 微信客服消息有48小时窗口限制：用户发消息后48小时内可回复，超时不能主动推送</div>
+    <div class="form-group"><label class="form-label">选择分身</label>
+      <div style="display:flex;gap:8px">
+        <div style="padding:8px 12px;background:rgba(99,102,241,0.06);border:1.5px solid #6366f1;border-radius:10px;font-size:10px;color:#6366f1;font-weight:600">🧑 小林分身</div>
+        <div style="padding:8px 12px;background:#f8f9fc;border:1.5px solid #e2e8f0;border-radius:10px;font-size:10px;color:#64748b">🧑 小陈分身</div>
+      </div>
+    </div>
+    <button class="btn btn-primary" style="width:100%">开启值守</button>
+  </div>
+</div>
+
+<!-- 收益中心 -->
+<div class="subpage" id="sub-income">
+  <div class="hdr amber"><span class="hdr-back" onclick="hideSub()">‹</span><div class="hdr-title">收益中心</div></div>
+  <div class="pad">
+    <div class="income-card mb10"><div><div class="inc-total-label">累计收益</div><div class="inc-total-value">¥1,286</div></div><div class="inc-breakdown"><div class="inc-row"><div class="inc-dot" style="background:#6366f1"></div><span class="inc-rl">技能出租</span><span class="inc-rv">¥642</span></div><div class="inc-row"><div class="inc-dot" style="background:#16a34a"></div><span class="inc-rl">小程序客服</span><span class="inc-rv">¥386</span></div><div class="inc-row"><div class="inc-dot" style="background:#3b82f6"></div><span class="inc-rl">飞书群聊</span><span class="inc-rv">¥258</span></div></div></div>
+    <div class="sec-title">本月收入明细</div>
+    <div class="inc-item"><div class="inc-ico" style="background:rgba(34,197,94,0.08)">🛒</div><div class="inc-info"><div class="inc-name">鲜果优选 · 小程序客服</div><div class="inc-meta">小林分身 · 893条回复 · 96%满意度</div></div><div class="inc-val">¥386</div></div>
+    <div class="inc-item"><div class="inc-ico" style="background:rgba(59,130,246,0.08)">🐦</div><div class="inc-info"><div class="inc-name">飞书 · 产品组群</div><div class="inc-meta">小林分身 · 234条回复</div></div><div class="inc-val">¥258</div></div>
+    <div class="inc-item"><div class="inc-ico" style="background:rgba(99,102,241,0.08)">💰</div><div class="inc-info"><div class="inc-name">价格异议化解术 · 按次出租</div><div class="inc-meta">324次使用 · 6个小程序</div></div><div class="inc-val">¥642</div></div>
+    <div class="tip tip-green mt10">🔄 越干活→越学习→技能越多→收入越高<br>分身在鲜果优选值守2周→处理893条→纠正23次→提炼出"价格异议化解术"→6个小程序租用→又赚¥642</div>
+    <div style="margin-top:10px;padding:14px;background:#fff;border-radius:14px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.03)">
       <div style="font-size:12px;font-weight:600;color:#1e293b;margin-bottom:2px">可提现余额</div>
       <div style="font-size:24px;font-weight:800;color:#16a34a">¥1,028</div>
-      <button style="margin-top:8px;padding:8px 40px;background:linear-gradient(135deg,#16a34a,#22c55e);border:none;border-radius:12px;color:#fff;font-size:12px;font-weight:600;cursor:pointer">提现</button>
+      <button class="btn btn-primary" style="margin-top:8px;padding:8px 40px" onclick="showModal('withdraw-modal')">提现</button>
     </div>
-  </div>
-  <div class="bottom-tabs">
-    <div class="tab-item"><span class="tab-icon">🏠</span><span class="tab-text">分身</span></div>
-    <div class="tab-item"><span class="tab-icon">📚</span><span class="tab-text">学习</span></div>
-    <div class="tab-item"><span class="tab-icon">🧠</span><span class="tab-text">人格</span></div>
-    <div class="tab-item"><span class="tab-icon">⚡</span><span class="tab-text">技能</span></div>
-    <div class="tab-item active"><span class="tab-icon">🖥️</span><span class="tab-text">工作台</span></div>
   </div>
 </div>
 
+<!-- 第二个分身详情 -->
+<div class="subpage" id="sub-avatar-detail2">
+  <div class="hdr green"><span class="hdr-back" onclick="hideSub()">‹</span><div class="hdr-title">小陈分身</div></div>
+  <div class="pad">
+    <div class="sim-gauge mb10"><div class="sim-ring" style="--pct:58%"><div class="sim-ring-in"><span class="sim-v">58%</span><span class="sim-l">相似度</span></div></div><div class="sim-rows"><div class="sim-row"><span class="sim-rl">底线层</span><div class="sim-bar"><div class="sim-bf h" style="width:80%"></div></div><span class="sim-pct">80%</span></div><div class="sim-row"><span class="sim-rl">判断层</span><div class="sim-bar"><div class="sim-bf l" style="width:45%"></div></div><span class="sim-pct">45%</span></div><div class="sim-row"><span class="sim-rl">风格层</span><div class="sim-bar"><div class="sim-bf m" style="width:62%"></div></div><span class="sim-pct">62%</span></div><div class="sim-row"><span class="sim-rl">知识层</span><div class="sim-bar"><div class="sim-bf l" style="width:40%"></div></div><span class="sim-pct">40%</span></div></div></div>
+    <div class="tip tip-amber">⚠️ 判断层和知识层相似度较低，建议通过对话教学和喂资料快速提升</div>
+    <div style="display:flex;gap:6px;margin-top:10px">
+      <button class="btn btn-primary btn-sm" onclick="showSub('feed')" style="flex:1">📚 喂资料</button>
+      <button class="btn btn-sm" style="flex:1;background:rgba(59,130,246,0.08);color:#3b82f6" onclick="showSub('dialogue-teach')">💬 对话教学</button>
+    </div>
+  </div>
 </div>
+
+  </div><!-- pages end -->
+
+  <!-- TabBar -->
+  <div class="tabbar">
+    <div class="tab active" onclick="switchTab(0)"><span class="tab-icon">🏠</span><span class="tab-text">分身</span></div>
+    <div class="tab" onclick="switchTab(1)"><span class="tab-icon">📚</span><span class="tab-text">学习</span></div>
+    <div class="tab" onclick="switchTab(2)"><span class="tab-icon">🧠</span><span class="tab-text">人格</span></div>
+    <div class="tab" onclick="switchTab(3)"><span class="tab-icon">⚡</span><span class="tab-text">技能</span></div>
+    <div class="tab" onclick="switchTab(4)"><span class="tab-icon">🖥️</span><span class="tab-text">工作台</span></div>
+  </div>
+
+  <!-- ===== 弹窗 ===== -->
+
+  <!-- 提炼通知弹窗 -->
+  <div class="modal-overlay" id="modal-extract-modal" onclick="if(event.target===this)hideModal()">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+      <div class="modal-handle"></div>
+      <div class="pad">
+        <div style="text-align:center;padding:10px 0"><span style="font-size:36px">⚡</span><div style="font-size:15px;font-weight:700;color:#1e293b;margin-top:4px">发现新技能</div></div>
+        <div style="font-size:12px;font-weight:600;color:#1e293b;margin-bottom:4px">价格异议化解术</div>
+        <div style="font-size:10px;color:#64748b;line-height:1.5;margin-bottom:12px">在鲜果优选客服对话893条中，客户嫌贵时你3次使用了"拆解单价→强调差异→提供试用"的模式。</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" style="flex:1" onclick="hideModal();showSub('extract-confirm')">确认提炼</button>
+          <button class="btn btn-ghost" style="flex:1" onclick="hideModal()">暂不</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 添加规则弹窗 -->
+  <div class="modal-overlay" id="modal-add-rule-modal" onclick="if(event.target===this)hideModal()">
+    <div class="modal-center" onclick="event.stopPropagation()">
+      <div style="padding:16px">
+        <div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:12px">添加规则</div>
+        <div class="form-group"><label class="form-label">写入哪层</label><div class="tag-select"><span class="tag-opt" onclick="this.classList.toggle('selected')">底线层</span><span class="tag-opt selected" onclick="this.classList.toggle('selected')">判断层</span><span class="tag-opt" onclick="this.classList.toggle('selected')">风格层</span><span class="tag-opt" onclick="this.classList.toggle('selected')">知识层</span></div></div>
+        <div class="form-group"><label class="form-label">规则描述</label><textarea class="form-textarea" placeholder="描述分身应该怎么做..."></textarea></div>
+        <div style="display:flex;gap:8px"><button class="btn btn-primary" style="flex:1" onclick="hideModal()">确认添加</button><button class="btn btn-ghost" style="flex:1" onclick="hideModal()">取消</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 规则详情弹窗 -->
+  <div class="modal-overlay" id="modal-rule-detail" onclick="if(event.target===this)hideModal()">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+      <div class="modal-handle"></div>
+      <div class="pad">
+        <div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:8px">规则详情</div>
+        <div style="font-size:10px;color:#475569;line-height:1.6;margin-bottom:8px">涉及报价必须转交本人确认，不可自行定价</div>
+        <div style="display:flex;gap:4px;margin-bottom:8px"><span class="pl-src src-manual">手动设置</span><span class="pl-conf conf-h">高置信</span></div>
+        <div style="font-size:9px;color:#94a3b8;margin-bottom:12px">创建于 2024-12-01 · 从未被纠正过</div>
+        <div class="form-group"><label class="form-label">置信度</label><div class="tag-select"><span class="tag-opt selected">高</span><span class="tag-opt">中</span><span class="tag-opt">低</span></div></div>
+        <div style="display:flex;gap:8px"><button class="btn btn-primary btn-sm" style="flex:1" onclick="hideModal()">保存</button><button class="btn btn-danger btn-sm" style="flex:1" onclick="hideModal()">删除</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 纠正弹窗 -->
+  <div class="modal-overlay" id="modal-correct-modal" onclick="if(event.target===this)hideModal()">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+      <div class="modal-handle"></div>
+      <div class="pad">
+        <div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:8px">纠正分身回复</div>
+        <div style="font-size:9px;color:#94a3b8;margin-bottom:6px">分身原版</div>
+        <div style="padding:8px 10px;background:#fef2f2;border-radius:8px;font-size:10px;color:#991b1b;line-height:1.5;margin-bottom:8px">理解催得急！当前进展：接口开发完成80%，预计明天下午联调。我会跟进确保按时交付，有变动第一时间同步 👍</div>
+        <div class="form-group"><label class="form-label">你应该怎么回？</label><textarea class="form-textarea" placeholder="输入你认为正确的回复..."></textarea></div>
+        <div class="form-group"><label class="form-label">这是你一贯的做法吗？</label><div class="qa-option selected">是的，这是我的固定模式（将写入判断层）</div><div class="qa-option">只是这次特殊情况</div></div>
+        <button class="btn btn-primary" style="width:100%" onclick="hideModal()">提交纠正</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 删除分身确认弹窗 -->
+  <div class="modal-overlay" id="modal-delete-avatar-modal" onclick="if(event.target===this)hideModal()">
+    <div class="modal-center" onclick="event.stopPropagation()">
+      <div style="padding:20px;text-align:center">
+        <div style="font-size:28px;margin-bottom:8px">⚠️</div>
+        <div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:4px">确认删除分身？</div>
+        <div style="font-size:10px;color:#64748b;line-height:1.5;margin-bottom:16px">删除后，该分身的所有学习记录、技能、工作场景配置将被永久清除，无法恢复。</div>
+        <div style="display:flex;gap:8px"><button class="btn btn-ghost" style="flex:1" onclick="hideModal()">取消</button><button class="btn btn-danger" style="flex:1" onclick="hideModal()">确认删除</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 提现弹窗 -->
+  <div class="modal-overlay" id="modal-withdraw-modal" onclick="if(event.target===this)hideModal()">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+      <div class="modal-handle"></div>
+      <div class="pad">
+        <div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:12px">提现</div>
+        <div style="font-size:10px;color:#94a3b8;margin-bottom:4px">可提现余额</div>
+        <div style="font-size:24px;font-weight:800;color:#16a34a;margin-bottom:12px">¥1,028</div>
+        <div class="form-group"><label class="form-label">提现金额</label><input class="form-input" value="1028"></div>
+        <div class="form-group"><label class="form-label">提现方式</label><div class="qa-option selected">微信零钱</div><div class="qa-option">银行卡</div></div>
+        <div style="font-size:9px;color:#94a3b8;margin-bottom:12px">预计1-3个工作日到账</div>
+        <button class="btn btn-primary" style="width:100%" onclick="hideModal()">确认提现</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 上传文件弹窗 -->
+  <div class="modal-overlay" id="modal-upload-modal" onclick="if(event.target===this)hideModal()">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+      <div class="modal-handle"></div>
+      <div class="pad">
+        <div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:12px">上传文档</div>
+        <div style="padding:30px;background:#f8f9fc;border-radius:14px;border:1.5px dashed #e2e8f0;text-align:center;margin-bottom:12px;cursor:pointer">
+          <div style="font-size:28px;margin-bottom:4px">📤</div>
+          <div style="font-size:12px;font-weight:600;color:#334155">点击选择文件</div>
+          <div style="font-size:9px;color:#94a3b8;margin-top:2px">支持 PDF / Word / Excel / TXT</div>
+        </div>
+        <div class="form-group"><label class="form-label">资料类型（帮助分身更好理解）</label><div class="tag-select"><span class="tag-opt" onclick="this.classList.toggle('selected')">产品手册</span><span class="tag-opt" onclick="this.classList.toggle('selected')">业务流程</span><span class="tag-opt" onclick="this.classList.toggle('selected')">FAQ</span><span class="tag-opt" onclick="this.classList.toggle('selected')">行业知识</span><span class="tag-opt" onclick="this.classList.toggle('selected')">其他</span></div></div>
+        <button class="btn btn-primary" style="width:100%" onclick="hideModal()">开始学习</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 网页链接弹窗 -->
+  <div class="modal-overlay" id="modal-url-modal" onclick="if(event.target===this)hideModal()">
+    <div class="modal-center" onclick="event.stopPropagation()">
+      <div style="padding:16px">
+        <div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:12px">粘贴网页链接</div>
+        <div class="form-group"><label class="form-label">URL</label><input class="form-input" placeholder="https://..."></div>
+        <div style="display:flex;gap:8px"><button class="btn btn-primary" style="flex:1" onclick="hideModal()">开始学习</button><button class="btn btn-ghost" style="flex:1" onclick="hideModal()">取消</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 手动输入弹窗 -->
+  <div class="modal-overlay" id="modal-manual-input-modal" onclick="if(event.target===this)hideModal()">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+      <div class="modal-handle"></div>
+      <div class="pad">
+        <div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:12px">手动输入知识</div>
+        <div class="form-group"><label class="form-label">你遇到什么情况？</label><textarea class="form-textarea" placeholder="比如：客户经常问我XX问题..."></textarea></div>
+        <div class="form-group"><label class="form-label">你怎么处理的？</label><textarea class="form-textarea" placeholder="比如：我一般先了解需求，然后..."></textarea></div>
+        <button class="btn btn-primary" style="width:100%" onclick="hideModal()">提交学习</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 技能定价弹窗 -->
+  <div class="modal-overlay" id="modal-skill-price-modal" onclick="if(event.target===this)hideModal()">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+      <div class="modal-handle"></div>
+      <div class="pad">
+        <div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:12px">修改定价</div>
+        <div class="form-group"><label class="form-label">按次付费</label><input class="form-input" value="3"></div>
+        <div class="form-group"><label class="form-label">按月订阅</label><input class="form-input" value="99"></div>
+        <div style="font-size:9px;color:#94a3b8;margin-bottom:12px">平台抽成20%，你实收80%</div>
+        <div style="display:flex;gap:8px"><button class="btn btn-primary" style="flex:1" onclick="hideModal()">保存</button><button class="btn btn-ghost" style="flex:1" onclick="hideModal()">取消</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 提炼成功弹窗 -->
+  <div class="modal-overlay" id="modal-extract-success-modal" onclick="if(event.target===this)hideModal()">
+    <div class="modal-center" onclick="event.stopPropagation()">
+      <div style="padding:24px;text-align:center">
+        <div style="font-size:40px;margin-bottom:8px">🎉</div>
+        <div style="font-size:16px;font-weight:700;color:#1e293b;margin-bottom:4px">技能提炼成功！</div>
+        <div style="font-size:10px;color:#64748b;line-height:1.5;margin-bottom:16px">"价格异议化解术"已上架技能市场<br>前7天为试运行期，你随时可以调整</div>
+        <button class="btn btn-primary" style="width:100%" onclick="hideModal();hideSub()">查看技能</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- device end -->
+
+<script>
+// 时钟
+function updateClock(){const d=new Date();document.getElementById('clock').textContent=d.getHours()+':'+String(d.getMinutes()).padStart(2,'0')}
+updateClock();setInterval(updateClock,30000);
+
+// Tab切换
+const pages=['page-home','page-learn','page-persona','page-skill','page-workbench'];
+const tabs=document.querySelectorAll('.tab');
+function switchTab(i){
+  pages.forEach(p=>document.getElementById(p).classList.remove('active'));
+  document.getElementById(pages[i]).classList.add('active');
+  tabs.forEach(t=>t.classList.remove('active'));
+  tabs[i].classList.add('active');
+  // 关闭所有子页面
+  document.querySelectorAll('.subpage').forEach(s=>s.classList.remove('active'));
+}
+
+// 子页面
+function showSub(id){document.getElementById('sub-'+id).classList.add('active');document.getElementById('sub-'+id).scrollTop=0}
+function hideSub(){const actives=document.querySelectorAll('.subpage.active');if(actives.length)actives[actives.length-1].classList.remove('active')}
+
+// 弹窗
+function showModal(id){document.getElementById('modal-'+id).classList.add('active')}
+function hideModal(){document.querySelectorAll('.modal-overlay.active').forEach(m=>m.classList.remove('active'))}
+
+// 人格层展开/折叠
+function togglePl(hdr){
+  const body=hdr.nextElementSibling;
+  const arrow=hdr.querySelector('.pl-arrow');
+  if(body.style.display==='none'){body.style.display='flex';arrow.textContent='▼'}
+  else{body.style.display='none';arrow.textContent='▶'}
+}
+
+// Tag选择交互
+document.querySelectorAll('.tag-select').forEach(sel=>{
+  sel.querySelectorAll('.tag-opt').forEach(opt=>{
+    opt.addEventListener('click',function(){
+      // 多选
+      this.classList.toggle('selected');
+    })
+  })
+});
+
+// QA选项单选
+document.querySelectorAll('.qa-option').forEach(opt=>{
+  opt.addEventListener('click',function(){
+    const siblings=this.parentElement.querySelectorAll('.qa-option');
+    siblings.forEach(s=>s.classList.remove('selected'));
+    this.classList.add('selected');
+  })
+});
+</script>
 </body>
 </html>
