@@ -19,6 +19,16 @@ interface UserStats {
   level: number
 }
 
+interface UserSubscription {
+  id: string
+  status: 'active' | 'expired' | 'cancelled'
+  plan?: {
+    id: string
+    name: string
+  }
+  endDate: string
+}
+
 // 菜单项配置
 const menuItems = [
   { title: '工资墙', icon: Trophy, desc: '收益排行榜', type: 'primary', path: '/package-profile/pages/earnings-wall/index', requireLogin: false },
@@ -59,24 +69,26 @@ export default function ProfilePage() {
   const [coinBalance, setCoinBalance] = useState<number>(0)
   const [statusBarHeight] = useState(getStatusBarHeight())
   const [unreadCount, setUnreadCount] = useState(0)
+  const [userSubscription, setUserSubscription] = useState<UserSubscription | null>(null)
 
   useDidShow(() => {
     fetchStats()
     fetchUnreadCount()
-
   })
 
   const fetchStats = async () => {
     try {
       const userId = userInfo?.id
-      const [statsRes, earningsRes, coinRes] = await Promise.all([
+      const [statsRes, earningsRes, coinRes, subscriptionRes] = await Promise.all([
         Network.request({ url: '/api/user-stats/overview' }),
         Network.request({ url: '/api/earnings/overview' }),
-        Network.request({ url: `/api/coin/balance?userId=${userId}` })
+        Network.request({ url: `/api/coin/balance?userId=${userId}` }),
+        Network.request({ url: '/api/subscriptions/current' })
       ])
       const data = statsRes.data?.code === 200 ? statsRes.data.data : {}
       const earningsData = earningsRes.data?.code === 200 ? earningsRes.data.data : {}
       const coinData = coinRes.data?.code === 200 ? coinRes.data.data : {}
+      const subscriptionData = subscriptionRes.data?.code === 200 ? subscriptionRes.data.data : null
       setStats({
         avatarCount: data.avatarCount || 0,
         totalEarnings: earningsData.totalEarnings || 0,
@@ -84,6 +96,7 @@ export default function ProfilePage() {
         level: 1
       })
       setCoinBalance(coinData.balance || 0)
+      setUserSubscription(subscriptionData)
     } catch (error) {
       console.error('获取统计失败:', error)
     }
@@ -142,17 +155,24 @@ export default function ProfilePage() {
                   {userInfo?.avatar ? (
                     <Image src={userInfo.avatar} className="user-avatar" mode="aspectFill" />
                   ) : (
-                    <View className="avatar-placeholder">
-                      <Text className="avatar-text">{userInfo?.nickname?.[0] || 'U'}</Text>
-                    </View>
+                    <Image src={logoImage} className="user-avatar" mode="aspectFill" />
                   )}
                   <View className="level-badge">
                     <Text className="level-badge-text">Lv.{stats.level}</Text>
                   </View>
                 </View>
                 <View className="user-text-info">
-                  <Text className="user-name">{userInfo?.nickname || '探索者'}</Text>
-                  <Text className="user-id">ID: {userInfo?.id?.slice(-8) || 'guest'}</Text>
+                  <Text className="user-name">{userInfo?.nickname}</Text>
+                  <Text className="user-id">ID: {userInfo?.id?.slice(-8)}</Text>
+                  <View className="user-subscription-row" onClick={() => navigateTo({ url: '/package-avatar/pages/subscription/index' })}>
+                    <Crown size={14} color={userSubscription?.status === 'active' ? '#7B3FE4' : '#999'} />
+                    <Text className="user-subscription-text">
+                      {userSubscription?.status === 'active' ? (userSubscription.plan?.name || '订阅会员') : '免费用户'}
+                    </Text>
+                    {userSubscription?.status === 'active' && (
+                      <Text className="user-subscription-expire">至 {new Date(userSubscription.endDate).toLocaleDateString('zh-CN')}</Text>
+                    )}
+                  </View>
                   <View className="user-coin-row" onClick={() => navigateTo({ url: '/package-coin/pages/index/index' })}>
                     <Coins size={14} color="#F59E0B" />
                     <Text className="user-coin-text">{coinBalance.toLocaleString()} 币</Text>
@@ -164,10 +184,6 @@ export default function ProfilePage() {
                 <View className="user-avatar-wrap" onClick={() => navigateTo({ url: '/pages/login/index?redirect=/pages/profile/index' })}>
                   <Image src={logoImage} className="user-avatar" mode="aspectFill" />
                   <Text className="login-text">去登录</Text>
-                </View>
-                <View className="user-text-info">
-                  <Text className="user-name">{userInfo?.nickname || '探索者'}</Text>
-                  <Text className="user-id">ID: {userInfo?.id?.slice(-8) || 'guest'}</Text>
                 </View>
               </>
             )}
