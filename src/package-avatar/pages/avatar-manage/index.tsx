@@ -280,7 +280,7 @@ export default function AvatarManagePage() {
           title: enabled ? '已开启托管' : '已关闭托管', 
           icon: 'success' 
         })
-      } else if (res.data?.code === 403) {
+      } else if (res.data?.data?.type === 'hosting_limit') {
         Taro.showModal({
           title: '托管数量已达上限',
           content: res.data.msg || '当前套餐托管数量已达上限，请升级套餐',

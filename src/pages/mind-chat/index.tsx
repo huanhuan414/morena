@@ -489,7 +489,7 @@ const MindChat: React.FC = () => {
         method: 'PUT',
         data: { trust_enabled: checked },
       })
-      if (res.data?.code === 403) {
+      if (res.data?.data?.type === 'hosting_limit') {
         setMyClones(previous)
         Taro.showModal({
           title: '托管数量已达上限',

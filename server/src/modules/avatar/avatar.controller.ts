@@ -269,7 +269,7 @@ export class AvatarController {
         if (userId) {
           const check = await this.subscriptionService.checkHostingLimit(userId)
           if (!check.allowed) {
-            return { code: 403, msg: check.reason, data: { limit: check.limit, current: check.current } }
+            return { code: 400, msg: check.reason, data: { limit: check.limit, current: check.current, type: 'hosting_limit' } }
           }
         }
       }
