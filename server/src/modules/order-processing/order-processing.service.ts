@@ -796,7 +796,7 @@ export class OrderProcessingService {
       const db = getMySQLClient()
 
       const orderRows = await db.query(
-        `SELECT id, budget, is_paid, expected_quantity, avatar_count FROM orders WHERE id = ? LIMIT 1`,
+        `SELECT id, budget, base_amount, is_paid, expected_quantity, avatar_count FROM orders WHERE id = ? LIMIT 1`,
         [orderId]
       )
       const order = Array.isArray(orderRows) ? orderRows[0] : (orderRows as any)?.data?.[0]
@@ -831,10 +831,10 @@ export class OrderProcessingService {
         return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1
       })()
 
-      const totalAmount = Number(order.budget || 0)
+      const totalAmount = Number((order as any).baseAmount || (order as any).base_amount || 0)
       const totalCents = Math.max(0, Math.round(totalAmount * 100))
       if (totalCents <= 0) {
-        this.logger.warn(`[结算] 订单预算为0，跳过结算: orderId=${orderId}`)
+        this.logger.error(`[结算] base_amount为空或为0，数据异常: orderId=${orderId}, baseAmount=${(order as any).baseAmount}, base_amount=${(order as any).base_amount}`)
         return
       }
 

@@ -526,12 +526,6 @@ async getExecutionProgress(orderId: string) {
 
     const avatar = avatars[0]
 
-    // 自定义分身接单权益校验
-    const customAvatarPermission = await this.subscriptionService.checkCustomAvatarAccept(avatar.userId)
-    if (!customAvatarPermission.allowed) {
-      throw new ForbiddenException(customAvatarPermission.reason)
-    }
-
     const existingRows = await db.query(
       `SELECT id FROM order_dispatch_requests
        WHERE order_id = ? AND avatar_id = ?

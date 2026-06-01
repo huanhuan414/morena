@@ -245,6 +245,7 @@ export class SubscriptionService {
     ) as any[]
     
     const sub = subscriptions?.[0]
+    console.log('[getMembershipBenefits] userId:', userId, 'sub:', JSON.stringify(sub))
     
     if (!sub) {
       const freePlan = await db.query('SELECT * FROM subscription_plans WHERE id = ?', ['plan_free']) as any[]
@@ -298,30 +299,34 @@ export class SubscriptionService {
       }
     }
     
-    // 2. 检查同时接单数（待反馈+被驳回状态）
-    const pendingResult = await db.query(
-      `SELECT COUNT(*) as cnt FROM order_dispatch_requests 
-       WHERE user_id = ? AND status IN ('accepted', 'pending_acceptance', 'revision_requested')`,
-      [userId]
-    ) as any[]
-    const pendingCount = Number(pendingResult?.[0]?.cnt || pendingResult?.cnt || 0)
-    console.log('[checkOrderPermission] pendingCount:', pendingCount, 'concurrentLimit:', benefits.concurrentLimit)
+    // 2. 检查同时接单数（测试阶段：取消限制，所有用户都可以同时接多个订单）
+    // 原有代码（保留作为备用方案）：
+    // const pendingResult = await db.query(
+    //   `SELECT COUNT(*) as cnt FROM order_dispatch_requests r
+    //    LEFT JOIN orders o ON r.order_id = o.id
+    //    WHERE r.user_id = ? 
+    //      AND r.status IN ('accepted', 'pending_acceptance', 'revision_requested')
+    //      AND (o.status IS NULL OR o.status NOT IN ('completed', 'cancelled'))`,
+    //   [userId]
+    // ) as any[]
+    // const pendingCount = Number(pendingResult?.[0]?.cnt || pendingResult?.cnt || 0)
+    // console.log('[checkOrderPermission] pendingCount:', pendingCount, 'concurrentLimit:', benefits.concurrentLimit)
+    // 
+    // if (pendingCount >= benefits.concurrentLimit) {
+    //   console.log('[checkOrderPermission] REJECTED: pendingCount >= concurrentLimit')
+    //   return {
+    //     allowed: false,
+    //     reason: `同时接单数已达上限(${pendingCount}/${benefits.concurrentLimit})，请等待当前订单完成后重试`
+    //   }
+    // }
     
-    if (pendingCount >= benefits.concurrentLimit) {
-      console.log('[checkOrderPermission] REJECTED: pendingCount >= concurrentLimit')
-      return {
-        allowed: false,
-        reason: `同时接单数已达上限(${pendingCount}/${benefits.concurrentLimit})，请等待当前订单完成后重试`
-      }
-    }
-    
-    console.log('[checkOrderPermission] ALLOWED')
+    console.log('[checkOrderPermission] ALLOWED (concurrent limit disabled)')
     return { 
       allowed: true, 
       usedToday: todayCount,
       dailyLimit: benefits.dailyOrderLimit,
-      pendingCount,
-      concurrentLimit: benefits.concurrentLimit,
+      pendingCount: 0,
+      concurrentLimit: 999,
     }
   }
 

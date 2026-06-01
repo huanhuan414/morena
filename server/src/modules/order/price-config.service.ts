@@ -55,8 +55,14 @@ export class PriceConfigService {
       this.logger.log(`[价格配置] 已加载 ${this.cache.size} 个内容类型价格`)
       return Array.from(this.cache.values())
     } catch (error: any) {
-      this.logger.error(`[价格配置] 加载失败: ${error.message}`)
-      return this.getDefaultPriceConfigs()
+      this.logger.error(`[价格配置] 加载失败: ${error.message}，使用默认配置`)
+      const defaults = this.getDefaultPriceConfigs()
+      this.cache.clear()
+      for (const config of defaults) {
+        this.cache.set(config.id, config)
+      }
+      this.cacheTime = Date.now()
+      return defaults
     }
   }
 
@@ -64,7 +70,13 @@ export class PriceConfigService {
     if (Date.now() - this.cacheTime >= this.CACHE_TTL || this.cache.size === 0) {
       await this.getAllPriceConfigs()
     }
-    return this.cache.get(contentType)
+    
+    let key = contentType
+    if (contentType === 'simple_task') {
+      key = 'simple'
+    }
+    
+    return this.cache.get(key)
   }
 
   async calculatePrice(
@@ -125,6 +137,10 @@ export class PriceConfigService {
 
   private getDefaultPriceConfig(contentType: string): ContentTypePrice {
     const defaults = this.getDefaultPriceConfigs()
-    return defaults.find(c => c.id === contentType) || defaults[1]
+    let key = contentType
+    if (contentType === 'simple_task') {
+      key = 'simple'
+    }
+    return defaults.find(c => c.id === key) || defaults[1]
   }
 }

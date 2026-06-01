@@ -577,4 +577,34 @@ export class ContentGenerationController {
       return { code: 500, message: '清除失败', error: error.message }
     }
   }
+
+  @Post('admin/poll-videos')
+  @HttpCode(HttpStatus.OK)
+  async pollPendingVideos() {
+    try {
+      console.log('[ContentGenerationController] 手动触发视频轮询任务')
+      await this.contentGenerationService.pollPendingVideoTasks()
+      return { code: 200, message: '视频轮询任务已触发' }
+    } catch (error: any) {
+      console.error('[ContentGenerationController] 触发视频轮询失败:', error.message)
+      return { code: 500, message: '触发失败', error: error.message }
+    }
+  }
+
+  @Get('admin/video-assets')
+  async getGeneratingVideoAssets() {
+    try {
+      const pool = await getMySQLClient()
+      const [rows]: any = await pool.query(
+        `SELECT id, order_id, seedance_task_id, status, source, asset_type, created_at, updated_at
+         FROM order_assets
+         WHERE asset_type = 'video' AND source = 'ai_generated' AND status = 'generating'
+         AND seedance_task_id IS NOT NULL
+         ORDER BY updated_at ASC LIMIT 20`
+      )
+      return { code: 200, message: '获取成功', data: rows }
+    } catch (error: any) {
+      return { code: 500, message: '获取失败', error: error.message }
+    }
+  }
 }

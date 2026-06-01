@@ -60,7 +60,9 @@ export class AvatarController {
   @Get()
   async getAllAvatars(@Headers('x-user-id') userId?: string) {
     try {
+      console.log('[getAllAvatars] x-user-id:', userId)
       const avatars = await this.avatarService.getUserAvatars(userId)
+      console.log('[getAllAvatars] 返回分身数量:', avatars.data?.length, '第一个分身ID:', avatars.data?.[0]?.id)
       return { code: 200, msg: 'success', data: avatars.data || [] }
     } catch (err) {
       console.error('获取分身列表失败:', err)
