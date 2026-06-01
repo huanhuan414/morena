@@ -83,7 +83,7 @@ export default function ProfilePage() {
         Network.request({ url: '/api/user-stats/overview' }),
         Network.request({ url: '/api/earnings/overview' }),
         Network.request({ url: `/api/coin/balance?userId=${userId}` }),
-        Network.request({ url: '/api/subscriptions/current' })
+        Network.request({ url: '/api/subscription/current' })
       ])
       const data = statsRes.data?.code === 200 ? statsRes.data.data : {}
       const earningsData = earningsRes.data?.code === 200 ? earningsRes.data.data : {}
@@ -164,7 +164,7 @@ export default function ProfilePage() {
                 <View className="user-text-info">
                   <Text className="user-name">{userInfo?.nickname}</Text>
                   <Text className="user-id">ID: {userInfo?.id?.slice(-8)}</Text>
-                  <View className="user-subscription-row" onClick={() => navigateTo({ url: '/package-avatar/pages/subscription/index' })}>
+                  <View className="user-subscription-row">
                     <Crown size={14} color={userSubscription?.status === 'active' ? '#7B3FE4' : '#999'} />
                     <Text className="user-subscription-text">
                       {userSubscription?.status === 'active' ? (userSubscription.plan?.name || '订阅会员') : '免费用户'}

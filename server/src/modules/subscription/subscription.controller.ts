@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, Inject } from '@nestjs/common'
+import { Controller, Get, Post, Body, Query, Inject, Req } from '@nestjs/common'
 import { SubscriptionService } from './subscription.service'
 import { WechatPayService } from '../payment/wechat-pay.service'
 
@@ -26,6 +26,19 @@ export class SubscriptionController {
       console.error('[SubscriptionController] getPlans error:', e.message)
     }
     return { code: 200, data: [], message: '获取成功' }
+  }
+
+  @Get('current')
+  async getCurrentSubscription(@Req() req: any) {
+    const userId = req.headers['x-user-id']
+    if (!userId) return { code: 401, data: null, message: '请先登录' }
+    try {
+      const subscription = await this.subscriptionService.getUserSubscription(userId)
+      return { code: 200, data: subscription, message: '获取成功' }
+    } catch (e) {
+      console.error('[SubscriptionController] getCurrentSubscription error:', e.message)
+      return { code: 500, data: null, message: '获取失败' }
+    }
   }
 
   @Get('status')
