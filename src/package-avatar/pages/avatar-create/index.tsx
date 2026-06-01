@@ -278,27 +278,27 @@ export default function AvatarCreate() {
 
   // 选择位置
   const handleGetLocation = () => {
-    updateFormData('latitude', 31.2304)
-    updateFormData('longitude', 121.4737)
-    updateFormData('location', '上海市黄浦区')
-    // Taro.chooseLocation({
-    //   success: (res) => {
-    //     updateFormData('latitude', res.latitude)
-    //     updateFormData('longitude', res.longitude)
-    //     updateFormData('location', res.address || res.name)
-    //   },
-    //   fail: (err: any) => {
-    //     console.error('选择位置失败:', err)
-    //     const errMsg = err?.errMsg || err?.message || ''
-    //     if (errMsg && !errMsg.includes('cancel')) {
-    //       Taro.showModal({
-    //         title: '选择位置失败',
-    //         content: '请确保已授权位置权限',
-    //         showCancel: false,
-    //       })
-    //     }
-    //   },
-    // })
+    // updateFormData('latitude', 31.2304)
+    // updateFormData('longitude', 121.4737)
+    // updateFormData('location', '上海市黄浦区')
+    Taro.chooseLocation({
+      success: (res) => {
+        updateFormData('latitude', res.latitude)
+        updateFormData('longitude', res.longitude)
+        updateFormData('location', res.address || res.name)
+      },
+      fail: (err: any) => {
+        console.error('选择位置失败:', err)
+        const errMsg = err?.errMsg || err?.message || ''
+        if (errMsg && !errMsg.includes('cancel')) {
+          Taro.showModal({
+            title: '选择位置失败',
+            content: '请确保已授权位置权限',
+            showCancel: false,
+          })
+        }
+      },
+    })
   }
 
   // 图片上传
