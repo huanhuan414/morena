@@ -489,6 +489,21 @@ const MindChat: React.FC = () => {
         method: 'PUT',
         data: { trust_enabled: checked },
       })
+      if (res.data?.code === 403) {
+        setMyClones(previous)
+        Taro.showModal({
+          title: '托管数量已达上限',
+          content: res.data.msg || '当前套餐托管数量已达上限，请升级套餐',
+          confirmText: '去升级',
+          cancelText: '取消',
+          success: (modalRes) => {
+            if (modalRes.confirm) {
+              Taro.navigateTo({ url: '/package-avatar/pages/subscription/index' })
+            }
+          }
+        })
+        return
+      }
       if (res.data?.code !== 200) {
         throw new Error(res.data?.msg || '更新失败')
       }

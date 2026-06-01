@@ -406,13 +406,12 @@ export class AvatarService {
    */
   async getAvatarById(avatarId: string) {
     const db = getMySQLClient()
-    const result = await db.queryOne('avatars', { id: avatarId })
+    const avatar = await db.queryOne('avatars', { id: avatarId })
     
-    if (!result?.data) {
+    if (!avatar) {
       return { success: false, error: '分身不存在' }
     }
 
-    const avatar = result.data
     const personality = this.safeParseJson(avatar.personality, {})
     const config = this.safeParseJson(avatar.config, {})
     const trustEnabled = this.resolveTrustEnabled(avatar)

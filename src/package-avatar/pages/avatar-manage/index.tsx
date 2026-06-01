@@ -259,10 +259,9 @@ export default function AvatarManagePage() {
 
   const toggleHosting = async (avatarId: string, enabled: boolean) => {
     try {
-      // 获取用户ID
       const userInfo = Taro.getStorageSync('userInfo') || {}
       let userId = userInfo.id || userInfo.userId || userInfo.user_id || ''
-      if (!userId) userId = 'd9bd8329-e302-4ddf-a7ec-d156610b9691' // 测试ID
+      if (!userId) userId = 'd9bd8329-e302-4ddf-a7ec-d156610b9691'
       
       const res = await Network.request({
         url: `/api/avatar/${avatarId}/trust`,
@@ -280,6 +279,18 @@ export default function AvatarManagePage() {
         showToast({ 
           title: enabled ? '已开启托管' : '已关闭托管', 
           icon: 'success' 
+        })
+      } else if (res.data?.code === 403) {
+        Taro.showModal({
+          title: '托管数量已达上限',
+          content: res.data.msg || '当前套餐托管数量已达上限，请升级套餐',
+          confirmText: '去升级',
+          cancelText: '取消',
+          success: (modalRes) => {
+            if (modalRes.confirm) {
+              Taro.navigateTo({ url: '/package-avatar/pages/subscription/index' })
+            }
+          }
         })
       } else {
         showToast({ title: res.data?.msg || '设置失败', icon: 'none' })

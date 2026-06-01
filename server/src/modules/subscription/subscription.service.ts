@@ -514,6 +514,44 @@ export class SubscriptionService {
   }
 
   /**
+   * 检查用户托管分身数量限制
+   * @param userId 用户ID
+   * @returns { allowed: boolean, limit: number, current: number, reason?: string }
+   */
+  async checkHostingLimit(userId: string): Promise<{ allowed: boolean; limit: number; current: number; reason?: string }> {
+    const db = getMySQLClient()
+    
+    const rows = await db.query(
+      `SELECT COALESCE(sp.max_avatars, 1) as max_avatars
+       FROM users u
+       LEFT JOIN user_subscriptions us ON u.id = us.user_id AND us.status = 'active'
+       LEFT JOIN subscription_plans sp ON us.plan_id = sp.id
+       WHERE u.id = ?`,
+      [userId]
+    ) as any[]
+
+    const row = rows?.[0]
+    const maxAvatars = Number(row?.max_avatars || row?.maxAvatars || 1)
+
+    const hostedRows = await db.query(
+      `SELECT COUNT(*) as count FROM avatars WHERE user_id = ? AND status = 'active' AND (is_hosted = 1 OR hosting_enabled = 1)`,
+      [userId]
+    ) as any[]
+    const currentHosted = Number(hostedRows?.[0]?.count || 0)
+
+    if (currentHosted >= maxAvatars) {
+      return {
+        allowed: false,
+        limit: maxAvatars,
+        current: currentHosted,
+        reason: `当前套餐最多托管 ${maxAvatars} 个分身，已托管 ${currentHosted} 个，请升级套餐`
+      }
+    }
+
+    return { allowed: true, limit: maxAvatars, current: currentHosted }
+  }
+
+  /**
    * 获取用户技能权益配置
    * @param userId 用户ID
    */

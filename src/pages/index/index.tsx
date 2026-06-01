@@ -483,6 +483,18 @@ const Index: React.FC = () => {
       if (res.data?.code === 200) {
         Taro.showToast({ title: '已开启所有分身托管', icon: 'success' })
         fetchStats()
+      } else if (res.data?.code === 403) {
+        Taro.showModal({
+          title: '托管数量已达上限',
+          content: res.data.msg || '当前套餐托管数量已达上限，请升级套餐',
+          confirmText: '去升级',
+          cancelText: '取消',
+          success: (modalRes) => {
+            if (modalRes.confirm) {
+              Taro.navigateTo({ url: '/package-avatar/pages/subscription/index' })
+            }
+          }
+        })
       } else {
         Taro.showToast({ title: res.data?.msg || '开启失败', icon: 'none' })
       }
