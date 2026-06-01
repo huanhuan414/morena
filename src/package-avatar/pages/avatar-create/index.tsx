@@ -170,6 +170,38 @@ export default function AvatarCreate() {
   })
 
   useEffect(() => {
+    const fetchQuota = async () => {
+      try {
+        const userInfo = Taro.getStorageSync('userInfo') || {}
+        const userId = userInfo.id || userInfo.userId || userInfo.user_id || ''
+
+        if (!userId) return
+
+        const timestamp = Date.now()
+        const [subscriptionRes, avatarListRes] = await Promise.all([
+          Network.request({ url: `/api/subscription/status?userId=${userId}&_=${timestamp}` }),
+          Network.request({ url: `/api/avatar?_=${timestamp}` })
+        ])
+
+        const currentCount = avatarListRes.data?.data?.length || 0
+        const plan = subscriptionRes.data?.data?.plan
+        const maxAvatars = plan?.maxAvatars || plan?.max_avatars || 1
+
+        setQuotaSummary({
+          avatarCount: currentCount,
+          maxAvatars,
+          remainingAvatars: maxAvatars === -1 ? -1 : Math.max(maxAvatars - currentCount, 0),
+          planName: plan?.name || plan?.plan_name || '',
+        })
+      } catch (error) {
+        console.error('获取配额信息失败:', error)
+      }
+    }
+
+    fetchQuota()
+  }, [])
+
+  useEffect(() => {
     if (!draftReady || isSubmitting) return
 
     const hasDraftContent = Boolean(
@@ -246,27 +278,27 @@ export default function AvatarCreate() {
 
   // 选择位置
   const handleGetLocation = () => {
-    // updateFormData('latitude', 31.2304)
-    // updateFormData('longitude', 121.4737)
-    // updateFormData('location', '上海市黄浦区')
-    Taro.chooseLocation({
-      success: (res) => {
-        updateFormData('latitude', res.latitude)
-        updateFormData('longitude', res.longitude)
-        updateFormData('location', res.address || res.name)
-      },
-      fail: (err: any) => {
-        console.error('选择位置失败:', err)
-        const errMsg = err?.errMsg || err?.message || ''
-        if (errMsg && !errMsg.includes('cancel')) {
-          Taro.showModal({
-            title: '选择位置失败',
-            content: '请确保已授权位置权限',
-            showCancel: false,
-          })
-        }
-      },
-    })
+    updateFormData('latitude', 31.2304)
+    updateFormData('longitude', 121.4737)
+    updateFormData('location', '上海市黄浦区')
+    // Taro.chooseLocation({
+    //   success: (res) => {
+    //     updateFormData('latitude', res.latitude)
+    //     updateFormData('longitude', res.longitude)
+    //     updateFormData('location', res.address || res.name)
+    //   },
+    //   fail: (err: any) => {
+    //     console.error('选择位置失败:', err)
+    //     const errMsg = err?.errMsg || err?.message || ''
+    //     if (errMsg && !errMsg.includes('cancel')) {
+    //       Taro.showModal({
+    //         title: '选择位置失败',
+    //         content: '请确保已授权位置权限',
+    //         showCancel: false,
+    //       })
+    //     }
+    //   },
+    // })
   }
 
   // 图片上传
@@ -447,30 +479,6 @@ export default function AvatarCreate() {
       return
     }
 
-    // 后端权益校验 — 检查分身数量限制
-    try {
-      const userStr = Taro.getStorageSync('userInfo')
-      const userId = userStr ? (typeof userStr === 'string' ? JSON.parse(userStr).id : userStr.id) : ''
-      const checkRes = await Network.request({
-        url: `/api/subscription/check?userId=${userId}&type=check_avatars&currentCount=0`,
-      })
-      if (checkRes.data?.code === 200 && !checkRes.data?.data?.allowed) {
-        Taro.showModal({
-          title: '配额不足',
-          content: '当前套餐分身数量已达上限，升级会员可创建更多分身',
-          confirmText: '去升级',
-          success: (res) => {
-            if (res.confirm) {
-              Taro.navigateTo({ url: '/package-avatar/pages/subscription/index' })
-            }
-          },
-        })
-        return
-      }
-    } catch (e) {
-      console.warn('[avatar-create] 权益校验失败，继续创建:', e)
-    }
-
     setIsSubmitting(true)
     Taro.showLoading({ title: '创建中...' })
 
@@ -604,143 +612,151 @@ export default function AvatarCreate() {
         </View>
       </View>
 
-      {/* 上传照片 */}
-      <View className="form-section">
-        <Text className="section-title">
-          分身形象
-          <Text className="title-hint">（必填）</Text>
-        </Text>
-        {formData.photo ? (
-          <View className="photo-uploaded" onClick={handleUploadPhoto}>
-            <Image
-              className="photo-uploaded-img"
-              src={formData.photo}
-              mode="aspectFill"
-            />
-            <View className="photo-uploaded-info">
-              <Text className="photo-uploaded-title">{formData.name || '我的AI分身'}</Text>
-              <Text className="photo-uploaded-hint">点击更换照片</Text>
-            </View>
-          </View>
-        ) : (
-          <View className="upload-area" onClick={handleUploadPhoto}>
-            <View className="upload-icon-bg">
-              <Camera size={40} color="#8B5CF6" />
-            </View>
-            <Text className="upload-title">上传分身照片</Text>
-            <Text className="upload-hint">照片将作为分身的形象展示给其他用户</Text>
-            <Text className="upload-tip">建议使用清晰正面照，支持拍照/相册/聊天记录</Text>
-          </View>
-        )}
-      </View>
-
-      {/* 分身名称 */}
-      <View className="form-section">
-        <Text className="section-title">
-          分身昵称
-          <Text className="title-hint">（必填）</Text>
-        </Text>
-        <View className="input-box">
-          <Input
-            className="name-input"
-            placeholder="给分身起个响亮的名字"
-            placeholderClass="placeholder"
-            value={formData.name}
-            onInput={(e) => updateFormData('name', e.detail.value)}
-            maxlength={20}
-          />
-        </View>
-        <Text className="input-sub-hint">好名字让分身更有辨识度，更容易被用户关注</Text>
-      </View>
-
-      {/* 性别选择 */}
-      <View className="form-section">
-        <Text className="section-title">
-          性别
-          <Text className="title-hint">（必填）</Text>
-        </Text>
-        <View
-          className="form-picker-trigger"
-          onClick={() => setShowGenderPicker(true)}
-        >
-          <Text className={`form-picker-text ${formData.gender ? 'has-value' : ''}`}>
-            {getGenderDisplay() || '请选择性别'}
-          </Text>
-          <ChevronDown size={18} color="#94A3B8" />
-        </View>
-      </View>
-
-      {/* 年龄 */}
-      <View className="form-section">
-        <Text className="section-title">
-          年龄
-          <Text className="title-hint">（必填）</Text>
-        </Text>
-        <Picker
-          mode="date"
-          value={formData.birthday || '2000-01-01'}
-          start="1950-01-01"
-          end={new Date().toISOString().split('T')[0]}
-          onChange={(e) => updateFormData('birthday', e.detail.value)}
-        >
-          <View className="form-picker-trigger">
-            <Calendar size={18} color="#8B5CF6" />
-            <Text className={`form-picker-text ${formData.birthday ? 'has-value' : ''}`}>
-              {formData.birthday ? calculateAge(formData.birthday) : '请选择出生日期'}
+      {quotaSummary.remainingAvatars > 0 ? (
+        <>
+          {/* 上传照片 */}
+          <View className="form-section">
+            <Text className="section-title">
+              分身形象
+              <Text className="title-hint">（必填）</Text>
             </Text>
-            <ChevronDown size={18} color="#94A3B8" />
+            {formData.photo ? (
+              <View className="photo-uploaded" onClick={handleUploadPhoto}>
+                <Image
+                  className="photo-uploaded-img"
+                  src={formData.photo}
+                  mode="aspectFill"
+                />
+                <View className="photo-uploaded-info">
+                  <Text className="photo-uploaded-title">{formData.name || '我的AI分身'}</Text>
+                  <Text className="photo-uploaded-hint">点击更换照片</Text>
+                </View>
+              </View>
+            ) : (
+              <View className="upload-area" onClick={handleUploadPhoto}>
+                <View className="upload-icon-bg">
+                  <Camera size={40} color="#8B5CF6" />
+                </View>
+                <Text className="upload-title">上传分身照片</Text>
+                <Text className="upload-hint">照片将作为分身的形象展示给其他用户</Text>
+                <Text className="upload-tip">建议使用清晰正面照，支持拍照/相册/聊天记录</Text>
+              </View>
+            )}
           </View>
-        </Picker>
-      </View>
 
-      {/* 职业 */}
-      <View className="form-section">
-        <Text className="section-title">
-          职业
-          <Text className="title-hint">（必填）</Text>
-        </Text>
-        <View
-          className="form-picker-trigger"
-          onClick={() => setShowIdentityPicker(true)}
-        >
-          <Text className={`form-picker-text ${formData.identity ? 'has-value' : ''}`}>
-            {getIdentityDisplay() || '请选择职业'}
-          </Text>
-          <ChevronDown size={18} color="#94A3B8" />
-        </View>
-      </View>
-
-      {/* 所在地址 */}
-      <View className="form-section">
-        <Text className="section-title">
-          所在地址
-          <Text className="title-hint">（必填）</Text>
-        </Text>
-        <View className="location-picker">
-          <View
-            className="location-input-wrap"
-            onClick={handleGetLocation}
-          >
-            <MapPin size={18} color="#8B5CF6" />
-            <Text className={`location-text ${formData.location ? 'has-value' : ''}`}>
-              {formData.location || '点击选择位置'}
+          <View className="form-section">
+            <Text className="section-title">
+              分身昵称
+              <Text className="title-hint">（必填）</Text>
             </Text>
+            <View className="input-box">
+              <Input
+                className="name-input"
+                placeholder="给分身起个响亮的名字"
+                placeholderClass="placeholder"
+                value={formData.name}
+                onInput={(e) => updateFormData('name', e.detail.value)}
+                maxlength={20}
+              />
+            </View>
+            <Text className="input-sub-hint">好名字让分身更有辨识度，更容易被用户关注</Text>
           </View>
-          {formData.location && (
+
+          {/* 性别选择 */}
+          <View className="form-section">
+            <Text className="section-title">
+              性别
+              <Text className="title-hint">（必填）</Text>
+            </Text>
             <View
-              className="location-clear-btn"
-              onClick={() => {
-                updateFormData('location', '')
-                updateFormData('latitude', 0)
-                updateFormData('longitude', 0)
-              }}
+              className="form-picker-trigger"
+              onClick={() => setShowGenderPicker(true)}
             >
-              <Text className="location-clear-text">清除</Text>
+              <Text className={`form-picker-text ${formData.gender ? 'has-value' : ''}`}>
+                {getGenderDisplay() || '请选择性别'}
+              </Text>
+              <ChevronDown size={18} color="#94A3B8" />
             </View>
-          )}
-        </View>
-      </View>
+          </View>
 
+          {/* 年龄 */}
+          <View className="form-section">
+            <Text className="section-title">
+              年龄
+              <Text className="title-hint">（必填）</Text>
+            </Text>
+            <Picker
+              mode="date"
+              value={formData.birthday || '2000-01-01'}
+              start="1950-01-01"
+              end={new Date().toISOString().split('T')[0]}
+              onChange={(e) => updateFormData('birthday', e.detail.value)}
+            >
+              <View className="form-picker-trigger">
+                <Calendar size={18} color="#8B5CF6" />
+                <Text className={`form-picker-text ${formData.birthday ? 'has-value' : ''}`}>
+                  {formData.birthday ? calculateAge(formData.birthday) : '请选择出生日期'}
+                </Text>
+                <ChevronDown size={18} color="#94A3B8" />
+              </View>
+            </Picker>
+          </View>
+
+          {/* 职业 */}
+          <View className="form-section">
+            <Text className="section-title">
+              职业
+              <Text className="title-hint">（必填）</Text>
+            </Text>
+            <View
+              className="form-picker-trigger"
+              onClick={() => setShowIdentityPicker(true)}
+            >
+              <Text className={`form-picker-text ${formData.identity ? 'has-value' : ''}`}>
+                {getIdentityDisplay() || '请选择职业'}
+              </Text>
+              <ChevronDown size={18} color="#94A3B8" />
+            </View>
+          </View>
+
+          {/* 所在地址 */}
+          <View className="form-section">
+            <Text className="section-title">
+              所在地址
+              <Text className="title-hint">（必填）</Text>
+            </Text>
+            <View className="location-picker">
+              <View
+                className="location-input-wrap"
+                onClick={handleGetLocation}
+              >
+                <MapPin size={18} color="#8B5CF6" />
+                <Text className={`location-text ${formData.location ? 'has-value' : ''}`}>
+                  {formData.location || '点击选择位置'}
+                </Text>
+              </View>
+              {formData.location && (
+                <View
+                  className="location-clear-btn"
+                  onClick={() => {
+                    updateFormData('location', '')
+                    updateFormData('latitude', 0)
+                    updateFormData('longitude', 0)
+                  }}
+                >
+                  <Text className="location-clear-text">清除</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </>
+      ) : (
+        <View className="quota-exceeded-tip" onClick={() => Taro.navigateTo({ url: '/package-avatar/pages/subscription/index' })}>
+          <Crown size={48} color="#F59E0B" />
+          <Text className="quota-exceeded-title">分身名额已用完</Text>
+          <Text className="quota-exceeded-desc">升级订阅计划，解锁更多分身名额</Text>
+        </View>
+      )}
     </View>
   )
 
@@ -1052,27 +1068,29 @@ export default function AvatarCreate() {
       </ScrollView>
 
       {/* 底部按钮 */}
-      <View className="bottom-action">
-        <View
-          className="main-btn"
-          onClick={handleNext}
-        >
-          <Text className="btn-text">
-            {currentStep === 1
-              ? '下一步 · 风格定位'
-              : currentStep === 2
-                ? '下一步 · 选择技能'
-                : isSubmitting
-                  ? '创建中...'
-                  : formData.skills.length > 0
-                    ? `创建分身 · 预估¥${getEstimatedEarning()}/天`
-                    : '创建分身'}
-          </Text>
+      {quotaSummary.remainingAvatars > 0 && (
+        <View className="bottom-action">
+          <View
+            className="main-btn"
+            onClick={handleNext}
+          >
+            <Text className="btn-text">
+              {currentStep === 1
+                ? '下一步 · 风格定位'
+                : currentStep === 2
+                  ? '下一步 · 选择技能'
+                  : isSubmitting
+                    ? '创建中...'
+                    : formData.skills.length > 0
+                      ? `创建分身 · 预估¥${getEstimatedEarning()}/天`
+                      : '创建分身'}
+            </Text>
+          </View>
+          {currentStep === 1 && (
+            <Text className="bottom-hint">0元创建，创建后可随时修改</Text>
+          )}
         </View>
-        {currentStep === 1 && (
-          <Text className="bottom-hint">0元创建，创建后可随时修改</Text>
-        )}
-      </View>
+      )}
 
       {/* 性别选择弹窗 - 移到 ScrollView 外部避免机型兼容问题 */}
       {showGenderPicker && (

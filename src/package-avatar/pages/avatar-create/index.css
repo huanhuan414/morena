@@ -1075,3 +1075,31 @@
   color: #94a3b8;
   margin-top: 12rpx;
 }
+
+/* 配额已用完提示 */
+.quota-exceeded-tip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx 40rpx;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border-radius: 24rpx;
+  border: 2rpx solid #fde68a;
+  margin-top: 24rpx;
+}
+
+.quota-exceeded-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #92400e;
+  margin-top: 24rpx;
+  display: block;
+}
+
+.quota-exceeded-desc {
+  font-size: 26rpx;
+  color: #a16207;
+  margin-top: 12rpx;
+  display: block;
+}
