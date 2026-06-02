@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Injectable, Inject, Logger, forwardRef, HttpException, HttpStatus, ConflictException, BadRequestException, NotFoundException } from '@nestjs/common'
+import { Injectable, Inject, Logger, forwardRef, HttpException, HttpStatus, ConflictException, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common'
 import { getMySQLClient, getPool } from '../../storage/database/mysql-client'
 import { SmsService } from '../sms/sms.service'
 import { NotificationService } from '../notification/notification.service'
@@ -8,6 +8,7 @@ import { normalizeDispatchStatus as normalizeDispatchStatusV2, normalizeFulfillm
 import { ContentGenerationService } from '../content-generation/content-generation.service'
 import { OrderEventService } from './order-event.service'
 import { RedisService } from '../redis/redis.service'
+import { SubscriptionService } from '../subscription/subscription.service'
 
 @Injectable()
 export class OrderDispatchService {
@@ -21,6 +22,7 @@ export class OrderDispatchService {
     @Inject(forwardRef(() => OrderService)) private readonly orderService: OrderService,
     @Inject(forwardRef(() => OrderEventService)) private readonly eventService: OrderEventService,
     private readonly redisService: RedisService,
+    @Inject(forwardRef(() => SubscriptionService)) private readonly subscriptionService: SubscriptionService,
   ) {}
 
   private normalizeDispatchStatus(status?: string): string {
@@ -133,7 +135,7 @@ export class OrderDispatchService {
     }
 
     const id = crypto.randomUUID()
-    const expiresAt = new Date(Date.now() + 30 * 60 * 1000) // 30分钟内必须接单
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10分钟内必须接单
     await db.insert('order_dispatch_requests', {
       id,
       order_id: data.order_id,
@@ -392,6 +394,10 @@ export class OrderDispatchService {
         const order = orderRows2?.[0]
         
         if (order) {
+          // 批量获取用户会员优先级
+          const userIds = [...new Set(readyAvatars.map((a: any) => a.userId || a.user_id).filter(Boolean))]
+          const orderPriorityMap = await this.subscriptionService.getBatchOrderPriority(userIds)
+          
           // 计算每个分身的匹配分数
           const scoredAvatars = readyAvatars.map(avatar => {
             const { score, details } = this.calculateMatchScore(avatar, order)
@@ -401,13 +407,19 @@ export class OrderDispatchService {
             let bonus = 0
             if (stats.total >= 5 && rate >= 0.8) bonus = 5
             if (stats.total >= 5 && rate <= 0.3) bonus = -10
-            const finalScore = Math.max(0, Math.min(100, baseScore + bonus))
+            // 会员优先级加分：(优先级-1) * 10，免费版=0，基础版=10，专业版=20，进阶版=30
+            const userId = avatar.userId || avatar.user_id
+            const orderPriority = orderPriorityMap.get(userId) || 1
+            const priorityBonus = (orderPriority - 1) * 10
+            const finalScore = Math.max(0, Math.min(100, baseScore + bonus + priorityBonus))
             return {
               ...avatar,
               matchScoreBase: baseScore,
               matchScore: finalScore,
               matchDetails: details,
-              dispatchStats: { ...stats, acceptanceRate: rate }
+              dispatchStats: { ...stats, acceptanceRate: rate },
+              orderPriority,
+              priorityBonus,
             }
           })
 
@@ -536,7 +548,7 @@ async getExecutionProgress(orderId: string) {
       user_id: avatar.userId,
       platform: 'manual',
       status: 'pending',
-      expires_at: new Date(Date.now() + 30 * 60 * 1000),
+      expires_at: new Date(Date.now() + 10 * 60 * 1000),
       created_at: new Date(),
       updated_at: new Date()
     })
@@ -663,14 +675,34 @@ async getExecutionProgress(orderId: string) {
       }
     }
     
-    // 三维匹配排序：技能 + 风格 + 领域
+    // 批量获取用户会员优先级
+    const userIds = [...new Set(allAvatars.map(a => a.userId || a.user_id).filter(Boolean))]
+    const orderPriorityMap = await this.subscriptionService.getBatchOrderPriority(userIds)
+    
+    // 批量获取用户自动接单权益
+    const autoAcceptMap = await this.subscriptionService.getBatchAutoAccept(userIds)
+    
+    // 三维匹配排序：技能 + 风格 + 领域 + 会员优先级
     const scoredAvatars = allAvatars.map(avatar => {
       // 优先使用 avatar_skills 表的技能，fallback 到 avatars.skills 字段
       const aid = avatar.id || avatar.avatarId
       const skillsFromTable = avatarSkillsMap[aid] || []
       const avatarWithSkills = { ...avatar, _skillsFromTable: skillsFromTable }
       const { score, details } = this.calculateMatchScore(avatarWithSkills, order)
-      return { ...avatar, matchScore: score, matchDetails: details }
+      // 会员优先级加分：(优先级-1) * 10，免费版=0，基础版=10，专业版=20，进阶版=30
+      const uid = avatar.userId || avatar.user_id
+      const orderPriority = orderPriorityMap.get(uid) || 1
+      const priorityBonus = (orderPriority - 1) * 10
+      // 自动接单权益
+      const autoAccept = autoAcceptMap.get(uid) || false
+      return { 
+        ...avatar, 
+        matchScore: score + priorityBonus, 
+        matchDetails: details,
+        orderPriority,
+        priorityBonus,
+        autoAccept,
+      }
     })
     scoredAvatars.sort((a, b) => b.matchScore - a.matchScore)
     
@@ -707,8 +739,8 @@ async getExecutionProgress(orderId: string) {
         avatar_id: avatar.id,
         user_id: avatar.userId || avatar.userPhone,
         platform: 'auto',
-        status: 'pending',
-        expires_at: new Date(Date.now() + 30 * 60 * 1000),
+        status: avatar.autoAccept ? 'accepted' : 'pending',
+        expires_at: new Date(Date.now() + 10 * 60 * 1000),
         created_at: new Date(),
         updated_at: new Date()
       })
@@ -718,22 +750,24 @@ async getExecutionProgress(orderId: string) {
       }
       avatarIds.push(avatar.id)
       
-      // 📌 记录事件：已派单
+      // 📌 记录事件：已派单（自动接单时记录 accepted 事件）
       this.eventService.recordEvent({
         orderId,
         dispatchId: id,
         avatarId: avatar.id,
         userId: avatar.userId,
-        eventType: 'dispatched',
-        source: 'system',
+        eventType: avatar.autoAccept ? 'accepted' : 'dispatched',
+        source: avatar.autoAccept ? 'auto_accept' : 'system',
         avatarName: avatar.name,
-        eventData: { matchScore: avatar.matchScore, matchDetails: avatar.matchDetails },
+        eventData: { matchScore: avatar.matchScore, matchDetails: avatar.matchDetails, autoAccept: avatar.autoAccept },
       }).catch(err => console.warn('[事件] dispatched 记录失败:', err.message))
       
       // 发送真实短信通知 - 使用分身所属账号的手机号
       const userPhone = avatar.userPhone || avatar.phone
       if (userPhone) {
-        const smsContent = `${order?.title || '内容创作'}`
+        const smsContent = avatar.autoAccept 
+          ? `【自动接单】${order?.title || '内容创作'}`
+          : `【待确认】${order?.title || '内容创作'}`
         
         try {
           const smsResult = await this.smsService.sendSms(
@@ -754,11 +788,11 @@ async getExecutionProgress(orderId: string) {
         const notifResult = await db.insert('avatar_notifications', {
           id: notifId,
           avatar_id: avatar.id,
-          notification_type: 'order_assigned',
-          title: '新订单分配',
+          notification_type: avatar.autoAccept ? 'order_auto_accepted' : 'order_assigned',
+          title: avatar.autoAccept ? '订单已自动接单' : '新订单待确认',
           content: smsContent,
           is_read: 0,
-          data: JSON.stringify({ orderId }),
+          data: JSON.stringify({ orderId, autoAccept: avatar.autoAccept }),
           created_at: new Date()
         })
         if (notifResult.error) {
@@ -878,6 +912,25 @@ async getExecutionProgress(orderId: string) {
     }
 
     // 1.3 原子占位：INCR递增已接单计数
+    // 先检查Redis计数器是否与数据库一致，不一致则强制同步
+    try {
+      const currentAcceptedRows = await db.query(
+        `SELECT COUNT(DISTINCT avatar_id) as count
+         FROM order_dispatch_requests
+         WHERE order_id = ? AND status IN ('accepted', 'completed')`,
+        [orderId]
+      )
+      const dbAccepted = Number((currentAcceptedRows as any[])?.[0]?.count || 0)
+      const redisAccepted = await this.redisService.getCounter(redisKeyAccepted)
+      
+      if (redisAccepted !== dbAccepted) {
+        this.logger.log(`Redis计数器不一致，强制同步: orderId=${orderId}, Redis=${redisAccepted}, DB=${dbAccepted}`)
+        await this.redisService.getClient().set(redisKeyAccepted, String(dbAccepted), 'EX', OrderDispatchService.REDIS_TTL_SECONDS)
+      }
+    } catch (err: any) {
+      this.logger.warn(`Redis计数器同步失败: ${err.message}`)
+    }
+
     // INCR是原子操作，返回递增后的值。如果超过名额，立即DECR回滚并拒绝
     // 这确保了即使100个请求同时到达，也只有requiredCount个能通过
     const redisRequiredCount = await this.redisService.getCounter(redisKeyRequired)
@@ -990,6 +1043,12 @@ async getExecutionProgress(orderId: string) {
         const avatarOwner: any = (avatarOwnerRows as any[])?.[0]
         if (!avatarOwner || avatarOwner.status !== 'active') {
           throw new NotFoundException('分身不存在或已失效，无法接单')
+        }
+
+        // 接单权限校验：检查每日次数+同时接单数
+        const permission = await this.subscriptionService.checkOrderPermission(avatarOwner.user_id)
+        if (!permission.allowed) {
+          throw new ConflictException(permission.reason)
         }
 
         const dispatchId = 'odr-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8)
@@ -1256,7 +1315,6 @@ async getExecutionProgress(orderId: string) {
   async declineOrder(dispatchId: string) {
     const db = getMySQLClient()
     
-    // 查找分派记录
     const declineRows = await db.query(
       'SELECT * FROM order_dispatch_requests WHERE id = ?',
       [dispatchId]
@@ -1267,14 +1325,12 @@ async getExecutionProgress(orderId: string) {
       throw new NotFoundException('分派记录不存在')
     }
     
-    // 更新状态为 declined
     await db.updateWhere('order_dispatch_requests', { id: dispatchId }, {
       status: 'rejected',
       responded_at: new Date(),
       updated_at: new Date()
     })
     
-    // 📌 记录事件：分身婉拒
     let declinedAvatarName = '分身'
     try {
       const avatarInfo = await db.query('SELECT name FROM avatars WHERE id = ?', [request.avatarId])
@@ -1288,6 +1344,25 @@ async getExecutionProgress(orderId: string) {
       source: 'avatar',
       avatarName: declinedAvatarName,
     }).catch(err => console.warn('[事件] rejected 记录失败:', err.message))
+    
+    try {
+      const orderInfo = await db.query('SELECT user_id, title FROM orders WHERE id = ?', [request.orderId])
+      const order = orderInfo?.[0]
+      
+      if (order?.user_id) {
+        await this.notificationService.createNotification({
+          user_id: order.user_id,
+          type: 'dispatch_rejected',
+          title: '分身已拒绝订单',
+          content: `分身"${declinedAvatarName}"已拒绝接单"${order.title || '内容创作'}"，名额已释放到订单广场。`,
+          metadata: { orderId: request.orderId, avatarId: request.avatarId, avatarName: declinedAvatarName },
+          created_at: new Date(),
+          updated_at: new Date()
+        }).catch(err => console.warn('[通知] 分身拒绝通知发送失败:', err.message))
+      }
+    } catch (err) {
+      console.warn('[通知] 分身拒绝通知失败:', err.message)
+    }
     
     return { success: true }
   }
@@ -1437,8 +1512,9 @@ async getExecutionProgress(orderId: string) {
           const needMoreVideos = orderAiAutoFill && orderContentType === 'video' && readyVideoCount < defaultVideoCount
           
           if (readyImageCount === 0 || needMoreImages || needMoreVideos) {
-            const maxWaitMs = 60000
-            const pollIntervalMs = 3000
+            const isVideoOrder = orderContentType === 'video'
+            const maxWaitMs = isVideoOrder ? 600000 : 60000
+            const pollIntervalMs = isVideoOrder ? 5000 : 3000
             const startTime = Date.now()
             
             while (Date.now() - startTime < maxWaitMs) {

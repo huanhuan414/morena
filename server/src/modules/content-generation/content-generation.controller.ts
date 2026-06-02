@@ -216,6 +216,46 @@ export class ContentGenerationController {
     }
   }
 
+  /**
+   * 批量获取内容的图片URL列表（轻量接口）
+   */
+  @Post('content-images/batch')
+  @HttpCode(HttpStatus.OK)
+  async getContentImagesBatch(@Body() body: { ids: string[] }) {
+    try {
+      const { ids } = body
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return { code: 200, message: '获取成功', data: { items: [] } }
+      }
+
+      const db = getMySQLClient()
+      const placeholders = ids.map(() => '?').join(',')
+      const results = await db.query(
+        `SELECT id, images FROM content_generation_requests WHERE id IN (${placeholders})`,
+        ids
+      ) as any[]
+      const rows = Array.isArray(results) ? results : []
+
+      const items = rows.map((row: any) => {
+        let images: string[] = []
+        const raw = row?.images
+        if (typeof raw === 'string') {
+          try { images = JSON.parse(raw) } catch { images = [] }
+        } else if (Array.isArray(raw)) {
+          images = raw
+        }
+
+        const urlImages = images.filter((img: string) => typeof img === 'string' && img.startsWith('http'))
+
+        return { id: row.id, images: urlImages }
+      })
+
+      return { code: 200, message: '获取成功', data: { items } }
+    } catch (error: any) {
+      return { code: 500, message: '获取失败', data: { items: [] } }
+    }
+  }
+
   @Get('content/:contentId')
   async getContentById(@Param('contentId') contentId: string) {
     try {
@@ -535,6 +575,36 @@ export class ContentGenerationController {
       }
     } catch (error: any) {
       return { code: 500, message: '清除失败', error: error.message }
+    }
+  }
+
+  @Post('admin/poll-videos')
+  @HttpCode(HttpStatus.OK)
+  async pollPendingVideos() {
+    try {
+      console.log('[ContentGenerationController] 手动触发视频轮询任务')
+      await this.contentGenerationService.pollPendingVideoTasks()
+      return { code: 200, message: '视频轮询任务已触发' }
+    } catch (error: any) {
+      console.error('[ContentGenerationController] 触发视频轮询失败:', error.message)
+      return { code: 500, message: '触发失败', error: error.message }
+    }
+  }
+
+  @Get('admin/video-assets')
+  async getGeneratingVideoAssets() {
+    try {
+      const pool = await getMySQLClient()
+      const [rows]: any = await pool.query(
+        `SELECT id, order_id, seedance_task_id, status, source, asset_type, created_at, updated_at
+         FROM order_assets
+         WHERE asset_type = 'video' AND source = 'ai_generated' AND status = 'generating'
+         AND seedance_task_id IS NOT NULL
+         ORDER BY updated_at ASC LIMIT 20`
+      )
+      return { code: 200, message: '获取成功', data: rows }
+    } catch (error: any) {
+      return { code: 500, message: '获取失败', error: error.message }
     }
   }
 }

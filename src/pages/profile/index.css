@@ -182,6 +182,9 @@
 .user-avatar-wrap {
   position: relative;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .user-avatar {
@@ -240,6 +243,46 @@
 .user-id {
   font-size: 26rpx;
   color: var(--text-secondary);
+}
+
+.user-subscription-row {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-top: 8rpx;
+  padding: 6rpx 16rpx;
+  background: linear-gradient(135deg, #F3E8FF 0%, #E9D5FF 100%);
+  border-radius: var(--radius-full);
+  align-self: flex-start;
+}
+
+.user-subscription-text {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #7B3FE4;
+}
+
+.user-subscription-expire {
+  font-size: 20rpx;
+  color: #9333EA;
+  margin-left: 8rpx;
+}
+
+.user-coin-row {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-top: 8rpx;
+  padding: 6rpx 16rpx;
+  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+  border-radius: var(--radius-full);
+  align-self: flex-start;
+}
+
+.user-coin-text {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #D97706;
 }
 
 /* 统计数据 */

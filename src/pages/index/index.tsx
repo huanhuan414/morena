@@ -4,7 +4,7 @@ import { View, Text, ScrollView } from '@tarojs/components'
 import { Bell, Settings, Users, FileText, Coins, Plus, Zap, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye, ShoppingBag, ChevronRight, Gift, Rocket, Clock, CircleCheckBig, ChevronDown } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { BANNER_TITLE, BANNER_DESC } from '@/constants/referral-rewards'
-import { PLATFORM_UI_ORDER, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
+import { PLATFORM_UI_ORDER, PLATFORM_META_MAP, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
 import { useUserStore } from '@/stores/user'
 import { useNotifications } from '@/hooks/useNotifications'
 import { Avatar as UiAvatar } from '@/components/ui/avatar'
@@ -49,7 +49,7 @@ const Index: React.FC = () => {
   const [generatedContents, setGeneratedContents] = useState(0)
   const [growthCampaign, setGrowthCampaign] = useState<any>(null)
   const [trackedCampaignId, setTrackedCampaignId] = useState('')
-  const { avatarId: currentAvatarId, setAvatarId } = useUserStore(state => state)
+  const { avatarId: currentAvatarId, setAvatarId, isLoggedIn } = useUserStore(state => state)
 
   const [showOrderModal, setShowOrderModal] = useState(false)
   const [orderModalData, setOrderModalData] = useState<any>(null)
@@ -77,14 +77,18 @@ const Index: React.FC = () => {
   const [acceptingOrderIds, setAcceptingOrderIds] = useState<Record<string, boolean>>({})
   const [orderPage, setOrderPage] = useState(1)
   const [, setOrderTotal] = useState(0)
-  const [hasMoreOrders, setHasMoreOrders] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const ordersFetchInFlightRef = useRef(false)
   const lastOrdersFetchAtRef = useRef(0)
 
+
   const platformTabs = [
     { key: 'all', label: '全部' },
     ...PLATFORM_UI_ORDER.map((key) => ({ key, label: getPlatformLabel(key) }))
+      .filter((item) => {
+        const meta = getPlatformMeta(item.key)
+        return Array.isArray(meta?.requirements)
+      })
   ]
 
   // 获取公开订单列表（订单广场数据）
@@ -96,7 +100,7 @@ const Index: React.FC = () => {
     lastOrdersFetchAtRef.current = now
     try {
       if (page === 1) setOrdersLoading(true)
-      const pageSize = 10
+      const pageSize = 20
       const res = await Network.request({
         url: '/api/order/open',
         data: {
@@ -117,7 +121,7 @@ const Index: React.FC = () => {
           platforms: Array.isArray(o.platforms) ? o.platforms : (o.platform ? [o.platform] : []),
           budget: Number(o.budget || o.price || 0),
           avatarCountRaw: Number(o.avatarCount || o.avatar_count || 0),
-          estimatedEarning: Number(o.budget || o.price || 0) / Math.max(Number(o.avatarCount || o.avatar_count || 0) || 1, 1),
+          estimatedEarning: Number(o.expectedEarnings || o.expected_earnings || 0),
           deliveryDays: o.deliveryDays || o.delivery_days || 3,
           acceptCount: o.acceptCount || o.accept_count || 0,
           requirements: o.requirements || {},
@@ -142,7 +146,6 @@ const Index: React.FC = () => {
         })
         setOrderTotal(total)
         setOrderPage(page)
-        setHasMoreOrders(nextLength < total)
       } else {
         if (!append) setOrders([])
       }
@@ -203,29 +206,69 @@ const Index: React.FC = () => {
 
   // 接单
   const handleAcceptOrder = async (orderId: string) => {
-    // demo 订单不能真正接单
     if (orderId.startsWith('demo_')) {
       Taro.showToast({ title: '示例订单，请先创建分身', icon: 'none' })
       return
     }
     if (acceptingOrderIds[orderId]) return
     setAcceptingOrderIds(prev => ({ ...prev, [orderId]: true }))
+    
     try {
-      let avatarIdToUse = currentAvatarId
-      if (!avatarIdToUse || avatarIdToUse === 'undefined') {
-        const avatarRes = await Network.request({ url: '/api/avatar' })
-        if (avatarRes.data?.code === 200 && avatarRes.data?.data?.length > 0) {
-          avatarIdToUse = avatarRes.data.data[0].id || ''
-          if (!avatarIdToUse) {
-            Taro.showToast({ title: '分身数据异常', icon: 'none' })
-            return
-          }
-          setAvatarId(avatarIdToUse)
-        } else {
-          Taro.showToast({ title: '请先创建分身', icon: 'none' })
+      const avatarRes = await Network.request({ url: '/api/avatar' })
+      if (avatarRes.data?.code !== 200 || !avatarRes.data?.data?.length) {
+        Taro.showToast({ title: '请先创建分身', icon: 'none' })
+        return
+      }
+      const avatars = avatarRes.data.data
+      
+      const userId = useUserStore.getState().userInfo?.id
+      let planId = 'plan_free'
+      if (userId) {
+        const subRes = await Network.request({
+          url: `/api/subscription/status?userId=${userId}`,
+          method: 'GET',
+        })
+        planId = subRes?.data?.data?.plan?.id || 'plan_free'
+      }
+      const isPro = planId === 'plan_pro' || planId === 'plan_enterprise'
+      
+      let avatarIdToUse: string
+      
+      if (avatars.length === 1) {
+        avatarIdToUse = avatars[0].id
+      } else if (isPro) {
+        const avatarNames = avatars.map((a: any) => a.name)
+        const selectedIndex = await new Promise<number>((resolve) => {
+          Taro.showActionSheet({
+            itemList: avatarNames,
+            success: (r) => resolve(r.tapIndex),
+            fail: () => resolve(-1),
+          })
+        })
+        if (selectedIndex === -1) {
           return
         }
+        avatarIdToUse = avatars[selectedIndex].id
+      } else {
+        const goToUpgrade = await new Promise<boolean>((resolve) => {
+          Taro.showModal({
+            title: '升级解锁分身选择',
+            content: `您有${avatars.length}个分身，升级专业版后可选择特定分身接单\n\n当前将使用默认分身「${avatars[0].name}」接单`,
+            confirmText: '立即升级',
+            cancelText: '继续接单',
+            success: (r) => resolve(r.confirm),
+            fail: () => resolve(false),
+          })
+        })
+        if (goToUpgrade) {
+          Taro.navigateTo({ url: '/package-avatar/pages/subscription/index' })
+          return
+        }
+        avatarIdToUse = avatars[0].id
       }
+      
+      setAvatarId(avatarIdToUse)
+      
       const res = await Network.request({
         url: `/api/order-dispatch/avatar/${avatarIdToUse}/accept/${orderId}`,
         method: 'POST'
@@ -234,7 +277,6 @@ const Index: React.FC = () => {
         Taro.showToast({ title: '接单成功，正在生成内容', icon: 'success' })
         fetchOrders()
         fetchStats()
-        // 跳转到内容生成页面
         const result = res.data?.data || {}
         const nextRequestId = result.requestId || ''
         const nextAvatarId = result.avatarId || avatarIdToUse
@@ -366,13 +408,6 @@ const Index: React.FC = () => {
     setIsRefreshing(false)
   }, [activePlatform])
 
-  // 上拉加载更多
-  const handleLoadMore = useCallback(() => {
-    if (!ordersLoading && hasMoreOrders) {
-      fetchOrders(orderPage + 1, true)
-    }
-  }, [ordersLoading, hasMoreOrders, orderPage, activePlatform])
-
   const getGreeting = () => {
     const hour = new Date().getHours()
     if (hour < 6) return '夜深了'
@@ -432,6 +467,10 @@ const Index: React.FC = () => {
   }
 
   const enableAllTrust = async () => {
+    if (!isLoggedIn) {
+      Taro.navigateTo({ url: '/pages/login/index?redirect=/pages/index/index' })
+      return
+    }
     if (trustAllLoading) return
     setTrustAllLoading(true)
     try {
@@ -444,6 +483,18 @@ const Index: React.FC = () => {
       if (res.data?.code === 200) {
         Taro.showToast({ title: '已开启所有分身托管', icon: 'success' })
         fetchStats()
+      } else if (res.data?.data?.type === 'hosting_limit') {
+        Taro.showModal({
+          title: '托管数量已达上限',
+          content: res.data.msg || '当前套餐托管数量已达上限，请升级套餐',
+          confirmText: '去升级',
+          cancelText: '取消',
+          success: (modalRes) => {
+            if (modalRes.confirm) {
+              Taro.navigateTo({ url: '/package-avatar/pages/subscription/index' })
+            }
+          }
+        })
       } else {
         Taro.showToast({ title: res.data?.msg || '开启失败', icon: 'none' })
       }
@@ -456,16 +507,9 @@ const Index: React.FC = () => {
   }
 
   // 紧急程度标签
-  // 截止时间格式化
+  // 截止时间格式化 - 暂时禁用期限功能
   const formatDeadline = (deadline: string | null) => {
-    if (!deadline) return null
-    const diff = new Date(deadline).getTime() - Date.now()
-    if (diff <= 0) return { text: '已截止', color: '#EF4444', urgent: true }
-    const hours = Math.floor(diff / 3600000)
-    const days = Math.floor(hours / 24)
-    if (days > 0) return { text: `${days}天后`, color: '#6B7280', urgent: false }
-    if (hours > 6) return { text: `${hours}小时后`, color: '#F59E0B', urgent: false }
-    return { text: `${hours}小时后`, color: '#EF4444', urgent: true }
+    return null
   }
 
   const getUrgencyTag = (order: OrderItem) => {
@@ -540,8 +584,6 @@ const Index: React.FC = () => {
         refresherEnabled
         refresherTriggered={isRefreshing}
         onRefresherRefresh={handleRefresh}
-        onScrollToLower={handleLoadMore}
-        lowerThreshold={200}
       >
 
         {/* 新用户引导（仅无分身时显示） */}
@@ -634,7 +676,7 @@ const Index: React.FC = () => {
               <View className="stat-icon-small" style={{ background: '#FDF2F8' }}>
                 <Coins size={28} color="#EC4899" />
               </View>
-              <Text className="stat-value-small" style={{ color: '#EC4899' }}>¥{totalEarnings > 0 ? totalEarnings.toFixed(0) : '0'}</Text>
+              <Text className="stat-value-small" style={{ color: '#EC4899' }}>¥{totalEarnings > 0 ? totalEarnings.toFixed(2) : '0.00'}</Text>
               <Text className="stat-label-small">累计收益</Text>
               <Text className="stat-hint" style={{ color: totalEarnings > 0 ? '#EC4899' : '#94A3B8' }}>
                 {totalEarnings > 0 ? '去提现' : '开始赚取'}
@@ -760,19 +802,19 @@ const Index: React.FC = () => {
           </View>
 
           {/* 平台筛选 Tab */}
-          <ScrollView scrollX className="platform-scroll" enhanced showScrollbar={false}>
-            <View className="platform-tags">
+          <View className="platform-tab-filter">
+            <View className="platform-tab-scroll">
               {platformTabs.map(tab => (
                 <View
                   key={tab.key}
-                  className={`platform-tag ${activePlatform === tab.key ? 'active' : ''}`}
+                  className={`platform-tab-item ${activePlatform === tab.key ? 'active' : ''}`}
                   onClick={() => setActivePlatform(tab.key)}
                 >
-                  <Text className="platform-tag-text">{tab.label}</Text>
+                  <Text className={`platform-tab-text ${activePlatform === tab.key ? 'active' : ''}`}>{tab.label}</Text>
                 </View>
               ))}
             </View>
-          </ScrollView>
+          </View>
 
           {/* 订单列表 - 待接订单风格卡片 orders.length=${orders.length} */}
           <View className="home-order-list">
@@ -782,7 +824,7 @@ const Index: React.FC = () => {
                 <Text className="po-loading-text">加载中...</Text>
               </View>
             ) : orders.length > 0 ? (
-              orders.slice(0, 6).map(order => {
+              orders.map(order => {
                 const urgencyTag = getUrgencyTag(order)
                 const contentTypeTag = getContentTypeTag(order)
                 const priorityColor = urgencyTag ? urgencyTag.color : '#6366F1'
@@ -999,19 +1041,6 @@ const Index: React.FC = () => {
             )}
           </View>
         </View>
-
-        {/* 加载更多提示 */}
-        {orders.length > 0 && (
-          <View className="load-more-wrapper">
-            {ordersLoading && orderPage > 1 ? (
-              <Text className="load-more-text">加载中...</Text>
-            ) : hasMoreOrders ? (
-              <Text className="load-more-text">上拉加载更多</Text>
-            ) : (
-              <Text className="load-more-text">没有更多订单了</Text>
-            )}
-          </View>
-        )}
 
         {/* 底部留白 */}
         <View className="bottom-spacer" />

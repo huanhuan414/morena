@@ -1,10 +1,14 @@
 // @ts-nocheck
 import { Controller, Get, Post, Put, Delete, Param, Headers, Body, Query, Inject } from '@nestjs/common'
 import { AvatarService } from './avatar.service'
+import { SubscriptionService } from '../subscription/subscription.service'
 
 @Controller('avatar')
 export class AvatarController {
-  constructor(@Inject('AVATAR_SERVICE') private readonly avatarService: AvatarService) {}
+  constructor(
+    @Inject('AVATAR_SERVICE') private readonly avatarService: AvatarService,
+    @Inject(SubscriptionService) private readonly subscriptionService: SubscriptionService,
+  ) {}
 
   @Post()
   async createAvatar(
@@ -56,7 +60,9 @@ export class AvatarController {
   @Get()
   async getAllAvatars(@Headers('x-user-id') userId?: string) {
     try {
+      console.log('[getAllAvatars] x-user-id:', userId)
       const avatars = await this.avatarService.getUserAvatars(userId)
+      console.log('[getAllAvatars] 返回分身数量:', avatars.data?.length, '第一个分身ID:', avatars.data?.[0]?.id)
       return { code: 200, msg: 'success', data: avatars.data || [] }
     } catch (err) {
       console.error('获取分身列表失败:', err)
@@ -258,6 +264,17 @@ export class AvatarController {
     @Body() body: { trust_enabled: boolean }
   ) {
     try {
+      if (body.trust_enabled === true) {
+        const avatarResult = await this.avatarService.getAvatarById(id)
+        const avatar = avatarResult?.data
+        const userId = avatar?.user_id || avatar?.userId
+        if (userId) {
+          const check = await this.subscriptionService.checkHostingLimit(userId)
+          if (!check.allowed) {
+            return { code: 400, msg: check.reason, data: { limit: check.limit, current: check.current, type: 'hosting_limit' } }
+          }
+        }
+      }
       await this.avatarService.updateTrust(id, body.trust_enabled)
       return { code: 200, msg: 'success', data: null }
     } catch (err) {
@@ -272,6 +289,12 @@ export class AvatarController {
     @Body() body: { trust_enabled: boolean }
   ) {
     try {
+      if (body.trust_enabled === true) {
+        const check = await this.subscriptionService.checkHostingLimit(userId)
+        if (!check.allowed) {
+          return { code: 400, msg: check.reason, data: { type: 'hosting_limit', limit: check.limit, current: check.current } }
+        }
+      }
       await this.avatarService.enableAllTrust(userId, body.trust_enabled)
       return { code: 200, msg: 'success', data: null }
     } catch (err) {

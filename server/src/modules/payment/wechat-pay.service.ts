@@ -314,16 +314,14 @@ export class WechatPayService {
 
       this.logger.log(`订单支付成功: outTradeNo=${outTradeNo}, transactionId=${transactionId}`);
 
-      // 根据 order_type 分别处理
       if (order.orderType === 'order' || order.order_type === 'order') {
-        // 订单支付场景：激活订单 → 自动派单
         await this.activateOrder(order, transactionId);
+      } else if (order.orderType === 'coin_recharge' || order.order_type === 'coin_recharge') {
+        await this.activateCoinRecharge(order, transactionId);
       } else {
-        // 订阅支付场景：激活订阅
         await this.activateSubscription(order);
       }
 
-      // 上报微信发货信息管理
       await this.uploadShippingInfo(transactionId, order);
 
       return this.buildNotifySuccessXml();
@@ -500,9 +498,65 @@ export class WechatPayService {
     }
   }
 
-  /**
-   * 查询订单支付状态
-   */
+  private async activateCoinRecharge(order: any, transactionId: string) {
+    try {
+      const packageId = order.planId || order.plan_id;
+      const userId = order.userId || order.user_id;
+      
+      if (!packageId || !userId) {
+        this.logger.error('币充值回调: packageId或userId为空');
+        return;
+      }
+
+      this.logger.log(`激活币充值: userId=${userId}, packageId=${packageId}`);
+
+      const db = getMySQLClient();
+      const packages = await db.query(
+        `SELECT * FROM coin_recharge_packages WHERE id = ?`,
+        [packageId],
+      );
+
+      if (!packages || packages.length === 0) {
+        this.logger.error(`充值套餐不存在: ${packageId}`);
+        return;
+      }
+
+      const pkg = packages[0];
+      const totalCoins = Number(pkg.coins) + Number(pkg.bonus || 0);
+
+      const users = await db.query(`SELECT coins FROM users WHERE id = ? FOR UPDATE`, [userId]);
+      const user = users?.[0];
+      
+      if (!user) {
+        this.logger.error(`用户不存在: ${userId}`);
+        return;
+      }
+
+      const balanceBefore = Number(user.coins || 0);
+      const balanceAfter = balanceBefore + totalCoins;
+
+      await db.query(`UPDATE users SET coins = ? WHERE id = ?`, [balanceAfter, userId]);
+
+      const rechargeRecordId = crypto.randomUUID();
+      await db.query(
+        `INSERT INTO coin_recharge_records (id, user_id, package_id, coins, bonus, amount, payment_method, status, transaction_id, paid_at, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'wechat', 'paid', ?, NOW(), NOW())`,
+        [rechargeRecordId, userId, packageId, pkg.coins, pkg.bonus || 0, pkg.price, transactionId]
+      );
+
+      const txId = crypto.randomUUID();
+      await db.query(
+        `INSERT INTO coin_transactions (id, user_id, type, amount, balance_before, balance_after, description, created_at)
+         VALUES (?, ?, 'recharge', ?, ?, ?, ?, NOW())`,
+        [txId, userId, totalCoins, balanceBefore, balanceAfter, `充值${pkg.coins}币${pkg.bonus > 0 ? `，赠送${pkg.bonus}币` : ''}`]
+      );
+
+      this.logger.log(`✅ 币充值成功: userId=${userId}, 充值${totalCoins}币, 余额${balanceBefore}→${balanceAfter}`);
+    } catch (error) {
+      this.logger.error(`激活币充值失败: ${error.message}`, error.stack);
+    }
+  }
+
   async queryOrderStatus(orderId: string) {
     const db = getMySQLClient();
     const orders = await db.query(

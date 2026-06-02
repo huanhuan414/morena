@@ -6,23 +6,34 @@ import { HttpExceptionFilter } from '@/common/filters/http-exception.filter';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
-// 加载 .env 文件 — 优先从 cwd（PM2 设定）查找，再从 __dirname 向上查找
+// 加载 .env 文件 — .env.local 优先级更高（会覆盖 .env）
 const envPaths = [
   path.resolve(process.cwd(), '.env'),
   path.resolve(__dirname, '../../.env'),
   path.resolve(__dirname, '../.env'),
 ]
-let envLoaded = false
+const envLocalPaths = [
+  path.resolve(process.cwd(), '.env.local'),
+  path.resolve(__dirname, '../../.env.local'),
+  path.resolve(__dirname, '../.env.local'),
+]
+
+// 先加载 .env
 for (const envPath of envPaths) {
+  dotenv.config({ path: envPath })
+}
+
+// 再加载 .env.local（会覆盖 .env 的同名变量）
+let localEnvLoaded = false
+for (const envPath of envLocalPaths) {
   const result = dotenv.config({ path: envPath })
   if (!result.error) {
-    console.log('[main.ts] Successfully loaded .env file from:', envPath);
-    envLoaded = true
-    break
+    console.log('[main.ts] Loaded .env.local from:', envPath);
+    localEnvLoaded = true
   }
 }
-if (!envLoaded) {
-  console.warn('[main.ts] Warning: Failed to load .env file from any path');
+if (!localEnvLoaded) {
+  console.log('[main.ts] No .env.local found');
 }
 
 function parsePort(): number {

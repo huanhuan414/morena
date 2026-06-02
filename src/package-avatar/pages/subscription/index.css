@@ -411,7 +411,7 @@
 /* 左侧固定标签列 */
 .sub-compare-labels {
   flex-shrink: 0;
-  width: 150rpx;
+  width: 180rpx;
   z-index: 2;
   background: #ffffff;
   border-right: 1rpx solid #f1f5f9;
@@ -429,11 +429,11 @@
   color: rgba(255, 255, 255, 0.9);
 }
 .sub-compare-label-row {
-  height: 72rpx;
+  min-height: 72rpx;
   display: flex;
   align-items: center;
   gap: 6rpx;
-  padding: 0 12rpx;
+  padding: 8rpx 12rpx;
   border-bottom: 1rpx solid #f1f5f9;
 }
 .sub-compare-label-row:last-child {
@@ -442,9 +442,33 @@
 .sub-compare-label-text {
   font-size: 20rpx;
   color: #475569;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 28rpx;
+  word-break: break-all;
+}
+
+/* 分节标题 */
+.sub-compare-section-header {
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  padding: 0 12rpx;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 1rpx solid #e2e8f0;
+}
+.sub-compare-section-text {
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #8B5CF6;
+}
+.sub-compare-section-row {
+  display: flex;
+  height: 56rpx;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 1rpx solid #e2e8f0;
+}
+.sub-compare-section-cell {
+  flex: 1;
+  min-width: 130rpx;
 }
 
 /* 右侧滚动区 */
@@ -483,7 +507,7 @@
 
 .sub-compare-body-row {
   display: flex;
-  height: 72rpx;
+  min-height: 72rpx;
   border-bottom: 1rpx solid #f1f5f9;
 }
 .sub-compare-body-row:last-child {
@@ -495,6 +519,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 8rpx 4rpx;
 }
 .sub-compare-val-text {
   font-size: 20rpx;

@@ -129,6 +129,24 @@
   letter-spacing: 1rpx;
 }
 
+.search-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24rpx;
+  height: 64rpx;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border-radius: 16rpx;
+  color: #ffffff;
+  box-shadow: 0 4rpx 12rpx rgba(99, 102, 241, 0.3);
+}
+
+.search-button-text {
+  font-size: 26rpx;
+  font-weight: 600;
+  letter-spacing: 1rpx;
+}
+
 /* 加载状态 */
 .loading-state {
   display: flex;
@@ -819,13 +837,12 @@
 
 /* 广场卡片网格 */
 .square-cards-grid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 20rpx;
 }
 
 .square-card {
-  width: calc(50% - 10rpx);
   background: #ffffff;
   border-radius: 28rpx;
   overflow: hidden;

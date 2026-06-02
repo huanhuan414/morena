@@ -81,6 +81,7 @@ export class ContentGenerationService implements OnModuleInit {
   // 第三方 API 限流器：控制并发调用数，避免被 429
   private readonly textLimiter = new ApiRateLimiter('豆包文案API', 5)
   private readonly imageLimiter = new ApiRateLimiter('图片生成API', 3)
+  private readonly videoLimiter = new ApiRateLimiter('Seedance视频API', 3)
 
   // 图片生成：直接 HTTP 调用 api.aaigc.top（coze SDK ImageGenerationClient 线上报 Invalid URL）
   private readonly imageGenBaseUrl = process.env.IMAGE_GEN_API_BASE_URL || 'https://api.aaigc.top'
@@ -746,12 +747,14 @@ export class ContentGenerationService implements OnModuleInit {
   /**
    * 获取当前 API 限流队列状态（供前端轮询展示排队进度）
    */
-  getQueueStatus(): { textQueue: number; textActive: number; imageQueue: number; imageActive: number } {
+  getQueueStatus(): { textQueue: number; textActive: number; imageQueue: number; imageActive: number; videoQueue: number; videoActive: number } {
     return {
       textQueue: this.textLimiter.getQueuePosition(),
       textActive: this.textLimiter.getActiveCount(),
       imageQueue: this.imageLimiter.getQueuePosition(),
       imageActive: this.imageLimiter.getActiveCount(),
+      videoQueue: this.videoLimiter.getQueuePosition(),
+      videoActive: this.videoLimiter.getActiveCount(),
     }
   }
 
@@ -771,21 +774,23 @@ export class ContentGenerationService implements OnModuleInit {
    */
   getDefaultImageCount(platform: string, contentType: string): number {
     const isVideo = contentType === 'video' || contentType === 'video_text'
-    // 视频类型不需要生成配图（由视频生成环节处理）
     if (isVideo) return 0
 
+    const isTextOnly = contentType === 'text'
+    if (isTextOnly) return 0
+
     const countMap: Record<string, number> = {
-      wechat_mp: 3,          // 微信公众号：3张配图
-      wechat_official: 3,    // 微信公众号（旧key同上）
-      wechat_channel: 3,     // 视频号图文：3张
-      toutiao: 3,            // 今日头条：3张配图
-      zhihu: 3,              // 知乎：3张配图
-      xiaohongshu: 3,        // 小红书：3张配图
-      wechat_moments: 3,     // 朋友圈：3张（1+2布局）
-      weibo: 3,              // 微博：3张（1+2布局）
-      douyin: 3,             // 抖音图文：3张
-      kuaishou: 3,           // 快手图文：3张
-      bilibili: 3,           // B站：3张
+      wechat_mp: 3,
+      wechat_official: 3,
+      wechat_channel: 3,
+      toutiao: 3,
+      zhihu: 3,
+      xiaohongshu: 3,
+      wechat_moments: 3,
+      weibo: 3,
+      douyin: 3,
+      kuaishou: 3,
+      bilibili: 3,
     }
     return countMap[platform] || 3
   }
@@ -1983,9 +1988,9 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
    * 通过限流器控制并发，避免火山引擎 API 429
    */
   private async createSeedanceTask(prompt: string): Promise<string> {
-    return this.textLimiter.run(async () => {
+    return this.videoLimiter.run(async () => {
       const createUrl = `${this.seedanceBaseUrl}/api/v3/contents/generations/tasks`
-      this.logger.log(`[Seedance] creating video task, prompt: ${prompt.slice(0, 80)}...`)
+      this.logger.log(`[Seedance] creating video task, prompt: ${prompt.slice(0, 80)}..., 视频队列: 等待${this.videoLimiter.getQueuePosition()}, 执行中${this.videoLimiter.getActiveCount()}`)
 
       const createResponse = await fetch(createUrl, {
         method: 'POST',
@@ -2100,6 +2105,7 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
   @Cron('*/30 * * * * *')
   async pollPendingVideoTasks() {
     try {
+      this.logger.log('[VideoPoll] ====== 开始执行视频轮询任务 ======')
       const pool = getPool()
 
       // 1. 超时保护：generating_video 超过 30 分钟自动标记失败
@@ -2127,8 +2133,7 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
          ORDER BY created_at ASC LIMIT 10`
       )
 
-      if (!rows || rows.length === 0) return
-
+      if (rows && rows.length > 0) {
       for (const record of rows) {
         const { id, order_id, seedance_task_id, content, images, platform } = record
         try {
@@ -2159,6 +2164,22 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
               'UPDATE content_generation_requests SET status = ?, video_url = ?, seedance_task_id = NULL, updated_at = NOW() WHERE id = ?',
               ['preview', finalVideoUrl, id]
             )
+            // 同时更新 order_assets 表的 asset_url（与图片模式保持一致）
+            try {
+              const [assetRows]: any = await pool.execute(
+                'SELECT id FROM order_assets WHERE order_id = ? AND asset_type = "video" AND seedance_task_id = ? LIMIT 1',
+                [order_id, seedance_task_id]
+              )
+              if (assetRows && assetRows.length > 0) {
+                await pool.execute(
+                  'UPDATE order_assets SET asset_url = ?, status = ?, seedance_task_id = NULL WHERE id = ?',
+                  [finalVideoUrl, 'ready', assetRows[0].id]
+                )
+                this.logger.log(`[VideoPoll] 更新 order_assets: id=${assetRows[0].id}, asset_url=${finalVideoUrl.slice(0, 80)}...`)
+              }
+            } catch (assetErr: any) {
+              this.logger.warn(`[VideoPoll] 更新 order_assets 失败: ${assetErr.message}`)
+            }
             // 同步订单状态
             try {
               await this.syncOrderStatus(order_id)
@@ -2176,12 +2197,22 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
             'UPDATE content_generation_requests SET status = ?, error = ?, seedance_task_id = NULL, updated_at = NOW() WHERE id = ?',
             [finalStatus, `视频生成失败: ${err.message}`, id]
           )
+          // 更新 order_assets 状态为 failed
+          try {
+            await pool.execute(
+              'UPDATE order_assets SET status = ?, seedance_task_id = NULL WHERE order_id = ? AND asset_type = "video" AND seedance_task_id = ?',
+              ['failed', order_id, seedance_task_id]
+            )
+          } catch (assetErr: any) {
+            this.logger.warn(`[VideoPoll] 更新 order_assets 失败状态失败: ${assetErr.message}`)
+          }
           try {
             await this.syncOrderStatus(order_id)
           } catch (e: any) {
             this.logger.warn(`[VideoPoll] 同步订单状态失败: ${e.message}`)
           }
         }
+      }
       }
 
       // 3. 兜底：处理无 seedance_task_id 但卡在 generating_video 的旧记录
@@ -2317,7 +2348,7 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
 
       // 更新数据库
       if (updatedImages.length > 0) {
-        const db = getMySQLClient()
+        const db = getMySQLClient() 
         await db.query(
           'UPDATE content_generation_requests SET images = ? WHERE id = ?',
           [JSON.stringify(updatedImages), requestId]
@@ -2503,53 +2534,61 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
   private async pregenerateVideo(orderId: string, title: string, description: string, platform: string): Promise<void> {
     const db = getMySQLClient()
 
-    // 1. 创建 order_assets 记录
     const videoAssetId = uuidv4()
     await db.query(
       `INSERT INTO order_assets (id, order_id, asset_type, source, platform, status, prompt)
        VALUES (?, ?, 'video', 'ai_generated', ?, 'generating', ?)`,
       [videoAssetId, orderId, platform, description]
     )
+    this.logger.log(`[预生成] 订单 ${orderId} 视频素材记录已创建: assetId=${videoAssetId}`)
 
-    // 2. 异步生成视频（不阻塞图片生成）
     ;(async () => {
       try {
-
-        // 构建输入上下文（不需要文案，用订单标题+描述即可）
         const input = {
-          title,
-          description,
+          orderTitle: title,
+          orderDescription: description,
           platform,
-          primarySkill: 'general', // 通用策略
+          primarySkill: 'general',
         }
         const skillStrategy = getSkillStrategy('general')
 
-        // 3. 生成视频脚本
+        this.logger.log(`[预生成] 订单 ${orderId} 开始生成视频脚本...`)
         const videoScript = await this.generateVideoScript(platform, input, '', skillStrategy) || ''
         if (!videoScript) {
-          console.error(`[预生成] 订单 ${orderId} 视频脚本生成失败`)
+          this.logger.error(`[预生成] 订单 ${orderId} 视频脚本生成失败，assetId=${videoAssetId}`)
           await db.query('UPDATE order_assets SET status = ? WHERE id = ?', ['failed', videoAssetId])
           return
         }
+        this.logger.log(`[预生成] 订单 ${orderId} 视频脚本生成完成: ${videoScript.length}字`)
 
-        // 4. 提取视觉prompt
+        this.logger.log(`[预生成] 订单 ${orderId} 提取视觉prompt...`)
         const seedancePrompt = await this.extractVisualPrompt(videoScript, input)
+        this.logger.log(`[预生成] 订单 ${orderId} 视觉prompt提取完成: ${seedancePrompt.substring(0, 80)}...`)
 
-        // 5. 创建Seedance异步任务
+        this.logger.log(`[预生成] 订单 ${orderId} 创建Seedance异步任务...`)
         const taskId = await this.createSeedanceTask(seedancePrompt)
         if (taskId) {
-          // 存储 taskId，由 pollPendingVideoTasks 定时任务轮询结果
           await db.query('UPDATE order_assets SET seedance_task_id = ? WHERE id = ?', [taskId, videoAssetId])
+          this.logger.log(`[预生成] 订单 ${orderId} Seedance任务创建成功: taskId=${taskId}, assetId=${videoAssetId}，等待轮询获取结果`)
         } else {
-          console.error(`[预生成] 订单 ${orderId} Seedance任务创建失败`)
+          this.logger.error(`[预生成] 订单 ${orderId} Seedance任务创建返回空taskId，assetId=${videoAssetId}`)
           await db.query('UPDATE order_assets SET status = ? WHERE id = ?', ['failed', videoAssetId])
         }
       } catch (err: any) {
-        console.error(`[预生成] 订单 ${orderId} 视频预生成异常:`, err.message)
-        await db.query('UPDATE order_assets SET status = ? WHERE id = ?', ['failed', videoAssetId])
+        this.logger.error(`[预生成] 订单 ${orderId} 视频预生成异常: ${err.message}, assetId=${videoAssetId}`)
+        try {
+          await db.query('UPDATE order_assets SET status = ? WHERE id = ?', ['failed', videoAssetId])
+        } catch (dbErr: any) {
+          this.logger.error(`[预生成] 订单 ${orderId} 更新asset状态为failed也失败: ${dbErr.message}`)
+        }
       }
-    })().catch(err => {
-      console.error(`[预生成] 视频预生成异常:`, err.message)
+    })().catch(async (err) => {
+      this.logger.error(`[预生成] 订单 ${orderId} 视频预生成未捕获异常: ${err.message}, assetId=${videoAssetId}`)
+      try {
+        await db.query('UPDATE order_assets SET status = ? WHERE id = ?', ['failed', videoAssetId])
+      } catch (dbErr: any) {
+        this.logger.error(`[预生成] 订单 ${orderId} 未捕获异常后更新asset状态也失败: ${dbErr.message}`)
+      }
     })
   }
 

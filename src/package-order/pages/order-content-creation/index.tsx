@@ -54,6 +54,11 @@ interface ProcessingData {
   }
   publishFeedback?: {
     rejectReason?: string
+    revisionHistory?: Array<{
+      reason: string
+      time: string
+      count: number
+    }>
     [key: string]: any
   }
 }
@@ -758,8 +763,32 @@ export default function OrderContentCreation() {
               </View>
             )}
 
-            {/* 驳回原因 */}
-            {isRejected && rejectReason && (
+            {/* 驳回历史记录 */}
+            {isRejected && processingData?.publishFeedback?.revisionHistory && processingData.publishFeedback.revisionHistory.length > 0 && (
+              <View className="cc-content-card" style={{ background: '#FEF2F2', borderColor: '#FECACA' }}>
+                <View className="cc-card-header">
+                  <CircleAlert size={16} color="#EF4444" />
+                  <Text className="cc-card-title" style={{ color: '#EF4444' }}>驳回历史记录</Text>
+                </View>
+                <View className="cc-markdown-body">
+                  {processingData.publishFeedback.revisionHistory.map((item, index) => (
+                    <View key={index} style={{ marginBottom: index < processingData.publishFeedback!.revisionHistory!.length - 1 ? 16 : 0 }}>
+                      <View style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
+                        <Text style={{ color: '#EF4444', fontWeight: 'bold', marginRight: 8 }}>
+                          第{item.count}次驳回
+                        </Text>
+                        <Text style={{ color: '#64748B', fontSize: 12 }}>
+                          {new Date(item.time).toLocaleString('zh-CN')}
+                        </Text>
+                      </View>
+                      <Text style={{ color: '#DC2626' }}>{item.reason || '无'}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+            {/* 兼容旧数据：只显示最后一次驳回原因 */}
+            {isRejected && (!processingData?.publishFeedback?.revisionHistory || processingData.publishFeedback.revisionHistory.length === 0) && rejectReason && (
               <View className="cc-content-card" style={{ background: '#FEF2F2', borderColor: '#FECACA' }}>
                 <View className="cc-card-header">
                   <CircleAlert size={16} color="#EF4444" />

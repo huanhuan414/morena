@@ -7,6 +7,7 @@ import { getSharedCache } from '../../common/shared-cache'
 import { ReverseGeocodingService } from '../../services/reverse-geocoding.service'
 import { sharedMemoryAvatars } from '../user-stats/user-stats.service'
 import { ReferralService } from '../referral/referral.service'
+import { SubscriptionService } from '../subscription/subscription.service'
 
 // 测试用户ID列表
 const TEST_USER_IDS = ['dev_user', 'test_user', 'guest-user-id', 'anonymous']
@@ -15,7 +16,8 @@ const TEST_USER_IDS = ['dev_user', 'test_user', 'guest-user-id', 'anonymous']
 export class AvatarService {
   constructor(
     @Inject(ReverseGeocodingService) private readonly reverseGeocodingService: ReverseGeocodingService,
-    @Inject(ReferralService) private readonly referralService: ReferralService
+    @Inject(ReferralService) private readonly referralService: ReferralService,
+    @Inject(SubscriptionService) private readonly subscriptionService: SubscriptionService,
   ) {}
   private avatarColumnsCache: Set<string> | null = null
 
@@ -100,12 +102,45 @@ export class AvatarService {
    * @param userId - 用户ID（从 x-user-id header 获取）
    */
   async createAvatar(userId: string, avatarData: any) {
-    // 统一用户ID规范：必须有有效的用户ID
     const effectiveUserId = userId && !TEST_USER_IDS.includes(userId) ? userId : userId
     const isTestUser = effectiveUserId && TEST_USER_IDS.includes(effectiveUserId)
     
     if (!effectiveUserId) {
       console.warn('[AvatarService] 创建分身时userId为空，使用默认测试ID')
+    }
+    
+    // 分身数量限制校验
+    if (effectiveUserId && !isTestUser) {
+      try {
+        const benefits = await this.subscriptionService.getMembershipBenefits(effectiveUserId)
+        console.log(`[AvatarService] 获取权益结果:`, JSON.stringify(benefits))
+        
+        const db = getMySQLClient()
+        console.log(`[AvatarService] 查询分身数量: userId=${effectiveUserId}`)
+        
+        const [countRows] = await db.query(
+          'SELECT COUNT(*) as cnt FROM avatars WHERE user_id = ? AND status = "active"',
+          [effectiveUserId]
+        ) as any[]
+        console.log(`[AvatarService] 查询结果原始:`, JSON.stringify(countRows))
+        
+        // countRows 可能是数组或对象，兼容处理
+        const currentCount = Number(
+          countRows?.cnt || 
+          countRows?.[0]?.cnt || 
+          countRows?.[0]?.Cnt || 
+          0
+        )
+        console.log(`[AvatarService] 分身数量检查: userId=${effectiveUserId}, 当前=${currentCount}, 限制=${benefits.avatarLimit}`)
+        
+        if (currentCount >= benefits.avatarLimit) {
+          throw new Error(`分身数量已达上限(${benefits.avatarLimit}个)，请升级套餐或删除现有分身`)
+        }
+      } catch (err: any) {
+        // 所有错误都重新抛出，包括查询失败
+        console.error('[AvatarService] 分身数量校验失败:', err.message)
+        throw err
+      }
     }
     
     // 生成 UUID 作为 id
@@ -371,13 +406,12 @@ export class AvatarService {
    */
   async getAvatarById(avatarId: string) {
     const db = getMySQLClient()
-    const result = await db.queryOne('avatars', { id: avatarId })
+    const avatar = await db.queryOne('avatars', { id: avatarId })
     
-    if (!result?.data) {
+    if (!avatar) {
       return { success: false, error: '分身不存在' }
     }
 
-    const avatar = result.data
     const personality = this.safeParseJson(avatar.personality, {})
     const config = this.safeParseJson(avatar.config, {})
     const trustEnabled = this.resolveTrustEnabled(avatar)
@@ -537,17 +571,24 @@ export class AvatarService {
       console.warn('[AvatarService] 删除分身记忆失败:', e.message)
     }
 
-    // 6. 清除内存缓存
-    const userAvatars = sharedMemoryAvatars.get(userId) || []
-    sharedMemoryAvatars.set(userId, userAvatars.filter(a => a.id !== avatarId))
-
-    // 7. 最后删除分身本体
+    // 6. 先删除分身本体（数据库操作）
     const result = await db.delete('avatars', { id: avatarId, user_id: userId })
     const affectedRows = (result as any)?.data?.affectedRows || 0
     if (affectedRows === 0) {
       console.error('[AvatarService] 分身删除失败，未匹配到记录:', avatarId, 'userId:', userId)
       return { success: false, error: '分身删除失败，请重试' }
     }
+
+    // 7. 数据库删除成功后，再清理内存缓存
+    const userAvatars = sharedMemoryAvatars.get(userId) || []
+    sharedMemoryAvatars.set(userId, userAvatars.filter(a => a.id !== avatarId))
+
+    // 同时清理全局共享缓存（供 UserStatsService 使用）
+    const sharedCache = getSharedCache()
+    const cacheKey = `avatars_${userId}`
+    const cachedAvatars = sharedCache.get(cacheKey) || []
+    sharedCache.set(cacheKey, cachedAvatars.filter((a: any) => a.id !== avatarId))
+
     return { success: true }
   }
 

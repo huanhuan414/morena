@@ -139,40 +139,40 @@
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* 平台筛选滚动 */
-.platform-scroll {
-  position: relative;
-  z-index: 1;
-  margin-top: 8rpx;
-  margin-bottom: 60rpx;
+/* 平台筛选 */
+.order-square-filter {
+  padding: 20rpx 32rpx 0;
+  margin-bottom: 40rpx;
 }
 
-.platform-tags {
-  display: flex;
-  padding: 0 16rpx;
-  gap: 16rpx;
+.order-square-scroll {
+  white-space: nowrap;
 }
 
-.platform-tag {
+.order-square-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 12rpx 28rpx;
-  background: rgba(255, 255, 255, 0.2);
+  margin-right: 16rpx;
   border-radius: 32rpx;
-  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.2);
 }
 
-.platform-tag.active {
+.order-square-tag.active {
   background: #fff;
   box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
 }
 
-.platform-tag-text {
+.order-square-tag-text {
   font-size: 26rpx;
   color: #fff;
   font-weight: 500;
 }
 
-.platform-tag.active .platform-tag-text {
+.order-square-tag-text.active {
   color: #6366f1;
+  font-weight: 600;
 }
 
 /* 示例数据提示 */

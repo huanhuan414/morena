@@ -34,49 +34,33 @@ interface UserSubscription {
   canReceiveOrders: boolean
 }
 
-// 权益对比项 —— 与 docs/pricing-model.md v2 保持一致
+// 权益对比项 —— 与最新权益说明保持一致
 const COMPARISON_ITEMS = [
-  // 代币配额
-  { key: 'monthlyTokens', label: '每月代币', icon: Zap, freeVal: '30币', basicVal: '150币', proVal: '500币', enterpriseVal: '2000币' },
-  { key: 'tokenDiscount', label: '充值折扣', icon: Gift, freeVal: '无', basicVal: '95折', proVal: '9折', enterpriseVal: '85折' },
-  // AI分身
-  { key: 'maxAvatars', label: 'AI分身数量', icon: Users, freeVal: '1个', basicVal: '3个', proVal: '10个', enterpriseVal: '无限' },
-  { key: 'customPersonality', label: '自定义人格', icon: Star, freeVal: false, basicVal: true, proVal: true, enterpriseVal: true },
-  { key: 'domainTags', label: '专业领域标签', icon: BadgeCheck, freeVal: false, basicVal: false, proVal: '30个', enterpriseVal: '无限' },
-  // 技能权限
-  { key: 'palmReading', label: '看手相', icon: Bot, freeVal: '3次/天', basicVal: '10次/天', proVal: '30次/天', enterpriseVal: '不限' },
-  { key: 'wechatMpArticle', label: '公众号爆款', icon: Sparkles, freeVal: false, basicVal: '10次/天', proVal: '30次/天', enterpriseVal: '不限' },
-  { key: 'fashionMakeover', label: '衣品改造', icon: Palette, freeVal: false, basicVal: '10次/天', proVal: '30次/天', enterpriseVal: '不限' },
-  { key: 'imageGen', label: '图片生成', icon: Sparkles, freeVal: false, basicVal: '10次/天', proVal: '30次/天', enterpriseVal: '不限' },
-  { key: 'videoGen', label: '视频生成', icon: Sparkles, freeVal: false, basicVal: false, proVal: '10次/天', enterpriseVal: '不限' },
-  { key: 'contentStyles', label: '内容风格', icon: Palette, freeVal: '1种', basicVal: '3种', proVal: '6种', enterpriseVal: '8种+自定义' },
-  { key: 'exclusiveSkills', label: '专属技能', icon: Gift, freeVal: false, basicVal: false, proVal: false, enterpriseVal: true },
-  // 接单赚钱
-  { key: 'canReceiveOrders', label: '接单赚钱', icon: CircleDollarSign, freeVal: false, basicVal: false, proVal: true, enterpriseVal: true },
-  { key: 'commissionRate', label: '平台抽佣', icon: CircleDollarSign, freeVal: '—', basicVal: '—', proVal: '20%', enterpriseVal: '12%' },
-  { key: 'orderPriority', label: '订单优先级', icon: TrendingUp, freeVal: '—', basicVal: '—', proVal: '高级', enterpriseVal: '最高' },
-  // 发布能力
-  { key: 'semiAutoPublish', label: '半自动发布', icon: Layers, freeVal: false, basicVal: '抖音/公众号', proVal: '+小红书', enterpriseVal: '全平台' },
-  { key: 'oneClickPublish', label: '一键发布', icon: Layers, freeVal: false, basicVal: false, proVal: '公众号', enterpriseVal: '全平台' },
-  { key: 'bindPlatforms', label: '绑定平台数', icon: Users, freeVal: '1个', basicVal: '3个', proVal: '5个', enterpriseVal: '无限' },
-  { key: 'batchPublish', label: '批量/定时发布', icon: Layers, freeVal: false, basicVal: false, proVal: true, enterpriseVal: true },
-  { key: 'crossPlatformSync', label: '跨平台同步', icon: Layers, freeVal: false, basicVal: false, proVal: false, enterpriseVal: true },
-  // 数据分析
-  { key: 'analytics', label: '数据分析', icon: ChartBar, freeVal: false, basicVal: '基础', proVal: '高级', enterpriseVal: '高级+API' },
-  { key: 'revenueDashboard', label: '收益看板', icon: CircleDollarSign, freeVal: false, basicVal: false, proVal: true, enterpriseVal: true },
-  { key: 'dataExport', label: '数据导出', icon: ChartBar, freeVal: false, basicVal: false, proVal: false, enterpriseVal: true },
-  // 存储与服务
-  { key: 'storageLimit', label: '存储空间', icon: Shield, freeVal: '100MB', basicVal: '1GB', proVal: '10GB', enterpriseVal: '100GB' },
-  { key: 'contentRetention', label: '内容保存', icon: Shield, freeVal: '7天', basicVal: '30天', proVal: '永久', enterpriseVal: '永久' },
-  { key: 'support', label: '客服支持', icon: Headphones, freeVal: '社区', basicVal: '在线', proVal: '优先', enterpriseVal: '1v1专属' },
+  // === 分身平台权益 ===
+  { key: 'section_platform', label: '【分身平台权益】', icon: Crown, freeVal: '', basicVal: '', proVal: '', enterpriseVal: '', isSection: true },
+  { key: 'dailyOrderLimit', label: '接单数量', icon: TrendingUp, freeVal: '5单/天', basicVal: '20单/天', proVal: '不限', enterpriseVal: '不限' },
+  { key: 'commissionRate', label: '平台抽成', icon: CircleDollarSign, freeVal: '20%', basicVal: '15%', proVal: '10%', enterpriseVal: '5%' },
+  { key: 'autoAccept', label: '自动接单', icon: Zap, freeVal: false, basicVal: false, proVal: true, enterpriseVal: true },
+  { key: 'orderPriority', label: '订单优先级', icon: TrendingUp, freeVal: '普通', basicVal: '普通', proVal: '高级', enterpriseVal: '最优' },
+  { key: 'customAvatarAccept', label: '自定义分身接单', icon: Users, freeVal: false, basicVal: false, proVal: true, enterpriseVal: true },
+  { key: 'maxAvatars', label: '分身数量', icon: Users, freeVal: '1个', basicVal: '3个', proVal: '10个', enterpriseVal: '不限' },
+  { key: 'concurrentOrders', label: '同时接单', icon: Layers, freeVal: '1个', basicVal: '3个', proVal: '10个', enterpriseVal: '不限' },
+  // === 技能广场权益 ===
+  { key: 'section_skill', label: '【技能广场权益】', icon: Bot, freeVal: '', basicVal: '', proVal: '', enterpriseVal: '', isSection: true },
+  { key: 'textGen', label: '文本生成', icon: Sparkles, freeVal: '不限', basicVal: '不限', proVal: '不限', enterpriseVal: '不限' },
+  { key: 'imageGen', label: '图片生成', icon: Palette, freeVal: '普通速度', basicVal: '普通速度', proVal: '⚡加速', enterpriseVal: '🚀超速' },
+  { key: 'videoGen', label: '视频生成', icon: Sparkles, freeVal: '普通速度', basicVal: '普通速度', proVal: '⚡加速', enterpriseVal: '🚀超速' },
+  { key: 'wechatMpArticle', label: '公众号文章', icon: Sparkles, freeVal: false, basicVal: '1篇/日', proVal: '3篇/日', enterpriseVal: '不限' },
+  { key: 'fashionMakeover', label: '衣品改造', icon: Palette, freeVal: '3次/日', basicVal: '10次/日', proVal: '20次/日', enterpriseVal: '不限' },
+  { key: 'palmReading', label: '看手相', icon: Bot, freeVal: '3次/日', basicVal: '10次/日', proVal: '20次/日', enterpriseVal: '不限' },
 ]
 
 // 套餐列定义
 const PLAN_COLUMNS = [
   { id: 'plan_free', name: '免费版', theme: 'free' },
-  { id: 'plan_basic', name: '创作者', theme: 'basic' },
-  { id: 'plan_pro', name: '赚钱版', theme: 'pro' },
-  { id: 'plan_enterprise', name: '企业版', theme: 'enterprise' },
+  { id: 'plan_basic', name: '基础版', theme: 'basic' },
+  { id: 'plan_pro', name: '专业版', theme: 'pro' },
+  { id: 'plan_enterprise', name: '进阶版', theme: 'enterprise' },
 ]
 
 export default function SubscriptionPage() {
@@ -193,44 +177,15 @@ export default function SubscriptionPage() {
   const getPlanById = (id: string) => plans.find(p => p.id === id)
 
   const getFeatureVal = (planId: string, item: typeof COMPARISON_ITEMS[0]) => {
-    const plan = getPlanById(planId)
-    if (!plan) return null
-    // 后端 convertKeysToCamel 会将 features JSON 内部的 key 转为 camelCase
-    const features = typeof plan.features === 'string' ? JSON.parse(plan.features) : (plan.features || {})
-
-    switch (item.key) {
-      case 'maxAvatars':
-        return features.maxAvatars >= 999 ? '无限' : `${features.maxAvatars}个`
-      case 'canReceiveOrders':
-        return features.canReceiveOrders
-      case 'skillUsesPerDay':
-        return features.skillUsesPerDay >= 999 ? '无限' : `${features.skillUsesPerDay}次`
-      case 'skillCategories':
-        return features.skillCategories?.length >= 5 ? '全类目' :
-               features.skillCategories?.length >= 4 ? '4大类目' :
-               features.skillCategories?.length >= 2 ? '生活+创作' : '生活类'
-      case 'contentStyles':
-        return features.contentStyles?.length >= 8 ? '8种+' :
-               `${features.contentStyles?.length || 0}种`
-      case 'customPersonality':
-        return features.customPersonality
-      case 'batchPublish':
-        return features.batchPublish
-      case 'analytics':
-        return features.analytics
-      case 'prioritySupport':
-        return features.prioritySupport
-      case 'orderPriority': {
-        const p = features.orderPriority
-        return p >= 3 ? '最高' : p >= 2 ? '高级' : p >= 1 ? '优先' : '普通'
-      }
-      case 'storageLimit':
-        return features.storageLimit
-      case 'exclusiveSkills':
-        return features.exclusiveSkills
-      default:
-        return null
+    if ((item as any).isSection) return null
+    const planKey = planId.replace('plan_', '') as 'free' | 'basic' | 'pro' | 'enterprise'
+    const valMap: Record<string, any> = {
+      free: item.freeVal,
+      basic: item.basicVal,
+      pro: item.proVal,
+      enterprise: item.enterpriseVal,
     }
+    return valMap[planKey]
   }
 
   const renderVal = (val: any, isPro?: boolean) => {
@@ -407,36 +362,38 @@ export default function SubscriptionPage() {
                       </View>
                     </View>
 
-                    {/* 权益摘要 */}
+                    {/* 权益摘要 - 与权益对比表保持一致 */}
                     <View className="sub-plan-highlights">
                       {theme === 'free' && (
                         <>
                           <View className="sub-highlight"><Check size={12} color="#94a3b8" /><Text className="sub-highlight-text">1个AI分身</Text></View>
-                          <View className="sub-highlight"><Check size={12} color="#94a3b8" /><Text className="sub-highlight-text">3次技能/天</Text></View>
-                          <View className="sub-highlight"><Check size={12} color="#94a3b8" /><Text className="sub-highlight-text">100MB存储</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#94a3b8" /><Text className="sub-highlight-text">5单/天</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#94a3b8" /><Text className="sub-highlight-text">衣品3次/日</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#94a3b8" /><Text className="sub-highlight-text">看手相3次/日</Text></View>
                         </>
                       )}
                       {theme === 'basic' && (
                         <>
                           <View className="sub-highlight"><Check size={12} color="#3b82f6" /><Text className="sub-highlight-text">3个AI分身</Text></View>
-                          <View className="sub-highlight"><Check size={12} color="#3b82f6" /><Text className="sub-highlight-text">自定义性格</Text></View>
-                          <View className="sub-highlight"><Check size={12} color="#3b82f6" /><Text className="sub-highlight-text">1GB存储</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#3b82f6" /><Text className="sub-highlight-text">20单/天</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#3b82f6" /><Text className="sub-highlight-text">衣品10次/日</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#3b82f6" /><Text className="sub-highlight-text">看手相10次/日</Text></View>
                         </>
                       )}
                       {theme === 'pro' && (
                         <>
                           <View className="sub-highlight"><Check size={12} color="#10b981" /><Text className="sub-highlight-text">10个AI分身</Text></View>
-                          <View className="sub-highlight"><Check size={12} color="#10b981" /><Text className="sub-highlight-text">接单赚钱</Text></View>
-                          <View className="sub-highlight"><Check size={12} color="#10b981" /><Text className="sub-highlight-text">批量发布+分析</Text></View>
-                          <View className="sub-highlight"><Check size={12} color="#10b981" /><Text className="sub-highlight-text">10GB存储</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#10b981" /><Text className="sub-highlight-text">自动接单赚钱</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#10b981" /><Text className="sub-highlight-text">衣品20次/日</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#10b981" /><Text className="sub-highlight-text">看手相20次/日</Text></View>
                         </>
                       )}
                       {theme === 'enterprise' && (
                         <>
                           <View className="sub-highlight"><Check size={12} color="#f59e0b" /><Text className="sub-highlight-text">无限AI分身</Text></View>
-                          <View className="sub-highlight"><Check size={12} color="#f59e0b" /><Text className="sub-highlight-text">全类目+专属技能</Text></View>
-                          <View className="sub-highlight"><Check size={12} color="#f59e0b" /><Text className="sub-highlight-text">最高优先级</Text></View>
-                          <View className="sub-highlight"><Check size={12} color="#f59e0b" /><Text className="sub-highlight-text">100GB存储</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#f59e0b" /><Text className="sub-highlight-text">全类目技能不限</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#f59e0b" /><Text className="sub-highlight-text">无限接单</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#f59e0b" /><Text className="sub-highlight-text">最低5%抽成</Text></View>
                         </>
                       )}
                     </View>
@@ -471,6 +428,13 @@ export default function SubscriptionPage() {
                 </View>
                 {COMPARISON_ITEMS.map((item, idx) => {
                   const IconComp = item.icon
+                  if ((item as any).isSection) {
+                    return (
+                      <View key={item.key} className="sub-compare-section-header">
+                        <Text className="sub-compare-section-text">{item.label}</Text>
+                      </View>
+                    )
+                  }
                   return (
                     <View key={item.key} className={`sub-compare-label-row ${idx % 2 === 0 ? 'sub-compare-row-even' : ''}`}>
                       <IconComp size={12} color="#8B5CF6" />
@@ -491,15 +455,26 @@ export default function SubscriptionPage() {
                     ))}
                   </View>
                   {/* 数据行 */}
-                  {COMPARISON_ITEMS.map((item, idx) => (
-                    <View key={item.key} className={`sub-compare-body-row ${idx % 2 === 0 ? 'sub-compare-row-even' : ''}`}>
-                      {PLAN_COLUMNS.map(col => (
-                        <View key={col.id} className="sub-compare-body-cell">
-                          {renderVal(getFeatureVal(col.id, item), col.theme === 'pro')}
+                  {COMPARISON_ITEMS.map((item, idx) => {
+                    if ((item as any).isSection) {
+                      return (
+                        <View key={item.key} className="sub-compare-section-row">
+                          {PLAN_COLUMNS.map(col => (
+                            <View key={col.id} className="sub-compare-section-cell" />
+                          ))}
                         </View>
-                      ))}
-                    </View>
-                  ))}
+                      )
+                    }
+                    return (
+                      <View key={item.key} className={`sub-compare-body-row ${idx % 2 === 0 ? 'sub-compare-row-even' : ''}`}>
+                        {PLAN_COLUMNS.map(col => (
+                          <View key={col.id} className="sub-compare-body-cell">
+                            {renderVal(getFeatureVal(col.id, item), col.theme === 'pro')}
+                          </View>
+                        ))}
+                      </View>
+                    )
+                  })}
                 </View>
               </ScrollView>
             </View>

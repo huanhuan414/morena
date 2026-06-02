@@ -617,14 +617,12 @@
 
 /* 图片网格 */
 .cc-images-grid {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 16rpx;
 }
 
 .cc-image-item {
-  width: calc(50% - 8rpx);
   aspect-ratio: 1;
   border-radius: 16rpx;
   overflow: hidden;

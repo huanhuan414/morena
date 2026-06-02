@@ -38,10 +38,11 @@ import { AiModule } from './modules/ai/ai.module';
 import { SkillModule } from './modules/skill/skill.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { ImageGenModule } from './modules/image-gen/image-gen.module';
+import { VideoGenModule } from './modules/video-gen/video-gen.module';
 import { AiSkillModule } from './modules/ai-skill/ai-skill.module';
 import { OrderAssetsModule } from './modules/order-assets/order-assets.module';
-import { GroupBotModule } from './modules/group-bot/group-bot.module';
 import { RedisModule } from './modules/redis/redis.module';
+import { CoinModule } from './modules/coin/coin.module';
 
 @Module({
   imports: [
@@ -82,9 +83,10 @@ import { RedisModule } from './modules/redis/redis.module';
     SkillModule,
     PaymentModule,
     ImageGenModule,
+    VideoGenModule,
     AiSkillModule,
     OrderAssetsModule,
-    GroupBotModule
+    CoinModule
   ],
   controllers: [AppController],
   providers: [AppService],

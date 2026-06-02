@@ -5,11 +5,12 @@ import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
 import {
   Settings, ChevronRight, LogOut, Bell, Info,
-  Wallet, Crown, Trophy, Sparkles, FileText
+  Wallet, Crown, Trophy, Sparkles, FileText, Coins
 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import '@/styles/variables.css'
-import './index.css' 
+import './index.css'
+import logoImage from '@/static/logo.jpg'
 
 interface UserStats {
   avatarCount: number
@@ -18,16 +19,25 @@ interface UserStats {
   level: number
 }
 
+interface UserSubscription {
+  id: string
+  status: 'active' | 'expired' | 'cancelled'
+  plan?: {
+    id: string
+    name: string
+  }
+  endDate: string
+}
+
 // 菜单项配置
 const menuItems = [
-  // { title: '我的分身', icon: Sparkles, desc: '管理AI分身', type: 'primary', path: '/package-avatar/pages/avatar-manage/index' },
-  { title: '工资墙', icon: Trophy, desc: '收益排行榜', type: 'primary', path: '/package-profile/pages/earnings-wall/index' },
-  { title: '技能广场', icon: Sparkles, desc: '解锁更多能力', type: 'success', path: '/package-skill/pages/skills-square/index' },
-  { title: '我要发单', icon: FileText, desc: '发布和管理订单', type: 'info', path: '/package-order/pages/order-list/index' },
-  { title: '收益中心', icon: Wallet, desc: '查看收益和提现', type: 'warning', path: '/package-profile/pages/earning-center/index' },
-  { title: '订阅中心', icon: Crown, desc: '升级解锁更多功能', type: 'primary', path: '/package-avatar/pages/subscription/index' },
-  // { title: '帮助中心', icon: CircleQuestionMark, desc: '常见问题解答', type: 'info', path: '/package-profile/pages/help/index' },
-  { title: '关于我们', icon: Info, desc: '版本 v1.0.0', type: 'default', path: '/package-profile/pages/about/index' }
+  { title: '工资墙', icon: Trophy, desc: '收益排行榜', type: 'primary', path: '/package-profile/pages/earnings-wall/index', requireLogin: false },
+  { title: '技能广场', icon: Sparkles, desc: '解锁更多能力', type: 'success', path: '/package-skill/pages/skills-square/index', requireLogin: true },
+  { title: '我要发单', icon: FileText, desc: '发布和管理订单', type: 'info', path: '/package-order/pages/order-list/index', requireLogin: true },
+  { title: '收益中心', icon: Wallet, desc: '查看收益和提现', type: 'warning', path: '/package-profile/pages/earning-center/index', requireLogin: false },
+  { title: '币中心', icon: Coins, desc: '充值和交易记录', type: 'warning', path: '/package-coin/pages/index/index' },
+  { title: '订阅中心', icon: Crown, desc: '升级解锁更多功能', type: 'primary', path: '/package-avatar/pages/subscription/index', requireLogin: true },
+  { title: '关于我们', icon: Info, desc: '版本 v1.0.0', type: 'default', path: '/package-profile/pages/about/index', requireLogin: false }
 ]
 
 const typeColorMap: Record<string, string> = {
@@ -56,36 +66,37 @@ export default function ProfilePage() {
     totalWithdraw: 0,
     level: 1
   })
+  const [coinBalance, setCoinBalance] = useState<number>(0)
   const [statusBarHeight] = useState(getStatusBarHeight())
   const [unreadCount, setUnreadCount] = useState(0)
-
-  useLoad(() => {
-    if (!isLoggedIn) {
-      navigateTo({ url: '/pages/login/index?redirect=/pages/profile/index' })
-    }
-  })
+  const [userSubscription, setUserSubscription] = useState<UserSubscription | null>(null)
 
   useDidShow(() => {
-    if (isLoggedIn) {
-      fetchStats()
-      fetchUnreadCount()
-    }
+    fetchStats()
+    fetchUnreadCount()
   })
 
   const fetchStats = async () => {
     try {
-      const [statsRes, earningsRes] = await Promise.all([
+      const userId = userInfo?.id
+      const [statsRes, earningsRes, coinRes, subscriptionRes] = await Promise.all([
         Network.request({ url: '/api/user-stats/overview' }),
-        Network.request({ url: '/api/earnings/overview' })
+        Network.request({ url: '/api/earnings/overview' }),
+        Network.request({ url: `/api/coin/balance?userId=${userId}` }),
+        Network.request({ url: '/api/subscription/current' })
       ])
       const data = statsRes.data?.code === 200 ? statsRes.data.data : {}
       const earningsData = earningsRes.data?.code === 200 ? earningsRes.data.data : {}
+      const coinData = coinRes.data?.code === 200 ? coinRes.data.data : {}
+      const subscriptionData = subscriptionRes.data?.code === 200 ? subscriptionRes.data.data : null
       setStats({
         avatarCount: data.avatarCount || 0,
         totalEarnings: earningsData.totalEarnings || 0,
         totalWithdraw: 0,
         level: 1
       })
+      setCoinBalance(coinData.balance || 0)
+      setUserSubscription(subscriptionData)
     } catch (error) {
       console.error('获取统计失败:', error)
     }
@@ -115,12 +126,10 @@ export default function ProfilePage() {
     })
   }
 
-  if (!isLoggedIn) return null
-
   return (
     <View className="profile-page">
       {/* 顶部渐变Header */}
-      <View 
+      <View
         className="profile-header-gradient"
         style={{ paddingTop: `${statusBarHeight}px` }}
       >
@@ -140,22 +149,44 @@ export default function ProfilePage() {
         {/* 用户信息 + 操作按钮 */}
         <View className="card-top-row">
           <View className="header-user-info">
-            <View className="user-avatar-wrap">
-              {userInfo?.avatar ? (
-                <Image src={userInfo.avatar} className="user-avatar" mode="aspectFill" />
-              ) : (
-                <View className="avatar-placeholder">
-                  <Text className="avatar-text">{userInfo?.nickname?.[0] || 'U'}</Text>
+            {isLoggedIn ? (
+              <>
+                <View className="user-avatar-wrap">
+                  {userInfo?.avatar ? (
+                    <Image src={userInfo.avatar} className="user-avatar" mode="aspectFill" />
+                  ) : (
+                    <Image src={logoImage} className="user-avatar" mode="aspectFill" />
+                  )}
+                  <View className="level-badge">
+                    <Text className="level-badge-text">Lv.{stats.level}</Text>
+                  </View>
                 </View>
-              )}
-              <View className="level-badge">
-                <Text className="level-badge-text">Lv.{stats.level}</Text>
-              </View>
-            </View>
-            <View className="user-text-info">
-              <Text className="user-name">{userInfo?.nickname || '探索者'}</Text>
-              <Text className="user-id">ID: {userInfo?.id?.slice(-8) || 'guest'}</Text>
-            </View>
+                <View className="user-text-info">
+                  <Text className="user-name">{userInfo?.nickname}</Text>
+                  <Text className="user-id">ID: {userInfo?.id?.slice(-8)}</Text>
+                  <View className="user-subscription-row">
+                    <Crown size={14} color={userSubscription?.status === 'active' ? '#7B3FE4' : '#999'} />
+                    <Text className="user-subscription-text">
+                      {userSubscription?.status === 'active' ? (userSubscription.plan?.name || '订阅会员') : '免费用户'}
+                    </Text>
+                    {userSubscription?.status === 'active' && (
+                      <Text className="user-subscription-expire">至 {new Date(userSubscription.endDate).toLocaleDateString('zh-CN')}</Text>
+                    )}
+                  </View>
+                  <View className="user-coin-row" onClick={() => navigateTo({ url: '/package-coin/pages/index/index' })}>
+                    <Coins size={14} color="#F59E0B" />
+                    <Text className="user-coin-text">{coinBalance.toLocaleString()} 币</Text>
+                  </View>
+                </View>
+              </>
+            ) : (
+              <>
+                <View className="user-avatar-wrap" onClick={() => navigateTo({ url: '/pages/login/index?redirect=/pages/profile/index' })}>
+                  <Image src={logoImage} className="user-avatar" mode="aspectFill" />
+                  <Text className="login-text">去登录</Text>
+                </View>
+              </>
+            )}
           </View>
 
           <View className="card-actions">
@@ -197,11 +228,19 @@ export default function ProfilePage() {
             const Icon = item.icon
             const iconColor = typeColorMap[item.type]
             const bgColor = typeBgMap[item.type]
+            const handleMenuClick = () => {
+              if (!item.path) return
+              if (item.requireLogin && !isLoggedIn) {
+                navigateTo({ url: `/pages/login/index?redirect=${encodeURIComponent(item.path)}` })
+                return
+              }
+              navigateTo({ url: item.path })
+            }
             return (
-              <View 
+              <View
                 key={idx}
                 className="menu-item"
-                onClick={() => item.path && navigateTo({ url: item.path })}
+                onClick={handleMenuClick}
               >
                 <View className="menu-icon-wrap" style={{ backgroundColor: bgColor }}>
                   <Icon size={20} color={iconColor} />
@@ -216,11 +255,13 @@ export default function ProfilePage() {
           })}
         </View>
 
-        {/* 退出按钮 */}
-        <View className="logout-btn" onClick={handleLogout}>
-          <LogOut size={20} color="#EF4444" />
-          <Text className="logout-text">退出登录</Text>
-        </View>
+        {/* 退出按钮 - 仅登录后显示 */}
+        {isLoggedIn && (
+          <View className="logout-btn" onClick={handleLogout}>
+            <LogOut size={20} color="#EF4444" />
+            <Text className="logout-text">退出登录</Text>
+          </View>
+        )}
 
         {/* 版本信息 */}
         <View className="version-section">

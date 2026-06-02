@@ -5,27 +5,81 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-size: 28rpx;
 }
+/* 顶部渐变头部 */
+.oaf-header {
+  position: relative;
+  background: linear-gradient(135deg, #8B5CF6, #6366F1, #4F46E5);
+  padding: 60rpx 32rpx 48rpx;
+  border-radius: 0 0 40rpx 40rpx;
+  overflow: hidden;
+}
 
-.nav-bar {
+.oaf-header-deco {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.oaf-header-circle {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.08;
+  background: #fff;
+}
+
+.circle-a {
+  width: 300rpx;
+  height: 300rpx;
+  top: -100rpx;
+  right: -50rpx;
+}
+
+.circle-b {
+  width: 200rpx;
+  height: 200rpx;
+  bottom: -60rpx;
+  left: -40rpx;
+}
+
+.oaf-header-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.oaf-back-btn {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 32rpx;
+  background: rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  height: 88rpx;
-  padding: 0 32rpx;
-  background: #fff;
-  border-bottom: 1rpx solid #eee;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
-.nav-left, .nav-right {
-  width: 120rpx;
+.oaf-header-center {
+  flex: 1;
+  text-align: center;
 }
 
-.nav-title {
-  font-size: 34rpx;
-  font-weight: 600;
-  color: #333;
+.oaf-header-title {
+  display: block;
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.3;
 }
 
+
+.oaf-header-placeholder {
+  width: 64rpx;
+  flex-shrink: 0;
+}
+/* 加载中 */
 .loading-container {
   display: flex;
   justify-content: center;
@@ -38,6 +92,7 @@
   font-size: 28rpx;
 }
 
+/* 状态提示 */
 .content-scroll {
   height: calc(100vh - 180rpx);
   padding-bottom: 40rpx;

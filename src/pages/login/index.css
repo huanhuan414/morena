@@ -36,13 +36,39 @@
   left: 40rpx;
 }
 
+.login-header-top {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+  position: relative;
+  z-index: 1;
+}
+
+.login-back-btn {
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.login-back-btn-placeholder {
+  width: 64rpx;
+  height: 64rpx;
+}
+
 .login-app-name {
   font-size: 64rpx;
   font-weight: 700;
   color: #fff;
-  margin-bottom: 16rpx;
   position: relative;
   z-index: 1;
+  flex: 1;
+  text-align: center;
 }
 
 .login-app-slogan {
@@ -50,6 +76,7 @@
   color: rgba(255, 255, 255, 0.85);
   position: relative;
   z-index: 1;
+  text-align: center;
 }
 
 /* 表单卡片 */
@@ -350,6 +377,23 @@
   border-radius: 24rpx !important;
   background: linear-gradient(135deg, #07c160 0%, #2dc84d 100%) !important;
   border: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.login-btn-wrapper {
+  width: 100%;
+  position: relative;
+}
+
+.login-btn-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
 }
 
 .login-primary-btn::after {
@@ -573,106 +617,4 @@
 .profile-skip-text {
   font-size: 28rpx;
   color: #7b3fe4;
-}
-
-.auth-confirm-mask {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 1001;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.auth-confirm-panel {
-  width: 560rpx;
-  background: #fff;
-  border-radius: 32rpx;
-  overflow: hidden;
-  animation: scaleIn 0.2s ease;
-}
-
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.auth-confirm-header {
-  padding: 40rpx 40rpx 24rpx;
-  text-align: center;
-}
-
-.auth-confirm-title {
-  font-size: 34rpx;
-  font-weight: 700;
-  color: #1a1a2e;
-}
-
-.auth-confirm-body {
-  padding: 0 40rpx 40rpx;
-  text-align: center;
-}
-
-.auth-confirm-desc {
-  font-size: 32rpx;
-  color: #333;
-  margin-bottom: 16rpx;
-}
-
-.auth-confirm-hint {
-  font-size: 26rpx;
-  color: #999;
-}
-
-.auth-confirm-actions {
-  display: flex;
-  flex-direction: row;
-  border-top: 1rpx solid #eee;
-}
-
-.auth-confirm-cancel {
-  flex: 1;
-  height: 100rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-right: 1rpx solid #eee;
-}
-
-.auth-confirm-cancel-text {
-  font-size: 32rpx;
-  color: #666;
-}
-
-.auth-confirm-confirm {
-  flex: 1;
-  height: 100rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  padding: 0;
-  margin: 0;
-  line-height: 100rpx;
-}
-
-.auth-confirm-confirm::after {
-  border: none;
-}
-
-.auth-confirm-confirm-text {
-  font-size: 32rpx;
-  color: #7b3fe4;
-  font-weight: 600;
 }
