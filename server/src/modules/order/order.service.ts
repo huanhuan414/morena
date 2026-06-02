@@ -128,8 +128,6 @@ export class OrderService {
       } else if (allContentSubmitted) {
         newStatus = 'awaiting_acceptance'
         if (allContentStatuses.some(s => ['published', 'completed'].includes(s)) && !allContentStatuses.some(s => s === 'awaiting_acceptance')) {
-          // 只有所有需要的分身都已完成时，才设为 submitted
-          // 否则还有分身未接单/未完成，应保持 in_progress 或 pending_acceptance
           if (!hasPending && completedDispatchCount >= requiredAvatarCount) {
             newStatus = 'submitted'
           } else if (hasPending) {
