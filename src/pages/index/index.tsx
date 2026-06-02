@@ -193,7 +193,7 @@ const Index: React.FC = () => {
             platform: platformName,
             platformColor: getPlatformColor(platformName),
             title: item.title || '新订单',
-            budget: item.budget ? `¥${item.budget}` : '待定',
+            budget: item.expectedEarnings ? `¥${item.expectedEarnings}` : (item.budget ? `¥${item.budget}` : '待定'),
             deadline: '长期有效'
           })
           setShowOrderModal(true)
