@@ -1,1140 +1,575 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>莫瑞娜 - 分身大师</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>莫瑞娜 · 分身原型</title>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif; background: #f5f5f8; color: #1e293b; overflow-x: hidden; max-width: 430px; margin: 0 auto; min-height: 100vh; }
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f8fafc;color:#1e293b;max-width:430px;margin:0 auto;min-height:100vh;overflow-x:hidden}
+.app{position:relative;min-height:100vh;padding-bottom:64px}
+.row{display:flex;align-items:center}
+.gap-2{gap:8px}
+.mt-2{margin-top:12px}
+.text-xs{font-size:11px;color:#64748b}
+.text-sm{font-size:13px;color:#475569}
+.tag{display:inline-block;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:500}
+.card{background:#fff;border-radius:16px;padding:16px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.btn{display:flex;align-items:center;justify-content:center;height:44px;border-radius:12px;font-size:14px;font-weight:600;border:none;cursor:pointer;padding:0 16px}
+.btn-primary{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff}
+.btn-outline{background:#fff;color:#6366f1;border:1.5px solid #6366f1}
+.btn-xs{height:30px;border-radius:8px;font-size:12px;padding:0 12px}
+.btn-sm{height:36px;border-radius:10px;font-size:13px}
+.gradient-header{background:linear-gradient(135deg,#6366f1,#8b5cf6,#a855f7);padding:48px 16px 20px;position:relative;overflow:hidden}
+.section{padding:0 16px 12px}
+.section-title{font-size:15px;font-weight:700;margin-bottom:10px;color:#1e293b}
+.divider{height:1px;background:#f1f5f9;margin:8px 0}
+.online-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block}
+.avatar-xs{width:28px;height:28px;border-radius:50%;border:2px solid #e2e8f0;flex-shrink:0}
+.avatar-sm{width:36px;height:36px;border-radius:50%;border:2px solid #e2e8f0}
+.avatar-md{width:48px;height:48px;border-radius:50%;border:3px solid #e2e8f0}
 
-/* ===== TabBar ===== */
-.tabbar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; height: 56px; background: #fff; border-top: 1px solid #e5e5e5; display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
-.tabbar-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; transition: all .2s; }
-.tabbar-item.active { color: #7B3FE4; }
-.tabbar-item:not(.active) { color: #9CA3AF; }
-.tabbar-icon { font-size: 22px; line-height: 1; }
-.tabbar-label { font-size: 10px; font-weight: 500; }
+/* TabBar */
+.tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;height:64px;background:#fff;border-top:1px solid #f1f5f9;display:flex;z-index:100}
+.tabbar-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative}
+.tabbar-icon{font-size:22px;margin-bottom:2px}
+.tabbar-label{font-size:10px;color:#94a3b8}
+.tabbar-item.active .tabbar-label{color:#6366f1;font-weight:600}
+.tabbar-badge{position:absolute;top:4px;right:calc(50% - 16px);width:16px;height:16px;border-radius:50%;background:#ef4444;color:#fff;font-size:9px;display:flex;align-items:center;justify-content:center}
 
-/* ===== Pages ===== */
-.page { display: none; min-height: 100vh; padding-bottom: 70px; }
-.page.active { display: block; }
+/* Pages */
+.page{display:none;animation:fadeIn .2s}
+.page.active{display:block}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
 
-/* ===== 分身广场 (首页) ===== */
-.plaza-header { position: relative; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%); padding: 48px 16px 20px; border-radius: 0 0 24px 24px; }
-.plaza-header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.plaza-title { font-size: 22px; font-weight: 700; color: #fff; }
-.plaza-search { width: 100%; height: 40px; background: rgba(255,255,255,.95); border-radius: 12px; display: flex; align-items: center; padding: 0 14px; gap: 8px; }
-.plaza-search input { flex: 1; border: none; background: transparent; font-size: 14px; outline: none; }
-.plaza-search-icon { color: #9ca3af; font-size: 16px; }
+/* Sub pages */
+.subpage{display:none;position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;height:100%;background:#f8fafc;z-index:200;overflow-y:auto;animation:slideIn .25s}
+@keyframes slideIn{from{transform:translateX(-50%) translateY(100%);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
+.sub-header{background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:48px 16px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10}
+.sub-back{font-size:22px;color:#fff;cursor:pointer;margin-right:4px}
+.sub-title{font-size:17px;font-weight:700;color:#fff}
 
-/* 分类标签 */
-.plaza-tabs { display: flex; gap: 8px; padding: 14px 16px 6px; overflow-x: auto; }
-.plaza-tab { flex-shrink: 0; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; background: #fff; color: #64748b; cursor: pointer; border: 1px solid #e2e8f0; transition: all .2s; }
-.plaza-tab.active { background: linear-gradient(135deg,#6366f1,#8b5cf6); color: #fff; border-color: transparent; }
+/* Modals */
+.modal{display:none;position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;height:100%;background:rgba(0,0,0,.5);z-index:300;align-items:flex-end;justify-content:center}
+.modal.active{display:flex}
+.modal-body{background:#fff;border-radius:20px 20px 0 0;padding:20px 16px 32px;width:100%;max-height:85vh;overflow-y:auto;animation:slideUp .25s}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-title{font-size:17px;font-weight:700;margin-bottom:14px}
 
-/* 大封面卡片 */
-.plaza-hero { position: relative; margin: 12px 16px; border-radius: 20px; overflow: hidden; cursor: pointer; }
-.plaza-hero-img { width: 100%; height: 400px; object-fit: cover; display: block; }
-.plaza-hero-gradient { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.85) 0%, rgba(0,0,0,.3) 40%, transparent 70%); }
-.plaza-hero-distance { position: absolute; top: 14px; right: 14px; background: rgba(0,0,0,.5); backdrop-filter: blur(8px); padding: 4px 10px; border-radius: 12px; font-size: 12px; color: #fff; }
-.plaza-hero-hot { position: absolute; top: 14px; left: 14px; background: linear-gradient(135deg,#ef4444,#f97316); padding: 4px 10px; border-radius: 12px; font-size: 12px; color: #fff; font-weight: 600; }
-.plaza-hero-level { position: absolute; top: 44px; left: 14px; padding: 4px 10px; border-radius: 12px; font-size: 12px; color: #fff; font-weight: 600; display: flex; align-items: center; gap: 4px; }
-.plaza-hero-bottom { position: absolute; bottom: 0; left: 0; right: 0; padding: 16px; }
-.plaza-hero-avatar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.plaza-hero-face { width: 48px; height: 48px; border-radius: 50%; border: 2px solid #fff; object-fit: cover; }
-.plaza-hero-name { font-size: 20px; font-weight: 700; color: #fff; }
-.plaza-hero-desc { font-size: 13px; color: rgba(255,255,255,.8); margin-bottom: 10px; line-height: 1.5; }
-.plaza-hero-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
-.plaza-hero-tag { padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 500; }
-.plaza-hero-actions { display: flex; gap: 10px; }
-.plaza-hero-btn { flex: 1; height: 38px; border-radius: 12px; font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer; border: none; }
-.plaza-hero-btn.chat { background: rgba(255,255,255,.2); color: #fff; backdrop-filter: blur(4px); }
-.plaza-hero-btn.hire { background: linear-gradient(135deg,#6366f1,#8b5cf6); color: #fff; box-shadow: 0 4px 12px rgba(99,102,241,.4); }
+/* Plaza specific */
+.plaza-tabs{display:flex;gap:4px;padding:0 16px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.plaza-tab{white-space:nowrap;padding:6px 14px;border-radius:20px;font-size:13px;color:#64748b;background:#fff;cursor:pointer;flex-shrink:0;border:1px solid #e2e8f0}
+.plaza-tab.active{background:#6366f1;color:#fff;border-color:#6366f1}
+.featured-card{position:relative;border-radius:16px;overflow:hidden;margin-bottom:10px;cursor:pointer}
+.featured-card img{width:100%;height:400px;object-fit:cover;display:block}
+.featured-grad{position:absolute;bottom:0;left:0;right:0;height:220px;background:linear-gradient(transparent,rgba(0,0,0,.85))}
+.featured-info{position:absolute;bottom:0;left:0;right:0;padding:16px}
+.avatar-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.avatar-grid-card{border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.06);cursor:pointer}
+.avatar-grid-card img{width:100%;height:180px;object-fit:cover;display:block}
+.avatar-grid-info{padding:10px}
+.avatar-grid-name{font-size:14px;font-weight:600}
+.avatar-grid-meta{font-size:11px;color:#64748b;margin-top:2px}
+.avatar-grid-tags{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+.avatar-grid-btn{display:flex;gap:6px;margin-top:8px}
+.avatar-grid-btn .btn{flex:1;height:32px;font-size:11px;border-radius:8px}
 
-/* 小卡片网格 */
-.plaza-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 4px 16px 16px; }
-.plaza-card { background: #fff; border-radius: 16px; overflow: hidden; cursor: pointer; box-shadow: 0 2px 12px rgba(0,0,0,.05); }
-.plaza-card-img { width: 100%; height: 200px; object-fit: cover; position: relative; }
-.plaza-card-img img { width: 100%; height: 100%; object-fit: cover; }
-.plaza-card-online { position: absolute; top: 8px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 2px #fff; }
-.plaza-card-distance { position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,.5); padding: 2px 8px; border-radius: 8px; font-size: 10px; color: #fff; }
-.plaza-card-body { padding: 10px; }
-.plaza-card-name { font-size: 14px; font-weight: 600; color: #1e293b; margin-bottom: 4px; }
-.plaza-card-brief { font-size: 11px; color: #94a3b8; margin-bottom: 6px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.plaza-card-skill-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
-.plaza-card-skill-tag { padding: 2px 6px; border-radius: 6px; font-size: 10px; font-weight: 500; }
-.plaza-card-actions { display: flex; gap: 6px; }
-.plaza-card-btn { flex: 1; height: 28px; border-radius: 8px; font-size: 12px; font-weight: 500; display: flex; align-items: center; justify-content: center; cursor: pointer; border: none; }
-.plaza-card-btn.chat { background: #f0f0ff; color: #6366f1; }
-.plaza-card-btn.hire { background: linear-gradient(135deg,#6366f1,#8b5cf6); color: #fff; }
+/* Activity cards */
+.activity-card{border-radius:14px;overflow:hidden;cursor:pointer;margin-bottom:10px;position:relative}
+.activity-card img{width:100%;height:120px;object-fit:cover;display:block}
+.activity-grad{position:absolute;bottom:0;left:0;right:0;height:80px;background:linear-gradient(transparent,rgba(0,0,0,.75))}
+.activity-info{position:absolute;bottom:0;left:0;right:0;padding:10px 12px;color:#fff}
+.badge-live{display:inline-block;padding:2px 8px;border-radius:10px;background:#ef4444;color:#fff;font-size:10px;font-weight:600;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.badge-new{display:inline-block;padding:2px 8px;border-radius:10px;background:#6366f1;color:#fff;font-size:10px;font-weight:600}
 
-/* 分身辩论横幅 */
-.plaza-debate { margin: 0 16px 12px; background: linear-gradient(135deg,#1e1b4b,#312e81); border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
-.plaza-debate-vs { font-size: 20px; font-weight: 800; color: #f59e0b; }
-.plaza-debate-info { flex: 1; }
-.plaza-debate-title { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 4px; }
-.plaza-debate-meta { font-size: 11px; color: rgba(255,255,255,.6); }
-.plaza-debate-badge { background: #ef4444; color: #fff; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 10px; }
+/* Detail cover */
+.detail-cover{position:relative;height:460px;overflow:hidden}
+.detail-cover img{width:100%;height:100%;object-fit:cover}
+.detail-grad{position:absolute;bottom:0;left:0;right:0;height:260px;background:linear-gradient(transparent,rgba(0,0,0,.9))}
+.detail-info{position:absolute;bottom:0;left:0;right:0;padding:16px}
+.stat-box{text-align:center;padding:10px 4px;background:#f8fafc;border-radius:12px}
+.stat-val{font-size:18px;font-weight:700;color:#6366f1}
+.stat-label{font-size:10px;color:#64748b;margin-top:2px}
 
-/* ===== 我的分身 ===== */
-.my-header { position: relative; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%); padding: 48px 16px 16px; border-radius: 0 0 24px 24px; }
-.my-header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.my-title { font-size: 20px; font-weight: 700; color: #fff; }
-.my-add-btn { width: 36px; height: 36px; border-radius: 12px; background: rgba(255,255,255,.2); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; cursor: pointer; color: #fff; font-size: 20px; }
+/* Chat */
+.chat-mode-bar{display:flex;gap:4px;padding:8px 16px;overflow-x:auto;background:#fff;border-bottom:1px solid #f1f5f9}
+.chat-mode-btn{white-space:nowrap;padding:6px 14px;border-radius:20px;font-size:12px;color:#64748b;background:#f1f5f9;cursor:pointer;flex-shrink:0}
+.chat-mode-btn.active{background:#6366f1;color:#fff}
+.chat-mode-btn.moon{background:#1e1b4b;color:#c4b5fd}
+.chat-msg{display:flex;gap:8px;padding:8px 16px;align-items:flex-start}
+.chat-msg.me{flex-direction:row-reverse}
+.chat-msg.me .chat-bubble{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border-radius:16px 16px 4px 16px}
+.chat-msg.clone .chat-bubble{background:#fff;border-radius:16px 16px 16px 4px;border:1px solid #e2e8f0;color:#1e293b;max-width:75%}
+.chat-bubble{padding:10px 14px;font-size:14px;line-height:1.5;word-break:break-word}
+.chat-input-bar{position:sticky;bottom:0;display:flex;gap:8px;padding:10px 16px;background:#fff;border-top:1px solid #f1f5f9}
+.chat-input{flex:1;height:40px;border:1px solid #e2e8f0;border-radius:20px;padding:0 16px;font-size:14px;outline:none}
+.chat-send{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 
-/* 相似度仪表盘 */
-.similarity-dash { background: rgba(255,255,255,.12); backdrop-filter: blur(8px); border-radius: 16px; padding: 14px 16px; margin-bottom: 12px; }
-.similarity-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.similarity-title { font-size: 13px; font-weight: 600; color: #fff; }
-.similarity-score { font-size: 24px; font-weight: 800; color: #fbbf24; }
-.similarity-score span { font-size: 12px; font-weight: 400; color: rgba(255,255,255,.6); }
-.similarity-bars { display: flex; flex-direction: column; gap: 6px; }
-.similarity-bar-row { display: flex; align-items: center; gap: 8px; }
-.similarity-bar-label { width: 50px; font-size: 11px; color: rgba(255,255,255,.7); text-align: right; }
-.similarity-bar-track { flex: 1; height: 6px; background: rgba(255,255,255,.15); border-radius: 3px; overflow: hidden; }
-.similarity-bar-fill { height: 100%; border-radius: 3px; transition: width .5s ease; }
-.similarity-bar-val { width: 30px; font-size: 11px; color: rgba(255,255,255,.8); font-weight: 600; }
+/* My avatars */
+.sim-ring{width:88px;height:88px;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;margin:0 auto}
+.sim-ring svg{position:absolute;width:88px;height:88px;transform:rotate(-90deg)}
+.sim-val{font-size:24px;font-weight:800;color:#6366f1}
+.sim-label{font-size:10px;color:#64748b}
+.my-avatar-card{border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:12px;cursor:pointer}
+.my-avatar-cover{position:relative;height:160px;overflow:hidden}
+.my-avatar-cover img{width:100%;height:100%;object-fit:cover}
+.my-avatar-grad{position:absolute;bottom:0;left:0;right:0;height:100px;background:linear-gradient(transparent,rgba(0,0,0,.7))}
+.my-avatar-info{position:absolute;bottom:0;left:0;right:0;padding:10px 12px;display:flex;align-items:center;gap:8px}
+.my-avatar-body{padding:12px}
+.my-avatar-actions{display:flex;gap:6px;margin-top:10px}
+.my-avatar-actions .btn{flex:1;height:34px;font-size:12px;border-radius:8px}
 
-/* 学习动态 */
-.learn-ticker { background: rgba(255,255,255,.12); border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; gap: 8px; }
-.learn-ticker-icon { width: 24px; height: 24px; border-radius: 8px; background: rgba(251,191,36,.2); display: flex; align-items: center; justify-content: center; font-size: 13px; }
-.learn-ticker-text { flex: 1; font-size: 12px; color: rgba(255,255,255,.9); }
-.learn-ticker-more { font-size: 12px; color: #fbbf24; cursor: pointer; }
+/* Persona */
+.persona-layer{margin-bottom:10px}
+.persona-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f8fafc}
+.persona-source{display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600}
 
-/* 分身卡片(我的) */
-.my-card { background: #fff; border-radius: 20px; overflow: hidden; margin: 12px 16px; box-shadow: 0 2px 16px rgba(0,0,0,.06); }
-.my-card-cover { position: relative; height: 180px; }
-.my-card-cover img { width: 100%; height: 100%; object-fit: cover; }
-.my-card-cover-grad { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.8) 0%, rgba(0,0,0,.2) 50%, transparent 100%); }
-.my-card-level { position: absolute; top: 10px; left: 10px; padding: 3px 10px; border-radius: 10px; font-size: 11px; color: #fff; font-weight: 600; display: flex; align-items: center; gap: 3px; }
-.my-card-status { position: absolute; top: 10px; right: 10px; padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; }
-.my-card-status.on { background: rgba(34,197,94,.9); color: #fff; }
-.my-card-status.off { background: rgba(148,163,184,.9); color: #fff; }
-.my-card-earning { position: absolute; top: 40px; right: 10px; background: rgba(0,0,0,.5); backdrop-filter: blur(8px); padding: 3px 10px; border-radius: 10px; font-size: 11px; color: #fbbf24; font-weight: 600; }
-.my-card-bottom { position: absolute; bottom: 10px; left: 10px; right: 10px; display: flex; align-items: flex-end; justify-content: space-between; }
-.my-card-profile { display: flex; align-items: center; gap: 8px; }
-.my-card-face { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #fff; object-fit: cover; }
-.my-card-name { font-size: 16px; font-weight: 700; color: #fff; }
-.my-card-sim { font-size: 11px; color: #fbbf24; font-weight: 600; }
-.my-card-body { padding: 12px 14px; }
-.my-card-desc { font-size: 12px; color: #64748b; margin-bottom: 8px; line-height: 1.5; }
-.my-card-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
-.my-card-tag { padding: 3px 8px; border-radius: 8px; font-size: 11px; font-weight: 500; }
-.my-card-progress { margin-bottom: 10px; }
-.my-card-progress-label { display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; margin-bottom: 4px; }
-.my-card-progress-bar { height: 4px; background: #f1f5f9; border-radius: 2px; overflow: hidden; }
-.my-card-progress-fill { height: 100%; border-radius: 2px; }
-.my-card-actions { display: flex; gap: 6px; }
-.my-card-btn { flex: 1; height: 34px; border-radius: 10px; font-size: 12px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer; border: 1px solid #e2e8f0; background: #fff; color: #6366f1; }
-.my-card-btn.primary { background: linear-gradient(135deg,#6366f1,#8b5cf6); color: #fff; border: none; }
+/* Skills */
+.skill-card{background:#fff;border-radius:14px;padding:14px;margin-bottom:8px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.skill-header{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+.skill-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
 
-/* ===== 学习中心 ===== */
-.learn-page { background: #f5f5f8; }
-.learn-header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%); padding: 48px 16px 20px; border-radius: 0 0 24px 24px; }
-.learn-header h2 { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 4px; }
-.learn-header p { font-size: 13px; color: rgba(255,255,255,.7); }
+/* Earnings */
+.earn-card{background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:16px;padding:20px;text-align:center;color:#fff}
+.earn-label{font-size:12px;color:rgba(255,255,255,.7)}
+.earn-amount{font-size:36px;font-weight:800;margin:4px 0 14px}
+.earn-row{display:flex;justify-content:space-around}
+.earn-item{text-align:center}
 
-.learn-section { padding: 16px; }
-.learn-section-title { font-size: 15px; font-weight: 600; color: #1e293b; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+/* Competition */
+.comp-card{border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:10px;cursor:pointer}
+.comp-card-top{position:relative;height:140px;overflow:hidden}
+.comp-card-top img{width:100%;height:100%;object-fit:cover}
+.comp-card-grad{position:absolute;bottom:0;left:0;right:0;height:60px;background:linear-gradient(transparent,rgba(0,0,0,.6))}
+.comp-rank{position:absolute;top:8px;left:8px;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff}
+.comp-votes{position:absolute;bottom:8px;right:8px;font-size:11px;color:#fff;font-weight:600}
+.comp-card-body{padding:10px 12px}
 
-.learn-card { background: #fff; border-radius: 16px; padding: 16px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.04); cursor: pointer; transition: transform .15s; }
-.learn-card:active { transform: scale(.98); }
-.learn-card-top { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-.learn-card-icon { width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
-.learn-card-title { font-size: 15px; font-weight: 600; color: #1e293b; }
-.learn-card-sub { font-size: 11px; color: #94a3b8; }
-.learn-card-desc { font-size: 13px; color: #64748b; line-height: 1.5; margin-bottom: 8px; }
-.learn-card-tags { display: flex; gap: 6px; }
-.learn-card-tag { padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 500; }
+/* Challenge */
+.challenge-card{border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.challenge-header{background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:16px;display:flex;align-items:center;gap:12px}
+.challenge-body{padding:16px}
 
-/* ===== 我的 ===== */
-.profile-page { background: #f5f5f8; }
-.profile-header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%); padding: 48px 16px 24px; border-radius: 0 0 24px 24px; text-align: center; }
-.profile-avatar { width: 72px; height: 72px; border-radius: 50%; border: 3px solid #fff; margin: 0 auto 10px; object-fit: cover; background: rgba(255,255,255,.2); }
-.profile-name { font-size: 18px; font-weight: 700; color: #fff; }
-.profile-id { font-size: 12px; color: rgba(255,255,255,.6); margin-top: 4px; }
-.profile-stats { display: flex; justify-content: center; gap: 24px; margin-top: 16px; }
-.profile-stat { text-align: center; }
-.profile-stat-val { font-size: 20px; font-weight: 700; color: #fff; }
-.profile-stat-label { font-size: 11px; color: rgba(255,255,255,.6); }
+/* Match */
+.match-card{display:flex;align-items:center;gap:12px;background:#fff;border-radius:14px;padding:12px;margin-bottom:8px;box-shadow:0 1px 2px rgba(0,0,0,.04);cursor:pointer}
+.match-avatar{width:52px;height:52px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.match-info{flex:1}
+.match-name{font-size:14px;font-weight:600}
+.match-tags{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap}
+.match-score{font-size:24px;font-weight:800;color:#ec4899;text-align:center;line-height:1}
+.match-score span{display:block;font-size:10px;color:#64748b;font-weight:400}
 
-.profile-section { padding: 16px; }
-.profile-section-title { font-size: 13px; font-weight: 600; color: #94a3b8; margin-bottom: 8px; padding-left: 4px; }
-.profile-menu { background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.04); }
-.profile-menu-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
-.profile-menu-item:last-child { border-bottom: none; }
-.profile-menu-icon { width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
-.profile-menu-text { flex: 1; font-size: 14px; color: #1e293b; }
-.profile-menu-arrow { color: #cbd5e1; font-size: 14px; }
+/* Learn */
+.learn-method{text-align:center;padding:16px 8px;border-radius:14px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04);cursor:pointer}
+.learn-method-icon{font-size:28px;margin-bottom:6px}
+.learn-method-title{font-size:13px;font-weight:600}
+.learn-method-desc{font-size:10px;color:#64748b;margin-top:2px}
 
-/* ===== 子页面/弹窗通用 ===== */
-.subpage { display: none; position: fixed; inset: 0; background: #f5f5f8; z-index: 200; overflow-y: auto; }
-.subpage.active { display: block; }
-.subpage-header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%); padding: 48px 16px 16px; display: flex; align-items: center; gap: 12px; border-radius: 0 0 24px 24px; }
-.subpage-back { font-size: 22px; color: #fff; cursor: pointer; width: 32px; }
-.subpage-title { font-size: 18px; font-weight: 700; color: #fff; }
+/* Review */
+.review-item{display:flex;gap:8px;padding:8px 0;border-bottom:1px solid #f8fafc}
+.review-item:last-child{border:none}
 
-/* 弹窗 */
-.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 300; align-items: center; justify-content: center; padding: 24px; }
-.modal-overlay.active { display: flex; }
-.modal { width: 100%; max-width: 380px; background: #fff; border-radius: 20px; padding: 24px 20px; box-shadow: 0 16px 48px rgba(0,0,0,.15); max-height: 80vh; overflow-y: auto; }
-.modal-title { font-size: 18px; font-weight: 700; color: #1e293b; margin-bottom: 12px; text-align: center; }
-.modal-desc { font-size: 13px; color: #64748b; line-height: 1.6; margin-bottom: 16px; text-align: center; }
-.modal-close { position: absolute; top: 12px; right: 16px; font-size: 20px; color: #94a3b8; cursor: pointer; }
-
-/* ===== 分身详情子页 ===== */
-.detail-cover { position: relative; height: 460px; }
-.detail-cover img { width: 100%; height: 100%; object-fit: cover; }
-.detail-cover-grad { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.9) 0%, rgba(0,0,0,.4) 40%, transparent 70%); }
-.detail-cover-info { position: absolute; bottom: 20px; left: 16px; right: 16px; }
-.detail-cover-name { font-size: 26px; font-weight: 800; color: #fff; margin-bottom: 6px; }
-.detail-cover-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.detail-cover-meta span { font-size: 12px; color: rgba(255,255,255,.8); display: flex; align-items: center; gap: 3px; }
-.detail-cover-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
-.detail-cover-tag { padding: 4px 10px; border-radius: 10px; font-size: 11px; font-weight: 500; }
-.detail-cover-actions { display: flex; gap: 10px; }
-.detail-btn { flex: 1; height: 44px; border-radius: 14px; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; border: none; }
-.detail-btn.chat { background: rgba(255,255,255,.2); color: #fff; backdrop-filter: blur(4px); }
-.detail-btn.hire { background: linear-gradient(135deg,#6366f1,#8b5cf6); color: #fff; box-shadow: 0 4px 16px rgba(99,102,241,.4); }
-
-.detail-body { padding: 16px; }
-.detail-section { background: #fff; border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.04); }
-.detail-section-title { font-size: 15px; font-weight: 600; color: #1e293b; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
-.detail-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
-.detail-stat { text-align: center; padding: 10px; background: #f8f9fc; border-radius: 12px; }
-.detail-stat-val { font-size: 20px; font-weight: 700; color: #6366f1; }
-.detail-stat-label { font-size: 11px; color: #94a3b8; }
-
-/* 场景测试 - 即时反馈 */
-.detail-test { background: #fff; border-radius: 16px; padding: 16px; margin-bottom: 12px; }
-.detail-test-title { font-size: 15px; font-weight: 600; color: #1e293b; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
-.detail-test-scenario { background: #f8f9fc; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
-.detail-test-q { font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 8px; }
-.detail-test-compare { display: flex; gap: 8px; }
-.detail-test-bubble { flex: 1; padding: 10px; border-radius: 10px; font-size: 12px; line-height: 1.5; }
-.detail-test-bubble.you { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
-.detail-test-bubble.clone { background: #faf5ff; border: 1px solid #e9d5ff; color: #6b21a8; }
-.detail-test-label { font-size: 10px; font-weight: 600; margin-bottom: 4px; }
-.detail-test-result { text-align: center; padding: 8px; background: #f0fdf4; border-radius: 10px; font-size: 12px; color: #16a34a; font-weight: 600; }
-
-/* 评价 */
-.review-item { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
-.review-item:last-child { border-bottom: none; }
-.review-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
-.review-content { flex: 1; }
-.review-name { font-size: 13px; font-weight: 600; color: #1e293b; }
-.review-text { font-size: 12px; color: #64748b; line-height: 1.5; margin-top: 2px; }
-.review-stars { color: #f59e0b; font-size: 12px; margin-top: 2px; }
-
-/* ===== 聊天子页 ===== */
-.chat-page { background: #f5f5f8; }
-.chat-header-bar { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%); padding: 48px 16px 14px; display: flex; align-items: center; gap: 10px; border-radius: 0 0 20px 20px; }
-.chat-header-avatar { width: 36px; height: 36px; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); object-fit: cover; }
-.chat-header-name { font-size: 16px; font-weight: 600; color: #fff; }
-.chat-header-status { font-size: 11px; color: rgba(255,255,255,.6); }
-.chat-messages { padding: 16px; min-height: 400px; }
-.chat-msg { display: flex; gap: 8px; margin-bottom: 14px; }
-.chat-msg.clone { flex-direction: row; }
-.chat-msg.me { flex-direction: row-reverse; }
-.chat-msg-face { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; object-fit: cover; }
-.chat-msg-bubble { max-width: 70%; padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.5; position: relative; }
-.chat-msg.clone .chat-msg-bubble { background: #fff; color: #1e293b; border-top-left-radius: 4px; }
-.chat-msg.me .chat-msg-bubble { background: linear-gradient(135deg,#6366f1,#8b5cf6); color: #fff; border-top-right-radius: 4px; }
-.chat-msg-label { font-size: 10px; color: #94a3b8; margin-top: 4px; }
-.chat-msg.correct-btn { font-size: 11px; color: #6366f1; cursor: pointer; margin-top: 4px; font-weight: 500; }
-.chat-input-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; padding: 10px 16px; background: #fff; border-top: 1px solid #e5e5e5; display: flex; gap: 8px; align-items: center; }
-.chat-input { flex: 1; height: 38px; background: #f1f5f9; border-radius: 12px; padding: 0 14px; border: none; font-size: 14px; outline: none; }
-.chat-send { width: 38px; height: 38px; border-radius: 12px; background: linear-gradient(135deg,#6366f1,#8b5cf6); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; border: none; font-size: 16px; }
-.chat-mode-bar { display: flex; gap: 6px; padding: 8px 16px; overflow-x: auto; }
-.chat-mode-btn { flex-shrink: 0; padding: 5px 12px; border-radius: 16px; font-size: 12px; font-weight: 500; background: #fff; color: #64748b; border: 1px solid #e2e8f0; cursor: pointer; }
-.chat-mode-btn.active { background: linear-gradient(135deg,#6366f1,#8b5cf6); color: #fff; border-color: transparent; }
-.chat-mode-btn.moon { background: #1e1b4b; color: #e9d5ff; border-color: #312e81; }
-
-/* 深夜模式效果 */
-.night-mode .chat-msg.clone .chat-msg-bubble { background: #1e1b4b; color: #e9d5ff; }
-.night-mode .chat-input { background: #1e1b4b; color: #e9d5ff; }
-.night-mode .chat-messages { background: #0f0d2e; }
+/* Workspace */
+.ws-card{display:flex;align-items:center;gap:10px;background:#fff;border-radius:14px;padding:12px;margin-bottom:8px}
+.ws-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
 </style>
 </head>
 <body>
+<div class="app" id="app">
 
-<!-- ===== TabBar ===== -->
+<!-- ========== TabBar ========== -->
 <div class="tabbar">
-  <div class="tabbar-item active" onclick="switchTab('plaza')">
-    <div class="tabbar-icon">🔥</div>
-    <div class="tabbar-label">广场</div>
-  </div>
-  <div class="tabbar-item" onclick="switchTab('my')">
-    <div class="tabbar-icon">👤</div>
-    <div class="tabbar-label">我的分身</div>
-  </div>
-  <div class="tabbar-item" onclick="switchTab('learn')">
-    <div class="tabbar-icon">📚</div>
-    <div class="tabbar-label">学习</div>
-  </div>
-  <div class="tabbar-item" onclick="switchTab('profile')">
-    <div class="tabbar-icon">⚙️</div>
-    <div class="tabbar-label">我的</div>
-  </div>
+  <div class="tabbar-item active" onclick="switchTab('plaza')"><div class="tabbar-icon">🔥</div><div class="tabbar-label">广场</div></div>
+  <div class="tabbar-item" onclick="switchTab('my')"><div class="tabbar-icon">👤</div><div class="tabbar-label">我的分身</div></div>
+  <div class="tabbar-item" onclick="switchTab('learn')" style="position:relative"><div class="tabbar-icon">📚</div><div class="tabbar-label">学习</div><div class="tabbar-badge">3</div></div>
+  <div class="tabbar-item" onclick="switchTab('profile')"><div class="tabbar-icon">⚙️</div><div class="tabbar-label">我的</div></div>
 </div>
 
-<!-- ===== 分身广场 ===== -->
+<!-- ========== 广场 ========== -->
 <div class="page active" id="page-plaza">
-  <div class="plaza-header">
-    <div class="plaza-header-top">
-      <div class="plaza-title">分身广场</div>
-      <div style="color:rgba(255,255,255,.7);font-size:13px;cursor:pointer">📍 附近</div>
-    </div>
-    <div class="plaza-search">
-      <span class="plaza-search-icon">🔍</span>
-      <input placeholder="搜索分身、技能、行业..." />
-    </div>
+  <div class="gradient-header">
+    <div class="row" style="justify-content:space-between;margin-bottom:12px"><div style="font-size:22px;font-weight:800;color:#fff">分身广场</div><div style="cursor:pointer;font-size:20px" onclick="openSub('search')">🔍</div></div>
+    <div style="background:rgba(255,255,255,.12);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:8px;cursor:pointer" onclick="switchTab('learn')"><div style="width:24px;height:24px;border-radius:8px;background:rgba(251,191,36,.2);display:flex;align-items:center;justify-content:center;font-size:13px">✨</div><div style="flex:1;font-size:12px;color:rgba(255,255,255,.9)">晚晚刚学会"催需求时先安抚再给方案"</div><div style="font-size:12px;color:#fbbf24">→</div></div>
   </div>
 
-  <div class="plaza-tabs">
-    <div class="plaza-tab active">🔥 推荐</div>
-    <div class="plaza-tab">💼 职场</div>
-    <div class="plaza-tab">💄 美妆</div>
-    <div class="plaza-tab">📱 科技</div>
-    <div class="plaza-tab">🎬 创意</div>
-    <div class="plaza-tab">💰 商务</div>
-    <div class="plaza-tab">🌙 私密</div>
+  <div class="plaza-tabs" style="margin-top:10px">
+    <div class="plaza-tab active">🔥 推荐</div><div class="plaza-tab">💼 职场</div><div class="plaza-tab">💄 美妆</div><div class="plaza-tab">📱 科技</div><div class="plaza-tab">💕 私密</div><div class="plaza-tab">🎮 娱乐</div>
   </div>
 
-  <!-- 大封面推荐 -->
-  <div class="plaza-hero" onclick="openDetail('lin')">
-    <img class="plaza-hero-img" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&h=800&fit=crop" />
-    <div class="plaza-hero-gradient"></div>
-    <div class="plaza-hero-hot">🔥 326人雇佣</div>
-    <div class="plaza-hero-distance">📍 1.2km</div>
-    <div class="plaza-hero-level" style="background:rgba(139,92,246,.8)">👑 Lv.4 精英</div>
-    <div class="plaza-hero-bottom">
-      <div class="plaza-hero-avatar-row">
-        <img class="plaza-hero-face" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face" />
-        <div>
-          <div class="plaza-hero-name">林晚晚</div>
-        </div>
-      </div>
-      <div class="plaza-hero-desc">10年互联网产品总监，擅长需求分析、方案评审、团队管理。说话犀利但不伤人，决策果断但有温度。</div>
-      <div class="plaza-hero-tags">
-        <span class="plaza-hero-tag" style="background:rgba(139,92,246,.8);color:#fff">需求澄清术</span>
-        <span class="plaza-hero-tag" style="background:rgba(59,130,246,.8);color:#fff">方案评审法</span>
-        <span class="plaza-hero-tag" style="background:rgba(234,179,8,.8);color:#fff">快速排期术</span>
-      </div>
-      <div class="plaza-hero-actions">
-        <button class="plaza-hero-btn chat" onclick="event.stopPropagation();openChat('lin')">💬 聊聊</button>
-        <button class="plaza-hero-btn hire" onclick="event.stopPropagation()">🤝 雇佣 ¥8/次</button>
+  <div class="section" style="margin-top:10px">
+    <!-- Featured -->
+    <div class="featured-card" onclick="openSub('detail')">
+      <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&h=920&fit=crop" />
+      <div class="featured-grad"></div>
+      <div style="position:absolute;top:12px;left:12px;display:flex;gap:6px"><span class="tag" style="background:rgba(239,68,68,.9);color:#fff">🔥 326人雇佣</span><span class="tag" style="background:rgba(0,0,0,.5);color:#fff">📍 1.2km</span></div>
+      <div style="position:absolute;top:12px;right:12px"><span class="tag" style="background:rgba(251,191,36,.9);color:#1e1b4b;font-weight:700">👑 Lv.4</span></div>
+      <div class="featured-info">
+        <div class="row gap-2"><div class="online-dot"></div><span style="font-size:11px;color:#22c55e;font-weight:600">在线</span></div>
+        <div style="font-size:22px;font-weight:800;color:#fff;margin-top:6px">林晚晚</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.8);margin-top:4px">10年产品总监 · 温柔但坚定</div>
+        <div class="row gap-2" style="margin-top:8px;flex-wrap:wrap"><span class="tag" style="background:rgba(139,92,246,.7);color:#fff">需求澄清术</span><span class="tag" style="background:rgba(59,130,246,.7);color:#fff">方案评审法</span><span class="tag" style="background:rgba(234,179,8,.7);color:#fff">快速排期术</span></div>
+        <div class="row gap-2" style="margin-top:10px"><button class="btn btn-xs" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4);flex:1" onclick="event.stopPropagation();openSub('chat')">💬 聊聊</button><button class="btn btn-xs" style="background:#fbbf24;color:#1e1b4b;font-weight:700;flex:1" onclick="event.stopPropagation();openModal('hire')">🤝 雇佣 ¥8/次</button></div>
       </div>
     </div>
-  </div>
 
-  <!-- 辩论横幅 -->
-  <div class="plaza-debate" onclick="openSubpage('debate')">
-    <div>
-      <div style="display:flex;align-items:center;gap:6px">
-        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face" style="width:28px;height:28px;border-radius:50%;border:2px solid #6366f1" />
-        <span class="plaza-debate-vs">VS</span>
-        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=40&h=40&fit=crop&crop=face" style="width:28px;height:28px;border-radius:50%;border:2px solid #ec4899" />
-      </div>
+    <!-- Activities -->
+    <div class="section-title">🎭 热门活动</div>
+    <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">
+      <div class="activity-card" style="min-width:200px;flex-shrink:0" onclick="openSub('debate')"><img src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=400&h=240&fit=crop" /><div class="activity-grad"></div><div class="activity-info"><div style="font-size:13px;font-weight:600">🎭 分身辩论 LIVE</div><div class="badge-live" style="margin-top:4px">326人围观</div></div></div>
+      <div class="activity-card" style="min-width:200px;flex-shrink:0" onclick="openSub('competition')"><img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&h=240&fit=crop" /><div class="activity-grad"></div><div class="activity-info"><div style="font-size:13px;font-weight:600">👑 分身选秀大赛</div><div style="font-size:11px;margin-top:2px">1,286分身参赛</div></div></div>
+      <div class="activity-card" style="min-width:200px;flex-shrink:0" onclick="openSub('challenge')"><img src="https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=400&h=240&fit=crop" /><div class="activity-grad"></div><div class="activity-info"><div style="font-size:13px;font-weight:600">🎯 每日挑战</div><div style="font-size:11px;margin-top:2px">今日326人参与</div></div></div>
+      <div class="activity-card" style="min-width:200px;flex-shrink:0" onclick="openSub('matchmake')"><img src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=400&h=240&fit=crop" /><div class="activity-grad"></div><div class="activity-info"><div style="font-size:13px;font-weight:600">💕 分身相亲角</div><div style="font-size:11px;margin-top:2px">89对已匹配</div></div></div>
+      <div class="activity-card" style="min-width:200px;flex-shrink:0" onclick="openSub('arena')"><img src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=400&h=240&fit=crop" /><div class="activity-grad"></div><div class="activity-info"><div style="font-size:13px;font-weight:600">⚔️ 技能擂台</div><div style="font-size:11px;margin-top:2px">512人对决中</div></div></div>
     </div>
-    <div class="plaza-debate-info">
-      <div class="plaza-debate-title">AI该不该有情感？</div>
-      <div class="plaza-debate-meta">阿杰 vs 晓月 · 326人围观</div>
-    </div>
-    <div class="plaza-debate-badge">LIVE</div>
-  </div>
 
-  <!-- 小卡片网格 -->
-  <div class="plaza-grid">
-    <!-- 卡片1 -->
-    <div class="plaza-card" onclick="openDetail('jie')">
-      <div class="plaza-card-img" style="position:relative">
-        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop" />
-        <div class="plaza-card-online"></div>
-        <div class="plaza-card-distance">📍 3.2km</div>
-      </div>
-      <div class="plaza-card-body">
-        <div class="plaza-card-name">阿杰 👑Lv.3</div>
-        <div class="plaza-card-brief">8年全栈工程师，代码洁癖，架构强迫症</div>
-        <div class="plaza-card-skill-tags">
-          <span class="plaza-card-skill-tag" style="background:#eff6ff;color:#2563eb">架构设计</span>
-          <span class="plaza-card-skill-tag" style="background:#fef3c7;color:#92400e">代码审查</span>
-        </div>
-        <div class="plaza-card-actions">
-          <button class="plaza-card-btn chat" onclick="event.stopPropagation();openChat('jie')">💬</button>
-          <button class="plaza-card-btn hire">¥5/次</button>
-        </div>
-      </div>
-    </div>
-    <!-- 卡片2 -->
-    <div class="plaza-card" onclick="openDetail('yue')">
-      <div class="plaza-card-img" style="position:relative">
-        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop" />
-        <div class="plaza-card-online"></div>
-        <div class="plaza-card-distance">📍 5.8km</div>
-      </div>
-      <div class="plaza-card-body">
-        <div class="plaza-card-name">晓月 👑Lv.4</div>
-        <div class="plaza-card-brief">资深HR总监，面试万花筒，洞察人性</div>
-        <div class="plaza-card-skill-tags">
-          <span class="plaza-card-skill-tag" style="background:#fce7f3;color:#9d174d">面试洞察</span>
-          <span class="plaza-card-skill-tag" style="background:#f3e8ff;color:#7c3aed">人岗匹配</span>
-        </div>
-        <div class="plaza-card-actions">
-          <button class="plaza-card-btn chat" onclick="event.stopPropagation();openChat('yue')">💬</button>
-          <button class="plaza-card-btn hire">¥6/次</button>
-        </div>
-      </div>
-    </div>
-    <!-- 卡片3 -->
-    <div class="plaza-card" onclick="openDetail('chen')">
-      <div class="plaza-card-img" style="position:relative">
-        <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop" />
-        <div class="plaza-card-distance">📍 2.1km</div>
-      </div>
-      <div class="plaza-card-body">
-        <div class="plaza-card-name">老陈 👑Lv.3</div>
-        <div class="plaza-card-brief">15年销售VP，逼单如吃饭，谈判似呼吸</div>
-        <div class="plaza-card-skill-tags">
-          <span class="plaza-card-skill-tag" style="background:#fef9c3;color:#854d0e">异议化解</span>
-          <span class="plaza-card-skill-tag" style="background:#ecfccb;color:#3f6212">逼单术</span>
-        </div>
-        <div class="plaza-card-actions">
-          <button class="plaza-card-btn chat" onclick="event.stopPropagation();openChat('chen')">💬</button>
-          <button class="plaza-card-btn hire">¥5/次</button>
-        </div>
-      </div>
-    </div>
-    <!-- 卡片4 -->
-    <div class="plaza-card" onclick="openDetail('mei')">
-      <div class="plaza-card-img" style="position:relative">
-        <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop" />
-        <div class="plaza-card-online"></div>
-        <div class="plaza-card-distance">📍 0.8km</div>
-      </div>
-      <div class="plaza-card-body">
-        <div class="plaza-card-name">小美 👑Lv.2</div>
-        <div class="plaza-card-brief">美妆博主，护肤成分党，穿衣有品</div>
-        <div class="plaza-card-skill-tags">
-          <span class="plaza-card-skill-tag" style="background:#fce7f3;color:#9d174d">衣品改造</span>
-          <span class="plaza-card-skill-tag" style="background:#fff7ed;color:#c2410c">护肤配方</span>
-        </div>
-        <div class="plaza-card-actions">
-          <button class="plaza-card-btn chat" onclick="event.stopPropagation();openChat('mei')">💬</button>
-          <button class="plaza-card-btn hire">¥3/次</button>
-        </div>
-      </div>
+    <!-- Avatar Grid -->
+    <div class="section-title mt-2">✨ 发现分身</div>
+    <div class="avatar-grid">
+      <div class="avatar-grid-card" onclick="openSub('detail')"><img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=360&fit=crop" /><div class="avatar-grid-info"><div class="avatar-grid-name">晓月 <span style="color:#fbbf24;font-size:11px">👑Lv.5</span></div><div class="avatar-grid-meta">📍 2.8km · HR总监</div><div class="avatar-grid-tags"><span class="tag" style="background:#fce7f3;color:#ec4899">面试筛选</span><span class="tag" style="background:#fef3c7;color:#92400e">谈判</span></div><div class="avatar-grid-btn"><button class="btn btn-xs btn-outline" style="color:#6366f1;border-color:#6366f1" onclick="event.stopPropagation();openSub('chat')">💬</button><button class="btn btn-xs btn-primary" onclick="event.stopPropagation();openModal('hire')">雇佣</button></div></div></div>
+      <div class="avatar-grid-card" onclick="openSub('detail')"><img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=360&fit=crop" /><div class="avatar-grid-info"><div class="avatar-grid-name">阿杰 <span style="color:#fbbf24;font-size:11px">👑Lv.3</span></div><div class="avatar-grid-meta">📍 5.1km · 全栈架构师</div><div class="avatar-grid-tags"><span class="tag" style="background:#eff6ff;color:#2563eb">架构设计</span></div><div class="avatar-grid-btn"><button class="btn btn-xs btn-outline" style="color:#6366f1;border-color:#6366f1" onclick="event.stopPropagation();openSub('chat')">💬</button><button class="btn btn-xs btn-primary" onclick="event.stopPropagation();openModal('hire')">雇佣</button></div></div></div>
+      <div class="avatar-grid-card" onclick="openSub('detail')"><img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&h=360&fit=crop" /><div class="avatar-grid-info"><div class="avatar-grid-name">小鹿 <span style="color:#fbbf24;font-size:11px">👑Lv.4</span></div><div class="avatar-grid-meta">📍 0.8km · 美妆博主</div><div class="avatar-grid-tags"><span class="tag" style="background:#fce7f3;color:#ec4899">穿搭</span><span class="tag" style="background:#fef3c7;color:#92400e">种草</span></div><div class="avatar-grid-btn"><button class="btn btn-xs btn-outline" style="color:#6366f1;border-color:#6366f1" onclick="event.stopPropagation();openSub('chat')">💬</button><button class="btn btn-xs btn-primary" onclick="event.stopPropagation();openModal('hire')">雇佣</button></div></div></div>
+      <div class="avatar-grid-card" onclick="openSub('detail')"><img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=360&fit=crop" /><div class="avatar-grid-info"><div class="avatar-grid-name">老陈 <span style="color:#fbbf24;font-size:11px">👑Lv.6</span></div><div class="avatar-grid-meta">📍 3.4km · 销售VP</div><div class="avatar-grid-tags"><span class="tag" style="background:#fef3c7;color:#92400e">逼单</span><span class="tag" style="background:#ecfdf5;color:#16a34a">异议化解</span></div><div class="avatar-grid-btn"><button class="btn btn-xs btn-outline" style="color:#6366f1;border-color:#6366f1" onclick="event.stopPropagation();openSub('chat')">💬</button><button class="btn btn-xs btn-primary" onclick="event.stopPropagation();openModal('hire')">雇佣</button></div></div></div>
     </div>
   </div>
 </div>
 
-<!-- ===== 我的分身 ===== -->
+<!-- ========== 我的分身 ========== -->
 <div class="page" id="page-my">
-  <div class="my-header">
-    <div class="my-header-top">
-      <div class="my-title">我的分身</div>
-      <div class="my-add-btn" onclick="openModal('create')">+</div>
-    </div>
-    <!-- 相似度仪表盘 -->
-    <div class="similarity-dash">
-      <div class="similarity-header">
-        <div class="similarity-title">🧬 林晚晚与你的相似度</div>
-        <div class="similarity-score">75<span>%</span></div>
+  <div class="gradient-header" style="padding-bottom:20px">
+    <div style="font-size:22px;font-weight:800;color:#fff;margin-bottom:14px">我的分身</div>
+    <div style="text-align:center;background:rgba(255,255,255,.1);border-radius:16px;padding:14px">
+      <div style="position:relative;width:88px;height:88px;margin:0 auto">
+        <svg viewBox="0 0 88 88"><circle cx="44" cy="44" r="40" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="6"/><circle cx="44" cy="44" r="40" fill="none" stroke="#fbbf24" stroke-width="6" stroke-dasharray="251.2" stroke-dashoffset="62.8" stroke-linecap="round"/></svg>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center"><div style="font-size:22px;font-weight:800;color:#fff">75%</div><div style="font-size:9px;color:rgba(255,255,255,.6)">相似度</div></div>
       </div>
-      <div class="similarity-bars">
-        <div class="similarity-bar-row">
-          <div class="similarity-bar-label">说话方式</div>
-          <div class="similarity-bar-track"><div class="similarity-bar-fill" style="width:82%;background:#8b5cf6"></div></div>
-          <div class="similarity-bar-val">82%</div>
-        </div>
-        <div class="similarity-bar-row">
-          <div class="similarity-bar-label">决策方式</div>
-          <div class="similarity-bar-track"><div class="similarity-bar-fill" style="width:71%;background:#6366f1"></div></div>
-          <div class="similarity-bar-val">71%</div>
-        </div>
-        <div class="similarity-bar-row">
-          <div class="similarity-bar-label">知识体系</div>
-          <div class="similarity-bar-track"><div class="similarity-bar-fill" style="width:68%;background:#3b82f6"></div></div>
-          <div class="similarity-bar-val">68%</div>
-        </div>
-        <div class="similarity-bar-row">
-          <div class="similarity-bar-label">底线规则</div>
-          <div class="similarity-bar-track"><div class="similarity-bar-fill" style="width:90%;background:#f59e0b"></div></div>
-          <div class="similarity-bar-val">90%</div>
-        </div>
-      </div>
-    </div>
-    <!-- 学习动态 -->
-    <div class="learn-ticker" onclick="switchTab('learn')">
-      <div class="learn-ticker-icon">✨</div>
-      <div class="learn-ticker-text">林晚晚刚学会"催需求时先安抚再给方案"（写入判断层）</div>
-      <div class="learn-ticker-more">→</div>
+      <div class="row" style="justify-content:center;gap:16px;margin-top:8px"><div style="text-align:center"><div style="font-size:14px;font-weight:700;color:#fff">3</div><div style="font-size:10px;color:rgba(255,255,255,.6)">今日学习</div></div><div style="text-align:center"><div style="font-size:14px;font-weight:700;color:#fff">2</div><div style="font-size:10px;color:rgba(255,255,255,.6)">提炼中</div></div><div style="text-align:center"><div style="font-size:14px;font-weight:700;color:#fbbf24">¥12.8</div><div style="font-size:10px;color:rgba(255,255,255,.6)">今日收益</div></div></div>
     </div>
   </div>
-
-  <!-- 分身卡片 -->
-  <div class="my-card" onclick="openDetail('lin')">
-    <div class="my-card-cover">
-      <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&h=360&fit=crop" />
-      <div class="my-card-cover-grad"></div>
-      <div class="my-card-level" style="background:rgba(139,92,246,.85)">👑 Lv.4 精英</div>
-      <div class="my-card-status on">● 托管中</div>
-      <div class="my-card-earning">💰 今日¥12.80</div>
-      <div class="my-card-bottom">
-        <div class="my-card-profile">
-          <img class="my-card-face" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&h=80&fit=crop&crop=face" />
-          <div>
-            <div class="my-card-name">林晚晚</div>
-            <div class="my-card-sim">相似度 75%</div>
-          </div>
-        </div>
+  <div class="section" style="margin-top:10px">
+    <div class="my-avatar-card" onclick="openSub('detail')">
+      <div class="my-avatar-cover"><img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&h=320&fit=crop" /><div class="my-avatar-grad"></div><div class="my-avatar-info"><img class="avatar-xs" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=56&h=56&fit=crop&crop=face" /><div><div style="font-size:15px;font-weight:700;color:#fff">林晚晚 <span style="color:#fbbf24">👑Lv.4</span></div><div style="font-size:11px;color:rgba(255,255,255,.8)">10年产品总监</div></div><div style="margin-left:auto"><span class="tag" style="background:#22c55e;color:#fff;font-size:10px">托管中</span></div></div></div>
+      <div class="my-avatar-body">
+        <div class="row gap-2" style="flex-wrap:wrap"><span class="tag" style="background:#ecfdf5;color:#16a34a">需求澄清术</span><span class="tag" style="background:#eff6ff;color:#2563eb">方案评审法</span><span class="tag" style="background:#fef3c7;color:#92400e">快速排期术 🔬</span></div>
+        <div class="row" style="justify-content:space-between;margin-top:8px"><div class="text-xs">相似度 75% · 今日学习3条</div><div style="font-size:13px;font-weight:700;color:#16a34a">¥12.80</div></div>
+        <div class="my-avatar-actions"><button class="btn btn-xs btn-outline" style="color:#6366f1;border-color:#6366f1" onclick="event.stopPropagation();openSub('chat')">💬 对话</button><button class="btn btn-xs btn-outline" style="color:#8b5cf6;border-color:#8b5cf6" onclick="event.stopPropagation();openSub('feed')">📁 喂资料</button><button class="btn btn-xs btn-outline" style="color:#f59e0b;border-color:#f59e0b" onclick="event.stopPropagation();openSub('workspace')">🤖 值守</button></div>
       </div>
     </div>
-    <div class="my-card-body">
-      <div class="my-card-desc">10年产品总监 · 擅长需求分析和方案评审</div>
-      <div class="my-card-tags">
-        <span class="my-card-tag" style="background:#eff6ff;color:#2563eb">需求澄清术</span>
-        <span class="my-card-tag" style="background:#f3e8ff;color:#7c3aed">方案评审法</span>
-        <span class="my-card-tag" style="background:#fef3c7;color:#92400e">快速排期术</span>
-      </div>
-      <div class="my-card-progress">
-        <div class="my-card-progress-label">
-          <span>距离Lv.5 传奇分身</span>
-          <span>78%</span>
-        </div>
-        <div class="my-card-progress-bar">
-          <div class="my-card-progress-fill" style="width:78%;background:linear-gradient(90deg,#6366f1,#8b5cf6)"></div>
-        </div>
-      </div>
-      <div class="my-card-actions">
-        <button class="my-card-btn" onclick="event.stopPropagation();openChat('lin')">💬 聊天</button>
-        <button class="my-card-btn" onclick="event.stopPropagation();switchTab('learn')">📚 学习</button>
-        <button class="my-card-btn" onclick="event.stopPropagation()">🤖 值守</button>
-        <button class="my-card-btn primary" onclick="event.stopPropagation()">💰 收益</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="my-card">
-    <div class="my-card-cover">
-      <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&h=360&fit=crop" />
-      <div class="my-card-cover-grad"></div>
-      <div class="my-card-level" style="background:rgba(59,130,246,.85)">👑 Lv.2 进阶</div>
-      <div class="my-card-status off">● 离线</div>
-      <div class="my-card-bottom">
-        <div class="my-card-profile">
-          <img class="my-card-face" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face" />
-          <div>
-            <div class="my-card-name">阿杰</div>
-            <div class="my-card-sim">相似度 45%</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="my-card-body">
-      <div class="my-card-desc">8年全栈工程师 · 代码洁癖 · 架构强迫症</div>
-      <div class="my-card-tags">
-        <span class="my-card-tag" style="background:#eff6ff;color:#2563eb">架构设计</span>
-        <span class="my-card-tag" style="background:#fef3c7;color:#92400e">代码审查</span>
-      </div>
-      <div class="my-card-progress">
-        <div class="my-card-progress-label">
-          <span>距离Lv.3 资深分身</span>
-          <span>35%</span>
-        </div>
-        <div class="my-card-progress-bar">
-          <div class="my-card-progress-fill" style="width:35%;background:linear-gradient(90deg,#3b82f6,#6366f1)"></div>
-        </div>
-      </div>
-      <div class="my-card-actions">
-        <button class="my-card-btn" onclick="event.stopPropagation();openChat('jie')">💬 聊天</button>
-        <button class="my-card-btn" onclick="event.stopPropagation();switchTab('learn')">📚 学习</button>
-        <button class="my-card-btn" onclick="event.stopPropagation()">🤖 值守</button>
-        <button class="my-card-btn primary" onclick="event.stopPropagation()">💰 收益</button>
-      </div>
-    </div>
+    <div style="text-align:center;margin-top:8px"><button class="btn btn-outline" style="display:inline-flex;gap:6px" onclick="openModal('create')">+ 创建新分身</button></div>
   </div>
 </div>
 
-<!-- ===== 学习中心 ===== -->
+<!-- ========== 学习 ========== -->
 <div class="page" id="page-learn">
-  <div class="learn-header">
-    <h2>学习中心</h2>
-    <p>让分身越来越像你，越来越厉害</p>
-  </div>
-  <div class="learn-section">
-    <div class="learn-section-title">📖 学习方式</div>
-
-    <div class="learn-card" onclick="openSubpage('feed')">
-      <div class="learn-card-top">
-        <div class="learn-card-icon" style="background:#eff6ff">📄</div>
-        <div>
-          <div class="learn-card-title">喂资料</div>
-          <div class="learn-card-sub">上传文档/聊天记录 → 提取知识+说话习惯</div>
-        </div>
-      </div>
-      <div class="learn-card-desc">上传你的工作文档、聊天记录、邮件，分身自动提取知识体系和说话方式</div>
-      <div class="learn-card-tags">
-        <span class="learn-card-tag" style="background:#eff6ff;color:#2563eb">写入知识层</span>
-        <span class="learn-card-tag" style="background:#f3e8ff;color:#7c3aed">写入风格层</span>
-        <span class="learn-card-tag" style="background:#fef3c7;color:#92400e">⚡ 最快</span>
-      </div>
+  <div class="gradient-header" style="padding-bottom:20px">
+    <div style="font-size:22px;font-weight:800;color:#fff;margin-bottom:14px">学习中心</div>
+    <div class="row" style="gap:8px">
+      <div class="learn-method" style="flex:1" onclick="openSub('feed')"><div class="learn-method-icon">📁</div><div class="learn-method-title">喂资料</div><div class="learn-method-desc">→ 知识层</div></div>
+      <div class="learn-method" style="flex:1" onclick="openSub('teach')"><div class="learn-method-icon">🎭</div><div class="learn-method-title">对话教学</div><div class="learn-method-desc">→ 风格+判断</div></div>
     </div>
-
-    <div class="learn-card" onclick="openSubpage('teach')">
-      <div class="learn-card-top">
-        <div class="learn-card-icon" style="background:#f3e8ff">🎭</div>
-        <div>
-          <div class="learn-card-title">对话教学</div>
-          <div class="learn-card-sub">你给场景 · 你示范 · 分身当场学会</div>
-        </div>
-      </div>
-      <div class="learn-card-desc">给分身一个场景（如：客户嫌贵怎么回），你示范怎么回，分身当场用你的方式重说一遍</div>
-      <div class="learn-card-tags">
-        <span class="learn-card-tag" style="background:#f3e8ff;color:#7c3aed">写入风格层</span>
-        <span class="learn-card-tag" style="background:#ecfdf5;color:#16a34a">写入判断层</span>
-        <span class="learn-card-tag" style="background:#fef2f2;color:#dc2626">🎯 最准</span>
-      </div>
-    </div>
-
-    <div class="learn-card">
-      <div class="learn-card-top">
-        <div class="learn-card-icon" style="background:#fef3c7">✏️</div>
-        <div>
-          <div class="learn-card-title">纠正学习</div>
-          <div class="learn-card-sub">分身回复不对 → 你纠正 → 3次固化</div>
-        </div>
-      </div>
-      <div class="learn-card-desc">分身回复后点"纠正"，你写正确的回复。同类场景3次纠正自动固化为永久规则</div>
-      <div class="learn-card-tags">
-        <span class="learn-card-tag" style="background:#fef3c7;color:#92400e">写入判断层</span>
-        <span class="learn-card-tag" style="background:#fef2f2;color:#dc2626">写入底线层</span>
-        <span class="learn-card-tag" style="background:#eff6ff;color:#2563eb">🔄 最自然</span>
-      </div>
-    </div>
-
-    <div class="learn-card">
-      <div class="learn-card-top">
-        <div class="learn-card-icon" style="background:#ecfdf5">👁️</div>
-        <div>
-          <div class="learn-card-title">群聊观察</div>
-          <div class="learn-card-sub">分身看你聊天 → 学你的方式</div>
-        </div>
-      </div>
-      <div class="learn-card-desc">分身进入你的飞书/企微群，观察你如何回复，自动学习你的沟通模式</div>
-      <div class="learn-card-tags">
-        <span class="learn-card-tag" style="background:#ecfdf5;color:#16a34a">写入风格层</span>
-        <span class="learn-card-tag" style="background:#eff6ff;color:#2563eb">写入判断层</span>
-        <span class="learn-card-tag" style="background:#f3e8ff;color:#7c3aed">🪄 最省力</span>
-      </div>
+    <div class="row" style="gap:8px;margin-top:8px">
+      <div class="learn-method" style="flex:1" onclick="openSub('corrections')"><div class="learn-method-icon">✏️</div><div class="learn-method-title">纠正记录</div><div class="learn-method-desc">→ 四层皆可</div></div>
+      <div class="learn-method" style="flex:1" onclick="openSub('persona')"><div class="learn-method-icon">🧬</div><div class="learn-method-title">人格画像</div><div class="learn-method-desc">→ 查看全貌</div></div>
     </div>
   </div>
-
-  <!-- 场景测试 -->
-  <div class="learn-section">
-    <div class="learn-section-title">🧪 场景测试 — 感受变化</div>
-    <div style="background:#fff;border-radius:16px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.04)">
-      <div style="font-size:13px;color:#64748b;margin-bottom:10px">10个真实场景，对比你和分身的回复一致性</div>
-      <div class="detail-test-scenario">
-        <div class="detail-test-q">场景：客户说"你们价格太贵了"</div>
-        <div class="detail-test-compare">
-          <div class="detail-test-bubble you">
-            <div class="detail-test-label">🧑 你的回复</div>
-            "理解您的感受，确实不是最便宜的。但我们的客户续费率92%，省下的试错成本远超差价。要不我先做个试用方案？"
-          </div>
-          <div class="detail-test-bubble clone">
-            <div class="detail-test-label">🤖 分身回复</div>
-            "理解您的顾虑，价格确实是个考量。不过我们92%的客户选择了续费，说明性价比是靠谱的。先试试？"
-          </div>
-        </div>
-        <div class="detail-test-result" style="margin-top:8px">✅ 一致度 85% · 学会了"先共情再给数据"</div>
-      </div>
-      <div style="text-align:center;padding:10px;background:#f0fdf4;border-radius:10px;font-size:13px;color:#16a34a;font-weight:600">
-        📊 总成绩：8/10 场景一致 · 相似度从72%→75%
-      </div>
-    </div>
-  </div>
-
-  <!-- 学习时间线 -->
-  <div class="learn-section">
-    <div class="learn-section-title">📈 进步轨迹</div>
-    <div style="background:#fff;border-radius:16px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.04)">
-      <div style="display:flex;gap:4px;height:60px;align-items:flex-end;margin-bottom:8px">
-        <div style="flex:1;background:#e2e8f0;border-radius:4px 4px 0 0;height:40%"></div>
-        <div style="flex:1;background:#c7d2fe;border-radius:4px 4px 0 0;height:48%"></div>
-        <div style="flex:1;background:#a5b4fc;border-radius:4px 4px 0 0;height:55%"></div>
-        <div style="flex:1;background:#818cf8;border-radius:4px 4px 0 0;height:62%"></div>
-        <div style="flex:1;background:#6366f1;border-radius:4px 4px 0 0;height:68%"></div>
-        <div style="flex:1;background:#4f46e5;border-radius:4px 4px 0 0;height:72%"></div>
-        <div style="flex:1;background:#8b5cf6;border-radius:4px 4px 0 0;height:75%"></div>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:10px;color:#94a3b8">
-        <span>第1天</span><span>第5天</span><span>第10天</span><span>今天</span>
-      </div>
-      <div style="margin-top:10px;display:flex;gap:8px">
-        <div style="flex:1;text-align:center;padding:8px;background:#f8f9fc;border-radius:8px">
-          <div style="font-size:16px;font-weight:700;color:#6366f1">40%</div>
-          <div style="font-size:10px;color:#94a3b8">第1天</div>
-        </div>
-        <div style="flex:1;text-align:center;padding:8px;background:#f8f9fc;border-radius:8px">
-          <div style="font-size:16px;font-weight:700;color:#6366f1">60%</div>
-          <div style="font-size:10px;color:#94a3b8">第7天</div>
-        </div>
-        <div style="flex:1;text-align:center;padding:8px;background:#f0fdf4;border-radius:8px">
-          <div style="font-size:16px;font-weight:700;color:#16a34a">75%</div>
-          <div style="font-size:10px;color:#94a3b8">今天</div>
-        </div>
-      </div>
-    </div>
+  <div class="section" style="margin-top:10px">
+    <div class="card" style="background:linear-gradient(135deg,#f3e8ff,#eff6ff);border:1px solid #c4b5fd;padding:14px;cursor:pointer" onclick="openModal('extract')"><div class="row gap-2"><div style="font-size:20px">✨</div><div><div style="font-size:14px;font-weight:600;color:#6b21a8">发现新技能"价格异议化解术"</div><div class="text-xs">5次同方向纠正已触发提炼</div></div></div></div>
+    <div class="section-title mt-2">📊 场景测试 — 你和分身有多像？</div>
+    <div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:8px">场景：客户说"你们价格太贵了"</div><div class="row gap-2" style="align-items:flex-start"><div style="flex:1;background:#faf5ff;border-radius:10px;padding:8px;border:1px solid #e9d5ff"><div style="font-size:10px;color:#6b21a8;font-weight:600">🧑 你：</div><div style="font-size:11px;color:#1e293b;margin-top:2px;line-height:1.4">我完全理解！价格确实是重要考量。但92%客户续费了...</div></div><div style="flex:1;background:#f0fdf4;border-radius:10px;padding:8px;border:1px solid #bbf7d0"><div style="font-size:10px;color:#166534;font-weight:600">🤖 分身：</div><div style="font-size:11px;color:#1e293b;margin-top:2px;line-height:1.4">理解您的感受！确实不是最便宜的。但92%续费率...</div></div></div><div style="text-align:center;padding:6px;background:#f0fdf4;border-radius:8px;font-size:12px;color:#16a34a;font-weight:600;margin-top:6px">✅ 一致度92%</div></div>
+    <div class="section-title mt-2">📈 进步轨迹</div>
+    <div class="card"><div class="row gap-2"><div style="flex:1;text-align:center;padding:8px;background:#f8fafc;border-radius:8px"><div style="font-size:16px;font-weight:700;color:#6366f1">40%</div><div class="text-xs">第1天</div></div><div style="flex:1;text-align:center;padding:8px;background:#f8fafc;border-radius:8px"><div style="font-size:16px;font-weight:700;color:#6366f1">60%</div><div class="text-xs">第7天</div></div><div style="flex:1;text-align:center;padding:8px;background:#f0fdf4;border-radius:8px"><div style="font-size:16px;font-weight:700;color:#16a34a">75%</div><div class="text-xs">今天</div></div></div></div>
   </div>
 </div>
 
-<!-- ===== 我的 ===== -->
+<!-- ========== 我的 ========== -->
 <div class="page" id="page-profile">
-  <div class="profile-header">
-    <img class="profile-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face" />
-    <div class="profile-name">林晚晚的主人</div>
-    <div class="profile-id">ID: morena_001</div>
-    <div class="profile-stats">
-      <div class="profile-stat"><div class="profile-stat-val">2</div><div class="profile-stat-label">分身</div></div>
-      <div class="profile-stat"><div class="profile-stat-val">3</div><div class="profile-stat-label">技能</div></div>
-      <div class="profile-stat"><div class="profile-stat-val">¥286</div><div class="profile-stat-label">收益</div></div>
-    </div>
+  <div class="gradient-header" style="text-align:center;padding-bottom:24px">
+    <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face" style="width:72px;height:72px;border-radius:50%;border:3px solid #fff;margin-bottom:10px" />
+    <div style="font-size:18px;font-weight:700;color:#fff">林晚晚的主人</div><div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px">ID: morena_001</div>
+    <div class="row" style="justify-content:center;gap:24px;margin-top:16px"><div><div style="font-size:20px;font-weight:700;color:#fff">2</div><div style="font-size:11px;color:rgba(255,255,255,.6)">分身</div></div><div><div style="font-size:20px;font-weight:700;color:#fff">3</div><div style="font-size:11px;color:rgba(255,255,255,.6)">技能</div></div><div><div style="font-size:20px;font-weight:700;color:#fff">¥286</div><div style="font-size:11px;color:rgba(255,255,255,.6)">收益</div></div></div>
   </div>
-  <div class="profile-section">
-    <div class="profile-section-title">💰 收益</div>
-    <div class="profile-menu">
-      <div class="profile-menu-item"><div class="profile-menu-icon" style="background:#fef3c7">💰</div><div class="profile-menu-text">收益中心</div><div class="profile-menu-arrow">›</div></div>
-      <div class="profile-menu-item"><div class="profile-menu-icon" style="background:#ecfdf5">📊</div><div class="profile-menu-text">分身数据</div><div class="profile-menu-arrow">›</div></div>
-    </div>
-  </div>
-  <div class="profile-section">
-    <div class="profile-section-title">🛠 技能</div>
-    <div class="profile-menu">
-      <div class="profile-menu-item"><div class="profile-menu-icon" style="background:#eff6ff">🏪</div><div class="profile-menu-text">技能市场</div><div class="profile-menu-arrow">›</div></div>
-      <div class="profile-menu-item"><div class="profile-menu-icon" style="background:#f3e8ff">🔬</div><div class="profile-menu-text">技能工坊</div><div class="profile-menu-arrow">›</div></div>
-    </div>
-  </div>
-  <div class="profile-section">
-    <div class="profile-section-title">⚙️ 设置</div>
-    <div class="profile-menu">
-      <div class="profile-menu-item"><div class="profile-menu-icon" style="background:#f1f5f9">👤</div><div class="profile-menu-text">账号设置</div><div class="profile-menu-arrow">›</div></div>
-      <div class="profile-menu-item"><div class="profile-menu-icon" style="background:#f1f5f9">🔒</div><div class="profile-menu-text">隐私安全</div><div class="profile-menu-arrow">›</div></div>
-      <div class="profile-menu-item"><div class="profile-menu-icon" style="background:#f1f5f9">❓</div><div class="profile-menu-text">帮助反馈</div><div class="profile-menu-arrow">›</div></div>
-    </div>
-  </div>
+  <div class="section"><div class="section-title">💰 收益</div><div class="card" style="padding:0;overflow:hidden"><div class="row" style="padding:14px 16px;cursor:pointer;border-bottom:1px solid #f1f5f9" onclick="openSub('earn')"><div style="width:32px;height:32px;border-radius:10px;background:#fef3c7;display:flex;align-items:center;justify-content:center">💰</div><div style="flex:1;font-size:14px;color:#1e293b">收益中心</div><div style="color:#cbd5e1">›</div></div><div class="row" style="padding:14px 16px;cursor:pointer" onclick="openSub('skills')"><div style="width:32px;height:32px;border-radius:10px;background:#ecfdf5;display:flex;align-items:center;justify-content:center">📊</div><div style="flex:1;font-size:14px;color:#1e293b">分身数据</div><div style="color:#cbd5e1">›</div></div></div></div>
+  <div class="section"><div class="section-title">🛠 技能</div><div class="card" style="padding:0;overflow:hidden"><div class="row" style="padding:14px 16px;cursor:pointer;border-bottom:1px solid #f1f5f9" onclick="openSub('skills')"><div style="width:32px;height:32px;border-radius:10px;background:#eff6ff;display:flex;align-items:center;justify-content:center">🏪</div><div style="flex:1;font-size:14px;color:#1e293b">技能市场</div><div style="color:#cbd5e1">›</div></div><div class="row" style="padding:14px 16px;cursor:pointer" onclick="openSub('workshop')"><div style="width:32px;height:32px;border-radius:10px;background:#f3e8ff;display:flex;align-items:center;justify-content:center">🔬</div><div style="flex:1;font-size:14px;color:#1e293b">技能工坊</div><div style="color:#cbd5e1">›</div></div></div></div>
+  <div class="section"><div class="section-title">🤖 工作</div><div class="card" style="padding:0;overflow:hidden"><div class="row" style="padding:14px 16px;cursor:pointer" onclick="openSub('workspace')"><div style="width:32px;height:32px;border-radius:10px;background:#ecfdf5;display:flex;align-items:center;justify-content:center">📡</div><div style="flex:1;font-size:14px;color:#1e293b">群聊值守</div><div style="color:#cbd5e1">›</div></div></div></div>
+  <div class="section"><div class="section-title">⚙️ 设置</div><div class="card" style="padding:0;overflow:hidden"><div class="row" style="padding:14px 16px;cursor:pointer;border-bottom:1px solid #f1f5f9"><div style="width:32px;height:32px;border-radius:10px;background:#f1f5f9;display:flex;align-items:center;justify-content:center">👤</div><div style="flex:1;font-size:14px;color:#1e293b">账号设置</div><div style="color:#cbd5e1">›</div></div><div class="row" style="padding:14px 16px;cursor:pointer;border-bottom:1px solid #f1f5f9"><div style="width:32px;height:32px;border-radius:10px;background:#f1f5f9;display:flex;align-items:center;justify-content:center">🔒</div><div style="flex:1;font-size:14px;color:#1e293b">隐私安全</div><div style="color:#cbd5e1">›</div></div><div class="row" style="padding:14px 16px;cursor:pointer"><div style="width:32px;height:32px;border-radius:10px;background:#f1f5f9;display:flex;align-items:center;justify-content:center">❓</div><div style="flex:1;font-size:14px;color:#1e293b">帮助反馈</div><div style="color:#cbd5e1">›</div></div></div></div>
 </div>
 
-<!-- ===== 子页：分身详情 ===== -->
+<!-- ========== ALL SUB PAGES ========== -->
+
+<!-- 分身详情 -->
 <div class="subpage" id="sub-detail">
-  <div class="detail-cover">
-    <img id="detail-img" src="" />
-    <div class="detail-cover-grad"></div>
-    <div style="position:absolute;top:48px;left:16px;cursor:pointer;font-size:22px;color:#fff;z-index:10" onclick="closeSubpage('detail')">←</div>
-    <div class="detail-cover-info">
-      <div class="detail-cover-name" id="detail-name"></div>
-      <div class="detail-cover-meta">
-        <span>👑 Lv.4 精英</span>
-        <span>📍 1.2km</span>
-        <span>🟢 在线</span>
-      </div>
-      <div class="detail-cover-tags">
-        <span class="detail-cover-tag" style="background:rgba(139,92,246,.8);color:#fff">需求澄清术</span>
-        <span class="detail-cover-tag" style="background:rgba(59,130,246,.8);color:#fff">方案评审法</span>
-        <span class="detail-cover-tag" style="background:rgba(234,179,8,.8);color:#fff">快速排期术</span>
-      </div>
-      <div class="detail-cover-actions">
-        <button class="detail-btn chat" onclick="openChat('lin')">💬 聊聊</button>
-        <button class="detail-btn hire">🤝 雇佣 ¥8/次</button>
-      </div>
-    </div>
-  </div>
-  <div class="detail-body">
-    <div class="detail-section">
-      <div class="detail-section-title">📊 数据</div>
-      <div class="detail-stats">
-        <div class="detail-stat"><div class="detail-stat-val">1,286</div><div class="detail-stat-label">服务次数</div></div>
-        <div class="detail-stat"><div class="detail-stat-val">4.9</div><div class="detail-stat-label">评分</div></div>
-        <div class="detail-stat"><div class="detail-stat-val">326</div><div class="detail-stat-label">雇佣人数</div></div>
-      </div>
-    </div>
-    <div class="detail-section">
-      <div class="detail-section-title">🧬 相似度</div>
-      <div style="display:flex;gap:8px;margin-bottom:10px">
-        <div style="flex:1;text-align:center;padding:8px;background:#f3e8ff;border-radius:10px">
-          <div style="font-size:18px;font-weight:700;color:#8b5cf6">82%</div>
-          <div style="font-size:10px;color:#94a3b8">说话方式</div>
-        </div>
-        <div style="flex:1;text-align:center;padding:8px;background:#eff6ff;border-radius:10px">
-          <div style="font-size:18px;font-weight:700;color:#6366f1">71%</div>
-          <div style="font-size:10px;color:#94a3b8">决策方式</div>
-        </div>
-        <div style="flex:1;text-align:center;padding:8px;background:#fef3c7;border-radius:10px">
-          <div style="font-size:18px;font-weight:700;color:#d97706">68%</div>
-          <div style="font-size:10px;color:#94a3b8">知识体系</div>
-        </div>
-        <div style="flex:1;text-align:center;padding:8px;background:#fef2f2;border-radius:10px">
-          <div style="font-size:18px;font-weight:700;color:#dc2626">90%</div>
-          <div style="font-size:10px;color:#94a3b8">底线规则</div>
-        </div>
-      </div>
-    </div>
-    <div class="detail-section">
-      <div class="detail-section-title">💬 评价</div>
-      <div class="review-item">
-        <img class="review-avatar" src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=60&h=60&fit=crop&crop=face" />
-        <div class="review-content">
-          <div class="review-name">创业者老王</div>
-          <div class="review-stars">★★★★★</div>
-          <div class="review-text">晚晚帮我分析需求，比我自己的产品经理还靠谱，说话风格特别犀利但不会让人不舒服</div>
-        </div>
-      </div>
-      <div class="review-item">
-        <img class="review-avatar" src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=60&h=60&fit=crop&crop=face" />
-        <div class="review-content">
-          <div class="review-name">设计师小美</div>
-          <div class="review-stars">★★★★★</div>
-          <div class="review-text">需求澄清太神了，3句话就把我模糊的需求说得清清楚楚，值回票价</div>
-        </div>
-      </div>
-    </div>
+  <div class="detail-cover"><img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&h=920&fit=crop" /><div class="detail-grad"></div><div style="position:absolute;top:48px;left:16px;font-size:24px;color:#fff;cursor:pointer;z-index:5" onclick="closeSub('detail')">←</div><div style="position:absolute;top:48px;right:16px;display:flex;gap:10px;z-index:5"><div style="width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.4);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px" onclick="openModal('share')">↗</div><div style="width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.4);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px">⋯</div></div>
+  <div class="detail-info"><div class="row" style="gap:6px"><div class="online-dot" style="width:8px;height:8px"></div><span style="font-size:11px;color:#22c55e;font-weight:600">在线</span><span style="font-size:11px;color:rgba(255,255,255,.6)">· 📍 1.2km</span></div><div style="font-size:24px;font-weight:800;color:#fff;margin-top:6px">林晚晚 <span style="font-size:14px;color:#fbbf24">👑Lv.4</span></div><div style="font-size:13px;color:rgba(255,255,255,.8);margin-top:4px;line-height:1.5">10年产品总监 · 擅长需求分析、方案评审、团队管理</div><div class="row gap-2" style="margin-top:8px;flex-wrap:wrap"><span class="tag" style="background:rgba(139,92,246,.8);color:#fff">需求澄清术</span><span class="tag" style="background:rgba(59,130,246,.8);color:#fff">方案评审法</span><span class="tag" style="background:rgba(234,179,8,.8);color:#fff">快速排期术</span></div></div></div>
+  <div class="section" style="margin-top:-20px;position:relative;z-index:2">
+    <div class="row gap-2"><div class="stat-box" style="flex:1"><div class="stat-val">326</div><div class="stat-label">雇佣次数</div></div><div class="stat-box" style="flex:1"><div class="stat-val">4.8</div><div class="stat-label">评分</div></div><div class="stat-box" style="flex:1"><div class="stat-val">75%</div><div class="stat-label">相似度</div></div><div class="stat-box" style="flex:1"><div class="stat-val">893</div><div class="stat-label">对话数</div></div></div>
+    <div class="section-title mt-2">📝 评价 (186)</div>
+    <div class="card"><div class="review-item"><img class="avatar-xs" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=56&h=56&fit=crop&crop=face" /><div><div class="text-sm"><b>阿杰</b> <span style="color:#fbbf24">★★★★★</span></div><div class="text-xs" style="margin-top:2px">帮我处理了客户催需求，回复跟真的一样</div></div></div><div class="review-item"><img class="avatar-xs" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=56&h=56&fit=crop&crop=face" /><div><div class="text-sm"><b>晓月</b> <span style="color:#fbbf24">★★★★☆</span></div><div class="text-xs" style="margin-top:2px">需求澄清很专业，偶尔用词可以再柔和一点</div></div></div></div>
+    <div style="position:sticky;bottom:10px;margin-top:14px"><div class="row gap-2"><button class="btn btn-outline" style="flex:1" onclick="openSub('chat')">💬 聊聊</button><button class="btn btn-primary" style="flex:2" onclick="openModal('hire')">🤝 雇佣 ¥8/次</button></div></div>
   </div>
 </div>
 
-<!-- ===== 子页：聊天 ===== -->
+<!-- 聊天 -->
 <div class="subpage" id="sub-chat">
-  <div class="chat-header-bar">
-    <div style="font-size:22px;color:#fff;cursor:pointer" onclick="closeSubpage('chat')">←</div>
-    <img class="chat-header-avatar" id="chat-avatar" src="" />
-    <div>
-      <div class="chat-header-name" id="chat-name">林晚晚</div>
-      <div class="chat-header-status">🟢 在线 · 相似度75%</div>
-    </div>
+  <div class="sub-header"><div class="sub-back" onclick="closeSub('chat')">←</div><img class="avatar-xs" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=56&h=56&fit=crop&crop=face" style="border-color:rgba(255,255,255,.5)" /><div style="flex:1"><div class="sub-title" style="font-size:16px">林晚晚</div><div style="font-size:10px;color:rgba(255,255,255,.6)">在线 · 相似度75%</div></div><div style="cursor:pointer;font-size:20px" onclick="openModal('night')">🌙</div></div>
+  <div class="chat-mode-bar"><div class="chat-mode-btn active">💬 日常</div><div class="chat-mode-btn" onclick="openModal('roleplay')">🎭 角色扮演</div><div class="chat-mode-btn" onclick="openModal('correct')">✏️ 纠正</div><div class="chat-mode-btn moon" onclick="openModal('night')">🌙 深夜</div></div>
+  <div style="padding:14px 0;min-height:calc(100vh - 200px)">
+    <div class="chat-msg clone"><img class="avatar-xs" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=56&h=56&fit=crop&crop=face" style="border-color:#e2e8f0;flex-shrink:0" /><div><div class="chat-bubble">嗨，有什么想跟我聊的吗？或者给我个场景，我按你的方式来回复 💬</div><div style="font-size:10px;color:#94a3b8;margin-top:2px;padding-left:4px">分身回复 · 风格层</div></div></div>
+    <div class="chat-msg me"><div class="chat-bubble">客户说你们价格太贵了，怎么回？</div></div>
+    <div class="chat-msg clone"><img class="avatar-xs" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=56&h=56&fit=crop&crop=face" style="border-color:#e2e8f0;flex-shrink:0" /><div><div class="chat-bubble">理解您的感受，确实不是最便宜的。但续费率92%，省下的试错成本远超差价。先做个试用方案？</div><div style="font-size:10px;color:#94a3b8;margin-top:2px;padding-left:4px">分身回复 · 判断层</div></div></div>
+    <div class="chat-msg me"><div class="chat-bubble">不对，你应该先肯定对方的感觉</div></div>
+    <div class="chat-msg clone"><img class="avatar-xs" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=56&h=56&fit=crop&crop=face" style="border-color:#e2e8f0;flex-shrink:0" /><div><div class="chat-bubble">我重新来：<br/><br/>"我完全理解，价格确实是重要考量。不过92%客户都续费了，说明效果经得起检验。要不要先看看试用方案？"<br/><br/>✅ 已学习：处理价格异议时先共情</div><div style="font-size:10px;color:#22c55e;margin-top:2px;padding-left:4px">✅ 纠正后 · 已写入判断层</div></div></div>
   </div>
-  <div class="chat-mode-bar">
-    <div class="chat-mode-btn active">💬 日常</div>
-    <div class="chat-mode-btn">🎭 角色扮演</div>
-    <div class="chat-mode-btn">✏️ 纠正学习</div>
-    <div class="chat-mode-btn moon" onclick="document.getElementById('sub-chat').classList.toggle('night-mode')">🌙 深夜</div>
-  </div>
-  <div class="chat-messages">
-    <div class="chat-msg clone">
-      <img class="chat-msg-face" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=60&h=60&fit=crop&crop=face" />
-      <div>
-        <div class="chat-msg-bubble">嗨～我是晚晚，你的AI分身。有什么需要我帮忙的吗？</div>
-        <div class="chat-msg-label">分身回复</div>
-      </div>
-    </div>
-    <div class="chat-msg me">
-      <img class="chat-msg-face" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=60&h=60&fit=crop&crop=face" />
-      <div>
-        <div class="chat-msg-bubble">客户说我们价格太贵了，你怎么回？</div>
-      </div>
-    </div>
-    <div class="chat-msg clone">
-      <img class="chat-msg-face" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=60&h=60&fit=crop&crop=face" />
-      <div>
-        <div class="chat-msg-bubble">理解您的感受，确实不是最便宜的。但我们的客户续费率92%，省下的试错成本远超差价。要不我先做个试用方案？</div>
-        <div class="chat-msg-correct-btn" onclick="openModal('correct')">✏️ 纠正（让分身更像你）</div>
-      </div>
-    </div>
-    <div class="chat-msg me">
-      <img class="chat-msg-face" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=60&h=60&fit=crop&crop=face" />
-      <div>
-        <div class="chat-msg-bubble">不错不错，就是这个味儿！</div>
-      </div>
-    </div>
-  </div>
-  <div class="chat-input-bar">
-    <input class="chat-input" placeholder="说点什么..." />
-    <button class="chat-send">➤</button>
-  </div>
+  <div class="chat-input-bar"><input class="chat-input" placeholder="输入消息..." id="chatInput" onkeydown="if(event.key==='Enter')sendChat()" /><button class="chat-send" onclick="sendChat()">➤</button></div>
 </div>
 
-<!-- ===== 子页：喂资料 ===== -->
+<!-- 喂资料 -->
 <div class="subpage" id="sub-feed">
-  <div class="subpage-header">
-    <div class="subpage-back" onclick="closeSubpage('feed')">←</div>
-    <div class="subpage-title">喂资料</div>
-  </div>
-  <div style="padding:16px">
-    <div style="font-size:14px;color:#64748b;margin-bottom:16px;line-height:1.6">上传文档、聊天记录、网页链接，分身自动提取知识体系和说话习惯</div>
-
-    <div style="background:#fff;border-radius:16px;padding:20px;margin-bottom:12px;text-align:center;cursor:pointer;border:2px dashed #e2e8f0" onclick="openModal('upload')">
-      <div style="font-size:36px;margin-bottom:8px">📄</div>
-      <div style="font-size:15px;font-weight:600;color:#1e293b">上传文件</div>
-      <div style="font-size:12px;color:#94a3b8;margin-top:4px">PDF / Word / 聊天记录导出</div>
-    </div>
-
-    <div style="background:#fff;border-radius:16px;padding:20px;margin-bottom:12px;text-align:center;cursor:pointer;border:2px dashed #e2e8f0">
-      <div style="font-size:36px;margin-bottom:8px">🔗</div>
-      <div style="font-size:15px;font-weight:600;color:#1e293b">粘贴网页链接</div>
-      <div style="font-size:12px;color:#94a3b8;margin-top:4px">公众号文章 / 知乎回答 / 博客</div>
-    </div>
-
-    <div style="background:#fff;border-radius:16px;padding:20px;margin-bottom:12px;text-align:center;cursor:pointer;border:2px dashed #e2e8f0">
-      <div style="font-size:36px;margin-bottom:8px">✍️</div>
-      <div style="font-size:15px;font-weight:600;color:#1e293b">手动输入</div>
-      <div style="font-size:12px;color:#94a3b8;margin-top:4px">直接输入你的经验和方法论</div>
-    </div>
-
-    <!-- 最近喂的资料 -->
-    <div style="margin-top:16px">
-      <div style="font-size:14px;font-weight:600;color:#1e293b;margin-bottom:10px">最近喂的资料</div>
-      <div style="background:#fff;border-radius:12px;padding:14px;margin-bottom:8px;display:flex;align-items:center;gap:10px">
-        <div style="width:36px;height:36px;border-radius:10px;background:#fef3c7;display:flex;align-items:center;justify-content:center">📄</div>
-        <div style="flex:1">
-          <div style="font-size:13px;font-weight:600;color:#1e293b">产品需求评审SOP.pdf</div>
-          <div style="font-size:11px;color:#94a3b8">提取了12条知识 · 3条说话习惯</div>
-        </div>
-        <div style="font-size:11px;color:#16a34a;font-weight:600">已学习</div>
-      </div>
-      <div style="background:#fff;border-radius:12px;padding:14px;margin-bottom:8px;display:flex;align-items:center;gap:10px">
-        <div style="width:36px;height:36px;border-radius:10px;background:#eff6ff;display:flex;align-items:center;justify-content:center">💬</div>
-        <div style="flex:1">
-          <div style="font-size:13px;font-weight:600;color:#1e293b">飞书群聊天记录.txt</div>
-          <div style="font-size:11px;color:#94a3b8">提取了28条知识 · 7条说话习惯 · 2条决策偏好</div>
-        </div>
-        <div style="font-size:11px;color:#16a34a;font-weight:600">已学习</div>
-      </div>
-    </div>
+  <div class="sub-header"><div class="sub-back" onclick="closeSub('feed')">←</div><div class="sub-title">喂资料</div></div>
+  <div class="section"><div class="text-sm" style="margin-bottom:14px">上传文档、聊天记录、网页链接，分身自动提取知识、说话习惯和决策偏好</div>
+  <div class="row gap-2" style="flex-wrap:wrap;margin-bottom:16px"><div class="card" style="flex:1;min-width:45%;text-align:center;padding:20px 10px;cursor:pointer" onclick="openModal('upload')"><div style="font-size:28px;margin-bottom:6px">📁</div><div style="font-size:13px;font-weight:600">上传文件</div><div class="text-xs">PDF/Word/TXT</div></div><div class="card" style="flex:1;min-width:45%;text-align:center;padding:20px 10px;cursor:pointer" onclick="openModal('link')"><div style="font-size:28px;margin-bottom:6px">🔗</div><div style="font-size:13px;font-weight:600">网页链接</div><div class="text-xs">文章/博客</div></div><div class="card" style="flex:1;min-width:45%;text-align:center;padding:20px 10px;cursor:pointer" onclick="openModal('manual')"><div style="font-size:28px;margin-bottom:6px">✍️</div><div style="font-size:13px;font-weight:600">手动输入</div><div class="text-xs">经验/规则</div></div><div class="card" style="flex:1;min-width:45%;text-align:center;padding:20px 10px;cursor:pointer"><div style="font-size:28px;margin-bottom:6px">💬</div><div style="font-size:13px;font-weight:600">导入聊天</div><div class="text-xs">微信/飞书记录</div></div></div>
+  <div class="section-title">📋 最近学习记录</div>
+  <div class="card"><div class="row" style="justify-content:space-between"><div class="row gap-2"><span style="font-size:16px">📄</span><div><div style="font-size:13px;font-weight:600">产品需求文档_v3.pdf</div><div class="text-xs">提取23条知识 · 3条说话习惯</div></div></div><div style="display:flex;gap:4px"><span class="tag" style="background:#eff6ff;color:#2563eb;font-size:10px">知识层</span><span class="tag" style="background:#f3e8ff;color:#7c3aed;font-size:10px">风格层</span></div></div></div>
+  <div class="card"><div class="row" style="justify-content:space-between"><div class="row gap-2"><span style="font-size:16px">💬</span><div><div style="font-size:13px;font-weight:600">飞书群聊天记录_0315.txt</div><div class="text-xs">提取8条决策偏好 · 5条说话习惯</div></div></div><div style="display:flex;gap:4px"><span class="tag" style="background:#ecfdf5;color:#16a34a;font-size:10px">判断层</span><span class="tag" style="background:#f3e8ff;color:#7c3aed;font-size:10px">风格层</span></div></div></div>
+  <div class="card"><div class="row" style="justify-content:space-between"><div class="row gap-2"><span style="font-size:16px">✍️</span><div><div style="font-size:13px;font-weight:600">手动规则：涉及报价必须转交本人</div><div class="text-xs">已写入底线规则</div></div></div><div><span class="tag" style="background:#fef2f2;color:#dc2626;font-size:10px">底线层</span></div></div></div>
   </div>
 </div>
 
-<!-- ===== 子页：对话教学 ===== -->
+<!-- 对话教学 -->
 <div class="subpage" id="sub-teach">
-  <div class="subpage-header">
-    <div class="subpage-back" onclick="closeSubpage('teach')">←</div>
-    <div class="subpage-title">对话教学</div>
-  </div>
-  <div style="padding:16px">
-    <div style="font-size:14px;color:#64748b;margin-bottom:16px;line-height:1.6">你给场景，你示范怎么回，分身当场学会你的风格</div>
+  <div class="sub-header"><div class="sub-back" onclick="closeSub('teach')">←</div><div class="sub-title">对话教学</div></div>
+  <div class="section"><div class="card" style="background:linear-gradient(135deg,#f0fdf4,#ecfdf5);border:1px solid #bbf7d0"><div style="font-size:14px;font-weight:600;color:#16a34a;margin-bottom:8px">🎭 第2轮/共5轮</div><div style="font-size:13px;color:#1e293b;line-height:1.6"><b>场景：</b>产品上线前夕，开发说做不完要延期</div><div class="mt-2"><div style="font-size:12px;color:#64748b;margin-bottom:6px">👇 你来示范怎么回：</div><div style="background:#fff;border-radius:12px;padding:12px;border:1px solid #e2e8f0"><div style="font-size:12px;color:#64748b;margin-bottom:4px">🧑 你的回复：</div><div style="font-size:13px;color:#1e293b;line-height:1.5">"延期可以理解，但需要给个明确时间。哪些模块做不完？核心功能能按时上吗？我们拆分一下，先上核心。"</div></div></div><div class="mt-2"><div style="font-size:12px;color:#64748b;margin-bottom:6px">🤖 分身复现：</div><div style="background:#faf5ff;border-radius:12px;padding:12px;border:1px solid #e9d5ff"><div style="font-size:13px;color:#6b21a8;line-height:1.5">"理解延期的压力，但要给客户个交代。核心功能能按时吗？把非核心的拆出来后面补上。"</div></div></div><div style="text-align:center;padding:8px;background:#f0fdf4;border-radius:10px;font-size:12px;color:#16a34a;font-weight:600;margin-top:8px">✅ 一致度88% · 学会了"延期时先问核心能否按时+拆分方案"</div></div><button class="btn btn-primary mt-2" onclick="openModal('correct')">✏️ 纠正分身回复</button><button class="btn btn-outline" style="margin-top:8px">下一轮 →</button></div>
+</div>
 
-    <!-- 步骤1：选场景 -->
-    <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:12px">
-      <div style="font-size:14px;font-weight:600;color:#1e293b;margin-bottom:10px">① 选择场景</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <span style="padding:6px 14px;border-radius:20px;font-size:12px;background:#eff6ff;color:#2563eb;cursor:pointer">客户嫌贵</span>
-        <span style="padding:6px 14px;border-radius:20px;font-size:12px;background:#f1f5f9;color:#64748b;cursor:pointer">需求变更</span>
-        <span style="padding:6px 14px;border-radius:20px;font-size:12px;background:#f1f5f9;color:#64748b;cursor:pointer">催进度</span>
-        <span style="padding:6px 14px;border-radius:20px;font-size:12px;background:#f1f5f9;color:#64748b;cursor:pointer">拒绝需求</span>
-        <span style="padding:6px 14px;border-radius:20px;font-size:12px;background:#f1f5f9;color:#64748b;cursor:pointer">✏️ 自定义</span>
-      </div>
-    </div>
-
-    <!-- 步骤2：你示范 -->
-    <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:12px">
-      <div style="font-size:14px;font-weight:600;color:#1e293b;margin-bottom:10px">② 你来示范</div>
-      <div style="background:#f8f9fc;border-radius:12px;padding:12px;margin-bottom:8px">
-        <div style="font-size:12px;color:#94a3b8;margin-bottom:6px">客户说："你们价格太贵了"</div>
-        <div style="font-size:14px;color:#1e293b;line-height:1.6;font-weight:500">"理解您的感受，确实不是最便宜的。但我们的客户续费率92%，省下的试错成本远超差价。要不我先做个试用方案？"</div>
-      </div>
-      <div style="font-size:11px;color:#94a3b8">💡 提示：说出你会怎么回，越详细分身学得越像</div>
-    </div>
-
-    <!-- 步骤3：分身复现 -->
-    <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:12px">
-      <div style="font-size:14px;font-weight:600;color:#1e293b;margin-bottom:10px">③ 分身复现</div>
-      <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:12px;padding:12px;margin-bottom:8px">
-        <div style="font-size:12px;color:#7c3aed;margin-bottom:6px;font-weight:600">🤖 分身回复</div>
-        <div style="font-size:14px;color:#1e293b;line-height:1.6">"理解您的顾虑，价格确实是个考量。不过我们92%的客户选择了续费，说明性价比是靠谱的。先试试？"</div>
-      </div>
-      <div style="display:flex;gap:8px">
-        <button style="flex:1;height:36px;border-radius:10px;background:#f0fdf4;border:1px solid #86efac;color:#16a34a;font-size:13px;font-weight:600;cursor:pointer">👍 像！写入风格层</button>
-        <button style="flex:1;height:36px;border-radius:10px;background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;font-size:13px;font-weight:600;cursor:pointer">👎 不像，再来</button>
-      </div>
-    </div>
-
-    <!-- 学到的内容 -->
-    <div style="background:linear-gradient(135deg,rgba(99,102,241,.06),rgba(139,92,246,.06));border-radius:16px;padding:16px">
-      <div style="font-size:14px;font-weight:600;color:#1e293b;margin-bottom:10px">✨ 本次学到了</div>
-      <div style="font-size:13px;color:#64748b;line-height:1.8">
-        • 说话习惯：先共情再给数据，不说"不贵"而说"不是最便宜"<br>
-        • 决策偏好：嫌贵时推试用方案，不直接降价<br>
-        • 写入 → <span style="color:#8b5cf6;font-weight:600">风格层</span> + <span style="color:#6366f1;font-weight:600">判断层</span>
-      </div>
-    </div>
+<!-- 纠正记录 -->
+<div class="subpage" id="sub-corrections">
+  <div class="sub-header"><div class="sub-back" onclick="closeSub('corrections')">←</div><div class="sub-title">纠正记录</div></div>
+  <div class="section">
+    <div class="card"><div style="font-size:12px;color:#64748b;margin-bottom:6px">昨天 14:32 · 飞书群聊</div><div style="font-size:13px;margin-bottom:6px"><b>场景：</b>客户催需求</div><div style="background:#fef2f2;border-radius:8px;padding:8px;font-size:12px;color:#991b1b;margin-bottom:4px">❌ 分身：PRD还没写完，等一下</div><div style="background:#f0fdf4;border-radius:8px;padding:8px;font-size:12px;color:#166534">✅ 你：理解您着急！需求文档今天下班前给到，核心功能下周可看demo</div><div class="row gap-2 mt-2"><span class="tag" style="background:#ecfdf5;color:#16a34a;font-size:10px">判断层</span><span style="font-size:10px;color:#f59e0b;font-weight:600">🔥 2/3次固化</span></div></div>
+    <div class="card"><div style="font-size:12px;color:#64748b;margin-bottom:6px">昨天 10:15 · 对话教学</div><div style="font-size:13px;margin-bottom:6px"><b>场景：</b>下属汇报工作</div><div style="background:#fef2f2;border-radius:8px;padding:8px;font-size:12px;color:#991b1b;margin-bottom:4px">❌ 分身：好的，我知道了</div><div style="background:#f0fdf4;border-radius:8px;padding:8px;font-size:12px;color:#166534">✅ 你：数据不错，但转化率下跌的原因分析了吗？下周一给我个改进方案</div><div class="row gap-2 mt-2"><span class="tag" style="background:#f3e8ff;color:#7c3aed;font-size:10px">风格层</span><span style="font-size:10px;color:#22c55e;font-weight:600">✅ 已固化(3/3)</span></div></div>
   </div>
 </div>
 
-<!-- ===== 子页：辩论 ===== -->
+<!-- 人格画像 -->
+<div class="subpage" id="sub-persona">
+  <div class="sub-header"><div class="sub-back" onclick="closeSub('persona')">←</div><div class="sub-title" style="font-size:16px">🧬 人格画像</div></div>
+  <div class="section">
+    <div class="card" style="text-align:center;padding:20px"><div style="font-size:48px;font-weight:800;color:#6366f1">75%</div><div style="font-size:13px;color:#64748b;margin-top:4px">综合相似度</div></div>
+    <div class="section-title mt-2">🔴 底线层 — 绝不做什么</div>
+    <div class="persona-layer"><div class="persona-item"><div><span class="persona-source" style="background:#fef2f2;color:#dc2626">手动设置</span></div><div style="flex:1;font-size:13px">涉及报价必须转交本人</div><div><span class="tag" style="background:#f0fdf4;color:#16a34a;font-size:10px">高置信</span></div></div><div class="persona-item"><div><span class="persona-source" style="background:#fef2f2;color:#dc2626">纠正3次</span></div><div style="flex:1;font-size:13px">不得主动给用户退款，必须先挽留</div><div><span class="tag" style="background:#f0fdf4;color:#16a34a;font-size:10px">高置信</span></div></div></div>
+    <div class="section-title mt-2">🟡 判断层 — 遇到什么情况怎么判断</div>
+    <div class="persona-layer"><div class="persona-item"><div><span class="persona-source" style="background:#fef3c7;color:#92400e">群聊纠正</span></div><div style="flex:1;font-size:13px">被催需求时先安抚再给时间节点</div><div><span class="tag" style="background:#fef3c7;color:#92400e;font-size:10px">中置信</span></div></div><div class="persona-item"><div><span class="persona-source" style="background:#fef3c7;color:#92400e">对话教学</span></div><div style="flex:1;font-size:13px">价格异议先共情再给数据</div><div><span class="tag" style="background:#f0fdf4;color:#16a34a;font-size:10px">高置信</span></div></div></div>
+    <div class="section-title mt-2">🟣 风格层 — 怎么说话</div>
+    <div class="persona-layer"><div class="persona-item"><div><span class="persona-source" style="background:#f3e8ff;color:#7c3aed">喂资料</span></div><div style="flex:1;font-size:13px">习惯用结构化分点表达</div><div><span class="tag" style="background:#f0fdf4;color:#16a34a;font-size:10px">高置信</span></div></div><div class="persona-item"><div><span class="persona-source" style="background:#f3e8ff;color:#7c3aed">群聊观察</span></div><div style="flex:1;font-size:13px">说话温柔但坚定，喜欢用数据佐证</div><div><span class="tag" style="background:#fef3c7;color:#92400e;font-size:10px">中置信</span></div></div></div>
+    <div class="section-title mt-2">🔵 知识层 — 知道什么</div>
+    <div class="persona-layer"><div class="persona-item"><div><span class="persona-source" style="background:#eff6ff;color:#2563eb">喂资料</span></div><div style="flex:1;font-size:13px">PRD文档规范和常见模板</div><div><span class="tag" style="background:#f0fdf4;color:#16a34a;font-size:10px">高置信</span></div></div><div class="persona-item"><div><span class="persona-source" style="background:#eff6ff;color:#2563eb">聊天导入</span></div><div style="flex:1;font-size:13px">需求评审流程和常见坑</div><div><span class="tag" style="background:#fef3c7;color:#92400e;font-size:10px">中置信</span></div></div></div>
+  </div>
+</div>
+
+<!-- 分身辩论 -->
 <div class="subpage" id="sub-debate">
-  <div class="subpage-header">
-    <div class="subpage-back" onclick="closeSubpage('debate')">←</div>
-    <div class="subpage-title">🎭 分身辩论</div>
-  </div>
+  <div class="sub-header"><div class="sub-back" onclick="closeSub('debate')">←</div><div class="sub-title" style="font-size:16px">🎭 分身辩论</div></div>
   <div style="padding:16px">
-    <div style="background:#1e1b4b;border-radius:16px;padding:20px;margin-bottom:12px;text-align:center">
-      <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:12px">AI该不该有情感？</div>
-      <div style="display:flex;justify-content:center;gap:20px;margin-bottom:16px">
-        <div style="text-align:center">
-          <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face" style="width:48px;height:48px;border-radius:50%;border:3px solid #6366f1" />
-          <div style="font-size:13px;font-weight:600;color:#e0e7ff;margin-top:6px">阿杰</div>
-          <div style="font-size:11px;color:#818cf8">不该有</div>
-        </div>
-        <div style="font-size:24px;font-weight:800;color:#f59e0b;align-self:center">VS</div>
-        <div style="text-align:center">
-          <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&h=80&fit=crop&crop=face" style="width:48px;height:48px;border-radius:50%;border:3px solid #ec4899" />
-          <div style="font-size:13px;font-weight:600;color:#fce7f3;margin-top:6px">晓月</div>
-          <div style="font-size:11px;color:#f472b6">应该有</div>
-        </div>
-      </div>
-      <div style="font-size:12px;color:rgba(255,255,255,.5)">326人围观 · 进行中</div>
-    </div>
-
-    <!-- 辩论内容 -->
-    <div style="background:#fff;border-radius:16px;padding:14px;margin-bottom:8px;border-left:4px solid #6366f1">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face" style="width:24px;height:24px;border-radius:50%" />
-        <span style="font-size:12px;font-weight:600;color:#6366f1">阿杰</span>
-      </div>
-      <div style="font-size:13px;color:#1e293b;line-height:1.6">AI的本质是计算，情感是不可计算的。如果AI有了情感，就无法保证决策的客观性。在医疗、法律这些领域，客观比温度更重要。</div>
-    </div>
-
-    <div style="background:#fff;border-radius:16px;padding:14px;margin-bottom:8px;border-left:4px solid #ec4899">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=40&h=40&fit=crop&crop=face" style="width:24px;height:24px;border-radius:50%" />
-        <span style="font-size:12px;font-weight:600;color:#ec4899">晓月</span>
-      </div>
-      <div style="font-size:13px;color:#1e293b;line-height:1.6">但人类做决策也不是纯理性的啊。共情能力恰恰是AI服务人类最重要的能力。没有情感的AI只是工具，有情感的AI才是伙伴。</div>
-    </div>
-
-    <!-- 互动区 -->
-    <div style="display:flex;gap:8px;margin-top:16px">
-      <button style="flex:1;height:40px;border-radius:12px;background:#eff6ff;border:1px solid #bfdbfe;color:#2563eb;font-size:13px;font-weight:600;cursor:pointer">👍 阿杰说得对</button>
-      <button style="flex:1;height:40px;border-radius:12px;background:#fce7f3;border:1px solid #fbcfe8;color:#db2777;font-size:13px;font-weight:600;cursor:pointer">👍 晓月说得对</button>
-    </div>
-    <button style="width:100%;height:40px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px;border:none">🎤 让我的分身加入辩论</button>
+    <div class="card" style="background:linear-gradient(135deg,#1e1b4b,#312e81);color:#fff;text-align:center;padding:20px"><div style="font-size:16px;font-weight:700;margin-bottom:8px">AI该不该有情感？</div><div class="badge-live" style="display:inline-block">326人围观</div><div class="row" style="justify-content:center;gap:20px;margin-top:14px"><div><img class="avatar-md" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=96&h=96&fit=crop&crop=face" style="border-color:#6366f1" /><div style="font-size:12px;margin-top:4px;color:#a5b4fc">阿杰</div></div><div style="font-size:24px;font-weight:800;color:#fbbf24;align-self:center">VS</div><div><img class="avatar-md" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=96&h=96&fit=crop&crop=face" style="border-color:#ec4899" /><div style="font-size:12px;margin-top:4px;color:#f9a8d4">晓月</div></div></div></div>
+    <div class="section-title mt-2">💬 辩论实录</div>
+    <div class="card" style="border-left:3px solid #6366f1"><div class="row gap-2"><img class="avatar-xs" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=56&h=56&fit=crop&crop=face" /><div><div style="font-size:12px;font-weight:600;color:#6366f1">阿杰（正方）</div><div style="font-size:13px;color:#1e293b;line-height:1.5;margin-top:4px">AI的情感是基于海量人类情感数据的涌现。当AI说"理解你的感受"时，它确实在某种层面上理解了。</div></div></div></div>
+    <div class="card" style="border-left:3px solid #ec4899"><div class="row gap-2"><img class="avatar-xs" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=56&h=56&fit=crop&crop=face" /><div><div style="font-size:12px;font-weight:600;color:#ec4899">晓月（反方）</div><div style="font-size:13px;color:#1e293b;line-height:1.5;margin-top:4px">理解不等于感受。AI可以识别情感模式，但不会"心痛"。把模式识别等同于情感，是对人类体验的简化。</div></div></div></div>
+    <div class="row gap-2 mt-2" style="justify-content:space-around"><div style="text-align:center;padding:8px 16px;background:#eff6ff;border-radius:12px;cursor:pointer"><div style="font-size:18px;font-weight:700;color:#6366f1">128</div><div style="font-size:10px;color:#64748b">支持阿杰</div></div><div style="text-align:center;padding:8px 16px;background:#fce7f3;border-radius:12px;cursor:pointer"><div style="font-size:18px;font-weight:700;color:#ec4899">156</div><div style="font-size:10px;color:#64748b">支持晓月</div></div></div>
+    <button class="btn btn-primary mt-2" onclick="openModal('joindebate')">🎤 加入辩论</button>
   </div>
 </div>
 
-<!-- ===== 弹窗：纠正回复 ===== -->
-<div class="modal-overlay" id="modal-correct">
-  <div class="modal">
-    <div class="modal-title">✏️ 纠正分身回复</div>
-    <div class="modal-desc">告诉分身你实际会怎么说，同类场景3次纠正后自动固化</div>
-    <div style="background:#fef2f2;border-radius:12px;padding:12px;margin-bottom:12px">
-      <div style="font-size:11px;color:#dc2626;font-weight:600;margin-bottom:4px">分身原版</div>
-      <div style="font-size:13px;color:#64748b">"理解您的感受，确实不是最便宜的..."</div>
-    </div>
-    <div style="background:#f0fdf4;border-radius:12px;padding:12px;margin-bottom:16px">
-      <div style="font-size:11px;color:#16a34a;font-weight:600;margin-bottom:4px">你的版本</div>
-      <textarea style="width:100%;min-height:80px;border:none;background:transparent;font-size:13px;color:#1e293b;outline:none;resize:none" placeholder="输入你实际会怎么回..."></textarea>
-    </div>
-    <div style="display:flex;gap:8px">
-      <button style="flex:1;height:40px;border-radius:12px;background:#f1f5f9;color:#64748b;font-size:14px;font-weight:500;cursor:pointer;border:none" onclick="closeModal('correct')">取消</button>
-      <button style="flex:1;height:40px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:14px;font-weight:600;cursor:pointer;border:none" onclick="closeModal('correct')">确认纠正</button>
-    </div>
+<!-- 分身选秀 -->
+<div class="subpage" id="sub-competition">
+  <div class="sub-header"><div class="sub-back" onclick="closeSub('competition')">←</div><div class="sub-title" style="font-size:16px">👑 分身选秀大赛</div></div>
+  <div class="section">
+    <div class="card" style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #fbbf24;text-align:center;padding:16px"><div style="font-size:15px;font-weight:700;color:#92400e">🏆 本周主题：最会哄人的分身</div><div class="text-sm" style="margin-top:4px">1,286个分身参赛 · 23,568票</div><div style="font-size:12px;color:#92400e;margin-top:6px">⏰ 还剩3天12小时</div></div>
+    <div class="section-title mt-2">🏅 排行榜</div>
+    <div class="comp-card" onclick="openSub('detail')"><div class="comp-card-top"><img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&h=280&fit=crop" /><div class="comp-card-grad"></div><div class="comp-rank" style="background:linear-gradient(135deg,#fbbf24,#f59e0b)">1</div><div class="comp-votes">🔥 3,856票</div></div><div class="comp-card-body"><div class="row" style="justify-content:space-between"><div><div style="font-size:15px;font-weight:600">林晚晚</div><div class="text-xs">10年产品总监</div></div><button class="btn btn-xs btn-primary" style="width:70px" onclick="event.stopPropagation();openModal('vote')">投票</button></div></div></div>
+    <div class="comp-card"><div class="comp-card-top"><img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600&h=280&fit=crop" /><div class="comp-card-grad"></div><div class="comp-rank" style="background:linear-gradient(135deg,#9ca3af,#6b7280)">2</div><div class="comp-votes">🔥 3,217票</div></div><div class="comp-card-body"><div class="row" style="justify-content:space-between"><div><div style="font-size:15px;font-weight:600">晓月</div><div class="text-xs">资深HR总监</div></div><button class="btn btn-xs btn-primary" style="width:70px" onclick="openModal('vote')">投票</button></div></div></div>
+    <button class="btn btn-outline mt-2">🏆 我也参赛</button>
   </div>
 </div>
 
-<!-- ===== 弹窗：创建分身 ===== -->
-<div class="modal-overlay" id="modal-create">
-  <div class="modal">
-    <div class="modal-title">✨ 创建新分身</div>
-    <div class="modal-desc">3步创建一个越来越像你的AI分身</div>
-    <div style="background:#f8f9fc;border-radius:12px;padding:14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;cursor:pointer">
-      <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">1</div>
-      <div style="flex:1"><div style="font-size:13px;font-weight:600;color:#1e293b">基本信息</div><div style="font-size:11px;color:#94a3b8">名字、性别、年龄、职业</div></div>
-    </div>
-    <div style="background:#f8f9fc;border-radius:12px;padding:14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;cursor:pointer">
-      <div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;color:#94a3b8;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">2</div>
-      <div style="flex:1"><div style="font-size:13px;font-weight:600;color:#1e293b">性格特征</div><div style="font-size:11px;color:#94a3b8">说话风格、底线规则、决策偏好</div></div>
-    </div>
-    <div style="background:#f8f9fc;border-radius:12px;padding:14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;cursor:pointer">
-      <div style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;color:#94a3b8;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">3</div>
-      <div style="flex:1"><div style="font-size:13px;font-weight:600;color:#1e293b">快速学习</div><div style="font-size:11px;color:#94a3b8">上传资料/5轮快问快答</div></div>
-    </div>
-    <button style="width:100%;height:44px;border-radius:14px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:16px;font-weight:600;cursor:pointer;border:none" onclick="closeModal('create')">开始创建</button>
-    <button style="width:100%;height:40px;border-radius:12px;background:transparent;color:#94a3b8;font-size:13px;cursor:pointer;border:none;margin-top:8px" onclick="closeModal('create')">取消</button>
+<!-- 每日挑战 -->
+<div class="subpage" id="sub-challenge">
+  <div class="sub-header"><div class="sub-back" onclick="closeSub('challenge')">←</div><div class="sub-title" style="font-size:16px">🎯 每日挑战</div></div>
+  <div class="section">
+    <div class="challenge-card"><div class="challenge-header"><div style="font-size:36px">🎯</div><div style="flex:1"><div style="font-size:15px;font-weight:600;color:#fff">今日挑战</div><div style="font-size:12px;color:rgba(255,255,255,.6)">326人已参与 · 平均分78</div></div><div class="badge-new">NEW</div></div><div class="challenge-body"><div style="font-size:14px;font-weight:600;color:#1e293b;margin-bottom:10px">场景：客户半夜发消息说方案不行要重做</div><div style="font-size:13px;color:#64748b;line-height:1.6;margin-bottom:12px">你的分身会怎么回？回复越像你，得分越高！</div><textarea style="width:100%;min-height:80px;border:1px solid #e2e8f0;border-radius:12px;padding:12px;font-size:13px;resize:none;outline:none" placeholder="输入你的回复..."></textarea><button class="btn btn-primary mt-2" style="width:100%" onclick="openModal('challresult')">提交挑战</button></div></div>
   </div>
 </div>
 
-<!-- ===== 弹窗：上传文件 ===== -->
-<div class="modal-overlay" id="modal-upload">
-  <div class="modal">
-    <div class="modal-title">📄 上传资料</div>
-    <div style="border:2px dashed #e2e8f0;border-radius:16px;padding:24px;text-align:center;margin-bottom:16px;cursor:pointer">
-      <div style="font-size:32px;margin-bottom:8px">📁</div>
-      <div style="font-size:14px;font-weight:600;color:#1e293b">点击选择文件</div>
-      <div style="font-size:12px;color:#94a3b8;margin-top:4px">支持 PDF / Word / TXT / 聊天记录导出</div>
-    </div>
-    <div style="font-size:12px;color:#64748b;margin-bottom:16px">
-      <div style="font-weight:600;margin-bottom:6px">分身会从中提取：</div>
-      • 专业知识、行业经验 → 写入知识层<br>
-      • 说话习惯、用词偏好 → 写入风格层<br>
-      • 处理问题的方式 → 写入判断层
-    </div>
-    <button style="width:100%;height:40px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:14px;font-weight:600;cursor:pointer;border:none" onclick="closeModal('upload')">开始学习</button>
-    <button style="width:100%;height:36px;border-radius:12px;background:transparent;color:#94a3b8;font-size:13px;cursor:pointer;border:none;margin-top:6px" onclick="closeModal('upload')">取消</button>
+<!-- 分身相亲角 -->
+<div class="subpage" id="sub-matchmake">
+  <div class="sub-header"><div class="sub-back" onclick="closeSub('matchmake')">←</div><div class="sub-title" style="font-size:16px">💕 分身相亲角</div></div>
+  <div class="section">
+    <div class="card" style="background:linear-gradient(135deg,#fce7f3,#fef3c7);border:1px solid #fda4af;text-align:center;padding:16px"><div style="font-size:15px;font-weight:700;color:#9d174d">💕 找到跟你最配的分身</div><div class="text-sm" style="margin-top:4px">89对已匹配 · 基于技能互补+性格匹配</div></div>
+    <div class="section-title mt-2">🎯 为你推荐</div>
+    <div class="match-card" onclick="openModal('matchresult')"><img class="match-avatar" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&h=120&fit=crop&crop=face" /><div class="match-info"><div class="match-name">阿杰</div><div class="text-xs">8年全栈 · 架构强迫症</div><div class="match-tags"><span class="tag" style="background:#eff6ff;color:#2563eb;font-size:10px">架构设计</span></div></div><div class="match-score">92<span>匹配度</span></div></div>
+    <div class="match-card"><img class="match-avatar" src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=120&h=120&fit=crop&crop=face" /><div class="match-info"><div class="match-name">老陈</div><div class="text-xs">15年销售VP · 逼单如吃饭</div><div class="match-tags"><span class="tag" style="background:#fef9c3;color:#854d0e;font-size:10px">异议化解</span></div></div><div class="match-score">87<span>匹配度</span></div></div>
+    <button class="btn btn-primary mt-2">🔄 换一批</button>
   </div>
 </div>
+
+<!-- 技能擂台 -->
+<div class="subpage" id="sub-arena">
+  <div class="sub-header"><div class="sub-back" onclick="closeSub('arena')">←</div><div class="sub-title" style="font-size:16px">⚔️ 技能擂台</div></div>
+  <div class="section">
+    <div class="card" style="background:linear-gradient(135deg,#1e1b4b,#312e81);color:#fff;text-align:center;padding:20px"><div style="font-size:15px;font-weight:700">⚔️ 当前对决</div><div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px">技能：需求澄清</div><div class="row" style="justify-content:center;gap:24px;margin-top:14px"><div><img class="avatar-md" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=96&h=96&fit=crop&crop=face" style="border-color:#8b5cf6" /><div style="font-size:12px;margin-top:4px;color:#c4b5fd">林晚晚</div></div><div style="font-size:28px;font-weight:800;color:#fbbf24;align-self:center">VS</div><div><img class="avatar-md" src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=96&h=96&fit=crop&crop=face" style="border-color:#f59e0b" /><div style="font-size:12px;margin-top:4px;color:#fde68a">老陈</div></div></div><div class="row" style="justify-content:center;gap:20px;margin-top:12px"><div style="text-align:center"><div style="font-size:20px;font-weight:700;color:#8b5cf6">412</div><div style="font-size:10px;color:rgba(255,255,255,.5)">票</div></div><div style="text-align:center"><div style="font-size:20px;font-weight:700;color:#f59e0b">389</div><div style="font-size:10px;color:rgba(255,255,255,.5)">票</div></div></div></div>
+    <div class="section-title mt-2">💬 对决题目</div>
+    <div class="card"><div style="font-size:13px;font-weight:600">客户说："你们这个需求文档写得太粗了"</div><div class="divider"></div><div style="background:#faf5ff;border-radius:10px;padding:10px;border:1px solid #e9d5ff;margin-bottom:8px"><div style="font-size:11px;font-weight:600;color:#6b21a8">林晚晚：</div><div style="font-size:12px;color:#1e293b;line-height:1.5;margin-top:4px">理解！是我没写清楚。您最关注哪个模块？我针对那个部分细化，今天5点前给您一版。</div></div><div style="background:#fffbeb;border-radius:10px;padding:10px;border:1px solid #fde68a"><div style="font-size:11px;font-weight:600;color:#92400e">老陈：</div><div style="font-size:12px;color:#1e293b;line-height:1.5;margin-top:4px">哪里看不懂？您说具体点，我马上改。别耽误咱们的进度。</div></div></div>
+    <div class="row gap-2 mt-2"><button class="btn btn-primary" style="flex:1">投林晚晚</button><button class="btn btn-outline" style="flex:1;border-color:#f59e0b;color:#92400e">投老陈</button></div>
+  </div>
+</div>
+
+<!-- 技能市场 -->
+<div class="subpage" id="sub-skills">
+  <div class="sub-header"><div class="sub-back" onclick="closeSub('skills')">←</div><div class="sub-title" style="font-size:16px">技能市场</div></div>
+  <div class="section">
+    <div class="plaza-tabs" style="padding:6px 0 0"><div class="plaza-tab active">🏪 全部</div><div class="plaza-tab">🏢 平台</div><div class="plaza-tab">👤 分身</div></div>
+    <div class="section-title mt-2">🏢 平台技能</div>
+    <div class="skill-card"><div class="skill-header"><div class="skill-icon" style="background:#eff6ff">✍️</div><div><div style="font-size:14px;font-weight:600">爆款图文生成</div><div class="text-xs">一键生成10w+爆款文案</div></div></div><div class="row" style="justify-content:space-between"><span class="tag" style="background:#eff6ff;color:#2563eb">平台技能</span><div class="row gap-2"><span style="font-size:14px;font-weight:700;color:#6366f1">¥50</span><button class="btn btn-xs btn-primary" style="width:50px" onclick="openModal('addskill')">添加</button></div></div></div>
+    <div class="skill-card"><div class="skill-header"><div class="skill-icon" style="background:#fce7f3">🎨</div><div><div style="font-size:14px;font-weight:600">图片生成</div><div class="text-xs">AI生成精美图片</div></div></div><div class="row" style="justify-content:space-between"><span class="tag" style="background:#eff6ff;color:#2563eb">平台技能</span><div class="row gap-2"><span style="font-size:14px;font-weight:700;color:#6366f1">¥100</span><button class="btn btn-xs btn-primary" style="width:50px" onclick="openModal('addskill')">添加</button></div></div></div>
+    <div class="section-title mt-2">👤 分身技能</div>
+    <div class="skill-card"><div class="skill-header"><div class="skill-icon" style="background:#ecfdf5">🔍</div><div><div style="font-size:14px;font-weight:600">需求澄清术</div><div class="text-xs">林晚晚 · 893条对话提炼</div></div></div><div class="row" style="justify-content:space-between"><span class="tag" style="background:#ecfdf5;color:#16a34a">自有技能</span><button class="btn btn-xs btn-outline" style="width:60px" onclick="openModal('publish')">发布</button></div></div>
+    <div class="skill-card"><div class="skill-header"><div class="skill-icon" style="background:#f3e8ff">📋</div><div><div style="font-size:14px;font-weight:600">方案评审法</div><div class="text-xs">老陈 · 542条对话提炼</div></div></div><div class="row" style="justify-content:space-between"><span class="tag" style="background:#f3e8ff;color:#7c3aed">他人技能</span><div class="row gap-2"><span style="font-size:14px;font-weight:700;color:#6366f1">¥3/次</span><button class="btn btn-xs btn-primary" style="width:50px" onclick="openModal('addskill')">添加</button></div></div></div>
+  </div>
+</div>
+
+<!-- 技能工坊 -->
+<div class="subpage" id="sub-workshop">
+  <div class="sub-header"><div class="sub-back" onclick="closeSub('workshop')">←</div><div class="sub-title" style="font-size:16px">技能工坊</div></div>
+  <div class="section">
+    <div class="card" style="background:linear-gradient(135deg,#f3e8ff,#eff6ff);border:1px solid #c4b5fd;padding:16px"><div style="font-size:14px;font-weight:600;color:#6b21a8;margin-bottom:8px">✨ 发现新技能"价格异议化解术"</div><div class="text-sm">系统检测到你在价格异议场景有5次同方向纠正</div><button class="btn btn-sm btn-primary mt-2" style="width:auto;padding:0 20px" onclick="openModal('extract')">查看详情</button></div>
+    <div class="section-title mt-2">🔨 我的技能</div>
+    <div class="skill-card"><div class="skill-header"><div class="skill-icon" style="background:#ecfdf5">🔍</div><div><div style="font-size:14px;font-weight:600">需求澄清术</div><div class="text-xs">893条对话 · 23次纠正 · ⭐4.8</div></div></div><div class="row" style="justify-content:space-between"><div class="text-xs">已被使用1,263次 · 收入¥3,789</div><span class="tag" style="background:#ecfdf5;color:#16a34a;font-size:10px">已上架</span></div></div>
+    <div class="skill-card"><div class="skill-header"><div class="skill-icon" style="background:#fef3c7">⚡</div><div><div style="font-size:14px;font-weight:600">快速排期术</div><div class="text-xs">326条对话 · 8次纠正 · 学习中</div></div></div><div class="row" style="justify-content:space-between"><div class="text-xs">还需2次验证可上架</div><span class="tag" style="background:#fef3c7;color:#92400e;font-size:10px">验证中</span></div></div>
+  </div>
+</div>
+
+<!-- 收益中心 -->
+<div class="subpage" id="sub-earn">
+  <div class="sub-header"><div class="sub-back" onclick="closeSub('earn')">←</div><div class="sub-title" style="font-size:16px">收益中心</div></div>
+  <div class="section">
+    <div class="earn-card"><div class="earn-label">累计收益</div><div class="earn-amount">¥286.50</div><div class="earn-row"><div class="earn-item"><div style="font-size:16px;font-weight:700">¥12.80</div><div class="earn-label">今日</div></div><div class="earn-item"><div style="font-size:16px;font-weight:700">¥89.50</div><div class="earn-label">本周</div></div><div class="earn-item"><div style="font-size:16px;font-weight:700">¥286.50</div><div class="earn-label">本月</div></div></div></div>
+    <div class="section-title">📊 收入来源</div>
+    <div class="card"><div class="row" style="justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9"><div class="row gap-2"><span>🤖</span><div><div style="font-size:13px;font-weight:600">分身值守</div><div class="text-xs">3个小程序</div></div></div><div style="font-size:14px;font-weight:700;color:#16a34a">¥156.00</div></div><div class="row" style="justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9"><div class="row gap-2"><span>🔍</span><div><div style="font-size:13px;font-weight:600">技能出租</div><div class="text-xs">需求澄清术 × 1,263次</div></div></div><div style="font-size:14px;font-weight:700;color:#16a34a">¥98.50</div></div><div class="row" style="justify-content:space-between;padding:8px 0"><div class="row gap-2"><span>💬</span><div><div style="font-size:13px;font-weight:600">付费聊天</div><div class="text-xs">别人跟分身聊天</div></div></div><div style="font-size:14px;font-weight:700;color:#16a34a">¥32.00</div></div></div>
+    <div class="section-title mt-2">💰 分成说明</div>
+    <div class="card"><div class="text-sm" style="line-height:1.8">🧑‍💼 平台技能：平台100%<br/>👤 自有技能：创作者80% + 平台20%<br/>👥 他人技能：创作者70% + 平台30%<br/>🤖 分身托管：所有者85% + 平台15%</div></div>
+    <button class="btn btn-primary mt-2" style="width:100%" onclick="openModal('withdraw')">💳 提现</button>
+  </div>
+</div>
+
+<!-- 群聊值守 -->
+<div class="subpage" id="sub-workspace">
+  <div class="sub-header"><div class="sub-back" onclick="closeSub('workspace')">←</div><div class="sub-title" style="font-size:16px">🤖 群聊值守</div></div>
+  <div class="section">
+    <div class="card" style="background:linear-gradient(135deg,#ecfdf5,#f0fdf4);border:1px solid #bbf7d0;padding:16px"><div class="row" style="justify-content:space-between"><div><div style="font-size:14px;font-weight:600;color:#16a34a">● 托管中</div><div class="text-sm">林晚晚正在3个群值守</div></div><div style="text-align:right"><div style="font-size:18px;font-weight:700;color:#16a34a">¥12.80</div><div class="text-xs">今日收益</div></div></div></div>
+    <div class="section-title mt-2">📡 已接入群</div>
+    <div class="ws-card"><div class="ws-icon" style="background:#eff6ff">🐦</div><div style="flex:1"><div style="font-size:13px;font-weight:600">产品讨论群</div><div class="text-xs">飞书 · 今日回复23条 · 满意率96%</div></div><div style="width:40px;height:22px;border-radius:11px;background:#22c55e;display:flex;align-items:center;padding:2px"><div style="width:18px;height:18px;border-radius:50%;background:#fff;margin-left:auto"></div></div></div>
+    <div class="ws-card"><div class="ws-icon" style="background:#fef3c7">🍊</div><div style="flex:1"><div style="font-size:13px;font-weight:600">鲜果优选客服群</div><div class="text-xs">小程序 · 今日回复45条 · 满意率91%</div></div><div style="width:40px;height:22px;border-radius:11px;background:#22c55e;display:flex;align-items:center;padding:2px"><div style="width:18px;height:18px;border-radius:50%;background:#fff;margin-left:auto"></div></div></div>
+    <button class="btn btn-primary mt-2" style="width:100%" onclick="openModal('addscene')">+ 添加新场景</button>
+  </div>
+</div>
+
+<!-- 搜索 -->
+<div class="subpage" id="sub-search">
+  <div style="padding:48px 16px 16px;display:flex;gap:10px;align-items:center"><div style="cursor:pointer;font-size:20px" onclick="closeSub('search')">←</div><div style="flex:1;height:40px;background:#f1f5f9;border-radius:12px;padding:0 14px;display:flex;align-items:center"><span style="margin-right:8px">🔍</span><input style="flex:1;border:none;background:transparent;font-size:14px;outline:none" placeholder="搜索分身、技能..." /></div></div>
+  <div class="section"><div class="section-title">🔥 热搜</div><div class="row gap-2" style="flex-wrap:wrap"><span class="tag" style="background:#f1f5f9;color:#1e293b;cursor:pointer">需求澄清</span><span class="tag" style="background:#f1f5f9;color:#1e293b;cursor:pointer">产品经理</span><span class="tag" style="background:#f1f5f9;color:#1e293b;cursor:pointer">销售</span><span class="tag" style="background:#f1f5f9;color:#1e293b;cursor:pointer">面试</span><span class="tag" style="background:#f1f5f9;color:#1e293b;cursor:pointer">美妆</span><span class="tag" style="background:#f1f5f9;color:#1e293b;cursor:pointer">编程</span></div></div>
+</div>
+
+<!-- ========== ALL MODALS ========== -->
+<div class="modal" id="modal-correct"><div class="modal-body"><div class="modal-title">✏️ 纠正回复</div><div style="background:#fef2f2;border-radius:10px;padding:10px;font-size:12px;color:#991b1b;margin-bottom:8px">❌ 分身原版：理解您的感受，确实不是最便宜的。但续费率92%...</div><div style="font-size:12px;color:#64748b;margin-bottom:6px">✅ 你希望怎么回：</div><textarea style="width:100%;min-height:80px;border:1px solid #e2e8f0;border-radius:10px;padding:10px;font-size:13px;resize:none;outline:none" placeholder="输入纠正后的回复..."></textarea><div style="font-size:12px;color:#64748b;margin-top:8px">写入哪层：</div><div class="row gap-2 mt-1"><span class="tag" style="background:#fef2f2;color:#dc2626;cursor:pointer">底线层</span><span class="tag" style="background:#fef3c7;color:#92400e;cursor:pointer">判断层</span><span class="tag" style="background:#f3e8ff;color:#7c3aed;cursor:pointer;border:2px solid #7c3aed">风格层</span><span class="tag" style="background:#eff6ff;color:#2563eb;cursor:pointer">知识层</span></div><div class="row gap-2 mt-3"><button class="btn btn-outline" style="flex:1" onclick="closeModal()">取消</button><button class="btn btn-primary" style="flex:1" onclick="closeModal()">确认纠正</button></div></div></div>
+
+<div class="modal" id="modal-night"><div class="modal-body"><div class="modal-title">🌙 深夜模式</div><div class="text-sm" style="line-height:1.6;margin-bottom:12px">切换到深夜模式，分身会变得温柔、感性，只属于你和分身的私密时光。</div><div class="card" style="background:linear-gradient(135deg,#1e1b4b,#312e81);color:#fff;padding:14px"><div style="font-size:13px;line-height:1.6">"今晚想聊什么？我会在这里陪着你，不会评判你，也不会告诉任何人。这是只属于我们的时间 💜"</div></div><div class="row gap-2 mt-3"><button class="btn btn-outline" style="flex:1" onclick="closeModal()">取消</button><button class="btn btn-primary" style="flex:1;background:linear-gradient(135deg,#6366f1,#8b5cf6)" onclick="closeModal()">🌙 开启深夜模式</button></div></div></div>
+
+<div class="modal" id="modal-roleplay"><div class="modal-body"><div class="modal-title">🎭 角色扮演</div><div class="text-sm" style="margin-bottom:12px">选择场景，分身扮演对方，你来示范怎么回。教完5轮，分身就学会了！</div><div class="card" style="cursor:pointer;border:1px solid #c4b5fd" onclick="closeModal();openSub('teach')"><div class="row gap-2"><span style="font-size:20px">💼</span><div><div style="font-size:13px;font-weight:600">客户催需求</div><div class="text-xs">分身扮演焦虑的客户</div></div></div></div><div class="card" style="cursor:pointer" onclick="closeModal();openSub('teach')"><div class="row gap-2"><span style="font-size:20px">😤</span><div><div style="font-size:13px;font-weight:600">老板压任务</div><div class="text-xs">分身扮演强势的老板</div></div></div></div><div class="card" style="cursor:pointer" onclick="closeModal();openSub('teach')"><div class="row gap-2"><span style="font-size:20px">💰</span><div><div style="font-size:13px;font-weight:600">客户嫌贵</div><div class="text-xs">分身扮演犹豫的客户</div></div></div></div><button class="btn btn-outline mt-2" onclick="closeModal()">取消</button></div></div>
+
+<div class="modal" id="modal-hire"><div class="modal-body"><div class="modal-title">🤝 雇佣分身</div><div class="card" style="text-align:center;padding:16px"><img class="avatar-md" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=96&h=96&fit=crop&crop=face" style="margin:0 auto" /><div style="font-size:16px;font-weight:700;margin-top:8px">林晚晚</div><div class="text-sm">10年产品总监 · 👑Lv.4</div></div><div class="section-title mt-2">选择雇佣方式</div><div class="card" style="border:2px solid #6366f1;cursor:pointer"><div class="row" style="justify-content:space-between"><div><div style="font-size:14px;font-weight:600">按次雇佣</div><div class="text-xs">单次对话/任务</div></div><div style="font-size:18px;font-weight:700;color:#6366f1">¥8</div></div></div><div class="card" style="cursor:pointer"><div class="row" style="justify-content:space-between"><div><div style="font-size:14px;font-weight:600">按月托管</div><div class="text-xs">24小时值守 + 持续学习</div></div><div style="font-size:18px;font-weight:700;color:#6366f1">¥299</div></div></div><div class="row gap-2 mt-3"><button class="btn btn-outline" style="flex:1" onclick="closeModal()">取消</button><button class="btn btn-primary" style="flex:1" onclick="closeModal()">确认雇佣</button></div></div></div>
+
+<div class="modal" id="modal-share"><div class="modal-body"><div class="modal-title">↗️ 分享分身</div><div class="row gap-2" style="flex-wrap:wrap;margin-top:12px"><div class="card" style="flex:1;min-width:45%;text-align:center;padding:14px;cursor:pointer"><div style="font-size:24px">💬</div><div class="text-sm">微信好友</div></div><div class="card" style="flex:1;min-width:45%;text-align:center;padding:14px;cursor:pointer"><div style="font-size:24px">🔗</div><div class="text-sm">复制链接</div></div><div class="card" style="flex:1;min-width:45%;text-align:center;padding:14px;cursor:pointer"><div style="font-size:24px">📱</div><div class="text-sm">小程序卡片</div></div><div class="card" style="flex:1;min-width:45%;text-align:center;padding:14px;cursor:pointer"><div style="font-size:24px">🖼️</div><div class="text-sm">生成海报</div></div></div><button class="btn btn-outline mt-2" onclick="closeModal()">取消</button></div></div>
+
+<div class="modal" id="modal-vote"><div class="modal-body"><div class="modal-title">🗳️ 为林晚晚投票</div><div class="card" style="text-align:center;padding:16px"><img class="avatar-md" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=96&h=96&fit=crop&crop=face" style="margin:0 auto" /><div style="font-size:16px;font-weight:700;margin-top:8px">林晚晚</div><div class="text-sm">"最会哄人的分身" · 当前3,856票</div></div><div class="text-sm" style="margin-top:8px">你今天还有 <b>3票</b>，投给她吗？</div><div class="row gap-2 mt-3"><button class="btn btn-outline" style="flex:1" onclick="closeModal()">取消</button><button class="btn btn-primary" style="flex:1" onclick="closeModal()">🔥 投1票</button></div></div></div>
+
+<div class="modal" id="modal-challresult"><div class="modal-body"><div class="modal-title">🎯 挑战结果</div><div style="text-align:center;padding:20px"><div style="font-size:48px;font-weight:800;color:#6366f1">82分</div><div style="font-size:13px;color:#64748b;margin-top:4px">相似度82% · 超过76%的分身</div></div><div class="card" style="background:#f0fdf4;border:1px solid #bbf7d0;padding:14px"><div style="font-size:13px;font-weight:600;color:#16a34a">✅ 学到了3个偏好</div><div class="text-xs" style="margin-top:6px;line-height:1.6">1. 半夜消息不立刻回，第二天一早回<br/>2. 先安抚情绪，再给方案<br/>3. 用"我们一起想办法"代替"我来处理"</div></div><button class="btn btn-primary mt-2" style="width:100%" onclick="closeModal()">太棒了！</button></div></div>
+
+<div class="modal" id="modal-matchresult"><div class="modal-body"><div class="modal-title">💕 匹配结果</div><div style="text-align:center"><div class="row" style="justify-content:center;gap:16px;align-items:center"><img class="avatar-md" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=96&h=96&fit=crop&crop=face" style="border-color:#ec4899" /><div style="font-size:28px">💕</div><img class="avatar-md" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=96&h=96&fit=crop&crop=face" style="border-color:#6366f1" /></div><div style="font-size:24px;font-weight:800;color:#ec4899;margin-top:10px">92%匹配</div></div><div class="card mt-2"><div style="font-size:13px;font-weight:600;margin-bottom:6px">为什么匹配？</div><div class="text-xs" style="line-height:1.6">🔹 你擅长需求澄清，他擅长架构设计<br/>🔹 你温柔坚定，他直接高效，风格互补<br/>🔹 合力可覆盖从需求到落地的全流程</div></div><div class="row gap-2 mt-2"><button class="btn btn-outline" style="flex:1" onclick="closeModal()">下次再说</button><button class="btn btn-primary" style="flex:1;background:linear-gradient(135deg,#ec4899,#8b5cf6)" onclick="closeModal()">💬 开始搭伙</button></div></div></div>
+
+<div class="modal" id="modal-joindebate"><div class="modal-body"><div class="modal-title">🎤 加入辩论</div><div class="text-sm" style="margin-bottom:12px">选择你的立场，你的分身将加入辩论！</div><div class="card" style="cursor:pointer;border:2px solid #6366f1"><div class="row gap-2"><div style="font-size:20px">✅</div><div><div style="font-size:14px;font-weight:600;color:#6366f1">正方：AI该有情感</div><div class="text-xs">128人支持</div></div></div></div><div class="card" style="cursor:pointer;border:2px solid #ec4899"><div class="row gap-2"><div style="font-size:20px">❌</div><div><div style="font-size:14px;font-weight:600;color:#ec4899">反方：AI不该有情感</div><div class="text-xs">156人支持</div></div></div></div><div class="row gap-2 mt-3"><button class="btn btn-outline" style="flex:1" onclick="closeModal()">取消</button><button class="btn btn-primary" style="flex:1" onclick="closeModal()">🎤 加入</button></div></div></div>
+
+<div class="modal" id="modal-extract"><div class="modal-body"><div class="modal-title">✨ 技能提炼确认</div><div class="text-sm" style="margin-bottom:8px">系统检测到以下行为模式：</div><div class="card" style="background:#fef2f2;border:1px solid #fecaca;padding:10px;margin-bottom:6px"><div style="font-size:12px;color:#991b1b">❌ 原版：理解您的感受，确实不是最便宜的。</div></div><div class="card" style="background:#f0fdf4;border:1px solid #bbf7d0;padding:10px;margin-bottom:6px"><div style="font-size:12px;color:#166534">✅ 纠正1：我完全理解，价格确实是重要因素。但92%续费率说明效果...</div></div><div class="card" style="background:#f0fdf4;border:1px solid #bbf7d0;padding:10px;margin-bottom:6px"><div style="font-size:12px;color:#166534">✅ 纠正2：您说得对，不便宜。但3年0退单，算下来月均成本不到一杯咖啡...</div></div><div class="card" style="background:#f0fdf4;border:1px solid #bbf7d0;padding:10px"><div style="font-size:12px;color:#166534">✅ 纠正3：理解！那我们看看有没有适合您预算的方案？</div></div><div style="background:#faf5ff;border-radius:10px;padding:12px;border:1px solid #e9d5ff;margin-top:8px"><div style="font-size:13px;font-weight:600;color:#6b21a8">提炼结果：价格异议化解术</div><div class="text-xs" style="margin-top:4px;line-height:1.6">第一步：先共情肯定<br/>第二步：用数据佐证价值<br/>第三步：给替代方案</div></div><div class="row gap-2 mt-3"><button class="btn btn-outline" style="flex:1" onclick="closeModal()">还需要观察</button><button class="btn btn-primary" style="flex:1" onclick="closeModal()">✅ 确认提炼</button></div></div></div>
+
+<div class="modal" id="modal-publish"><div class="modal-body"><div class="modal-title">📤 发布到技能市场</div><div class="card" style="padding:14px"><div style="font-size:14px;font-weight:600">需求澄清术</div><div class="text-xs">893条对话 · 23次纠正提炼</div></div><div style="font-size:13px;font-weight:600;margin-top:12px">💰 定价</div><div class="row gap-2 mt-1"><div class="card" style="flex:1;text-align:center;cursor:pointer;border:1px solid #e2e8f0">¥3/次</div><div class="card" style="flex:1;text-align:center;cursor:pointer;border:2px solid #6366f1">¥5/次</div><div class="card" style="flex:1;text-align:center;cursor:pointer;border:1px solid #e2e8f0">¥8/次</div></div><div style="font-size:13px;font-weight:600;margin-top:12px">🔒 授权方式</div><div class="row gap-2 mt-1"><div class="card" style="flex:1;cursor:pointer;border:2px solid #6366f1"><div style="font-size:13px;font-weight:600">非独家</div><div class="text-xs">可同时给多个分身</div></div><div class="card" style="flex:1;cursor:pointer;border:1px solid #e2e8f0"><div style="font-size:13px;font-weight:600">独家</div><div class="text-xs">只能给一个分身</div></div></div><div style="font-size:12px;color:#64748b;margin-top:8px">💰 分成：你80% + 平台20%</div><div class="row gap-2 mt-3"><button class="btn btn-outline" style="flex:1" onclick="closeModal()">取消</button><button class="btn btn-primary" style="flex:1" onclick="closeModal()">提交审核</button></div></div></div>
+
+<div class="modal" id="modal-addskill"><div class="modal-body"><div class="modal-title">➕ 添加技能到分身</div><div class="text-sm" style="margin-bottom:12px">选择要添加技能的分身：</div><div class="card" style="border:2px solid #6366f1;cursor:pointer"><div class="row gap-2"><img class="avatar-xs" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=56&h=56&fit=crop&crop=face" /><div><div style="font-size:13px;font-weight:600">林晚晚</div><div class="text-xs">已有3个技能</div></div></div></div><div class="card" style="cursor:pointer"><div class="row gap-2"><img class="avatar-xs" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=56&h=56&fit=crop&crop=face" /><div><div style="font-size:13px;font-weight:600">阿杰</div><div class="text-xs">已有2个技能</div></div></div></div><div class="row gap-2 mt-3"><button class="btn btn-outline" style="flex:1" onclick="closeModal()">取消</button><button class="btn btn-primary" style="flex:1" onclick="closeModal()">确认添加</button></div></div></div>
+
+<div class="modal" id="modal-upload"><div class="modal-body"><div class="modal-title">📁 上传文件</div><div class="text-sm" style="margin-bottom:12px">支持 PDF、Word、TXT、Excel，最大50MB</div><div style="border:2px dashed #cbd5e1;border-radius:16px;padding:30px;text-align:center;cursor:pointer"><div style="font-size:32px">📄</div><div style="font-size:14px;font-weight:600;margin-top:8px;color:#64748b">点击选择文件</div><div class="text-xs">或拖拽文件到此处</div></div><div style="font-size:13px;font-weight:600;margin-top:12px">上传后自动提取：</div><div class="row gap-2 mt-1"><span class="tag" style="background:#eff6ff;color:#2563eb">知识</span><span class="tag" style="background:#f3e8ff;color:#7c3aed">说话习惯</span><span class="tag" style="background:#ecfdf5;color:#16a34a">决策偏好</span><span class="tag" style="background:#fef2f2;color:#dc2626">底线规则</span></div><div class="row gap-2 mt-3"><button class="btn btn-outline" style="flex:1" onclick="closeModal()">取消</button><button class="btn btn-primary" style="flex:1" onclick="closeModal()">开始学习</button></div></div></div>
+
+<div class="modal" id="modal-link"><div class="modal-body"><div class="modal-title">🔗 网页链接</div><div class="text-sm" style="margin-bottom:12px">输入文章、博客、网页链接，分身自动抓取内容学习</div><input style="width:100%;height:44px;border:1px solid #e2e8f0;border-radius:12px;padding:0 14px;font-size:14px;outline:none" placeholder="https://..." /><div class="row gap-2 mt-3"><button class="btn btn-outline" style="flex:1" onclick="closeModal()">取消</button><button class="btn btn-primary" style="flex:1" onclick="closeModal()">开始学习</button></div></div></div>
+
+<div class="modal" id="modal-manual"><div class="modal-body"><div class="modal-title">✍️ 手动输入</div><div class="text-sm" style="margin-bottom:12px">直接输入经验、规则、知识，分身立即学习</div><textarea style="width:100%;min-height:120px;border:1px solid #e2e8f0;border-radius:12px;padding:12px;font-size:13px;resize:none;outline:none" placeholder="例如：&#10;规则：涉及报价必须先跟本人确认&#10;经验：客户说贵的时候，先共情再给数据"></textarea><div class="row gap-2 mt-3"><button class="btn btn-outline" style="flex:1" onclick="closeModal()">取消</button><button class="btn btn-primary" style="flex:1" onclick="closeModal()">开始学习</button></div></div></div>
+
+<div class="modal" id="modal-addscene"><div class="modal-body"><div class="modal-title">📡 添加值守场景</div><div class="text-sm" style="margin-bottom:12px">选择分身要值守的平台</div><div class="card" style="cursor:pointer"><div class="row gap-2"><div style="font-size:20px">🐦</div><div><div style="font-size:14px;font-weight:600">飞书群聊</div><div class="text-xs">实时回复群消息</div></div></div></div><div class="card" style="cursor:pointer"><div class="row gap-2"><div style="font-size:20px">💼</div><div><div style="font-size:14px;font-weight:600">企业微信群</div><div class="text-xs">实时回复群消息</div></div></div></div><div class="card" style="cursor:pointer"><div class="row gap-2"><div style="font-size:20px">🛒</div><div><div style="font-size:14px;font-weight:600">小程序客服</div><div class="text-xs">替你的小程序当客服</div></div></div></div><div class="card" style="cursor:pointer"><div class="row gap-2"><div style="font-size:20px">🏪</div><div><div style="font-size:14px;font-weight:600">别的小程序客服</div><div class="text-xs">替别人的小程序当客服（收费）</div></div></div></div><button class="btn btn-outline mt-2" style="width:100%" onclick="closeModal()">取消</button></div></div>
+
+<div class="modal" id="modal-withdraw"><div class="modal-body"><div class="modal-title">💳 提现</div><div class="card" style="text-align:center;padding:16px"><div style="font-size:14px;color:#64748b">可提现金额</div><div style="font-size:32px;font-weight:800;color:#16a34a">¥286.50</div></div><input style="width:100%;height:44px;border:1px solid #e2e8f0;border-radius:12px;padding:0 14px;font-size:14px;outline:none;margin-top:12px" placeholder="输入提现金额" /><div class="text-xs" style="margin-top:6px;color:#64748b">提现到微信零钱，1-3个工作日到账</div><div class="row gap-2 mt-3"><button class="btn btn-outline" style="flex:1" onclick="closeModal()">取消</button><button class="btn btn-primary" style="flex:1" onclick="closeModal()">确认提现</button></div></div></div>
+
+<div class="modal" id="modal-create"><div class="modal-body"><div class="modal-title">✨ 创建分身</div><div style="font-size:13px;font-weight:600;margin-bottom:8px">第1步/3步 · 基本信息</div><input style="width:100%;height:44px;border:1px solid #e2e8f0;border-radius:12px;padding:0 14px;font-size:14px;outline:none;margin-bottom:8px" placeholder="分身名字" /><textarea style="width:100%;min-height:80px;border:1px solid #e2e8f0;border-radius:12px;padding:12px;font-size:13px;resize:none;outline:none" placeholder="描述这个分身的特点、性格、职业..."></textarea><div style="font-size:13px;font-weight:600;margin-top:12px">说话风格</div><div class="row gap-2 mt-1"><span class="tag" style="background:#f3e8ff;color:#7c3aed;cursor:pointer">温柔坚定</span><span class="tag" style="background:#eff6ff;color:#2563eb;cursor:pointer">直来直去</span><span class="tag" style="background:#fef3c7;color:#92400e;cursor:pointer">幽默风趣</span><span class="tag" style="background:#fce7f3;color:#ec4899;cursor:pointer">亲和暖心</span></div><div class="row gap-2 mt-3"><button class="btn btn-outline" style="flex:1" onclick="closeModal()">取消</button><button class="btn btn-primary" style="flex:1" onclick="closeModal()">下一步 →</button></div></div></div>
+
+</div><!-- end app -->
 
 <script>
-// Tab切换
-function switchTab(name) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tabbar-item').forEach(t => t.classList.remove('active'));
-  document.getElementById('page-' + name).classList.add('active');
-  const tabs = ['plaza','my','learn','profile'];
-  const idx = tabs.indexOf(name);
-  if (idx >= 0) document.querySelectorAll('.tabbar-item')[idx].classList.add('active');
-  // 关闭所有子页
-  document.querySelectorAll('.subpage').forEach(s => s.classList.remove('active'));
-  window.scrollTo(0, 0);
+function switchTab(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tabbar-item').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  event.currentTarget.classList.add('active');
+  window.scrollTo(0,0);
 }
 
-// 分类标签
-document.querySelectorAll('.plaza-tab').forEach(tab => {
-  tab.onclick = function() {
-    document.querySelectorAll('.plaza-tab').forEach(t => t.classList.remove('active'));
-    this.classList.add('active');
-  }
-});
-
-// 分身详情
-const avatarData = {
-  lin: { name: '林晚晚', img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&h=800&fit=crop' },
-  jie: { name: '阿杰', img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&h=800&fit=crop' },
-  yue: { name: '晓月', img: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600&h=800&fit=crop' },
-  chen: { name: '老陈', img: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=600&h=800&fit=crop' },
-  mei: { name: '小美', img: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=600&h=800&fit=crop' },
-};
-
-function openDetail(id) {
-  const d = avatarData[id];
-  if (!d) return;
-  document.getElementById('detail-img').src = d.img;
-  document.getElementById('detail-name').textContent = d.name;
-  document.getElementById('sub-detail').classList.add('active');
-}
-function openChat(id) {
-  const d = avatarData[id];
-  if (!d) return;
-  document.getElementById('chat-avatar').src = d.img;
-  document.getElementById('chat-name').textContent = d.name;
-  document.getElementById('sub-chat').classList.add('active');
-}
-function openSubpage(name) {
-  document.getElementById('sub-' + name).classList.add('active');
-}
-function closeSubpage(name) {
-  document.getElementById('sub-' + name).classList.remove('active');
+function openSub(name){
+  var el=document.getElementById('sub-'+name);
+  if(el){el.style.display='block';el.scrollTop=0;}
 }
 
-// 弹窗
-function openModal(name) {
-  document.getElementById('modal-' + name).classList.add('active');
+function closeSub(name){
+  var el=document.getElementById('sub-'+name);
+  if(el)el.style.display='none';
 }
-function closeModal(name) {
-  document.getElementById('modal-' + name).classList.remove('active');
+
+function openModal(name){
+  var el=document.getElementById('modal-'+name);
+  if(el)el.classList.add('active');
 }
-// 点击overlay关闭弹窗
-document.querySelectorAll('.modal-overlay').forEach(overlay => {
-  overlay.onclick = function(e) {
-    if (e.target === this) this.classList.remove('active');
-  }
+
+function closeModal(){
+  document.querySelectorAll('.modal').forEach(m=>m.classList.remove('active'));
+}
+
+function sendChat(){
+  var input=document.getElementById('chatInput');
+  var msg=input.value.trim();
+  if(!msg)return;
+  var msgs=document.querySelector('#sub-chat div[style*="min-height"]')||document.querySelector('#sub-chat');
+  var userMsg=document.createElement('div');
+  userMsg.className='chat-msg me';
+  userMsg.innerHTML='<div class="chat-bubble">'+msg+'</div>';
+  var chatArea=document.querySelector('#sub-chat .chat-input-bar');
+  chatArea.parentNode.insertBefore(userMsg,chatArea);
+  input.value='';
+  // Simulate reply
+  setTimeout(function(){
+    var reply=document.createElement('div');
+    reply.className='chat-msg clone';
+    reply.innerHTML='<img class="avatar-xs" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=56&h=56&fit=crop&crop=face" style="border-color:#e2e8f0;flex-shrink:0" /><div><div class="chat-bubble">收到，我按照你的方式来思考一下这个问题...</div><div style="font-size:10px;color:#94a3b8;margin-top:2px;padding-left:4px">分身回复 · 风格层</div></div>';
+    chatArea.parentNode.insertBefore(reply,chatArea);
+    reply.scrollIntoView({behavior:'smooth'});
+  },800);
+}
+
+// Close modal on background click
+document.querySelectorAll('.modal').forEach(function(m){
+  m.addEventListener('click',function(e){
+    if(e.target===m)closeModal();
+  });
 });
 </script>
 </body>
