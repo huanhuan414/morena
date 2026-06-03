@@ -207,22 +207,23 @@ export class OrderService {
     
     const priceCalc = await this.priceConfigService.calculatePrice(contentType, avatarCount, quantityPerAvatar)
     
-    if (orderData.basePrice !== undefined || orderData.contentPrice !== undefined) {
-      const validation = await this.priceConfigService.validatePrice(
-        contentType,
-        avatarCount,
-        quantityPerAvatar,
-        Number(orderData.basePrice || 0),
-        Number(orderData.contentPrice || 0)
-      )
-      if (!validation.valid) {
-        console.warn(`[OrderService] 价格校验失败: userId=${userId}, contentType=${contentType}, 预期={base:${orderData.basePrice}, content:${orderData.contentPrice}}, 实际={base:${validation.actual.base}, content:${validation.actual.content}}`)
+    // 只有图文类型支持自定义基础价格
+    let baseAmount = priceCalc.base
+    let contentAmount = priceCalc.content
+    let customBasePrice: number | null = null
+    
+    if (contentType === 'image' && orderData.customBasePrice !== undefined && orderData.customBasePrice !== null) {
+      let customBase = Number(orderData.customBasePrice)
+      if (!isNaN(customBase) && customBase > 0) {
+        // 保留2位小数，避免无限小数影响结算
+        customBase = Math.round(customBase * 100) / 100
+        customBasePrice = customBase
+        baseAmount = customBase * avatarCount
+        console.log(`[OrderService] 图文类型使用自定义基础单价: ${customBase}元/分身, 总基础价格: ${baseAmount}元`)
       }
     }
     
-    const baseAmount = priceCalc.base
-    const contentAmount = priceCalc.content
-    const budget = priceCalc.total
+    const budget = baseAmount + contentAmount
 
     const insertData: Record<string, any> = {
       id,
@@ -235,6 +236,7 @@ export class OrderService {
       budget,
       base_amount: baseAmount,
       content_amount: contentAmount,
+      custom_base_price: customBasePrice,
       status: 'pending_payment',
       expected_quantity: avatarCount,
       avatar_count: avatarCount,

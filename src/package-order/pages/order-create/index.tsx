@@ -50,7 +50,9 @@ export default function OrderCreate() {
     assetDistributeMode: 'shared' as 'shared' | 'exclusive',
     useCustomCopywriting: false,
     customCopywriting: '',
+    customBasePrice: 0, // 图文类型自定义基础单价
   })
+  const [customBasePriceInput, setCustomBasePriceInput] = useState('') // 输入框显示值
   const [uploadedAssets, setUploadedAssets] = useState<{ id: string; url: string; type: 'image' | 'video'; filename: string; size: number; mimeType: string }[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [zipProgress, setZipProgress] = useState<{ status: string; message: string; totalFiles: number; processedFiles: number } | null>(null)
@@ -253,8 +255,12 @@ export default function OrderCreate() {
   const selectedType = contentTypes.find(t => t.id === form.contentType)
   const basePricePerUnit = selectedType?.basePrice || 2
   const contentPricePerUnit = selectedType?.contentPrice || 0
+  // 图文类型支持自定义基础单价
+  const actualBasePricePerUnit = form.contentType === 'image' && form.customBasePrice > 0 
+    ? form.customBasePrice 
+    : basePricePerUnit
   const totalPrice = {
-    base: basePricePerUnit * form.avatarCount,
+    base: actualBasePricePerUnit * form.avatarCount,
     content: contentPricePerUnit * form.quantityPerAvatar * form.avatarCount,
     get total() { return this.base + this.content }
   }
@@ -432,6 +438,8 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
 
   const handleTypeChange = (typeId: string) => {
     setForm(prev => ({ ...prev, contentType: typeId }))
+    // 切换类型时清空自定义价格输入
+    setCustomBasePriceInput('')
   }
 
   const handlePlatformToggle = (platformId: string) => {
@@ -531,6 +539,8 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         base_price: totalPrice.base,
         content_price: totalPrice.content,
         total_price: totalPrice.total,
+        // 图文类型传递自定义基础单价
+        customBasePrice: backendContentType === 'image' && form.customBasePrice > 0 ? form.customBasePrice : undefined,
         requirements: { ...form.optionalRequirements, platformRemarks: form.platformRemarks, ai_auto_fill: form.aiAutoFill, asset_distribute_mode: form.assetDistributeMode, use_custom_copywriting: form.useCustomCopywriting, custom_copywriting: form.customCopywriting },
         openid,
       }
@@ -903,6 +913,68 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
             ))}
           </View>
         </View>
+
+        {/* 图文类型自定义基础价格 */}
+        {form.contentType === 'image' && (
+          <View className="section custom-price-section">
+            <View className="section-header">
+              <View className="section-title-row">
+                <View className="title-dot accent" />
+                <Text className="section-title">自定义基础单价</Text>
+              </View>
+              <Text className="section-hint">默认 {basePricePerUnit}元/分身</Text>
+            </View>
+            <View className="custom-price-content">
+              <View className="custom-price-input-row">
+                <Text className="input-label">基础单价</Text>
+                <View className="input-wrapper">
+                  <Text className="input-prefix">¥</Text>
+                  <Input
+                    className="price-input"
+                    type="digit"
+                    placeholder={String(basePricePerUnit)}
+                    value={customBasePriceInput}
+                    onInput={(e) => {
+                      let inputValue = e.detail.value
+                      
+                      // 过滤负号（不允许负数）
+                      if (inputValue.includes('-')) {
+                        inputValue = inputValue.replace(/-/g, '')
+                      }
+                      
+                      // 直接更新输入框显示值
+                      setCustomBasePriceInput(inputValue)
+                      
+                      // 解析数值并更新表单
+                      if (!inputValue || inputValue.trim() === '' || inputValue === '.') {
+                        setForm(prev => ({ ...prev, customBasePrice: 0 }))
+                        return
+                      }
+                      
+                      const numValue = parseFloat(inputValue)
+                      if (isNaN(numValue)) {
+                        setForm(prev => ({ ...prev, customBasePrice: 0 }))
+                        return
+                      }
+                      
+                      // 必须大于0
+                      if (numValue <= 0) {
+                        setForm(prev => ({ ...prev, customBasePrice: 0 }))
+                        return
+                      }
+                      
+                      // 保留2位小数
+                      const finalValue = Math.round(numValue * 100) / 100
+                      setForm(prev => ({ ...prev, customBasePrice: finalValue }))
+                    }}
+                  />
+                  <Text className="input-suffix">/分身</Text>
+                </View>
+              </View>
+              <Text className="custom-price-note">提示：基础费用 = 单价 × 分身数量，单价必须大于0且最多2位小数</Text>
+            </View>
+          </View>
+        )}
 
         {/* 内容风格偏好 */}
         <View className="section">
