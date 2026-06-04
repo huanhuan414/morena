@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Injectable, Inject, forwardRef } from '@nestjs/common'
+import { Injectable, Inject, forwardRef, Logger } from '@nestjs/common'
 import * as crypto from 'crypto'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { EarningService } from '../earning/earning.service'
@@ -8,7 +8,6 @@ import { OrderDispatchService } from '../order-dispatch/order-dispatch.service'
 import { WechatPayService } from '../payment/wechat-pay.service'
 import { ContentGenerationService } from '../content-generation/content-generation.service'
 import { RedisService } from '../redis/redis.service'
-import { PriceConfigService } from './price-config.service'
 
 /**
  * 字段命名规则说明：
@@ -17,8 +16,30 @@ import { PriceConfigService } from './price-config.service'
  * - SQL AS 别名：如 `x as avatar_id`，返回值也是 camelCase → `avatarId`
  */
 
+// 价格配置相关接口
+export interface ContentTypePrice {
+  id: string
+  label: string
+  icon: string
+  basePrice: number
+  contentPrice: number
+  desc: string
+  output: string
+}
+
+export interface PriceCalculation {
+  base: number
+  content: number
+  total: number
+}
+
 @Injectable()
 export class OrderService {
+  private readonly logger = new Logger(OrderService.name)
+  private priceCache: Map<string, ContentTypePrice> = new Map()
+  private priceCacheTime: number = 0
+  private readonly PRICE_CACHE_TTL = 5 * 60 * 1000
+
   constructor(
     @Inject(EarningService) private readonly earningService: EarningService,
     @Inject(NotificationService) private readonly notificationService: NotificationService,
@@ -26,7 +47,6 @@ export class OrderService {
     @Inject(forwardRef(() => WechatPayService)) private readonly wechatPayService: WechatPayService,
     @Inject(forwardRef(() => ContentGenerationService)) private readonly contentGenService: ContentGenerationService,
     @Inject(RedisService) private readonly redisService: RedisService,
-    @Inject(PriceConfigService) private readonly priceConfigService: PriceConfigService,
   ) {}
 
   private safeParseJson<T>(value: any, fallback: T): T {
@@ -41,6 +61,146 @@ export class OrderService {
     }
     return fallback
   }
+
+  // ========== 价格配置相关方法 ==========
+
+  async getAllPriceConfigs(): Promise<ContentTypePrice[]> {
+    if (Date.now() - this.priceCacheTime < this.PRICE_CACHE_TTL && this.priceCache.size > 0) {
+      this.logger.log(`[价格配置] 返回缓存数据，共 ${this.priceCache.size} 条`)
+      return Array.from(this.priceCache.values())
+    }
+
+    try {
+      const db = getMySQLClient()
+      this.logger.log('[价格配置] 开始查询数据库...')
+      
+      const result = await db.query(
+        `SELECT id, content_type, name, icon, base_price, content_price, description, output_unit, sort_order
+         FROM content_type_prices
+         WHERE is_active = TRUE
+         ORDER BY sort_order ASC`
+      )
+      
+      this.logger.log(`[价格配置] 查询结果类型: ${typeof result}, 是否数组: ${Array.isArray(result)}`)
+      this.logger.log(`[价格配置] 查询结果: ${JSON.stringify(result)}`)
+      
+      // 处理 db.query 返回的两种格式：数组或 {data: [...]}
+      const rows = Array.isArray(result) ? result : (result?.data || [])
+      this.logger.log(`[价格配置] 解析后记录数: ${rows.length}`)
+      if (rows.length > 0) {
+        this.logger.log(`[价格配置] 第一条记录: ${JSON.stringify(rows[0])}`)
+      }
+
+      this.priceCache.clear()
+      for (const row of rows as any[]) {
+        // 注意：db.query 已经将字段名转换为 camelCase
+        // row.content_type → row.contentType
+        // row.base_price → row.basePrice
+        // row.content_price → row.contentPrice
+        const contentType = row.contentType || row.content_type
+        const basePrice = row.basePrice || row.base_price
+        const contentPrice = row.contentPrice || row.content_price
+        const outputUnit = row.outputUnit || row.output_unit
+        
+        this.logger.log(`[价格配置] 处理记录: contentType=${contentType}, basePrice=${basePrice}, contentPrice=${contentPrice}`)
+        
+        this.priceCache.set(contentType, {
+          id: contentType,
+          label: row.name,
+          icon: row.icon || '',
+          basePrice: Number(basePrice) || 0,
+          contentPrice: Number(contentPrice) || 0,
+          desc: row.description || row.desc || '',
+          output: outputUnit || '',
+        })
+      }
+      this.priceCacheTime = Date.now()
+      return Array.from(this.priceCache.values())
+    } catch (error: any) {
+      this.logger.error(`[价格配置] 加载失败: ${error.message}`)
+      throw error
+    }
+  }
+
+  async getPriceConfig(contentType: string): Promise<ContentTypePrice | undefined> {
+    if (Date.now() - this.priceCacheTime >= this.PRICE_CACHE_TTL || this.priceCache.size === 0) {
+      await this.getAllPriceConfigs()
+    }
+    
+    let key = contentType
+    if (contentType === 'simple_task') {
+      key = 'simple'
+    }
+    
+    return this.priceCache.get(key)
+  }
+
+  async calculatePrice(
+    contentType: string,
+    avatarCount: number,
+    quantityPerAvatar: number
+  ): Promise<PriceCalculation> {
+    const config = await this.getPriceConfig(contentType)
+    if (!config) {
+      this.logger.warn(`[价格计算] 未知内容类型: ${contentType}, 使用默认价格`)
+      const defaultConfig = this.getDefaultPriceConfig(contentType)
+      const base = defaultConfig.basePrice * avatarCount
+      const content = defaultConfig.contentPrice * quantityPerAvatar * avatarCount
+      return { base, content, total: base + content }
+    }
+
+    const base = config.basePrice * avatarCount
+    const content = config.contentPrice * quantityPerAvatar * avatarCount
+    const total = base + content
+
+    this.logger.log(
+      `[价格计算] contentType=${contentType}, avatarCount=${avatarCount}, quantityPerAvatar=${quantityPerAvatar}, base=${base}, content=${content}, total=${total}`
+    )
+
+    return { base, content, total }
+  }
+
+  async validatePrice(
+    contentType: string,
+    avatarCount: number,
+    quantityPerAvatar: number,
+    expectedBase: number,
+    expectedContent: number
+  ): Promise<{ valid: boolean; actual: PriceCalculation }> {
+    const actual = await this.calculatePrice(contentType, avatarCount, quantityPerAvatar)
+
+    const valid =
+      Math.abs(actual.base - expectedBase) < 0.01 &&
+      Math.abs(actual.content - expectedContent) < 0.01
+
+    if (!valid) {
+      this.logger.warn(
+        `[价格校验] 不匹配: contentType=${contentType}, expected={base:${expectedBase}, content:${expectedContent}}, actual={base:${actual.base}, content:${actual.content}}`
+      )
+    }
+
+    return { valid, actual }
+  }
+
+  private getDefaultPriceConfigs(): ContentTypePrice[] {
+    return [
+      { id: 'simple', label: '简单任务', icon: '✅', basePrice: 0.5, contentPrice: 0, desc: '关注/点赞/转发等', output: '个任务' },
+      { id: 'text', label: '纯文案', icon: '📝', basePrice: 2, contentPrice: 0, desc: '文字内容创作', output: '篇原创文案' },
+      { id: 'image', label: '图文笔记', icon: '🖼️', basePrice: 3, contentPrice: 1, desc: '图文搭配呈现', output: '篇图文笔记' },
+      { id: 'video', label: '短视频', icon: '🎬', basePrice: 5, contentPrice: 20, desc: 'AI生成真实视频', output: '条短视频' },
+    ]
+  }
+
+  private getDefaultPriceConfig(contentType: string): ContentTypePrice {
+    const defaults = this.getDefaultPriceConfigs()
+    let key = contentType
+    if (contentType === 'simple_task') {
+      key = 'simple'
+    }
+    return defaults.find(c => c.id === key) || defaults[1]
+  }
+
+  // ========== 订单相关方法 ==========
 
   private normalizeDispatchStatus(status?: string): string {
     if (status === 'confirmed') {
@@ -205,7 +365,7 @@ export class OrderService {
     const contentType = orderData.contentType || orderData.content_type || 'text'
     const quantityPerAvatar = Number(orderData.quantityPerAvatar || orderData.quantity_per_avatar || 1)
     
-    const priceCalc = await this.priceConfigService.calculatePrice(contentType, avatarCount, quantityPerAvatar)
+    const priceCalc = await this.calculatePrice(contentType, avatarCount, quantityPerAvatar)
     
     // 只有图文类型支持自定义基础价格
     let baseAmount = priceCalc.base

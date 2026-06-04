@@ -21,19 +21,19 @@ import { getStatusBarHeight } from '@/utils/safe-area'
 import { subscribePolling } from '@/utils/polling'
 import './index.css'
 
-const DEFAULT_CONTENT_TYPES = [
-  { id: 'simple', label: '简单任务', icon: '✅', basePrice: 0.5, contentPrice: 0, desc: '关注/点赞/转发等', output: '个任务' },
-  { id: 'text', label: '纯文案', icon: '📝', basePrice: 2, contentPrice: 0, desc: '文字内容创作', output: '篇原创文案' },
-  { id: 'image', label: '图文笔记', icon: '🖼️', basePrice: 3, contentPrice: 1, desc: '图文搭配呈现', output: '篇图文笔记' },
-  { id: 'video', label: '短视频', icon: '🎬', basePrice: 5, contentPrice: 20, desc: 'AI生成真实视频', output: '条短视频' },
-]
+// const DEFAULT_CONTENT_TYPES = [
+//   { id: 'simple', label: '简单任务', icon: '✅', basePrice: 0.5, contentPrice: 0, desc: '关注/点赞/转发等', output: '个任务' },
+//   { id: 'text', label: '纯文案', icon: '📝', basePrice: 2, contentPrice: 0, desc: '文字内容创作', output: '篇原创文案' },
+//   { id: 'image', label: '图文笔记', icon: '🖼️', basePrice: 3, contentPrice: 1, desc: '图文搭配呈现', output: '篇图文笔记' },
+//   { id: 'video', label: '短视频', icon: '🎬', basePrice: 5, contentPrice: 20, desc: 'AI生成真实视频', output: '条短视频' },
+// ]
 
 const PLATFORM_OPTIONS = PLATFORM_UI_ORDER
   .map((key) => ({ id: key, ...PLATFORM_META_MAP[key] }))
   .filter((item) => Array.isArray(item.requirements))
 
 export default function OrderCreate() {
-  const [contentTypes, setContentTypes] = useState(DEFAULT_CONTENT_TYPES)
+  const [contentTypes, setContentTypes] = useState<any[]>([])
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -256,8 +256,8 @@ export default function OrderCreate() {
   const basePricePerUnit = selectedType?.basePrice || 2
   const contentPricePerUnit = selectedType?.contentPrice || 0
   // 图文类型支持自定义基础单价
-  const actualBasePricePerUnit = form.contentType === 'image' && form.customBasePrice > 0 
-    ? form.customBasePrice 
+  const actualBasePricePerUnit = form.contentType === 'image' && form.customBasePrice > 0
+    ? form.customBasePrice
     : basePricePerUnit
   const totalPrice = {
     base: actualBasePricePerUnit * form.avatarCount,
@@ -936,33 +936,33 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                     value={customBasePriceInput}
                     onInput={(e) => {
                       let inputValue = e.detail.value
-                      
+
                       // 过滤负号（不允许负数）
                       if (inputValue.includes('-')) {
                         inputValue = inputValue.replace(/-/g, '')
                       }
-                      
+
                       // 直接更新输入框显示值
                       setCustomBasePriceInput(inputValue)
-                      
+
                       // 解析数值并更新表单
                       if (!inputValue || inputValue.trim() === '' || inputValue === '.') {
                         setForm(prev => ({ ...prev, customBasePrice: 0 }))
                         return
                       }
-                      
+
                       const numValue = parseFloat(inputValue)
-                      if (isNaN(numValue)) {
+                      if (Number.isNaN(numValue)) {
                         setForm(prev => ({ ...prev, customBasePrice: 0 }))
                         return
                       }
-                      
+
                       // 必须大于0
                       if (numValue <= 0) {
                         setForm(prev => ({ ...prev, customBasePrice: 0 }))
                         return
                       }
-                      
+
                       // 保留2位小数
                       const finalValue = Math.round(numValue * 100) / 100
                       setForm(prev => ({ ...prev, customBasePrice: finalValue }))
