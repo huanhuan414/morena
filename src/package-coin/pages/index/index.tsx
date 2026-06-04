@@ -17,7 +17,7 @@ interface Transaction {
 
 export default function CoinCenter() {
   const [balance, setBalance] = useState<number>(0)
-  const [loading, setLoading] = useState(true)
+  const [, setLoading] = useState(true)
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([])
   const [statusBarHeight, setStatusBarHeight] = useState(20)
 

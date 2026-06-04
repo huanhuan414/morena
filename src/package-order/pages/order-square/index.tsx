@@ -1,14 +1,12 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useEffect, useState, useCallback, useRef } from 'react'
-import Taro, { useDidShow, navigateBack, showToast, navigateTo } from '@tarojs/taro'
+import Taro, { useDidShow, navigateBack } from '@tarojs/taro'
 import { View, Text, ScrollView } from '@tarojs/components'
-import { Bell, Settings, Users, ArrowLeft, ArrowUp, FileText, Coins, Plus, Zap, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye, ShoppingBag, ChevronRight, Gift, Rocket, Clock, CircleCheckBig, ChevronDown } from 'lucide-react-taro'
+import { Users, ArrowLeft, ArrowUp, Sparkles, ShoppingBag, ChevronRight, Clock, CircleCheckBig, ChevronDown } from 'lucide-react-taro'
 import { Network } from '@/network'
-import { BANNER_TITLE, BANNER_DESC } from '@/constants/referral-rewards'
-import { PLATFORM_UI_ORDER, PLATFORM_META_MAP, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
+import { PLATFORM_UI_ORDER, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
 import { useUserStore } from '@/stores/user'
-import { useNotifications } from '@/hooks/useNotifications'
-import { Avatar as UiAvatar } from '@/components/ui/avatar'
-import { getCapsuleButtonBottom, getStatusBarHeight } from '@/utils/safe-area'
+import { getStatusBarHeight } from '@/utils/safe-area'
 import './index.css'
 
 interface OrderItem {
@@ -38,30 +36,16 @@ interface OrderItem {
 }
 
 const Index: React.FC = () => {
-  const [userName, setUserName] = useState('用户')
-  const [mindClones, setMindClones] = useState(0)
-  const [userAvatar, setUserAvatar] = useState('')
-  const [allHostingEnabled, setAllHostingEnabled] = useState(false)
-  const [referralCode, setReferralCode] = useState('')
-  const [invitedCount, setInvitedCount] = useState(0)
-  const [totalEarnings, setTotalEarnings] = useState(0)
-  const [pendingOrders, setPendingOrders] = useState(0)
-  const [generatedContents, setGeneratedContents] = useState(0)
-  const [growthCampaign, setGrowthCampaign] = useState<any>(null)
-  const [trackedCampaignId, setTrackedCampaignId] = useState('')
-  const { avatarId: currentAvatarId, setAvatarId } = useUserStore(state => state)
-
-  const [showOrderModal, setShowOrderModal] = useState(false)
-  const [orderModalData, setOrderModalData] = useState<any>(null)
-  const [trustAllLoading, setTrustAllLoading] = useState(false)
-  const [dismissedOrderIds, setDismissedOrderIds] = useState<Set<string>>(() => {
-    try {
-      const stored = Taro.getStorageSync('dismissed_order_ids')
-      return stored ? new Set(JSON.parse(stored)) : new Set()
-    } catch {
-      return new Set()
-    }
-  })
+  const [, setUserName] = useState('用户')
+  const [, setMindClones] = useState(0)
+  const [, setUserAvatar] = useState('')
+  const [, setAllHostingEnabled] = useState(false)
+  const [, setReferralCode] = useState('')
+  const [, setInvitedCount] = useState(0)
+  const [, setTotalEarnings] = useState(0)
+  const [, setPendingOrders] = useState(0)
+  const [, setGeneratedContents] = useState(0)
+  const { setAvatarId } = useUserStore(state => state)
 
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null)
 
@@ -417,7 +401,7 @@ const Index: React.FC = () => {
     }
   }, [ordersLoading, hasMoreOrders, orderPage, activePlatform])
   // 截止时间格式化 - 暂时禁用期限功能
-  const formatDeadline = (deadline: string | null) => {
+  const formatDeadline = (_deadline: string | null): { color: string; text: string } | null => {
     return null
   }
 
@@ -447,14 +431,6 @@ const Index: React.FC = () => {
       'marketing': { text: '营销', color: '#F59E0B', bg: '#FFFBEB' },
     }
     return typeMap[order.contentType || ''] || { text: '图文', color: '#6366F1', bg: '#EEF2FF' }
-  }
-
-  const handleOrderClick = (order: OrderItem) => {
-    if (order.id.startsWith('demo_')) {
-      showToast({ title: '创建分身即可查看详情', icon: 'none' })
-      return
-    }
-    navigateTo({ url: `/package-order/pages/order-detail/index?id=${order.id}&source=square` })
   }
 
   return (

@@ -1372,7 +1372,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
             </View>
             <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px', marginTop: '6px', width: '100%' }}>
               <Text style={{ fontSize: '11px', color: '#9CA3AF' }}>自定义：</Text>
-              <View style={{ flex: 1, backgroundColor: '#F9FAFB', borderRadius: '8px', paddingHorizontal: '10px', paddingVertical: '4px' }}>
+              <View style={{ flex: 1, backgroundColor: '#F9FAFB', borderRadius: '8px', paddingLeft: '10px', paddingRight: '10px', paddingTop: '4px', paddingBottom: '4px' }}>
                 <Input
                   type="digit"
                   style={{ width: '100%', fontSize: '13px', color: '#1F2937' }}
@@ -1409,7 +1409,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                 return (
                   <View key={dim.key} style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: '4px' }}>
                     <Text style={{ fontSize: '11px', color: '#64748B', width: '72px' }}>{dim.label}</Text>
-                    <View style={{ flex: 1, height: '6px', backgroundColor: '#E2E8F0', borderRadius: '3px', marginHorizontal: '6px' }}>
+                    <View style={{ flex: 1, height: '6px', backgroundColor: '#E2E8F0', borderRadius: '3px', marginLeft: '6px', marginRight: '6px' }}>
                       <View style={{ width: `${ratio * 100}%`, height: '100%', backgroundColor: '#0EA5E9', borderRadius: '3px' }} />
                     </View>
                     <Text style={{ fontSize: '11px', color: '#64748B', width: '40px', textAlign: 'right' }}>{provided}/{dim.required}</Text>
@@ -1420,15 +1420,14 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           </View>
 
           {/* AI补足开关 */}
-          <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingVertical: '6px' }}>
+          <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '6px', paddingBottom: '6px' }}>
             <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '6px' }}>
               <Sparkles size={14} color={form.aiAutoFill ? '#6366F1' : '#9CA3AF'} />
               <Text className="price-label">AI补足素材</Text>
             </View>
             <Switch
               checked={form.aiAutoFill}
-              onChange={(val) => setForm(prev => ({ ...prev, aiAutoFill: val.detail.value }))}
-              color="#6366F1"
+              onCheckedChange={(val) => setForm(prev => ({ ...prev, aiAutoFill: val }))}
             />
           </View>
           {form.aiAutoFill && coverage < 1 && (

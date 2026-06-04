@@ -4,7 +4,7 @@ import { View, Text, ScrollView } from '@tarojs/components'
 import { Bell, Settings, Users, FileText, Coins, Plus, Zap, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye, ShoppingBag, ChevronRight, Gift, Rocket, Clock, CircleCheckBig, ChevronDown } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { BANNER_TITLE, BANNER_DESC } from '@/constants/referral-rewards'
-import { PLATFORM_UI_ORDER, PLATFORM_META_MAP, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
+import { PLATFORM_UI_ORDER, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
 import { useUserStore } from '@/stores/user'
 import { useNotifications } from '@/hooks/useNotifications'
 import { Avatar as UiAvatar } from '@/components/ui/avatar'
@@ -49,7 +49,7 @@ const Index: React.FC = () => {
   const [generatedContents, setGeneratedContents] = useState(0)
   const [growthCampaign, setGrowthCampaign] = useState<any>(null)
   const [trackedCampaignId, setTrackedCampaignId] = useState('')
-  const { avatarId: currentAvatarId, setAvatarId, isLoggedIn } = useUserStore(state => state)
+  const { setAvatarId, isLoggedIn } = useUserStore(state => state)
 
   const [showOrderModal, setShowOrderModal] = useState(false)
   const [orderModalData, setOrderModalData] = useState<any>(null)
@@ -75,7 +75,7 @@ const Index: React.FC = () => {
   const [orders, setOrders] = useState<OrderItem[]>([])
   const [ordersLoading, setOrdersLoading] = useState(false)
   const [acceptingOrderIds, setAcceptingOrderIds] = useState<Record<string, boolean>>({})
-  const [orderPage, setOrderPage] = useState(1)
+  const [, setOrderPage] = useState(1)
   const [, setOrderTotal] = useState(0)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const ordersFetchInFlightRef = useRef(false)
@@ -138,10 +138,8 @@ const Index: React.FC = () => {
           urgency: o.urgency || (o.priority >= 4 ? 'urgent' : o.priority >= 3 ? 'high' : o.priority >= 2 ? 'normal' : 'low'),
           isAcceptedByMe: Boolean(o.isAcceptedByMe || o.is_accepted_by_me)
         }))
-        let nextLength = 0
         setOrders(prev => {
           const next = append ? [...prev, ...mapped] : mapped
-          nextLength = next.length
           return next
         })
         setOrderTotal(total)
@@ -508,7 +506,7 @@ const Index: React.FC = () => {
 
   // 紧急程度标签
   // 截止时间格式化 - 暂时禁用期限功能
-  const formatDeadline = (deadline: string | null) => {
+  const formatDeadline = (_deadline: string | null): { color: string; text: string } | null => {
     return null
   }
 
