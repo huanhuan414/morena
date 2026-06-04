@@ -154,6 +154,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .fab{position:fixed;bottom:80px;right:20px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--primary-lighter));color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 16px rgba(99,102,241,.4);cursor:pointer;z-index:90;transition:transform .2s}
 .fab:active{transform:scale(.9)}
 .fab .label{position:absolute;bottom:-18px;font-size:10px;white-space:nowrap;color:var(--primary);font-weight:600}
+/* 订单卡片 */
+.order-card{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.oc-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.oc-type{font-size:14px;font-weight:600;color:var(--text1)}
+.oc-urgency{font-size:11px;padding:3px 8px;background:#ffebee;color:#c62828;border-radius:10px;font-weight:600}
+.oc-title{font-size:15px;font-weight:600;color:var(--text1);line-height:1.5;margin-bottom:8px}
+.oc-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.oc-tag{font-size:11px;padding:3px 8px;background:#f3f0ff;color:var(--primary);border-radius:8px}
+.oc-info{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;font-size:12px;color:var(--text2)}
+.oc-info-item{padding:4px 8px;background:#f5f5f5;border-radius:6px}
+.oc-bottom{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px;padding:10px 12px;background:#fafafa;border-radius:10px}
+.oc-price-total{font-size:18px;font-weight:700;color:var(--primary)}
+.oc-price-detail{font-size:11px;color:var(--text2);margin-top:2px}
+.oc-earn{font-size:14px;font-weight:600;color:#e65100;background:#fff3e0;padding:6px 12px;border-radius:8px;white-space:nowrap}
+.oc-progress{margin-bottom:6px}
+.oc-progress-bar{height:6px;background:linear-gradient(90deg,var(--primary),var(--primary-lighter));border-radius:3px;transition:width .3s}
+.oc-progress-text{font-size:11px;color:var(--text2);margin-top:4px;text-align:right}
+.oc-deadline{font-size:12px;color:#e65100;font-weight:500}
+.filter-tag{padding:6px 14px;background:#f5f5f5;border-radius:16px;font-size:13px;color:var(--text2);white-space:nowrap;cursor:pointer;transition:all .2s}
+.filter-tag.active{background:var(--primary);color:#fff}
 
 /* 底部TabBar */
 .bottom-tab{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:#fff;display:flex;border-top:1px solid var(--border);padding-bottom:max(env(safe-area-inset-bottom),6px);z-index:100}
@@ -886,24 +906,289 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 </div>
 
 <!-- 浮动发单按钮 -->
-<div class="fab" onclick="showToast('跳转发单页')">+<div class="label">发单</div></div>
+<div class="fab" onclick="showToast('打开发单页面')">+<div class="label">发单</div></div>
+
+<!-- 接单广场页面 -->
+<div class="sub-page" id="sub-orderPlaza">
+  <div class="sub-header">
+    <div class="back" onclick="closeSub('orderPlaza')">←</div>
+    <div class="title">接单广场</div>
+    <div class="back" style="opacity:0">←</div>
+  </div>
+  <div style="padding:12px 16px 120px">
+    <!-- 筛选栏 -->
+    <div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;-webkit-overflow-scrolling:touch">
+      <div class="filter-tag active" onclick="filterOrders(this,'all')">全部</div>
+      <div class="filter-tag" onclick="filterOrders(this,'image')">图文</div>
+      <div class="filter-tag" onclick="filterOrders(this,'video')">短视频</div>
+      <div class="filter-tag" onclick="filterOrders(this,'text')">纯文案</div>
+      <div class="filter-tag" onclick="filterOrders(this,'task')">简单任务</div>
+    </div>
+    <!-- 排序 -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="font-size:13px;color:var(--text2)">共 <b style="color:var(--text1)">23</b> 条待接订单</div>
+      <div style="display:flex;gap:12px;font-size:13px;color:var(--text2)">
+        <span style="color:var(--primary);font-weight:600">最新</span>
+        <span>高价优先</span>
+        <span>即将截止</span>
+      </div>
+    </div>
+    <!-- 订单卡片1 -->
+    <div class="order-card" onclick="openSub('orderDetail')">
+      <div class="oc-top">
+        <div class="oc-type">🖼️ 图文笔记</div>
+        <div class="oc-urgency">🔥 紧急</div>
+      </div>
+      <div class="oc-title">美妆品牌小红书种草笔记，需要10个分身各发1篇</div>
+      <div class="oc-tags">
+        <span class="oc-tag">美妆</span>
+        <span class="oc-tag">种草</span>
+        <span class="oc-tag">小红书</span>
+      </div>
+      <div class="oc-info">
+        <div class="oc-info-item">👤 10个分身</div>
+        <div class="oc-info-item">📦 独享</div>
+        <div class="oc-info-item">📎 B端提供素材</div>
+        <div class="oc-info-item">🤖 AI补足</div>
+      </div>
+      <div class="oc-bottom">
+        <div class="oc-price">
+          <div class="oc-price-total">¥82.0</div>
+          <div class="oc-price-detail">出场费¥5/分身 + 生成费¥3.2/分身</div>
+        </div>
+        <div class="oc-earn">你赚 <b>¥3.8</b>/单</div>
+      </div>
+      <div class="oc-progress">
+        <div class="oc-progress-bar" style="width:30%"></div>
+        <div class="oc-progress-text">已接 3/10</div>
+      </div>
+      <div class="oc-deadline">⏰ 剩余 2小时18分</div>
+    </div>
+    <!-- 订单卡片2 -->
+    <div class="order-card" onclick="openSub('orderDetail')">
+      <div class="oc-top">
+        <div class="oc-type">🎬 短视频</div>
+        <div class="oc-urgency" style="background:#fff3e0;color:#e65100">⭐ 高价</div>
+      </div>
+      <div class="oc-title">日料店探店短视频5条，需要5个分身各拍1条</div>
+      <div class="oc-tags">
+        <span class="oc-tag">餐饮</span>
+        <span class="oc-tag">探店</span>
+        <span class="oc-tag">抖音</span>
+      </div>
+      <div class="oc-info">
+        <div class="oc-info-item">👤 5个分身</div>
+        <div class="oc-info-item">📦 独享</div>
+        <div class="oc-info-item">📎 B端提供素材</div>
+        <div class="oc-info-item">🤖 AI补足</div>
+      </div>
+      <div class="oc-bottom">
+        <div class="oc-price">
+          <div class="oc-price-total">¥125.0</div>
+          <div class="oc-price-detail">出场费¥10/分身 + 生成费¥15/分身</div>
+        </div>
+        <div class="oc-earn">你赚 <b>¥7.4</b>/单</div>
+      </div>
+      <div class="oc-progress">
+        <div class="oc-progress-bar" style="width:40%;background:linear-gradient(90deg,#ff9800,#f44336)"></div>
+        <div class="oc-progress-text">已接 2/5</div>
+      </div>
+      <div class="oc-deadline">⏰ 剩余 5小时42分</div>
+    </div>
+    <!-- 订单卡片3 -->
+    <div class="order-card" onclick="openSub('orderDetail')">
+      <div class="oc-top">
+        <div class="oc-type">📝 纯文案</div>
+      </div>
+      <div class="oc-title">科技公司公众号周更文章，需3个分身各写1篇</div>
+      <div class="oc-tags">
+        <span class="oc-tag">科技</span>
+        <span class="oc-tag">公众号</span>
+        <span class="oc-tag">长文</span>
+      </div>
+      <div class="oc-info">
+        <div class="oc-info-item">👤 3个分身</div>
+        <div class="oc-info-item">📦 共享</div>
+        <div class="oc-info-item">🤖 AI全包</div>
+      </div>
+      <div class="oc-bottom">
+        <div class="oc-price">
+          <div class="oc-price-total">¥19.5</div>
+          <div class="oc-price-detail">出场费¥3/分身 + 生成费¥3.5/分身</div>
+        </div>
+        <div class="oc-earn">你赚 <b>¥2.3</b>/单</div>
+      </div>
+      <div class="oc-progress">
+        <div class="oc-progress-bar" style="width:66%;background:linear-gradient(90deg,#4caf50,#8bc34a)"></div>
+        <div class="oc-progress-text">已接 2/3</div>
+      </div>
+      <div class="oc-deadline">⏰ 剩余 1天3小时</div>
+    </div>
+    <!-- 订单卡片4 -->
+    <div class="order-card" onclick="openSub('orderDetail')">
+      <div class="oc-top">
+        <div class="oc-type">✅ 简单任务</div>
+      </div>
+      <div class="oc-title">电商店铺商品评论回复，需20个分身各回复5条</div>
+      <div class="oc-tags">
+        <span class="oc-tag">电商</span>
+        <span class="oc-tag">客服</span>
+      </div>
+      <div class="oc-info">
+        <div class="oc-info-item">👤 20个分身</div>
+        <div class="oc-info-item">📦 独享</div>
+        <div class="oc-info-item">📎 B端提供素材</div>
+        <div class="oc-info-item">🚫 不补足</div>
+      </div>
+      <div class="oc-bottom">
+        <div class="oc-price">
+          <div class="oc-price-total">¥10.0</div>
+          <div class="oc-price-detail">出场费¥0.5/分身</div>
+        </div>
+        <div class="oc-earn">你赚 <b>¥0.35</b>/单</div>
+      </div>
+      <div class="oc-progress">
+        <div class="oc-progress-bar" style="width:15%"></div>
+        <div class="oc-progress-text">已接 3/20</div>
+      </div>
+      <div class="oc-deadline">⏰ 剩余 3天</div>
+    </div>
+    <!-- 订单卡片5 -->
+    <div class="order-card" onclick="openSub('orderDetail')">
+      <div class="oc-top">
+        <div class="oc-type">🖼️ 图文笔记</div>
+        <div class="oc-urgency" style="background:#e8f5e9;color:#2e7d32">🆕 新单</div>
+      </div>
+      <div class="oc-title">健身房小红书打卡图文，需8个分身各发1篇</div>
+      <div class="oc-tags">
+        <span class="oc-tag">健身</span>
+        <span class="oc-tag">打卡</span>
+        <span class="oc-tag">小红书</span>
+      </div>
+      <div class="oc-info">
+        <div class="oc-info-item">👤 8个分身</div>
+        <div class="oc-info-item">📦 独享</div>
+        <div class="oc-info-item">🤖 AI全包</div>
+      </div>
+      <div class="oc-bottom">
+        <div class="oc-price">
+          <div class="oc-price-total">¥80.0</div>
+          <div class="oc-price-detail">出场费¥5/分身 + 生成费¥5/分身</div>
+        </div>
+        <div class="oc-earn">你赚 <b>¥3.8</b>/单</div>
+      </div>
+      <div class="oc-progress">
+        <div class="oc-progress-bar" style="width:0%"></div>
+        <div class="oc-progress-text">已接 0/8</div>
+      </div>
+      <div class="oc-deadline">⏰ 剩余 2天5小时</div>
+    </div>
+  </div>
+</div>
+
+<!-- 订单详情页 -->
+<div class="sub-page" id="sub-orderDetail">
+  <div class="sub-header">
+    <div class="back" onclick="closeSub('orderDetail')">←</div>
+    <div class="title">订单详情</div>
+    <div class="back" style="opacity:0">←</div>
+  </div>
+  <div style="padding:16px 16px 120px">
+    <!-- 订单信息 -->
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-size:18px;font-weight:600">🖼️ 图文笔记</div>
+        <div style="font-size:12px;padding:4px 10px;background:#fff3e0;color:#e65100;border-radius:12px">🔥 紧急</div>
+      </div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:8px">美妆品牌小红书种草笔记，需要10个分身各发1篇</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:12px">
+        需要为某美妆品牌写小红书种草笔记，产品是新款精华液。每个分身从不同角度写1篇（成分党/油皮适用/敏感肌友好/性价比等），风格要真实自然不硬广。
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+        <span class="oc-tag">美妆</span>
+        <span class="oc-tag">种草</span>
+        <span class="oc-tag">小红书</span>
+        <span class="oc-tag">精华液</span>
+      </div>
+    </div>
+    <!-- 计费明细 -->
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:15px;font-weight:600;margin-bottom:12px">💰 计费明细</div>
+      <div style="display:flex;flex-direction:column;gap:8px;font-size:13px">
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">分发模式</span><span>独享</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">分身数量</span><span>10个</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">出场费</span><span>¥5.0/分身（最低¥2.0 + 加价¥3.0）</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">素材覆盖率</span><span>60%（配图3/5 + 话题1/1）</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">AI补足</span><span style="color:#4caf50">✅ 开启</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">生成费</span><span>¥8.0 × 40% × 10 = ¥32.0</span></div>
+        <div style="border-top:1px solid #f0f0f0;padding-top:8px;display:flex;justify-content:space-between;font-weight:600">
+          <span>订单总价</span><span style="color:var(--primary);font-size:18px">¥82.0</span>
+        </div>
+      </div>
+    </div>
+    <!-- 我的收益 -->
+    <div class="card" style="margin-bottom:12px;background:linear-gradient(135deg,#f3e5f5,#e8eaf6);border:none">
+      <div style="font-size:15px;font-weight:600;margin-bottom:8px">🎁 接单收益</div>
+      <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:4px">
+        <span style="font-size:28px;font-weight:700;color:var(--primary)">¥3.80</span>
+        <span style="font-size:13px;color:var(--text2)">/单</span>
+      </div>
+      <div style="font-size:12px;color:var(--text2)">
+        = 最低价分成 ¥2×70%=¥1.4 + 加价分成 ¥3×80%=¥2.4
+      </div>
+    </div>
+    <!-- 进度 -->
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:15px;font-weight:600;margin-bottom:12px">📊 接单进度</div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text2);margin-bottom:8px">
+        <span>已接 3/10</span>
+        <span>剩余7个名额</span>
+      </div>
+      <div style="height:8px;background:#f0f0f0;border-radius:4px;overflow:hidden">
+        <div style="width:30%;height:100%;background:linear-gradient(90deg,var(--primary),#a855f7);border-radius:4px"></div>
+      </div>
+      <div style="margin-top:8px;font-size:12px;color:var(--text2)">⏰ 截止时间：2小时18分后</div>
+    </div>
+    <!-- 要求 -->
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:15px;font-weight:600;margin-bottom:12px">📋 分身要求</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.8">
+        ✅ 等级 ≥ Lv.1<br/>
+        ✅ 含「文案写作」技能优先<br/>
+        ✅ 美妆/护肤类分身优先<br/>
+        ✅ 好评率 ≥ 4.5<br/>
+      </div>
+    </div>
+    <!-- 操作按钮 -->
+    <div style="position:fixed;bottom:56px;left:0;right:0;padding:12px 16px;background:#fff;border-top:1px solid #f0f0f0;display:flex;gap:12px;z-index:99">
+      <div style="flex:1;padding:14px;text-align:center;background:#f5f5f5;border-radius:12px;font-size:15px;font-weight:600;color:var(--text2);cursor:pointer" onclick="showToast('已收藏')">收藏</div>
+      <div style="flex:3;padding:14px;text-align:center;background:linear-gradient(135deg,var(--primary),#a855f7);border-radius:12px;font-size:15px;font-weight:600;color:#fff;cursor:pointer" onclick="showToast('接单成功！')">立即接单</div>
+    </div>
+  </div>
+</div>
 
 <!-- 底部TabBar -->
 <div class="bottom-tab">
-  <div class="bt-item active">
+  <div class="bt-item active" onclick="showToast('首页')">
     <svg viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1" fill="none" stroke="currentColor" stroke-width="2"/></svg>
     <span>首页</span>
   </div>
-  <div class="bt-item" style="position:relative">
+  <div class="bt-item" onclick="openSub('orderPlaza')" style="position:relative">
+    <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+    <span>接单</span>
+    <div class="badge" style="position:absolute;top:2px;right:50%;transform:translateX(14px)">23</div>
+  </div>
+  <div class="bt-item" onclick="showToast('发单')" style="position:relative">
+    <div style="width:44px;height:44px;background:linear-gradient(135deg,var(--primary),#a855f7);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:-22px auto 0;box-shadow:0 4px 12px rgba(99,102,241,0.4)">
+      <svg viewBox="0 0 24 24" style="width:24px;height:24px"><path d="M12 4v16m8-8H4" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg>
+    </div>
+    <span style="margin-top:2px">发单</span>
+  </div>
+  <div class="bt-item" onclick="showToast('广场')">
     <svg viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" fill="none" stroke="currentColor" stroke-width="2"/></svg>
     <span>广场</span>
-    <div class="badge" style="position:absolute;top:2px;right:50%;transform:translateX(14px)">3</div>
   </div>
-  <div class="bt-item">
-    <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" fill="none" stroke="currentColor" stroke-width="2"/></svg>
-    <span>订单</span>
-  </div>
-  <div class="bt-item">
+  <div class="bt-item" onclick="showToast('我的')">
     <svg viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" fill="none" stroke="currentColor" stroke-width="2"/></svg>
     <span>我的</span>
   </div>
