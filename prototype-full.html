@@ -225,6 +225,7 @@ let nextId = 8;
 const STATE = {
   checkedIn: false, checkinDays: 3,
   currentTab: 'home',
+  hiredAvatars: {}, // 雇佣的广场分身 {id: {avatar, tasks: [], remainingUses}}
   user: {name:'小雨',id:'xiaoyu_2024',avatar:PHOTO_POOL[0],balance:486.50,totalEarn:2846.80,avatarCount:3,orderCount:45,skillCount:5,vip:false},
   avatars: {
     1:{name:'美妆小助手',photo:PHOTO_POOL[1],cover:COVER_POOL[0],lv:5,xp:1280,xpMax:1500,earning:328,weekEarning:89,totalEarning:1280,orders:127,weekOrders:12,stars:4.9,status:'working',
@@ -405,6 +406,25 @@ function renderHome() {
       </div>
     </div>`).join('')}
   </div>
+  ${Object.keys(STATE.hiredAvatars).length>0?`<div class="section">
+    <div class="section-head"><div class="section-title">👥 雇佣的分身</div><div class="section-more" onclick="switchTab('plaza')">去广场 →</div></div>
+    ${Object.entries(STATE.hiredAvatars).map(([id,v])=>`
+    <div class="avatar-card" style="border-left:3px solid #a855f7">
+      <div class="avatar-top">
+        <img src="${v.photo}" class="avatar-photo ring-purple" />
+        <div class="avatar-info">
+          <div class="avatar-name">${v.name} <span class="lv ${lvClass(v.lv)}">Lv.${v.lv}</span> <span style="font-size:10px;background:#ede9fe;color:#7c3aed;padding:1px 6px;border-radius:6px;margin-left:2px">已雇佣</span></div>
+          <div class="avatar-meta"><span>¥${v.price}/次</span><span>⭐${v.stars}</span><span>${v.skills.length}技能</span></div>
+          <div class="avatar-skills">${v.skills.map(s=>'<span class="skill-tag mastered">'+s+'</span>').join('')}</div>
+        </div>
+      </div>
+      <div class="avatar-acts">
+        <button class="act-btn act-primary" onclick="event.stopPropagation();openSub('hired-chat',{id:${id}})">💬 开始干活</button>
+        <button class="act-btn act-secondary" onclick="event.stopPropagation();showToast('查看历史成果')">📋 成果</button>
+        <button class="act-btn act-danger" onclick="event.stopPropagation();dismissHired(${id})">解除</button>
+      </div>
+    </div>`).join('')}
+  </div>`:''}
   <div class="talk-bar">
     <div style="font-size:13px;font-weight:600;color:#6d28d9;margin-bottom:8px">🎯 说说你要做什么</div>
     <div class="talk-input-row">
@@ -649,6 +669,7 @@ function renderSubContent(el, name, data) {
     case 'my-results': renderMyResults(el); break;
     case 'result-detail': renderResultDetail(el); break;
     case 'my-plaza': renderMyPlaza(el); break;
+    case 'hired-chat': renderHiredChat(el, data); break;
     case 'skill-market': renderSkillMarket(el); break;
     case 'privileges': renderPrivileges(el); break;
     case 'settings': renderSettings(el); break;
@@ -926,7 +947,7 @@ function renderPlazaDetail(el, data) {
   </div>
   <div style="padding:0 16px;display:flex;gap:8px;margin-bottom:16px">
     <button class="act-btn ${a.followed?'act-secondary':'act-primary'}" style="flex:1" onclick="toggleFollow(${id})">${a.followed?'❤️ 已关注':'+ 关注'}</button>
-    <button class="act-btn act-primary" style="flex:2" onclick="hireAvatar(${id})">💰 雇佣 ¥${a.price}/次</button>
+    ${STATE.hiredAvatars[id]?`<button class="act-btn act-success" style="flex:2" onclick="closeSub();openSub('hired-chat',{id:${id}})">💬 开始干活</button>`:`<button class="act-btn act-primary" style="flex:2" onclick="hireAvatar(${id})">💰 雇佣 ¥${a.price}/次</button>`}
   </div>
   <div class="section">
     <div style="font-size:14px;font-weight:600;margin-bottom:8px">擅长技能</div>
@@ -947,6 +968,107 @@ function toggleFollow(id) {
 }
 function hireAvatar(id) { openModal('hire',{id}); }
 function tryChat(id) { showToast('试聊功能：和分身简单对话了解风格'); }
+function dismissHired(id) {
+  delete STATE.hiredAvatars[id];
+  showToast('已解除雇佣');
+  renderPage(STATE.currentTab);
+}
+
+function renderHiredChat(el, data) {
+  const id = data?.id;
+  const ha = STATE.hiredAvatars[id];
+  const pa = STATE.plazaAvatars[id];
+  const a = ha || pa;
+  if(!a) { el.innerHTML='<div class="sub-body"><p>分身不存在</p></div>'; return; }
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">💬 让${a.name}干活</div><div></div></div>
+  <div style="padding:14px 16px;display:flex;align-items:center;gap:12px;background:#fff;border-bottom:1px solid #f1f5f9">
+    <img src="${a.photo}" class="avatar-photo lg ring-purple" />
+    <div style="flex:1">
+      <div style="font-size:16px;font-weight:700">${a.name} <span class="lv ${lvClass(a.lv)}">Lv.${a.lv}</span></div>
+      <div style="font-size:12px;color:#94a3b8;margin-top:2px">${a.style} · ⭐${a.stars} · ${a.skills.join('·')}</div>
+      <div style="font-size:11px;color:#16a34a;margin-top:2px">✅ 已雇佣 · 可以开始干活了</div>
+    </div>
+  </div>
+  <div style="background:linear-gradient(135deg,#f3f0ff,#ede9fe);padding:14px 16px;margin:12px;border-radius:14px">
+    <div style="font-size:14px;font-weight:600;color:#5b21b6;margin-bottom:8px">🎯 告诉${a.name}你要做什么</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+      ${a.skills.map(s=>`<span class="quick-tag" onclick="fillHiredChat(${id},'帮我用${s}技能，')">🎯 ${s}</span>`).join('')}
+    </div>
+    <div class="talk-input-row">
+      <input class="talk-input" id="hiredChatInput" placeholder="描述你的需求，比如：帮我写一篇小红书种草文..." onkeydown="if(event.key==='Enter')sendHiredChat(${id})" />
+      <button class="talk-send" onclick="sendHiredChat(${id})">➤</button>
+    </div>
+  </div>
+  <div class="chat-messages" id="hiredChatMsgs">
+    <div class="chat-msg system">🎉 ${a.name}已就位！告诉我你需要什么，我马上开始干活</div>
+  </div>
+  <div style="padding:0 16px 16px">
+    <div style="font-size:13px;font-weight:600;margin-bottom:8px">⚡ 快速任务</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      ${CONTENT_TYPES.map(ct=>`<div style="background:#fff;border-radius:12px;padding:10px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.04);text-align:center" onclick="quickTask(${id},'${ct}')">
+        <div style="font-size:20px;margin-bottom:2px">${ct==='图文笔记'?'📝':ct==='短视频'?'🎬':ct==='短视频脚本'?'📋':ct==='纯文案'?'✍️':'🎯'}</div>
+        <div style="font-size:12px;font-weight:500">${ct}</div>
+        <div style="font-size:10px;color:#94a3b8">¥${PRICING[ct].minFee}起</div>
+      </div>`).join('')}
+    </div>
+  </div>
+  <div style="padding:0 16px 16px">
+    <div style="background:#f8fafc;border-radius:12px;padding:12px">
+      <div style="font-size:12px;color:#64748b;line-height:1.6">
+        <div>💡 <b>怎么让分身帮你干活？</b></div>
+        <div>1️⃣ 描述你的需求，越具体越好</div>
+        <div>2️⃣ 或者点上面的快速任务/技能标签</div>
+        <div>3️⃣ 分身会生成内容，你可以修改和确认</div>
+        <div>4️⃣ 不满意可以让它重做</div>
+      </div>
+    </div>
+  </div>`;
+}
+function fillHiredChat(id, text) {
+  document.getElementById('hiredChatInput').value = text;
+  sendHiredChat(id);
+}
+function sendHiredChat(id) {
+  const input = document.getElementById('hiredChatInput');
+  const msg = input.value.trim(); if(!msg) return;
+  input.value = '';
+  const msgs = document.getElementById('hiredChatMsgs');
+  msgs.innerHTML += `<div class="chat-msg user">${msg}</div>`;
+  const key = Object.keys(CHAT_REPLIES).find(k=>msg.includes(k))||'default';
+  const replies = CHAT_REPLIES[key];
+  const reply = replies[Math.floor(Math.random()*replies.length)];
+  setTimeout(()=>{
+    msgs.innerHTML += `<div class="chat-msg bot">${reply}</div>`;
+    msgs.scrollTop = msgs.scrollHeight;
+    // 第二轮回复 - 生成内容
+    setTimeout(()=>{
+      msgs.innerHTML += `<div class="chat-msg bot">📝 内容已生成！<br><br><span style="background:#f3f0ff;padding:8px 12px;border-radius:8px;display:inline-block;margin-top:4px;font-size:13px">这是根据你的需求生成的初稿，你可以让我修改或重新生成 ✨</span></div>`;
+      msgs.scrollTop = msgs.scrollHeight;
+      // 显示操作按钮
+      setTimeout(()=>{
+        msgs.innerHTML += `<div style="display:flex;gap:6px;margin-top:4px;align-self:flex-start">
+          <button class="act-btn act-success" style="padding:6px 12px;font-size:11px" onclick="showToast('✅ 已确认采用')">✅ 采用</button>
+          <button class="act-btn act-secondary" style="padding:6px 12px;font-size:11px" onclick="sendHiredChat(${id})">🔄 重做</button>
+          <button class="act-btn act-secondary" style="padding:6px 12px;font-size:11px" onclick="showToast('已复制到剪贴板')">📋 复制</button>
+        </div>`;
+        msgs.scrollTop = msgs.scrollHeight;
+      }, 500);
+    }, 1500);
+  }, 600);
+}
+function quickTask(id, contentType) {
+  const input = document.getElementById('hiredChatInput');
+  if(!input) return;
+  const taskMap = {
+    '图文笔记':'帮我做一组图文笔记，包含配图和文案',
+    '短视频':'帮我做一个短视频，包含脚本和分镜',
+    '短视频脚本':'帮我写一个短视频脚本，含分镜和口播词',
+    '纯文案':'帮我写一篇文案',
+    '简单任务':'帮我完成一个简单任务'
+  };
+  input.value = taskMap[contentType]||'帮我完成一个任务';
+  sendHiredChat(id);
+}
 
 function renderTeach(el, data) {
   const id = data?.id||1;
@@ -1276,8 +1398,16 @@ function closeModal(){document.getElementById('modal-overlay').classList.remove(
 function doHire(id){
   const a=STATE.plazaAvatars[id];if(!a)return;
   STATE.user.balance-=a.price;
-  showToast('🎉 雇佣成功！分身开始为你工作');
+  // 加入已雇佣列表
+  STATE.hiredAvatars[id] = {
+    id, name:a.name, photo:a.photo, cover:a.cover, lv:a.lv, stars:a.stars,
+    skills:a.skills, desc:a.desc, style:a.style, domains:a.domains,
+    price:a.price, remainingUses:1, tasks:[], followed:a.followed
+  };
   closeModal();
+  showToast('🎉 雇佣成功！');
+  // 直接打开和雇佣分身的对话
+  setTimeout(()=>openSub('hired-chat',{id}),300);
 }
 function doDelete(id){
   const input=document.getElementById('delConfirmInput');
