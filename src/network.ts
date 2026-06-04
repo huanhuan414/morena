@@ -239,14 +239,14 @@ const handleAuthError = async (originalUrl: string): Promise<boolean> => {
   if (currentPath.startsWith(loginPath)) return false
 
   isHandlingAuthError = true
-  
-  if (!isAdminRequest) {
-    const success = await silentLogin()
-    if (success) {
-      isHandlingAuthError = false
-      return true
-    }
-  }
+  // 禁用静默登录
+  // if (!isAdminRequest) {
+  //   const success = await silentLogin()
+  //   if (success) {
+  //     isHandlingAuthError = false
+  //     return true
+  //   }
+  // }
   
   if (isAdminRequest) {
     clearAdminAuthStorage()
