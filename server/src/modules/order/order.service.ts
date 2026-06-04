@@ -321,25 +321,11 @@ export class OrderService {
     const contentType = orderData.contentType || orderData.content_type || 'text'
     const quantityPerAvatar = Number(orderData.quantityPerAvatar || orderData.quantity_per_avatar || 1)
     
-    const priceCalc = await this.calculatePrice(contentType, avatarCount, quantityPerAvatar)
-    
-    // 只有图文类型支持自定义基础价格
-    let baseAmount = priceCalc.base
-    let contentAmount = priceCalc.content
-    let customBasePrice: number | null = null
-    
-    if (contentType === 'image' && orderData.customBasePrice !== undefined && orderData.customBasePrice !== null) {
-      let customBase = Number(orderData.customBasePrice)
-      if (!isNaN(customBase) && customBase > 0) {
-        // 保留2位小数，避免无限小数影响结算
-        customBase = Math.round(customBase * 100) / 100
-        customBasePrice = customBase
-        baseAmount = customBase * avatarCount
-        console.log(`[OrderService] 图文类型使用自定义基础单价: ${customBase}元/分身, 总基础价格: ${baseAmount}元`)
-      }
-    }
-    
-    const budget = baseAmount + contentAmount
+    // 直接使用前端传来的价格，不做任何计算
+    const budget = Number(orderData.total_price || orderData.budget || 0)
+    const baseAmount = Number(orderData.base_price || orderData.basePrice || 0)
+    const contentAmount = Number(orderData.content_price || orderData.contentPrice || 0)
+    const customBasePrice = orderData.customBasePrice ? Number(orderData.customBasePrice) : null
 
     const insertData: Record<string, any> = {
       id,
@@ -347,6 +333,7 @@ export class OrderService {
       title: orderData.title,
       description: orderData.description || '',
       content_type: orderData.contentType || orderData.content_type || 'text',
+      accept_regions: JSON.stringify(orderData.acceptRegions || orderData.accept_regions || []),
       platforms: JSON.stringify(orderData.platforms || []),
       requirements: JSON.stringify(orderData.requirements || {}),
       budget,
@@ -431,7 +418,7 @@ export class OrderService {
     const db = getMySQLClient()
     
     const orderRows = await db.query(
-      `SELECT id, user_id, avatar_id, title, description, content_type, 
+      `SELECT id, user_id, avatar_id, title, description, content_type, accept_regions,
        platforms, requirements, budget, base_amount, content_amount, status, result, created_at, updated_at,
        completed_at, latitude, longitude, location_text, target_audience,
        expected_quantity, deadline, order_type, priority, assigned_to,
@@ -545,6 +532,9 @@ export class OrderService {
       title: order.title,
       description: order.description,
       contentType: order.contentType,
+      acceptRegions: typeof order.acceptRegions === 'string' 
+        ? JSON.parse(order.acceptRegions) 
+        : (order.acceptRegions || []),
       platforms: typeof order.platforms === 'string' 
         ? JSON.parse(order.platforms) 
         : (order.platforms || []),
@@ -573,7 +563,7 @@ export class OrderService {
     }
     
     const rows = await db.query(
-      `SELECT id, title, description, content_type, platforms, requirements, 
+      `SELECT id, title, description, content_type, accept_regions, platforms, requirements, 
               budget, base_amount, content_amount, status, expected_quantity, avatar_count, is_paid, created_at
        FROM orders ${whereClause} ORDER BY created_at DESC LIMIT 100`,
       params
@@ -681,6 +671,11 @@ export class OrderService {
         try { requirements = JSON.parse(requirements) } catch { requirements = {} }
       }
       
+      let acceptRegions = row.acceptRegions
+      if (typeof acceptRegions === 'string') {
+        try { acceptRegions = JSON.parse(acceptRegions) } catch { acceptRegions = [] }
+      }
+      
       let createdAt = ''
       if (row.createdAt) {
         if (row.createdAt instanceof Date) {
@@ -712,6 +707,7 @@ export class OrderService {
         title: row.title,
         description: row.description,
         contentType: row.contentType,
+        acceptRegions,
         platforms,
         requirements,
         budget: row.budget,

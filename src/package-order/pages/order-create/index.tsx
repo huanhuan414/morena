@@ -21,6 +21,17 @@ import { getStatusBarHeight } from '@/utils/safe-area'
 import { subscribePolling } from '@/utils/polling'
 import './index.css'
 
+// 中国省份列表
+const PROVINCES = [
+  '北京', '天津', '上海', '重庆',
+  '河北', '山西', '辽宁', '吉林', '黑龙江',
+  '江苏', '浙江', '安徽', '福建', '江西', '山东',
+  '河南', '湖北', '湖南', '广东', '海南',
+  '四川', '贵州', '云南', '陕西', '甘肃', '青海',
+  '内蒙古', '广西', '西藏', '宁夏', '新疆',
+  '香港', '澳门', '台湾'
+]
+
 // const DEFAULT_CONTENT_TYPES = [
 //   { id: 'simple', label: '简单任务', icon: '✅', basePrice: 0.5, contentPrice: 0, desc: '关注/点赞/转发等', output: '个任务' },
 //   { id: 'text', label: '纯文案', icon: '📝', basePrice: 2, contentPrice: 0, desc: '文字内容创作', output: '篇原创文案' },
@@ -38,6 +49,7 @@ export default function OrderCreate() {
     title: '',
     description: '',
     contentType: 'text',
+    acceptRegions: [] as string[], // 接单区域（省份列表）
     platform: '' as string,
     platforms: [] as string[],
     preferredStyle: '',
@@ -59,6 +71,7 @@ export default function OrderCreate() {
   const [aiLoading, setAiLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPlatformReq, setShowPlatformReq] = useState(false)
+  const [showRegionPicker, setShowRegionPicker] = useState(false)
   const aiPollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const aiPollUnsubRef = useRef<null | (() => void)>(null)
   const repayInFlightRef = useRef(false)
@@ -353,7 +366,7 @@ export default function OrderCreate() {
       // 共享模式：固定1个分身
       if (uploadedCount === 0) {
         // 不上传素材，AI补足
-        return pricePerUnit * requiredCount * 1
+        return Number((pricePerUnit * requiredCount * 1).toFixed(2))
       } else {
         // 上传素材
         if (form.contentType === 'video') {
@@ -362,13 +375,13 @@ export default function OrderCreate() {
         }
         // 其他类型AI补足剩余
         const aiCount = Math.max(0, requiredCount - uploadedCount)
-        return pricePerUnit * aiCount * 1
+        return Number((pricePerUnit * aiCount * 1).toFixed(2))
       }
     } else {
       // 独享模式：按分身数计算
       if (uploadedCount === 0) {
         // 不上传素材，AI补足（每个分身都需要）
-        return pricePerUnit * requiredCount * form.avatarCount
+        return Number((pricePerUnit * requiredCount * form.avatarCount).toFixed(2))
       } else {
         // 上传素材，不需要AI补足，内容费用为0
         return 0
@@ -381,7 +394,7 @@ export default function OrderCreate() {
     const actualBasePrice = form.customBasePrice > basePricePerUnit
       ? form.customBasePrice
       : basePricePerUnit
-    return actualBasePrice * form.avatarCount
+    return Number((actualBasePrice * form.avatarCount).toFixed(2))
   }
 
   const totalPrice = {
@@ -656,6 +669,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         title: form.title,
         description: form.description,
         content_type: backendContentType,
+        accept_regions: form.acceptRegions,
         platforms: canonicalizePlatforms(form.platforms),
         preferred_style: form.preferredStyle,
         preferred_niche: form.preferredNiche,
@@ -664,8 +678,8 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         base_price: totalPrice.base,
         content_price: totalPrice.content,
         total_price: totalPrice.total,
-        // 图文类型传递自定义基础单价
-        customBasePrice: backendContentType === 'image' && form.customBasePrice > 0 ? form.customBasePrice : undefined,
+        // 实际使用的单价：用户自定义或默认值
+        customBasePrice: form.customBasePrice > basePricePerUnit ? form.customBasePrice : basePricePerUnit,
         requirements: { ...form.optionalRequirements, platformRemarks: form.platformRemarks, ai_auto_fill: form.aiAutoFill, asset_distribute_mode: form.assetDistributeMode, use_custom_copywriting: form.useCustomCopywriting, custom_copywriting: form.customCopywriting },
         openid,
       }
@@ -1251,6 +1265,68 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
             ))}
           </View>
         </View>
+        {/* 接单区域选择 */}
+        <View className="section">
+          <View className="section-header">
+            <View className="section-title-row">
+              <View className="title-dot" />
+              <Text className="section-title">接单区域</Text>
+            </View>
+            <View className="region-trigger" onClick={() => setShowRegionPicker(true)}>
+              <Text className="section-hint">
+                {form.acceptRegions.length === 0
+                  ? '不限区域'
+                  : `已选${form.acceptRegions.length}个省份`}
+              </Text>
+              <ChevronRight size={14} color="#94A3B8" />
+            </View>
+          </View>
+        </View>
+        {/* 接单区域弹窗 */}
+        {showRegionPicker && (
+          <View className="region-picker-overlay" onClick={() => setShowRegionPicker(false)}>
+            <View className="region-picker-content" onClick={e => e.stopPropagation()}>
+              <View className="region-picker-header">
+                <Text className="region-picker-title">选择接单区域</Text>
+                <View className="region-picker-close" onClick={() => setShowRegionPicker(false)}>
+                  <X size={18} color="#64748b" />
+                </View>
+              </View>
+              <View className="region-picker-grid">
+                {PROVINCES.map(province => (
+                  <View
+                    key={province}
+                    className={`region-tag ${form.acceptRegions.includes(province) ? 'active' : ''}`}
+                    onClick={() => {
+                      if (form.acceptRegions.includes(province)) {
+                        setForm(prev => ({ ...prev, acceptRegions: prev.acceptRegions.filter(r => r !== province) }))
+                      } else {
+                        setForm(prev => ({ ...prev, acceptRegions: [...prev.acceptRegions, province] }))
+                      }
+                    }}
+                  >
+                    <Text className="region-tag-text">{province}</Text>
+                  </View>
+                ))}
+              </View>
+              {form.acceptRegions.length > 0 && (
+                <View className="region-selected-hint">
+                  <Text className="region-selected-hint-text">
+                    仅限所选省份的分身接单，不选则不限区域
+                  </Text>
+                </View>
+              )}
+              <View className="region-picker-footer">
+                <View className="region-picker-clear" onClick={() => setForm(prev => ({ ...prev, acceptRegions: [] }))}>
+                  <Text className="region-picker-clear-text">清空</Text>
+                </View>
+                <View className="region-picker-confirm" onClick={() => setShowRegionPicker(false)}>
+                  <Text className="region-picker-confirm-text">确定</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
         {/* 素材上传（可选） */}
         {selectedType?.contentType != 'text' && (<View className="section">
           <View className="section-header">
