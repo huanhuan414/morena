@@ -281,7 +281,20 @@ const STATE = {
   earnings: {week:[42,68,35,89,56,0,0],weekLabels:['一','二','三','四','五','六','日']},
   editAvatar: null,
   selectedPhoto: null,
-  selectedCover: null
+  selectedCover: null,
+  // 教学数据
+  teachData: {
+    // 对话教学记录 { avatarId: [{role,text,time}] }
+    chatHistory: {},
+    // 教学模式: style(风格) / knowledge(知识) / example(示例)
+    chatMode: {},
+    // 喂资料记录 { avatarId: [{name,type,status,progress,addedXP,time}] }
+    materials: {},
+    // 纠正记录 { avatarId: [{original,correction,category,time,applied}] }
+    corrections: {},
+    // 技能学习进度 { avatarId: { skillName: {progress,maxStep,currentStep,status} } }
+    skillProgress: {}
+  }
 };
 
 // ============== 工具函数 ==============
@@ -1073,7 +1086,21 @@ function quickTask(id, contentType) {
 function renderTeach(el, data) {
   const id = data?.id||1;
   const a = STATE.avatars[id]; if(!a) return;
-  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">📚 教${a.name}学习</div><div></div></div>
+  const td = STATE.teachData[id] || {lessons:[], materials:[], corrections:[], skillProgress:{}};
+  STATE.teachData[id] = td;
+  // Learning stats
+  const totalLessons = td.lessons.length;
+  const totalCorrections = td.corrections.length;
+  const totalMaterials = td.materials.length;
+  const skillsLearning = a.learning.length;
+  const skillsMastered = a.skills.length;
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">📚 教${a.name}学习</div><div style="font-size:11px;color:#94a3b8">Lv.${a.lv} · ${a.xp}/${a.xpMax}XP</div></div>
+  <div style="display:flex;gap:8px;padding:10px 16px;background:#fff;border-bottom:1px solid #f1f5f9">
+    <div style="flex:1;text-align:center;font-size:11px"><div style="font-weight:700;font-size:16px;color:#6d28d9">${totalLessons}</div>教学轮</div>
+    <div style="flex:1;text-align:center;font-size:11px"><div style="font-weight:700;font-size:16px;color:#2563eb">${totalMaterials}</div>资料</div>
+    <div style="flex:1;text-align:center;font-size:11px"><div style="font-weight:700;font-size:16px;color:#d97706">${totalCorrections}</div>纠正</div>
+    <div style="flex:1;text-align:center;font-size:11px"><div style="font-weight:700;font-size:16px;color:#16a34a">${skillsMastered}</div>已掌握</div>
+  </div>
   <div class="tab-row" id="teachTabs">
     <div class="tab-item active" onclick="switchTeachTab(0,${id})">💬 对话教学</div>
     <div class="tab-item" onclick="switchTeachTab(1,${id})">📄 喂资料</div>
@@ -1081,51 +1108,345 @@ function renderTeach(el, data) {
     <div class="tab-item" onclick="switchTeachTab(3,${id})">📚 学技能</div>
   </div>
   <div id="teachContent">
+    <!-- Tab 0: 对话教学 -->
     <div class="tab-content active" id="tc0">
-      <div class="chat-messages" id="teachMsgs">
-        <div class="chat-msg system">开始教${a.name}吧，它会很认真的学！</div>
+      <div style="padding:10px 16px;background:#faf5ff;font-size:12px;color:#6d28d9;border-bottom:1px solid #f3f0ff">
+        💡 教学提示：选择教学分类，让分身更有针对性地学习。每轮教学 +20 XP
+      </div>
+      <div style="display:flex;gap:6px;padding:8px 16px;flex-wrap:wrap;background:#fff;border-bottom:1px solid #f8fafc">
+        ${['✍️ 写作风格','🎯 受众偏好','🏷️ 品牌调性','📌 行业知识','💬 对话语感','🎨 审美偏好'].map(c=>`<span class="quick-tag" style="font-size:11px" onclick="setTeachCategory(${id},'${c.replace(/'/g,"\\'")}')">${c}</span>`).join('')}
+      </div>
+      <div class="chat-messages" id="teachMsgs" style="min-height:180px">
+        <div class="chat-msg system">🎓 ${a.name}已进入学习模式，选择一个教学分类开始吧！</div>
+        ${td.lessons.slice(-8).map(l=>`<div class="chat-msg user">[${l.category}] ${l.input}</div><div class="chat-msg bot">${l.response}</div>`).join('')}
       </div>
       <div style="position:sticky;bottom:0;background:#fff;padding:12px 16px;border-top:1px solid #f1f5f9">
-        <div class="talk-input-row"><input class="talk-input" id="teachInput" placeholder="告诉它应该怎么写..." onkeydown="if(event.key==='Enter')sendTeach(${id})" /><button class="talk-send" onclick="sendTeach(${id})">➤</button></div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+          <span style="font-size:11px;color:#94a3b8">当前分类：</span>
+          <span id="teachCategory" style="font-size:11px;padding:2px 8px;border-radius:6px;background:#f3f0ff;color:#6d28d9">✍️ 写作风格</span>
+        </div>
+        <div class="talk-input-row">
+          <input class="talk-input" id="teachInput" placeholder="教它：比如'写种草文时语气要亲切自然...'" onkeydown="if(event.key==='Enter')sendTeach(${id})" />
+          <button class="talk-send" onclick="sendTeach(${id})">➤</button>
+        </div>
+        <div class="quick-tags" style="margin-top:6px">
+          ${['语气要亲切自然','多用emoji和感叹号','注意避免绝对化用语','结尾要有行动号召','标题要吸引眼球'].map(t=>`<span class="quick-tag" style="font-size:10px" onclick="fillTeachInput(${id},'${t}')">${t}</span>`).join('')}
+        </div>
       </div>
     </div>
+    <!-- Tab 1: 喂资料 -->
     <div class="tab-content" id="tc1">
-      <div style="text-align:center;padding:40px 20px">
-        <div style="font-size:40px;margin-bottom:12px">📄</div>
-        <div style="font-size:14px;font-weight:600;margin-bottom:4px">上传学习资料</div>
-        <div style="font-size:12px;color:#94a3b8;margin-bottom:16px">文档、图片、链接都可以</div>
-        <button class="act-btn act-primary" style="display:inline-block;padding:10px 24px" onclick="showToast('资料上传成功，分身正在学习')">📤 选择文件</button>
+      <div style="padding:10px 16px;background:#eff6ff;font-size:12px;color:#2563eb;border-bottom:1px solid #dbeafe">
+        💡 上传参考资料，分身会提取关键信息学习。每份资料 +30 XP
+      </div>
+      <div style="padding:16px">
+        <div style="display:flex;gap:10px;margin-bottom:16px">
+          <button class="act-btn act-secondary" style="flex:1;font-size:12px" onclick="uploadMaterial(${id},'doc')">📄 文档</button>
+          <button class="act-btn act-secondary" style="flex:1;font-size:12px" onclick="uploadMaterial(${id},'image')">🖼️ 图片</button>
+          <button class="act-btn act-secondary" style="flex:1;font-size:12px" onclick="uploadMaterial(${id},'link')">🔗 链接</button>
+          <button class="act-btn act-secondary" style="flex:1;font-size:12px" onclick="uploadMaterial(${id},'text')">📝 文本</button>
+        </div>
+        <div id="materialUploadArea" style="display:none;margin-bottom:16px">
+          <div class="form-group" id="materialForm"></div>
+        </div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">已上传资料 (${totalMaterials})</div>
+        ${td.materials.length===0?'<div style="text-align:center;padding:24px;color:#94a3b8;font-size:13px">还没有上传资料<br>上传文档、图片或链接，分身会从中学习</div>':''}
+        ${td.materials.map((m,i)=>`
+        <div class="card" style="margin-bottom:8px;padding:10px 12px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:18px">${m.type==='doc'?'📄':m.type==='image'?'🖼️':m.type==='link'?'🔗':'📝'}</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.name}</div>
+              <div style="font-size:11px;color:#94a3b8">${m.time} · ${m.status==='processing'?'⏳ 处理中':m.status==='done'?'✅ 已学习':'❌ 失败'}${m.status==='done'?' · 提取'+m.keyPoints+'个知识点':''}</div>
+            </div>
+            <button style="border:none;background:none;font-size:14px;color:#ef4444;cursor:pointer;padding:4px" onclick="deleteMaterial(${id},${i})">🗑️</button>
+          </div>
+          ${m.status==='done'&&m.summary?`<div style="margin-top:6px;font-size:11px;color:#64748b;background:#f8fafc;border-radius:6px;padding:6px 8px;line-height:1.5">💡 ${m.summary}</div>`:''}
+        </div>`).join('')}
       </div>
     </div>
+    <!-- Tab 2: 纠正 -->
     <div class="tab-content" id="tc2">
-      <div style="font-size:13px;color:#64748b;margin-bottom:12px">纠正分身的不准确回复，帮助它做得更好</div>
-      <div style="background:#fef2f2;border-radius:12px;padding:12px;margin-bottom:12px"><div style="font-size:12px;color:#ef4444;margin-bottom:4px">分身输出</div><div style="font-size:13px">这款面霜适合所有肤质使用</div></div>
-      <textarea class="form-textarea" placeholder="输入纠正内容：例如「应该说适合干性和混合性肤质，油性肤质慎用」"></textarea>
-      <button class="act-btn act-primary" style="margin-top:8px" onclick="showToast('纠正已保存，分身会记住的')">提交纠正</button>
+      <div style="padding:10px 16px;background:#fef2f2;font-size:12px;color:#ef4444;border-bottom:1px solid #fecaca">
+        💡 纠正分身的不准确回复，帮助它做得更好。每次纠正 +15 XP
+      </div>
+      <div style="padding:16px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">提交纠正</div>
+        <div class="form-group">
+          <label class="form-label">分身的输出 <span class="req">*</span></label>
+          <textarea class="form-textarea" id="correctionOriginal" placeholder="粘贴分身说的不准确的内容..." rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">正确的应该是什么 <span class="req">*</span></label>
+          <textarea class="form-textarea" id="correctionFixed" placeholder="告诉分身正确的说法..." rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">纠正类型</label>
+          <div class="form-chips">
+            ${['❌ 事实错误','🎨 风格不对','🎯 受众不对','📢 品牌调性','💡 遗漏信息'].map(c=>`<span class="form-chip" onclick="toggleChip(this)">${c}</span>`).join('')}
+          </div>
+        </div>
+        <button class="act-btn act-primary" onclick="submitCorrection(${id})">提交纠正</button>
+        <div style="font-size:13px;font-weight:600;margin:20px 0 8px">纠正历史 (${totalCorrections})</div>
+        ${td.corrections.length===0?'<div style="text-align:center;padding:24px;color:#94a3b8;font-size:13px">暂无纠正记录<br>发现分身说得不对？纠正它！</div>':''}
+        ${td.corrections.map((c,i)=>`
+        <div class="card" style="margin-bottom:8px;padding:10px 12px">
+          <div style="display:flex;gap:8px">
+            <div style="flex-shrink:0;font-size:12px;margin-top:2px">❌</div>
+            <div style="flex:1">
+              <div style="font-size:12px;color:#ef4444;margin-bottom:4px">${c.original}</div>
+              <div style="font-size:12px;color:#16a34a">✅ ${c.fixed}</div>
+              <div style="font-size:10px;color:#94a3b8;margin-top:4px">${c.time}${c.types?' · '+c.types:''}</div>
+            </div>
+            <button style="border:none;background:none;font-size:12px;color:#ef4444;cursor:pointer;padding:4px" onclick="deleteCorrection(${id},${i})">🗑️</button>
+          </div>
+        </div>`).join('')}
+      </div>
     </div>
+    <!-- Tab 3: 学技能 -->
     <div class="tab-content" id="tc3">
-      <div style="font-size:13px;font-weight:600;margin-bottom:8px">可学习的平台技能</div>
-      ${['小红书运营','抖音脚本','SEO优化','客服话术','数据分析','视频剪辑'].map(s=>`
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f8fafc">
-        <div><div style="font-size:14px;font-weight:500">${s}</div><div style="font-size:11px;color:#94a3b8">+100 XP · 需Lv.2</div></div>
-        <button class="act-btn act-secondary" style="flex:0;padding:6px 12px;font-size:11px" onclick="learnSkill(${id},'${s}')">学习</button>
-      </div>`).join('')}
+      <div style="padding:10px 16px;background:#f0fdf4;font-size:12px;color:#16a34a;border-bottom:1px solid #dcfce7">
+        💡 选择技能学习，完成后可解锁新能力。学成 +80~150 XP
+      </div>
+      <div style="padding:16px">
+        ${a.learning.length>0?`<div style="font-size:13px;font-weight:600;margin-bottom:8px">📖 正在学习</div>
+        ${a.learning.map(s=>{
+          const sp = td.skillProgress[s] || {progress:0,total:3};
+          td.skillProgress[s] = sp;
+          return `<div class="card" style="margin-bottom:8px;padding:10px 12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <div style="font-size:14px;font-weight:600">📖 ${s}</div>
+              <span style="font-size:11px;color:#6d28d9">${sp.progress}/${sp.total} 步</span>
+            </div>
+            <div class="progress-bar" style="margin-bottom:6px"><div class="progress-fill pf-purple" style="width:${sp.progress/sp.total*100}%"></div></div>
+            <div style="display:flex;gap:6px">
+              <button class="act-btn act-primary" style="flex:1;font-size:11px;padding:6px" onclick="continueLearn(${id},'${s.replace(/'/g,"\\'")}')">继续学习</button>
+              <button class="act-btn act-danger" style="flex:0;padding:6px 10px;font-size:11px" onclick="abandonSkill(${id},'${s.replace(/'/g,"\\'")}')">放弃</button>
+            </div>
+          </div>`;
+        }).join('')}
+        <div style="height:12px"></div>`:''}
+        ${a.skills.length>0?`<div style="font-size:13px;font-weight:600;margin-bottom:8px">✅ 已掌握</div>
+        ${a.skills.map(s=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f8fafc">
+          <span style="font-size:14px">✅</span><span style="font-size:13px">${s}</span>
+        </div>`).join('')}
+        <div style="height:12px"></div>`:''}
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">📚 可学习的平台技能</div>
+        ${[
+          {name:'小红书运营',desc:'种草文写作、排版、话题标签',xp:120,reqLv:2,steps:4},
+          {name:'抖音脚本',desc:'短视频脚本创作、分镜设计',xp:100,reqLv:2,steps:3},
+          {name:'SEO优化',desc:'关键词布局、标题优化技巧',xp:80,reqLv:2,steps:3},
+          {name:'客服话术',desc:'专业回复、问题处理、投诉应对',xp:80,reqLv:1,steps:2},
+          {name:'数据分析',desc:'数据解读、报告撰写、趋势分析',xp:100,reqLv:3,steps:4},
+          {name:'视频剪辑',desc:'剪辑节奏、转场、配乐技巧',xp:150,reqLv:3,steps:5},
+          {name:'品牌策划',desc:'品牌定位、调性设计、传播策略',xp:120,reqLv:4,steps:4},
+          {name:'电商运营',desc:'商品描述、促销文案、活动策划',xp:100,reqLv:2,steps:3}
+        ].map(s=>{
+          const canLearn = a.lv >= s.reqLv;
+          const alreadyLearning = a.learning.includes(s.name);
+          const alreadyMastered = a.skills.includes(s.name);
+          return `<div class="card" style="margin-bottom:8px;padding:10px 12px;${!canLearn?'opacity:.5':''}">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+              <div style="font-size:14px;font-weight:600">${s.name}</div>
+              ${alreadyMastered?'<span style="font-size:11px;color:#16a34a">✅ 已掌握</span>':alreadyLearning?'<span style="font-size:11px;color:#6d28d9">📖 学习中</span>':canLearn?`<button class="act-btn act-primary" style="flex:0;padding:4px 12px;font-size:11px" onclick="startLearnSkill(${id},'${s.name.replace(/'/g,"\\'")}',${s.xp},${s.steps})">学习</button>`:`<span style="font-size:10px;color:#ef4444">需Lv.${s.reqLv}</span>`}
+            </div>
+            <div style="font-size:12px;color:#64748b">${s.desc}</div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:2px">+${s.xp} XP · ${s.steps}步 · ${canLearn?'可学习':'需要Lv.'+s.reqLv+'解锁'}</div>
+          </div>`;
+        }).join('')}
+      </div>
     </div>
   </div>`;
 }
 function switchTeachTab(idx,id){document.querySelectorAll('#teachTabs .tab-item').forEach((t,i)=>{t.classList.toggle('active',i===idx)});document.querySelectorAll('#teachContent .tab-content').forEach((t,i)=>{t.classList.toggle('active',i===idx)})}
+// --- 对话教学 ---
+let teachCategory = '✍️ 写作风格';
+function setTeachCategory(id, cat) {
+  teachCategory = cat;
+  const el = document.getElementById('teachCategory');
+  if(el) el.textContent = cat;
+}
+function fillTeachInput(id, text) {
+  document.getElementById('teachInput').value = text;
+  sendTeach(id);
+}
+const TEACH_RESPONSES = {
+  '写作风格': ['收到！以后写文案我会注意风格调整 ✅','明白了，风格对内容很重要，我会记住的 ✅','好的，这个风格偏好我已经记录下来了 ✅'],
+  '受众偏好': ['了解！目标受众的偏好很关键，我会参考的 ✅','收到！以后创作会考虑这个受众群体的偏好 ✅'],
+  '品牌调性': ['明白了！品牌调性统一很重要，我会遵循的 ✅','收到！我会按照品牌调性来调整输出 ✅'],
+  '行业知识': ['学到了！行业专业知识是核心竞争力 ✅','收到！这些行业洞察很宝贵，我会记住的 ✅'],
+  '对话语感': ['收到！对话的语气和节奏很重要 ✅','明白了！我会注意调整对话的语感 ✅'],
+  '审美偏好': ['了解了！审美方向对视觉内容很关键 ✅','收到！我会按照这个审美方向来创作 ✅'],
+  'default': ['收到！我已经记住了 ✅','好的，这个知识点我保存了 ✅','明白！以后会按这个标准来 ✅']
+};
 function sendTeach(id){
   const input=document.getElementById('teachInput');const msg=input.value.trim();if(!msg)return;input.value='';
-  const msgs=document.getElementById('teachMsgs');
-  msgs.innerHTML+=`<div class="chat-msg user">${msg}</div>`;
-  setTimeout(()=>{msgs.innerHTML+=`<div class="chat-msg bot">好的，我记住了！以后会按这个方式来 ✅</div>`;msgs.scrollTop=msgs.scrollHeight;},500);
-}
-function learnSkill(id,skill){
   const a=STATE.avatars[id];if(!a)return;
-  if(a.learning.includes(skill)){showToast('正在学习中');return}
-  a.learning.push(skill);a.xp+=50;
-  showToast(`开始学习「${skill}」+50 XP`);
+  const td=STATE.teachData[id];
+  const msgs=document.getElementById('teachMsgs');
+  msgs.innerHTML+=`<div class="chat-msg user">[${teachCategory}] ${msg}</div>`;
+  const catKey = teachCategory.replace(/[✍️🎯🏷️📌💬🎨]/g,'').trim();
+  const responses = TEACH_RESPONSES[catKey] || TEACH_RESPONSES['default'];
+  const reply = responses[Math.floor(Math.random()*responses.length)];
+  setTimeout(()=>{
+    msgs.innerHTML+=`<div class="chat-msg bot">${reply}</div>`;
+    msgs.scrollTop=msgs.scrollHeight;
+    // Save lesson + award XP
+    td.lessons.push({category:teachCategory,input:msg,response:reply,time:new Date().toLocaleTimeString()});
+    a.xp = Math.min(a.xpMax, a.xp + 20);
+    checkLevelUp(id);
+    showToast('+20 XP');
+  },500);
+}
+// --- 喂资料 ---
+function uploadMaterial(id, type) {
+  const area = document.getElementById('materialUploadArea');
+  const form = document.getElementById('materialForm');
+  area.style.display = 'block';
+  const typeNames = {doc:'文档',image:'图片',link:'链接',text:'文本'};
+  if(type==='link'){
+    form.innerHTML = `<label class="form-label">粘贴链接</label><input class="form-input" id="materialLink" placeholder="https://..." /><button class="act-btn act-primary" style="margin-top:8px" onclick="submitMaterial(${id},'link')">提交链接</button>`;
+  } else if(type==='text'){
+    form.innerHTML = `<label class="form-label">粘贴文本内容</label><textarea class="form-textarea" id="materialText" placeholder="粘贴要学习的文本内容..." rows="4"></textarea><button class="act-btn act-primary" style="margin-top:8px" onclick="submitMaterial(${id},'text')">提交文本</button>`;
+  } else if(type==='doc'){
+    form.innerHTML = `<div style="text-align:center;padding:20px;border:2px dashed #d4d4d8;border-radius:12px;cursor:pointer" onclick="simulateUpload(${id},'doc')"><div style="font-size:28px;margin-bottom:8px">📄</div><div style="font-size:13px;color:#64748b">点击选择文件</div><div style="font-size:11px;color:#94a3b8">支持 PDF、Word、TXT</div></div>`;
+  } else if(type==='image'){
+    form.innerHTML = `<div style="text-align:center;padding:20px;border:2px dashed #d4d4d8;border-radius:12px;cursor:pointer" onclick="simulateUpload(${id},'image')"><div style="font-size:28px;margin-bottom:8px">🖼️</div><div style="font-size:13px;color:#64748b">点击选择图片</div><div style="font-size:11px;color:#94a3b8">支持 JPG、PNG、WebP</div></div>`;
+  }
+}
+function submitMaterial(id, type) {
+  const a=STATE.avatars[id];if(!a)return;
+  const td=STATE.teachData[id];
+  let name='';
+  if(type==='link'){const inp=document.getElementById('materialLink');name=inp?inp.value.trim():'';if(!name){showToast('请输入链接');return}}
+  if(type==='text'){const inp=document.getElementById('materialText');name=inp?inp.value.trim().substring(0,30)+'...':'';if(!name){showToast('请输入文本');return}}
+  // Add as processing
+  const material = {type,name:name||('新'+{doc:'文档',image:'图片',link:'链接',text:'文本'}[type]),time:new Date().toLocaleTimeString(),status:'processing',keyPoints:0,summary:''};
+  td.materials.push(material);
+  document.getElementById('materialUploadArea').style.display='none';
   renderTeach(document.getElementById('sub-dynamic'),{id});
+  // Simulate processing
+  setTimeout(()=>{
+    const last = td.materials[td.materials.length-1];
+    if(last.status==='processing'){
+      last.status='done';
+      last.keyPoints = Math.floor(Math.random()*5)+2;
+      last.summary = '已提取关于'+a.domains[0]+'领域的'+last.keyPoints+'个关键知识点';
+      a.xp = Math.min(a.xpMax, a.xp+30);
+      checkLevelUp(id);
+      showToast('资料学习完成 +30 XP');
+      renderTeach(document.getElementById('sub-dynamic'),{id});
+      switchTeachTab(1,id);
+    }
+  }, 2000);
+}
+function simulateUpload(id, type) {
+  const a=STATE.avatars[id];if(!a)return;
+  const td=STATE.teachData[id];
+  const names = {doc:['产品说明书.pdf','品牌手册.docx','行业报告.pdf'],image:['参考风格图.jpg','竞品截图.png','产品素材.jpg']};
+  const pool = names[type]||['文件'];
+  const name = pool[Math.floor(Math.random()*pool.length)];
+  const material = {type,name,time:new Date().toLocaleTimeString(),status:'processing',keyPoints:0,summary:''};
+  td.materials.push(material);
+  document.getElementById('materialUploadArea').style.display='none';
+  renderTeach(document.getElementById('sub-dynamic'),{id});
+  showToast('文件上传中...');
+  setTimeout(()=>{
+    const last = td.materials[td.materials.length-1];
+    if(last.status==='processing'){
+      last.status='done';
+      last.keyPoints = Math.floor(Math.random()*6)+3;
+      last.summary = '已提取关于'+a.domains[0]+'领域的'+last.keyPoints+'个关键知识点';
+      a.xp = Math.min(a.xpMax, a.xp+30);
+      checkLevelUp(id);
+      showToast('资料学习完成 +30 XP');
+      renderTeach(document.getElementById('sub-dynamic'),{id});
+      switchTeachTab(1,id);
+    }
+  }, 2500);
+}
+function deleteMaterial(id,idx) {
+  const td=STATE.teachData[id];
+  td.materials.splice(idx,1);
+  showToast('资料已删除');
+  renderTeach(document.getElementById('sub-dynamic'),{id});
+  switchTeachTab(1,id);
+}
+// --- 纠正 ---
+function submitCorrection(id) {
+  const a=STATE.avatars[id];if(!a)return;
+  const td=STATE.teachData[id];
+  const orig = document.getElementById('correctionOriginal')?.value?.trim();
+  const fixed = document.getElementById('correctionFixed')?.value?.trim();
+  if(!orig||!fixed){showToast('请填写分身输出和正确内容');return}
+  const typeChips = document.querySelectorAll('#tc2 .form-chip.selected');
+  const types = Array.from(typeChips).map(c=>c.textContent).join(' ');
+  td.corrections.push({original:orig,fixed,time:new Date().toLocaleTimeString(),types});
+  a.xp = Math.min(a.xpMax, a.xp+15);
+  checkLevelUp(id);
+  showToast('纠正已保存 +15 XP，分身会记住的');
+  renderTeach(document.getElementById('sub-dynamic'),{id});
+  switchTeachTab(2,id);
+}
+function deleteCorrection(id,idx) {
+  const td=STATE.teachData[id];
+  td.corrections.splice(idx,1);
+  showToast('纠正记录已删除');
+  renderTeach(document.getElementById('sub-dynamic'),{id});
+  switchTeachTab(2,id);
+}
+// --- 学技能 ---
+function startLearnSkill(id, skillName, xp, steps) {
+  const a=STATE.avatars[id];if(!a)return;
+  if(a.learning.includes(skillName)){showToast('已经在学习中了');return}
+  if(a.skills.includes(skillName)){showToast('已经掌握了');return}
+  a.learning.push(skillName);
+  const td=STATE.teachData[id];
+  td.skillProgress[skillName] = {progress:0,total:steps,xpReward:xp};
+  showToast(`开始学习「${skillName}」`);
+  renderTeach(document.getElementById('sub-dynamic'),{id});
+  switchTeachTab(3,id);
+}
+function continueLearn(id, skillName) {
+  const a=STATE.avatars[id];if(!a)return;
+  const td=STATE.teachData[id];
+  const sp = td.skillProgress[skillName];
+  if(!sp) return;
+  sp.progress++;
+  if(sp.progress >= sp.total) {
+    // Skill mastered!
+    a.learning = a.learning.filter(s=>s!==skillName);
+    a.skills.push(skillName);
+    a.xp = Math.min(a.xpMax, a.xp + (sp.xpReward||80));
+    checkLevelUp(id);
+    delete td.skillProgress[skillName];
+    showToast(`🎉 「${skillName}」学习完成！已掌握 +${sp.xpReward||80} XP`);
+  } else {
+    const stepNames = ['了解基础概念','学习核心方法','实操练习','案例分析','综合考核'];
+    showToast(`进度 ${sp.progress}/${sp.total}：${stepNames[sp.progress-1]||'学习中...'}`);
+  }
+  renderTeach(document.getElementById('sub-dynamic'),{id});
+  switchTeachTab(3,id);
+}
+function abandonSkill(id, skillName) {
+  const a=STATE.avatars[id];if(!a)return;
+  a.learning = a.learning.filter(s=>s!==skillName);
+  const td=STATE.teachData[id];
+  delete td.skillProgress[skillName];
+  showToast(`已放弃学习「${skillName}」`);
+  renderTeach(document.getElementById('sub-dynamic'),{id});
+  switchTeachTab(3,id);
+}
+// --- 升级检测 ---
+function checkLevelUp(id) {
+  const a=STATE.avatars[id];if(!a)return;
+  if(a.xp >= a.xpMax && a.lv < 7) {
+    a.lv++;
+    a.xp = 0;
+    const newMax = [0,300,500,800,1200,1800,2500,3500];
+    a.xpMax = newMax[a.lv]||3500;
+    showToast(`🎉 ${a.name}升级到 Lv.${a.lv} ${LEVEL_RIGHTS[a.lv].name}！`);
+  }
 }
 
 function renderCreate(el){renderEditAvatar(el,{id:null})}
@@ -1437,9 +1758,12 @@ function doTogglePlaza(id,action){
 function doCheckin(){
   if(STATE.checkedIn)return;
   STATE.checkedIn=true;STATE.checkinDays++;
-  // Give XP to first avatar
-  const firstKey=Object.keys(STATE.avatars)[0];
-  if(firstKey){const a=STATE.avatars[firstKey];a.xp=Math.min(a.xpMax,a.xp+50)}
+  // Give XP to all avatars
+  Object.keys(STATE.avatars).forEach(id=>{
+    const a=STATE.avatars[id];
+    a.xp=Math.min(a.xpMax,a.xp+50);
+    checkLevelUp(id);
+  });
   openModal('checkin');
 }
 function fillHomeTalk(text){document.getElementById('homeTalkInput').value=text;sendHomeTalk()}
