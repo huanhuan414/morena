@@ -7,7 +7,7 @@ import {
   Send, Check, ChevronRight, Loader, ArrowLeft,
   Users, Coins, Sparkles, Zap, ShieldCheck, Clock,
   Target, TrendingUp, Lightbulb, ClipboardList,
-  Plus, X, Play, FileText
+  Plus, X, Play, FileText, Pencil
 } from 'lucide-react-taro'
 import { Network } from '@/network'
 import {
@@ -77,15 +77,77 @@ export default function OrderCreate() {
 
   useEffect(() => { return () => { stopAiPolling() } }, [])
 
+  // AI自动补足状态管理
+  useEffect(() => {
+    const isVideo = form.contentType === 'video'
+    const isImage = form.contentType === 'image'
+    const isShared = form.assetDistributeMode === 'shared'
+    const totalCount = uploadedAssets.length
+
+    // 判断是否应该显示 AI 按钮
+    let shouldShowAiButton = false
+    // 判断 AI 按钮是否可切换（图文笔记和短视频无素材时固定为true，不可切换）
+    let isAiButtonLocked = false
+
+    if (form.contentType === 'text') {
+      // 纯文案不显示 AI 按钮
+      shouldShowAiButton = false
+    } else if (isVideo) {
+      // 短视频：只有不上传素材时才显示AI按钮，且固定为true不可切换
+      shouldShowAiButton = totalCount === 0
+      isAiButtonLocked = totalCount === 0
+    } else if (isImage) {
+      // 图文笔记：无素材时固定为true不可切换，有素材时按共享/独享模式判断
+      if (totalCount === 0) {
+        shouldShowAiButton = true
+        isAiButtonLocked = true
+      } else {
+        isAiButtonLocked = false
+        if (isShared) {
+          // 共享模式：上传数量 < 3 时显示 AI 按钮
+          shouldShowAiButton = totalCount < 3
+        } else {
+          // 独享模式：只有不上传素材时才显示 AI 按钮
+          shouldShowAiButton = false
+        }
+      }
+    } else {
+      // 简单任务
+      isAiButtonLocked = false
+      if (isShared) {
+        // 共享模式：上传数量 < 3 时显示 AI 按钮
+        shouldShowAiButton = totalCount < 3
+      } else {
+        // 独享模式：只有不上传素材时才显示 AI 按钮
+        shouldShowAiButton = totalCount === 0
+      }
+    }
+
+    // 状态更新逻辑
+    if (isAiButtonLocked) {
+      // 图文笔记/短视频无素材时，固定为true
+      if (!form.aiAutoFill) {
+        setForm(prev => ({ ...prev, aiAutoFill: true }))
+      }
+    } else if (!shouldShowAiButton && form.aiAutoFill) {
+      // 不显示 AI 按钮时，自动将 aiAutoFill 设置为 false
+      setForm(prev => ({ ...prev, aiAutoFill: false }))
+    }
+  }, [form.contentType, form.assetDistributeMode, uploadedAssets.length, form.aiAutoFill])
+
   useEffect(() => {
     const fetchPriceConfig = async () => {
       try {
         const res = await Network.request({ url: '/api/order/price-config' })
         if (res.data?.code === 200 && Array.isArray(res.data.data) && res.data.data.length > 0) {
           setContentTypes(res.data.data)
+        } else {
+          Taro.showToast({ title: '获取价格配置失败', icon: 'none', duration: 3000 })
+          console.error('获取价格配置失败：返回数据格式不正确')
         }
       } catch (e) {
-        console.warn('获取价格配置失败，使用默认配置:', e)
+        Taro.showToast({ title: '获取价格配置失败', icon: 'none', duration: 3000 })
+        console.error('获取价格配置失败:', e)
       }
     }
     fetchPriceConfig()
@@ -105,8 +167,8 @@ export default function OrderCreate() {
     }
     try {
       // 根据内容类型决定素材类型
-      // 图文笔记(image)只能上传图片，短视频(video)只能上传视频
-      const mediaType = form.contentType === 'image'
+      // 简单任务(text)和图文笔记(image)只能上传图片，短视频(video)只能上传视频
+      const mediaType = form.contentType === 'image' || form.contentType === 'text'
         ? ['image']
         : form.contentType === 'video'
           ? ['video']
@@ -125,8 +187,8 @@ export default function OrderCreate() {
           const isVideo = media.fileType === 'video' || media.tempFilePath.endsWith('.mp4') || media.tempFilePath.endsWith('.mov')
 
           // 验证素材类型是否符合内容类型要求
-          if (form.contentType === 'image' && isVideo) {
-            Taro.showToast({ title: '图文笔记只能上传图片', icon: 'none' })
+          if ((form.contentType === 'image' || form.contentType === 'text') && isVideo) {
+            Taro.showToast({ title: '图文笔记/简单任务只能上传图片', icon: 'none' })
             continue
           }
           if (form.contentType === 'video' && !isVideo) {
@@ -252,16 +314,79 @@ export default function OrderCreate() {
 
   // ========== END 素材上传 ==========
 
-  const selectedType = contentTypes.find(t => t.id === form.contentType)
-  const basePricePerUnit = selectedType?.basePrice || 2
-  const contentPricePerUnit = selectedType?.contentPrice || 0
-  // 图文类型支持自定义基础单价
-  const actualBasePricePerUnit = form.contentType === 'image' && form.customBasePrice > 0
-    ? form.customBasePrice
-    : basePricePerUnit
+  const selectedType = contentTypes.find(t => t.contentType === form.contentType)
+  const basePricePerUnit = selectedType?.basePrice ?? 0
+  const contentPricePerUnit = selectedType?.contentPrice ?? 0
+
+  // 获取不同内容类型的价格配置（用于计算内容费用）
+  const imageTypeConfig = contentTypes.find(t => t.contentType === 'image')
+  const videoTypeConfig = contentTypes.find(t => t.contentType === 'video')
+  const textTypeConfig = contentTypes.find(t => t.contentType === 'text')
+  const imageContentPrice = imageTypeConfig?.contentPrice ?? 0
+  const videoContentPrice = videoTypeConfig?.contentPrice ?? 0
+
+  // 计算内容费用：根据素材数量、分配模式、AI补足情况
+  // 只有当 aiAutoFill 为 true 时才计算内容费用，否则为 0
+  const calculateContentPrice = () => {
+    // 纯文案内容费用为0
+    if (form.contentType === 'text') {
+      return 0
+    }
+
+    // AI自动补足未开启，内容费用为0
+    if (!form.aiAutoFill) {
+      return 0
+    }
+
+    const uploadedCount = uploadedAssets.length
+    const isShared = form.assetDistributeMode === 'shared'
+
+    // 简单任务和图文笔记需要3张素材，短视频需要1张素材
+    const requiredCount = form.contentType === 'video' ? 1 : 3
+
+    // 根据内容类型选择对应的价格
+    // 简单任务和图文笔记使用 image 的 contentPrice
+    // 短视频使用 video 的 contentPrice
+    const pricePerUnit = form.contentType === 'video' ? videoContentPrice : imageContentPrice
+
+    if (isShared) {
+      // 共享模式：固定1个分身
+      if (uploadedCount === 0) {
+        // 不上传素材，AI补足
+        return pricePerUnit * requiredCount * 1
+      } else {
+        // 上传素材
+        if (form.contentType === 'video') {
+          // 短视频上传素材后内容费用为0
+          return 0
+        }
+        // 其他类型AI补足剩余
+        const aiCount = Math.max(0, requiredCount - uploadedCount)
+        return pricePerUnit * aiCount * 1
+      }
+    } else {
+      // 独享模式：按分身数计算
+      if (uploadedCount === 0) {
+        // 不上传素材，AI补足（每个分身都需要）
+        return pricePerUnit * requiredCount * form.avatarCount
+      } else {
+        // 上传素材，不需要AI补足，内容费用为0
+        return 0
+      }
+    }
+  }
+
+  // 计算基础费用：基础费用 × 分身数
+  const calculateBasePrice = () => {
+    const actualBasePrice = form.customBasePrice > basePricePerUnit
+      ? form.customBasePrice
+      : basePricePerUnit
+    return actualBasePrice * form.avatarCount
+  }
+
   const totalPrice = {
-    base: actualBasePricePerUnit * form.avatarCount,
-    content: contentPricePerUnit * form.quantityPerAvatar * form.avatarCount,
+    base: calculateBasePrice(),
+    content: calculateContentPrice(),
     get total() { return this.base + this.content }
   }
   const totalOutput = form.quantityPerAvatar * form.avatarCount
@@ -808,113 +933,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           <Text className="field-hint">好的标题能帮AI更精准地匹配擅长该领域的分身</Text>
         </View>
 
-        {/* 发布平台 */}
-        <View className="section">
-          <View className="section-header">
-            <View className="section-title-row">
-              <View className="title-dot" />
-              <Text className="section-title">发布平台</Text>
-            </View>
-            <View className="required-tag">
-              <Text className="required-text">必填</Text>
-            </View>
-          </View>
-          <Text className="field-hint mb-4">选择几个平台，分身就会按各平台调性分别创作</Text>
-          <View className="platform-grid">
-            {PLATFORM_OPTIONS.map((config) => (
-              <View
-                key={config.id}
-                className={`platform-card ${form.platforms.includes(config.id) ? 'active' : ''}`}
-                onClick={() => handlePlatformToggle(config.id)}
-              >
-                <View className="platform-icon-wrap" style={{ background: config.bgColor }}>
-                  <Text className="platform-emoji">{config.icon}</Text>
-                </View>
-                <Text className="platform-name">{config.name}</Text>
-                {form.platform === config.id && (
-                  <View className="platform-check">
-                    <Check size={10} color="#fff" />
-                  </View>
-                )}
-              </View>
-            ))}
-          </View>
 
-          {form.platform && (() => {
-            const selectedPlatform = PLATFORM_META_MAP[form.platform as keyof typeof PLATFORM_META_MAP]
-            const reqs = selectedPlatform?.requirements || []
-            return (
-              <View className="platform-requirements">
-                <View className="req-header" onClick={() => setShowPlatformReq(!showPlatformReq)}>
-                  <Text className="req-title">{selectedPlatform?.icon} {selectedPlatform?.name} 平台要求（可选）</Text>
-                  <ChevronRight size={14} color="#94A3B8" className={`req-arrow ${showPlatformReq ? 'open' : ''}`} />
-                </View>
-                {showPlatformReq && (
-                  <View className="req-content">
-                    {reqs.map(req => (
-                      <View key={req.id} className="req-item">
-                        <Text className="req-label">{req.label}</Text>
-                        <Input
-                          className="req-input"
-                          placeholder={req.placeholder}
-                          value={form.optionalRequirements[`${form.platform}_${req.id}`] || ''}
-                          onInput={e => handleRequirementChange(form.platform, req.id, e.detail.value)}
-                        />
-                      </View>
-                    ))}
-                    {/* 平台备注输入 */}
-                    <View className="req-item">
-                      <Text className="req-label">备注</Text>
-                      <Input
-                        className="req-input"
-                        placeholder="特殊要求、商品链接、团购链接等"
-                        value={form.platformRemarks[form.platform] || ''}
-                        onInput={e => handlePlatformRemarkChange(form.platform, e.detail.value)}
-                      />
-                    </View>
-                  </View>
-                )}
-              </View>
-            )
-          })()}
-        </View>
-
-        {/* 内容类型 */}
-        <View className="section">
-          <View className="section-header">
-            <View className="section-title-row">
-              <View className="title-dot" />
-              <Text className="section-title">内容类型
-
-              </Text>
-            </View>
-            <View className="required-tag">
-              <Text className="required-text">必填</Text>
-            </View>
-          </View>
-          <View className="type-grid">
-            {contentTypes.map(type => (
-              <View
-                key={type.id}
-                className={`type-card ${form.contentType === type.id ? 'active' : ''}`}
-                onClick={() => handleTypeChange(type.id)}
-              >
-                <Text className="type-icon">{type.icon}</Text>
-                <Text className="type-label">{type.label}</Text>
-                <Text className="type-desc">{type.desc}</Text>
-                <View className="type-price-row">
-                  <Coins size={10} color="#6366F1" />
-                  <Text className="type-price">¥{(type.basePrice + type.contentPrice).toFixed(2)}/个</Text>
-                </View>
-                {form.contentType === type.id && (
-                  <View className="type-check">
-                    <Check size={10} color="#fff" />
-                  </View>
-                )}
-              </View>
-            ))}
-          </View>
-        </View>
 
         {/* 图文类型自定义基础价格 */}
         {form.contentType === 'image' && (
@@ -1122,8 +1141,118 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           </View>
         )}
 
+        {/* 发布平台 */}
+        <View className="section">
+          <View className="section-header">
+            <View className="section-title-row">
+              <View className="title-dot" />
+              <Text className="section-title">发布平台</Text>
+            </View>
+            <View className="required-tag">
+              <Text className="required-text">必填</Text>
+            </View>
+          </View>
+          <Text className="field-hint mb-4">选择几个平台，分身就会按各平台调性分别创作</Text>
+          <View className="platform-grid">
+            {PLATFORM_OPTIONS.map((config) => (
+              <View
+                key={config.id}
+                className={`platform-card ${form.platforms.includes(config.id) ? 'active' : ''}`}
+                onClick={() => handlePlatformToggle(config.id)}
+              >
+                <View className="platform-icon-wrap" style={{ background: config.bgColor }}>
+                  <Text className="platform-emoji">{config.icon}</Text>
+                </View>
+                <Text className="platform-name">{config.name}</Text>
+                {form.platform === config.id && (
+                  <View className="platform-check">
+                    <Check size={10} color="#fff" />
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
+
+          {form.platform && (() => {
+            const selectedPlatform = PLATFORM_META_MAP[form.platform as keyof typeof PLATFORM_META_MAP]
+            const reqs = selectedPlatform?.requirements || []
+            return (
+              <View className="platform-requirements">
+                <View className="req-header" onClick={() => setShowPlatformReq(!showPlatformReq)}>
+                  <Text className="req-title">{selectedPlatform?.icon} {selectedPlatform?.name} 平台要求（可选）</Text>
+                  <ChevronRight size={14} color="#94A3B8" className={`req-arrow ${showPlatformReq ? 'open' : ''}`} />
+                </View>
+                {showPlatformReq && (
+                  <View className="req-content">
+                    {reqs.map(req => (
+                      <View key={req.id} className="req-item">
+                        <Text className="req-label">{req.label}</Text>
+                        <Input
+                          className="req-input"
+                          placeholder={req.placeholder}
+                          value={form.optionalRequirements[`${form.platform}_${req.id}`] || ''}
+                          onInput={e => handleRequirementChange(form.platform, req.id, e.detail.value)}
+                        />
+                      </View>
+                    ))}
+                    {/* 平台备注输入 */}
+                    <View className="req-item">
+                      <Text className="req-label">备注</Text>
+                      <Input
+                        className="req-input"
+                        placeholder="特殊要求、商品链接、团购链接等"
+                        value={form.platformRemarks[form.platform] || ''}
+                        onInput={e => handlePlatformRemarkChange(form.platform, e.detail.value)}
+                      />
+                    </View>
+                  </View>
+                )}
+              </View>
+            )
+          })()}
+        </View>
+
+        {/* 内容类型 */}
+        <View className="section">
+          <View className="section-header">
+            <View className="section-title-row">
+              <View className="title-dot" />
+              <Text className="section-title">内容类型
+
+              </Text>
+            </View>
+            <View className="required-tag">
+              <Text className="required-text">必填</Text>
+            </View>
+          </View>
+          <View className="type-grid">
+            {contentTypes.map(type => (
+              <View
+                key={type.contentType}
+                className={`type-card ${form.contentType === type.contentType ? 'active' : ''}`}
+                onClick={() => handleTypeChange(type.contentType)}
+              >
+                <Text className="type-icon">{type.icon}</Text>
+                <Text className="type-label">{type.label}</Text>
+                <Text className="type-desc">{type.desc}</Text>
+                {/* <View className="type-price-row">
+                  <Coins size={10} color="#6366F1" />
+                  <View className="type-price-split">
+                    <Text className="type-price-base">基础¥{type.basePrice.toFixed(2)}</Text>
+                    <Text className="type-price-content">内容¥{type.contentPrice.toFixed(2)}</Text>
+                  </View>
+                </View> */}
+                {form.contentType === type.contentType && (
+                  <View className="type-check">
+                    <Check size={10} color="#fff" />
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
+        </View>
         {/* 素材上传（可选） */}
-        {selectedType?.id != 'text' && (<View className="section">
+        {selectedType?.contentType != 'text' && (<View className="section">
           <View className="section-header">
             <View className="section-title-row">
               <View className="title-dot accent" />
@@ -1247,21 +1376,71 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                   </Text>
                 </View>
               )}
-              {/* AI自动补足开关：仅在有上传素材且非简单任务时显示 */}
-              {totalCount > 0 && form.contentType !== 'simple' && (
-                <View className="asset-ai-toggle-row" style={{ marginTop: '8px' }}>
-                  <View className="asset-ai-toggle-left">
-                    <Sparkles size={14} color="#8B5CF6" />
-                    <Text className="asset-ai-toggle-label">AI自动补足素材</Text>
+              {/* AI自动补足开关：根据内容类型和素材数量决定是否显示 */}
+              {/* 简单任务：共享模式上传数量 < 3 时显示；独享模式只有不上传素材时显示，可切换 */}
+              {/* 图文笔记：无素材时显示且固定为true不可切换；共享模式上传数量 < 3 时显示可切换 */}
+              {/* 短视频：无素材时显示且固定为true不可切换 */}
+              {(() => {
+                const isVideo = form.contentType === 'video'
+                const isImage = form.contentType === 'image'
+                const isShared = form.assetDistributeMode === 'shared'
+
+                // 判断是否应该显示 AI 按钮
+                let shouldShowAiButton = false
+                // 判断 AI 按钮是否可切换
+                let isAiButtonLocked = false
+
+                if (isVideo) {
+                  // 短视频：只有不上传素材时才显示AI按钮，且固定为true不可切换
+                  shouldShowAiButton = totalCount === 0
+                  isAiButtonLocked = totalCount === 0
+                } else if (isImage) {
+                  // 图文笔记
+                  if (totalCount === 0) {
+                    // 无素材时固定为true不可切换
+                    shouldShowAiButton = true
+                    isAiButtonLocked = true
+                  } else {
+                    isAiButtonLocked = false
+                    if (isShared) {
+                      // 共享模式：上传数量 < 3 时显示 AI 按钮
+                      shouldShowAiButton = totalCount < 3
+                    } else {
+                      // 独享模式：不显示 AI 按钮
+                      shouldShowAiButton = false
+                    }
+                  }
+                } else {
+                  // 简单任务
+                  isAiButtonLocked = false
+                  if (isShared) {
+                    // 共享模式：上传数量 < 3 时显示 AI 按钮
+                    shouldShowAiButton = totalCount < 3
+                  } else {
+                    // 独享模式：只有不上传素材时才显示 AI 按钮
+                    shouldShowAiButton = totalCount === 0
+                  }
+                }
+
+                return shouldShowAiButton && (
+                  <View className="asset-ai-toggle-row" style={{ marginTop: '8px' }}>
+                    <View className="asset-ai-toggle-left">
+                      <Sparkles size={14} color="#8B5CF6" />
+                      <Text className="asset-ai-toggle-label">AI自动补足素材</Text>
+                    </View>
+                    <View
+                      className={`asset-ai-switch ${form.aiAutoFill ? 'active' : ''} ${isAiButtonLocked ? 'locked' : ''}`}
+                      onClick={() => {
+                        if (!isAiButtonLocked) {
+                          setForm(prev => ({ ...prev, aiAutoFill: !prev.aiAutoFill }))
+                        }
+                      }}
+                    >
+                      <View className={`asset-ai-switch-dot ${form.aiAutoFill ? 'active' : ''}`} />
+                    </View>
                   </View>
-                  <View
-                    className={`asset-ai-switch ${form.aiAutoFill ? 'active' : ''}`}
-                    onClick={() => setForm(prev => ({ ...prev, aiAutoFill: !prev.aiAutoFill }))}
-                  >
-                    <View className={`asset-ai-switch-dot ${form.aiAutoFill ? 'active' : ''}`} />
-                  </View>
-                </View>
-              )}
+                )
+              })()}
               {totalCount > 0 && form.aiAutoFill && requiredImageCount > 0 && imageCount < requiredImageCount && (
                 <View className="asset-ai-hint">
                   <Sparkles size={14} color="#8B5CF6" />
@@ -1337,15 +1516,85 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
             <Coins size={16} color="#F59E0B" />
             <Text className="price-header-text">费用预估</Text>
           </View>
-          <View className="price-row">
-            <Text className="price-label">基础费用</Text>
-            <Text className="price-value">¥{totalPrice.base.toFixed(2)}</Text>
+          <View className="price-row-container">
+            <View className="price-row">
+              <Text className="price-label">基础费用</Text>
+              <Text className="price-value">¥{totalPrice.base.toFixed(2)}</Text>
+            </View>
+            <View className="price-label-detail-row">
+              <Text className="price-label-detail">¥{(form.customBasePrice > basePricePerUnit ? form.customBasePrice : basePricePerUnit).toFixed(2)}</Text>
+              <View
+                className="price-edit-btn"
+                onClick={() => {
+                  const currentValue = form.customBasePrice > basePricePerUnit ? form.customBasePrice : basePricePerUnit
+                  setCustomBasePriceInput(currentValue.toString())
+                  const modalOptions: Record<string, any> = {
+                    title: '自定义基础费用',
+                    editable: true,
+                    placeholderText: `最低¥${basePricePerUnit.toFixed(2)}`,
+                    defaultValue: currentValue.toString(),
+                    success: (res: any) => {
+                      if (res.confirm && res.content) {
+                        const contentValue = res.content.trim()
+                        const newValue = parseFloat(contentValue)
+                        const numValue = Number(newValue)
+                        if (!Number.isNaN(numValue) && numValue >= basePricePerUnit && numValue > 0) {
+                          setForm(prev => ({ ...prev, customBasePrice: numValue }))
+                        } else {
+                          Taro.showToast({ title: `请输入大于等于¥${basePricePerUnit.toFixed(2)}的有效金额`, icon: 'none' })
+                        }
+                      }
+                    }
+                  }
+                  Taro.showModal(modalOptions)
+                }}
+              >
+                <Pencil size={14} color="#6366F1" />
+              </View>
+              <Text className="price-label-detail"> × {form.avatarCount}个分身</Text>
+            </View>
           </View>
-          <View className="price-row">
-            <Text className="price-label">
-              内容费用 ({selectedType?.label} × {form.quantityPerAvatar} × {form.avatarCount})
+          <View className="price-row-container">
+            <View className="price-row">
+              <Text className="price-label">内容费用</Text>
+              <Text className="price-value">¥{totalPrice.content.toFixed(2)}</Text>
+            </View>
+            <Text className="price-label-detail-right">
+              {(() => {
+                // 纯文案内容费用为0
+                if (form.contentType === 'text') {
+                  return '无内容费用'
+                }
+
+                // AI自动补足未开启，内容费用为0
+                if (!form.aiAutoFill) {
+                  return '无内容费用'
+                }
+
+                const uploadedCount = uploadedAssets.length
+                const isShared = form.assetDistributeMode === 'shared'
+                const requiredCount = form.contentType === 'video' ? 1 : 3
+                // 简单任务和图文笔记使用 image 的 contentPrice，短视频使用 video 的 contentPrice
+                const pricePerUnit = form.contentType === 'video' ? videoContentPrice : imageContentPrice
+                const avatarText = isShared ? '1个分身' : `${form.avatarCount}个分身`
+
+                if (uploadedCount === 0) {
+                  // 不上传素材，AI补足
+                  return `¥${pricePerUnit.toFixed(2)} × ${requiredCount} × ${avatarText}`
+                } else {
+                  // 上传素材
+                  if (form.contentType === 'video') {
+                    // 短视频上传素材后内容费用为0
+                    return '无内容费用'
+                  }
+                  const aiCount = Math.max(0, requiredCount - uploadedCount)
+                  if (aiCount === 0) {
+                    return '无内容费用'
+                  }
+                  return `¥${pricePerUnit.toFixed(2)} × ${aiCount} × ${avatarText}`
+                }
+              })()}
             </Text>
-            <Text className="price-value">¥{totalPrice.content.toFixed(2)}</Text>
           </View>
           <View className="price-divider" />
           <View className="price-row total">
