@@ -884,7 +884,9 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           <View className="section-header">
             <View className="section-title-row">
               <View className="title-dot" />
-              <Text className="section-title">内容类型</Text>
+              <Text className="section-title">内容类型
+
+              </Text>
             </View>
             <View className="required-tag">
               <Text className="required-text">必填</Text>
@@ -902,7 +904,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                 <Text className="type-desc">{type.desc}</Text>
                 <View className="type-price-row">
                   <Coins size={10} color="#6366F1" />
-                  <Text className="type-price">¥{type.basePrice + type.contentPrice}/个</Text>
+                  <Text className="type-price">¥{(type.basePrice + type.contentPrice).toFixed(2)}/个</Text>
                 </View>
                 {form.contentType === type.id && (
                   <View className="type-check">
@@ -1337,18 +1339,18 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           </View>
           <View className="price-row">
             <Text className="price-label">基础费用</Text>
-            <Text className="price-value">¥{totalPrice.base}</Text>
+            <Text className="price-value">¥{totalPrice.base.toFixed(2)}</Text>
           </View>
           <View className="price-row">
             <Text className="price-label">
               内容费用 ({selectedType?.label} × {form.quantityPerAvatar} × {form.avatarCount})
             </Text>
-            <Text className="price-value">¥{totalPrice.content}</Text>
+            <Text className="price-value">¥{totalPrice.content.toFixed(2)}</Text>
           </View>
           <View className="price-divider" />
           <View className="price-row total">
             <Text className="price-label">预计总价</Text>
-            <Text className="price-value">¥{totalPrice.total}</Text>
+            <Text className="price-value">¥{totalPrice.total.toFixed(2)}</Text>
           </View>
           <View className="price-value-row">
             <View className="price-value-item">
@@ -1374,7 +1376,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
       <View className="submit-bar">
         <View className="submit-info">
           <Text className="submit-total-label">合计</Text>
-          <Text className="submit-total-value">¥{totalPrice.total}</Text>
+          <Text className="submit-total-value">¥{totalPrice.total.toFixed(2)}</Text>
           <Text className="submit-output-hint">共{totalOutput}篇</Text>
         </View>
         <View
