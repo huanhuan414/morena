@@ -3,6 +3,7 @@ import Taro from '@tarojs/taro'
 import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
 import {
   Send, Check, ChevronRight, Loader, ArrowLeft,
   Users, Coins, Sparkles, Zap, ShieldCheck, Clock,
@@ -22,10 +23,49 @@ import { subscribePolling } from '@/utils/polling'
 import './index.css'
 
 const DEFAULT_CONTENT_TYPES = [
-  { id: 'simple', label: '简单任务', icon: '✅', basePrice: 0.5, contentPrice: 0, desc: '关注/点赞/转发等', output: '个任务' },
-  { id: 'text', label: '纯文案', icon: '📝', basePrice: 2, contentPrice: 0, desc: '文字内容创作', output: '篇原创文案' },
-  { id: 'image', label: '图文笔记', icon: '🖼️', basePrice: 3, contentPrice: 1, desc: '图文搭配呈现', output: '篇图文笔记' },
-  { id: 'video', label: '短视频', icon: '🎬', basePrice: 5, contentPrice: 20, desc: 'AI生成真实视频', output: '条短视频' },
+  {
+    id: 'simple', label: '简单任务', icon: '✅',
+    minAvatarFee: 0.3, genUnitPrice: 0.7,
+    basePrice: 0.5, contentPrice: 0, // 旧字段兼容
+    desc: '关注/点赞/转发等', output: '个任务',
+    assetDimensions: [
+      { key: 'target', label: '目标说明', required: 1, weight: 0.7 },
+      { key: 'reference', label: '参考示例', required: 1, weight: 0.3 },
+    ],
+  },
+  {
+    id: 'text', label: '纯文案', icon: '📝',
+    minAvatarFee: 1.5, genUnitPrice: 3.5,
+    basePrice: 2, contentPrice: 0,
+    desc: '文字内容创作', output: '篇原创文案',
+    assetDimensions: [
+      { key: 'copy', label: '参考文案', required: 1, weight: 0.6 },
+      { key: 'topic', label: '话题/关键词', required: 1, weight: 0.4 },
+    ],
+  },
+  {
+    id: 'image', label: '图文笔记', icon: '🖼️',
+    minAvatarFee: 2.0, genUnitPrice: 8.0,
+    basePrice: 3, contentPrice: 1,
+    desc: '图文搭配呈现', output: '篇图文笔记',
+    assetDimensions: [
+      { key: 'image', label: '配图', required: 5, weight: 0.5 },
+      { key: 'copy', label: '文案/大纲', required: 1, weight: 0.3 },
+      { key: 'topic', label: '话题/关键词', required: 1, weight: 0.2 },
+    ],
+  },
+  {
+    id: 'video', label: '短视频', icon: '🎬',
+    minAvatarFee: 5.0, genUnitPrice: 25.0,
+    basePrice: 5, contentPrice: 20,
+    desc: 'AI生成真实视频', output: '条短视频',
+    assetDimensions: [
+      { key: 'video', label: '视频片段', required: 1, weight: 0.4 },
+      { key: 'image', label: '配图', required: 3, weight: 0.3 },
+      { key: 'script', label: '脚本', required: 1, weight: 0.2 },
+      { key: 'topic', label: '话题/关键词', required: 1, weight: 0.1 },
+    ],
+  },
 ]
 
 const PLATFORM_OPTIONS = PLATFORM_UI_ORDER
@@ -46,11 +86,14 @@ export default function OrderCreate() {
     platformRemarks: {} as Record<string, string>,
     avatarCount: 1,
     quantityPerAvatar: 1,
-    aiAutoFill: false,
+    aiAutoFill: true,
     assetDistributeMode: 'shared' as 'shared' | 'exclusive',
     useCustomCopywriting: false,
     customCopywriting: '',
+    customAvatarFee: 0, // 0表示使用最低出场费
   })
+  // 素材覆盖率的各维度已提供数量
+  const [assetProvided, setAssetProvided] = useState<Record<string, number>>({})
   const [uploadedAssets, setUploadedAssets] = useState<{ id: string; url: string; type: 'image' | 'video'; filename: string; size: number; mimeType: string }[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [zipProgress, setZipProgress] = useState<{ status: string; message: string; totalFiles: number; processedFiles: number } | null>(null)
@@ -92,8 +135,31 @@ export default function OrderCreate() {
   // ========== 素材上传相关 ==========
   const totalCount = uploadedAssets.length
   const imageCount = uploadedAssets.filter(a => a.type === 'image').length
+  const videoCount = uploadedAssets.filter(a => a.type === 'video').length
   // 独占模式：每个分身1张素材即可；共享/无分配：不需要固定数量
   const requiredImageCount = form.contentType !== 'text' && form.contentType !== 'simple' && form.assetDistributeMode === 'exclusive' ? form.avatarCount : 0
+
+  // 上传素材时自动更新覆盖率维度
+  useEffect(() => {
+    const ct = DEFAULT_CONTENT_TYPES.find(t => t.id === form.contentType)
+    if (!ct?.assetDimensions) return
+    const newProvided: Record<string, number> = {}
+    for (const dim of ct.assetDimensions) {
+      if (dim.key === 'image') newProvided[dim.key] = imageCount
+      else if (dim.key === 'video') newProvided[dim.key] = videoCount
+      else newProvided[dim.key] = 0 // 文案/话题/脚本等需要手动输入
+    }
+    setAssetProvided(prev => {
+      // 合并：保留手动输入的维度（如话题、文案）
+      const merged = { ...newProvided }
+      for (const dim of ct.assetDimensions) {
+        if (dim.key !== 'image' && dim.key !== 'video' && prev[dim.key] !== undefined) {
+          merged[dim.key] = prev[dim.key]
+        }
+      }
+      return merged
+    })
+  }, [form.contentType, imageCount, videoCount])
 
   /** 统一上传入口：选择图片/视频 */
   const handleUploadAsset = async () => {
@@ -251,12 +317,41 @@ export default function OrderCreate() {
   // ========== END 素材上传 ==========
 
   const selectedType = contentTypes.find(t => t.id === form.contentType)
-  const basePricePerUnit = selectedType?.basePrice || 2
-  const contentPricePerUnit = selectedType?.contentPrice || 0
+
+  // ===== 新计费公式 =====
+  // 计算素材覆盖率：按素材维度加权
+  const calcCoverage = () => {
+    const dims = selectedType?.assetDimensions
+    if (!dims || dims.length === 0) return 0
+    let totalWeight = 0
+    let coveredWeight = 0
+    for (const dim of dims) {
+      const provided = assetProvided[dim.key] || 0
+      const ratio = Math.min(provided / dim.required, 1)
+      coveredWeight += ratio * dim.weight
+      totalWeight += dim.weight
+    }
+    return totalWeight > 0 ? coveredWeight / totalWeight : 0
+  }
+
+  const coverage = calcCoverage()
+  // 出场费 = MAX(最低出场费, B端自定义) × 分身数量
+  const minFee = selectedType?.minAvatarFee || 0
+  const avatarFeePerUnit = form.customAvatarFee > 0 ? Math.max(minFee, form.customAvatarFee) : minFee
+  const avatarFee = avatarFeePerUnit * form.avatarCount
+
+  // 生成费 = AI补足开启 ? 生成单价 × (1-覆盖率) × 生成套数 : 0
+  const genUnitPrice = selectedType?.genUnitPrice || 0
+  const genSets = form.assetDistributeMode === 'shared' ? 1 : form.avatarCount
+  const genFee = form.aiAutoFill ? genUnitPrice * (1 - coverage) * genSets : 0
+
   const totalPrice = {
-    base: basePricePerUnit * form.avatarCount,
-    content: contentPricePerUnit * form.quantityPerAvatar * form.avatarCount,
-    get total() { return this.base + this.content }
+    avatarFee,
+    genFee,
+    get total() { return this.avatarFee + this.genFee },
+    // 旧字段兼容（提交给后端）
+    base: avatarFee,
+    content: genFee,
   }
   const totalOutput = form.quantityPerAvatar * form.avatarCount
 
@@ -528,9 +623,14 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         preferred_niche: form.preferredNiche,
         avatar_count: form.avatarCount,
         quantity_per_avatar: form.quantityPerAvatar,
-        base_price: totalPrice.base,
-        content_price: totalPrice.content,
+        base_price: totalPrice.avatarFee,
+        content_price: totalPrice.genFee,
         total_price: totalPrice.total,
+        pricing_mode: form.aiAutoFill ? (coverage >= 1 ? 'avatar_only' : 'semi') : 'full',
+        custom_avatar_fee: form.customAvatarFee || minFee,
+        min_avatar_fee: minFee,
+        asset_coverage: coverage,
+        gen_fee: genFee,
         requirements: { ...form.optionalRequirements, platformRemarks: form.platformRemarks, ai_auto_fill: form.aiAutoFill, asset_distribute_mode: form.assetDistributeMode, use_custom_copywriting: form.useCustomCopywriting, custom_copywriting: form.customCopywriting },
         openid,
       }
@@ -892,7 +992,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                 <Text className="type-desc">{type.desc}</Text>
                 <View className="type-price-row">
                   <Coins size={10} color="#6366F1" />
-                  <Text className="type-price">¥{type.basePrice + type.contentPrice}/个</Text>
+                  <Text className="type-price">最低¥{type.minAvatarFee + type.genUnitPrice}/个</Text>
                 </View>
                 {form.contentType === type.id && (
                   <View className="type-check">
@@ -1257,27 +1357,124 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           </View>
         </View>
 
-        {/* 价格预览 - 重新设计 */}
+        {/* 价格预览 - 新计费公式 */}
         <View className="price-card">
           <View className="price-header">
             <Coins size={16} color="#F59E0B" />
             <Text className="price-header-text">费用预估</Text>
           </View>
-          <View className="price-row">
-            <Text className="price-label">基础费用</Text>
-            <Text className="price-value">¥{totalPrice.base}</Text>
-          </View>
-          <View className="price-row">
-            <Text className="price-label">
-              内容费用 ({selectedType?.label} × {form.quantityPerAvatar} × {form.avatarCount})
+
+          {/* 自定义出场费 */}
+          <View className="price-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+            <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>
+              <Text className="price-label">分身出场费</Text>
+              <Text className="price-value">¥{avatarFee.toFixed(2)}</Text>
+            </View>
+            <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px', marginTop: '6px', width: '100%' }}>
+              <Text style={{ fontSize: '11px', color: '#9CA3AF' }}>自定义：</Text>
+              <View style={{ flex: 1, backgroundColor: '#F9FAFB', borderRadius: '8px', paddingHorizontal: '10px', paddingVertical: '4px' }}>
+                <Input
+                  type="digit"
+                  style={{ width: '100%', fontSize: '13px', color: '#1F2937' }}
+                  placeholder={`最低¥${minFee}/分身`}
+                  value={form.customAvatarFee > 0 ? String(form.customAvatarFee) : ''}
+                  onInput={(e) => {
+                    const val = parseFloat(e.detail.value) || 0
+                    if (val > 0 && val < minFee) {
+                      Taro.showToast({ title: `出场费不能低于¥${minFee}`, icon: 'none' })
+                      return
+                    }
+                    setForm(prev => ({ ...prev, customAvatarFee: val }))
+                  }}
+                />
+              </View>
+              <Text style={{ fontSize: '11px', color: '#9CA3AF' }}>¥/分身</Text>
+            </View>
+            <Text style={{ fontSize: '10px', color: '#9CA3AF', marginTop: '4px' }}>
+              ¥{avatarFeePerUnit.toFixed(2)} × {form.avatarCount}个分身 = ¥{avatarFee.toFixed(2)}
+              {form.customAvatarFee > minFee && ` (含加价¥${(form.customAvatarFee - minFee).toFixed(2)})`}
             </Text>
-            <Text className="price-value">¥{totalPrice.content}</Text>
           </View>
+
+          {/* 素材覆盖率 */}
+          <View style={{ marginTop: '12px', padding: '10px', backgroundColor: '#F0F9FF', borderRadius: '10px' }}>
+            <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ fontSize: '12px', color: '#0369A1', fontWeight: '600' }}>素材覆盖率</Text>
+              <Text style={{ fontSize: '14px', color: '#0369A1', fontWeight: '700' }}>{(coverage * 100).toFixed(0)}%</Text>
+            </View>
+            <View style={{ marginTop: '8px' }}>
+              {(selectedType?.assetDimensions || []).map(dim => {
+                const provided = assetProvided[dim.key] || 0
+                const ratio = Math.min(provided / dim.required, 1)
+                return (
+                  <View key={dim.key} style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: '4px' }}>
+                    <Text style={{ fontSize: '11px', color: '#64748B', width: '72px' }}>{dim.label}</Text>
+                    <View style={{ flex: 1, height: '6px', backgroundColor: '#E2E8F0', borderRadius: '3px', marginHorizontal: '6px' }}>
+                      <View style={{ width: `${ratio * 100}%`, height: '100%', backgroundColor: '#0EA5E9', borderRadius: '3px' }} />
+                    </View>
+                    <Text style={{ fontSize: '11px', color: '#64748B', width: '40px', textAlign: 'right' }}>{provided}/{dim.required}</Text>
+                  </View>
+                )
+              })}
+            </View>
+          </View>
+
+          {/* AI补足开关 */}
+          <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingVertical: '6px' }}>
+            <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '6px' }}>
+              <Sparkles size={14} color={form.aiAutoFill ? '#6366F1' : '#9CA3AF'} />
+              <Text className="price-label">AI补足素材</Text>
+            </View>
+            <Switch
+              checked={form.aiAutoFill}
+              onChange={(val) => setForm(prev => ({ ...prev, aiAutoFill: val.detail.value }))}
+              color="#6366F1"
+            />
+          </View>
+          {form.aiAutoFill && coverage < 1 && (
+            <Text style={{ fontSize: '10px', color: '#8B5CF6', marginTop: '2px' }}>
+              AI将补生成{(1 - coverage * 100).toFixed(0)}%的素材
+              {form.assetDistributeMode === 'exclusive' ? `，共${genSets}套` : '，共1套'}
+            </Text>
+          )}
+          {!form.aiAutoFill && (
+            <Text style={{ fontSize: '10px', color: '#F59E0B', marginTop: '2px' }}>
+              ⚠️ 关闭后分身仅使用已有素材，内容可能不完整
+            </Text>
+          )}
+
+          {/* 生成费明细 */}
+          <View className="price-row" style={{ marginTop: '8px' }}>
+            <Text className="price-label">
+              生成费
+              {form.aiAutoFill
+                ? ` (¥${genUnitPrice} × ${(1 - coverage).toFixed(2)}缺口 × ${genSets}套)`
+                : ' (AI补足已关闭)'
+              }
+            </Text>
+            <Text className="price-value">¥{genFee.toFixed(2)}</Text>
+          </View>
+
           <View className="price-divider" />
+
+          {/* 总价 */}
           <View className="price-row total">
             <Text className="price-label">预计总价</Text>
-            <Text className="price-value">¥{totalPrice.total}</Text>
+            <Text className="price-value">¥{totalPrice.total.toFixed(2)}</Text>
           </View>
+
+          {/* 省钱提示 */}
+          {!form.aiAutoFill && genFee > 0 && (
+            <Text style={{ fontSize: '10px', color: '#10B981', marginTop: '4px' }}>
+              关闭AI补足已省¥{genFee.toFixed(2)}
+            </Text>
+          )}
+          {form.assetDistributeMode === 'exclusive' && form.aiAutoFill && coverage < 1 && (
+            <Text style={{ fontSize: '10px', color: '#10B981', marginTop: '4px' }}>
+              💡 切换共享模式可省¥{(genFee - genUnitPrice * (1 - coverage)).toFixed(2)}
+            </Text>
+          )}
+
           <View className="price-value-row">
             <View className="price-value-item">
               <Clock size={12} color="rgba(255,255,255,0.5)" />
@@ -1302,7 +1499,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
       <View className="submit-bar">
         <View className="submit-info">
           <Text className="submit-total-label">合计</Text>
-          <Text className="submit-total-value">¥{totalPrice.total}</Text>
+          <Text className="submit-total-value">¥{totalPrice.total.toFixed(2)}</Text>
           <Text className="submit-output-hint">共{totalOutput}篇</Text>
         </View>
         <View
