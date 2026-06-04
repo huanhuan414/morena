@@ -741,37 +741,39 @@ const Index: React.FC = () => {
                   <Text className="banner-btn-text create">免费创建，立即赚钱</Text>
                 </View>
               </>
-            ) : !allHostingEnabled ? (
-              <>
-                <View className="banner-tag">
-                  <Zap size={20} color="#FBBF24" />
-                  <Text className="banner-tag-text">收益翻倍</Text>
-                </View>
-                <Text className="banner-title">开启托管 让分身24h赚钱</Text>
-                <Text className="banner-desc">自动抢单+自动生成+自动发布，不错过任何收益</Text>
-                <View className="banner-btn">
-                  <Text className="banner-btn-text">一键开启</Text>
-                  <ChevronRight size={24} color="#6366F1" />
-                </View>
-              </>
-            ) : (
-              <>
-                <View className="banner-referral-header">
-                  <Gift size={32} color="#FBBF24" />
-                  <Text className="banner-title-referral">{BANNER_TITLE}</Text>
-                </View>
-                <Text className="banner-desc-referral">{BANNER_DESC(invitedCount)}</Text>
-                <View className="banner-referral-bottom">
-                  <View className="referral-code-tag">
-                    <Text className="referral-code-text">邀请码：{referralCode || '加载中...'}</Text>
+            )
+              // : !allHostingEnabled ? (
+              // <>
+              //   <View className="banner-tag">
+              //     <Zap size={20} color="#FBBF24" />
+              //     <Text className="banner-tag-text">收益翻倍</Text>
+              //   </View>
+              //   <Text className="banner-title">开启托管 让分身24h赚钱</Text>
+              //   <Text className="banner-desc">自动抢单+自动生成+自动发布，不错过任何收益</Text>
+              //   <View className="banner-btn">
+              //     <Text className="banner-btn-text">一键开启</Text>
+              //     <ChevronRight size={24} color="#6366F1" />
+              //   </View>
+              // </>
+              // )
+              : (
+                <>
+                  <View className="banner-referral-header">
+                    <Gift size={32} color="#FBBF24" />
+                    <Text className="banner-title-referral">{BANNER_TITLE}</Text>
                   </View>
-                  <View className="banner-btn-referral">
-                    <Text className="banner-btn-text-referral">立即邀请</Text>
-                    <ChevronRight size={20} color="#FFFFFF" />
+                  <Text className="banner-desc-referral">{BANNER_DESC(invitedCount)}</Text>
+                  <View className="banner-referral-bottom">
+                    <View className="referral-code-tag">
+                      <Text className="referral-code-text">邀请码：{referralCode || '加载中...'}</Text>
+                    </View>
+                    <View className="banner-btn-referral">
+                      <Text className="banner-btn-text-referral">立即邀请</Text>
+                      <ChevronRight size={20} color="#FFFFFF" />
+                    </View>
                   </View>
-                </View>
-              </>
-            )}
+                </>
+              )}
           </View>
           <View className="banner-decoration">
             <View className="deco-circle circle-1" />
