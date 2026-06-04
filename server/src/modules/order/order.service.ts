@@ -19,6 +19,7 @@ import { RedisService } from '../redis/redis.service'
 // 价格配置相关接口
 export interface ContentTypePrice {
   id: string
+  contentType: string
   label: string
   icon: string
   basePrice: number
@@ -36,9 +37,6 @@ export interface PriceCalculation {
 @Injectable()
 export class OrderService {
   private readonly logger = new Logger(OrderService.name)
-  private priceCache: Map<string, ContentTypePrice> = new Map()
-  private priceCacheTime: number = 0
-  private readonly PRICE_CACHE_TTL = 5 * 60 * 1000
 
   constructor(
     @Inject(EarningService) private readonly earningService: EarningService,
@@ -65,11 +63,6 @@ export class OrderService {
   // ========== 价格配置相关方法 ==========
 
   async getAllPriceConfigs(): Promise<ContentTypePrice[]> {
-    if (Date.now() - this.priceCacheTime < this.PRICE_CACHE_TTL && this.priceCache.size > 0) {
-      this.logger.log(`[价格配置] 返回缓存数据，共 ${this.priceCache.size} 条`)
-      return Array.from(this.priceCache.values())
-    }
-
     try {
       const db = getMySQLClient()
       this.logger.log('[价格配置] 开始查询数据库...')
@@ -81,31 +74,20 @@ export class OrderService {
          ORDER BY sort_order ASC`
       )
       
-      this.logger.log(`[价格配置] 查询结果类型: ${typeof result}, 是否数组: ${Array.isArray(result)}`)
-      this.logger.log(`[价格配置] 查询结果: ${JSON.stringify(result)}`)
-      
       // 处理 db.query 返回的两种格式：数组或 {data: [...]}
       const rows = Array.isArray(result) ? result : (result?.data || [])
-      this.logger.log(`[价格配置] 解析后记录数: ${rows.length}`)
-      if (rows.length > 0) {
-        this.logger.log(`[价格配置] 第一条记录: ${JSON.stringify(rows[0])}`)
-      }
+      this.logger.log(`[价格配置] 查询到 ${rows.length} 条记录`)
 
-      this.priceCache.clear()
+      const configs: ContentTypePrice[] = []
       for (const row of rows as any[]) {
-        // 注意：db.query 已经将字段名转换为 camelCase
-        // row.content_type → row.contentType
-        // row.base_price → row.basePrice
-        // row.content_price → row.contentPrice
         const contentType = row.contentType || row.content_type
         const basePrice = row.basePrice || row.base_price
         const contentPrice = row.contentPrice || row.content_price
         const outputUnit = row.outputUnit || row.output_unit
         
-        this.logger.log(`[价格配置] 处理记录: contentType=${contentType}, basePrice=${basePrice}, contentPrice=${contentPrice}`)
-        
-        this.priceCache.set(contentType, {
-          id: contentType,
+        configs.push({
+          id: row.id,
+          contentType: contentType,
           label: row.name,
           icon: row.icon || '',
           basePrice: Number(basePrice) || 0,
@@ -114,8 +96,8 @@ export class OrderService {
           output: outputUnit || '',
         })
       }
-      this.priceCacheTime = Date.now()
-      return Array.from(this.priceCache.values())
+      
+      return configs
     } catch (error: any) {
       this.logger.error(`[价格配置] 加载失败: ${error.message}`)
       throw error
@@ -123,16 +105,8 @@ export class OrderService {
   }
 
   async getPriceConfig(contentType: string): Promise<ContentTypePrice | undefined> {
-    if (Date.now() - this.priceCacheTime >= this.PRICE_CACHE_TTL || this.priceCache.size === 0) {
-      await this.getAllPriceConfigs()
-    }
-    
-    let key = contentType
-    if (contentType === 'simple_task') {
-      key = 'simple'
-    }
-    
-    return this.priceCache.get(key)
+    const configs = await this.getAllPriceConfigs()
+    return configs.find(c => c.contentType === contentType)
   }
 
   async calculatePrice(
@@ -140,13 +114,13 @@ export class OrderService {
     avatarCount: number,
     quantityPerAvatar: number
   ): Promise<PriceCalculation> {
-    const config = await this.getPriceConfig(contentType)
+    // 映射数据库存储的 contentType 到价格配置的 contentType
+    const mappedContentType = contentType === 'simple_task' ? 'simple' : contentType
+    
+    const config = await this.getPriceConfig(mappedContentType)
     if (!config) {
-      this.logger.warn(`[价格计算] 未知内容类型: ${contentType}, 使用默认价格`)
-      const defaultConfig = this.getDefaultPriceConfig(contentType)
-      const base = defaultConfig.basePrice * avatarCount
-      const content = defaultConfig.contentPrice * quantityPerAvatar * avatarCount
-      return { base, content, total: base + content }
+      this.logger.warn(`[价格计算] 未知内容类型: ${contentType}, 数据库中未找到配置`)
+      throw new Error(`未知的内容类型: ${contentType}`)
     }
 
     const base = config.basePrice * avatarCount
@@ -180,24 +154,6 @@ export class OrderService {
     }
 
     return { valid, actual }
-  }
-
-  private getDefaultPriceConfigs(): ContentTypePrice[] {
-    return [
-      { id: 'simple', label: '简单任务', icon: '✅', basePrice: 0.5, contentPrice: 0, desc: '关注/点赞/转发等', output: '个任务' },
-      { id: 'text', label: '纯文案', icon: '📝', basePrice: 2, contentPrice: 0, desc: '文字内容创作', output: '篇原创文案' },
-      { id: 'image', label: '图文笔记', icon: '🖼️', basePrice: 3, contentPrice: 1, desc: '图文搭配呈现', output: '篇图文笔记' },
-      { id: 'video', label: '短视频', icon: '🎬', basePrice: 5, contentPrice: 20, desc: 'AI生成真实视频', output: '条短视频' },
-    ]
-  }
-
-  private getDefaultPriceConfig(contentType: string): ContentTypePrice {
-    const defaults = this.getDefaultPriceConfigs()
-    let key = contentType
-    if (contentType === 'simple_task') {
-      key = 'simple'
-    }
-    return defaults.find(c => c.id === key) || defaults[1]
   }
 
   // ========== 订单相关方法 ==========
