@@ -24,20 +24,22 @@ export class OrderTimeoutService {
   constructor(private readonly redisService: RedisService) {}
 
   /**
-   * 定时任务：每分钟检查超时订单
+   * 定时任务：已禁用超期机制
+   * 原有逻辑：每分钟检查派单超时(10min)和反馈超时(30min)
+   * 当前状态：全部关闭，不再自动过期任何派单或反馈
    */
-  @Cron(CronExpression.EVERY_MINUTE)
-  async handleTimeoutOrders() {
-    const result = { dispatch: 0, feedback: 0, total: 0 }
-    try {
-      result.dispatch = await this.checkDispatchTimeouts();
-      result.feedback = await this.checkFeedbackTimeouts();
-      result.total = result.dispatch + result.feedback
-    } catch (error) {
-      this.logger.error(`定时任务执行失败: ${error.message}`);
-    }
-    return result
-  }
+  // @Cron(CronExpression.EVERY_MINUTE)
+  // async handleTimeoutOrders() {
+  //   const result = { dispatch: 0, feedback: 0, total: 0 }
+  //   try {
+  //     result.dispatch = await this.checkDispatchTimeouts();
+  //     result.feedback = await this.checkFeedbackTimeouts();
+  //     result.total = result.dispatch + result.feedback
+  //   } catch (error) {
+  //     this.logger.error(`定时任务执行失败: ${error.message}`);
+  //   }
+  //   return result
+  // }
 
   /**
    * 1. 检查派单超时（分身不接单）
