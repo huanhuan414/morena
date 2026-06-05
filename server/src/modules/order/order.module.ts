@@ -2,8 +2,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { OrderController } from './order.controller';
 import { OrderService } from './order.service';
-import { PriceConfigService } from './price-config.service';
-import { PriceConfigController } from './price-config.controller';
 import { OrderDispatchModule } from '../order-dispatch/order-dispatch.module';
 import { EarningModule } from '../earning/earning.module';
 import { NotificationModule } from '../notification/notification.module';
@@ -15,13 +13,12 @@ import { RedisModule } from '../redis/redis.module';
 
 @Module({
   imports: [RedisModule, OrderDispatchModule, EarningModule, NotificationModule, forwardRef(() => OrderProcessingModule), forwardRef(() => PaymentModule), forwardRef(() => ContentGenerationModule)],
-  controllers: [OrderController, PriceConfigController],
+  controllers: [OrderController],
   providers: [
     OrderService,
-    PriceConfigService,
     ReverseGeocodingService,
     { provide: 'ORDER_SERVICE', useClass: OrderService },
   ],
-  exports: [OrderService, PriceConfigService, 'ORDER_SERVICE']
+  exports: [OrderService, 'ORDER_SERVICE']
 })
 export class OrderModule {}

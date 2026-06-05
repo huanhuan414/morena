@@ -1,0 +1,4 @@
+UPDATE subscription_plans SET text_daily_limit = -1, image_daily_limit = -1, video_daily_limit = -1, article_daily_limit = 1, clothing_daily_limit = 10, palm_daily_limit = 10 WHERE id = 'plan_basic';
+UPDATE subscription_plans SET text_daily_limit = -1, image_daily_limit = -1, video_daily_limit = -1, article_daily_limit = -1, clothing_daily_limit = -1, palm_daily_limit = -1 WHERE id = 'plan_enterprise';
+UPDATE subscription_plans SET text_daily_limit = -1, image_daily_limit = -1, video_daily_limit = -1, article_daily_limit = 0, clothing_daily_limit = 3, palm_daily_limit = 3 WHERE id = 'plan_free';
+UPDATE subscription_plans SET text_daily_limit = -1, image_daily_limit = -1, video_daily_limit = -1, article_daily_limit = 3, clothing_daily_limit = 20, palm_daily_limit = 20 WHERE id = 'plan_pro';

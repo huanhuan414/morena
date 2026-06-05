@@ -1,0 +1,1 @@
+SELECT id, status, seedance_task_id, updated_at FROM order_assets WHERE seedance_task_id = 'cgt-20260531210604-h6gk9';

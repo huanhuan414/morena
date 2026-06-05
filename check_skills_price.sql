@@ -1,0 +1,1 @@
+SELECT id, name, category, price, usage_count FROM skills WHERE is_active = 1 ORDER BY sort_order ASC LIMIT 10;

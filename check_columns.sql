@@ -1,0 +1,2 @@
+SHOW COLUMNS FROM orders;
+SHOW COLUMNS FROM avatars;

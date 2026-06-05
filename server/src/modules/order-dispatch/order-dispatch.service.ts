@@ -182,7 +182,7 @@ export class OrderDispatchService {
     const requestRows = await db.query(
       `SELECT r.id as dispatch_id, r.order_id, r.avatar_id, r.status as dispatch_status,
               r.expires_at, r.created_at as dispatch_created_at,
-              o.title, o.description, o.content_type, o.platforms, o.budget,
+              o.title, o.description, o.content_type, o.platforms, o.budget, o.base_amount,
               o.status as order_status, o.quantity_per_avatar, o.expected_quantity,
               o.created_at as order_created_at, o.target_audience, o.deadline,
               o.priority, o.requirements,
@@ -215,10 +215,9 @@ export class OrderDispatchService {
       // 注入 avatar_skills 表的技能数据
       req._skillsFromTable = skillsMap.get(req.avatarId) || []
       const { score, details } = this.calculateMatchScore(req, req)
-      // 预期收益 = 总预算 / 期望分身数
-      const budget = Number(req.budget || 0)
+      const baseAmount = Number(req.base_amount || req.baseAmount || req.budget || 0)
       const expectedQuantity = Number(req.expectedQuantity || req.expected_quantity || 1)
-      const expectedEarnings = expectedQuantity > 0 ? Math.round(budget / expectedQuantity * 100) / 100 : budget
+      const expectedEarnings = expectedQuantity > 0 ? Math.round(baseAmount / expectedQuantity * 100) / 100 : baseAmount
       return {
         ...req,
         matchScore: score,

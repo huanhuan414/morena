@@ -53,6 +53,8 @@ const Index: React.FC = () => {
 
   const [showOrderModal, setShowOrderModal] = useState(false)
   const [orderModalData, setOrderModalData] = useState<any>(null)
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false)
+  const [avatarPickerData, setAvatarPickerData] = useState<{ avatars: any[], resolve: ((idx: number) => void) | null }>({ avatars: [], resolve: null })
   const [trustAllLoading, setTrustAllLoading] = useState(false)
   const [dismissedOrderIds, setDismissedOrderIds] = useState<Set<string>>(() => {
     try {
@@ -191,7 +193,7 @@ const Index: React.FC = () => {
             platform: platformName,
             platformColor: getPlatformColor(platformName),
             title: item.title || '新订单',
-            budget: item.budget ? `¥${item.budget}` : '待定',
+            budget: item.expectedEarnings ? `¥${item.expectedEarnings}` : (item.budget ? `¥${item.budget}` : '待定'),
             deadline: '长期有效'
           })
           setShowOrderModal(true)
@@ -210,7 +212,7 @@ const Index: React.FC = () => {
     }
     if (acceptingOrderIds[orderId]) return
     setAcceptingOrderIds(prev => ({ ...prev, [orderId]: true }))
-    
+
     try {
       const avatarRes = await Network.request({ url: '/api/avatar' })
       if (avatarRes.data?.code !== 200 || !avatarRes.data?.data?.length) {
@@ -218,7 +220,7 @@ const Index: React.FC = () => {
         return
       }
       const avatars = avatarRes.data.data
-      
+
       const userId = useUserStore.getState().userInfo?.id
       let planId = 'plan_free'
       if (userId) {
@@ -229,20 +231,17 @@ const Index: React.FC = () => {
         planId = subRes?.data?.data?.plan?.id || 'plan_free'
       }
       const isPro = planId === 'plan_pro' || planId === 'plan_enterprise'
-      
+
       let avatarIdToUse: string
-      
+
       if (avatars.length === 1) {
         avatarIdToUse = avatars[0].id
       } else if (isPro) {
-        const avatarNames = avatars.map((a: any) => a.name)
         const selectedIndex = await new Promise<number>((resolve) => {
-          Taro.showActionSheet({
-            itemList: avatarNames,
-            success: (r) => resolve(r.tapIndex),
-            fail: () => resolve(-1),
-          })
+          setAvatarPickerData({ avatars, resolve })
+          setShowAvatarPicker(true)
         })
+        setShowAvatarPicker(false)
         if (selectedIndex === -1) {
           return
         }
@@ -264,9 +263,9 @@ const Index: React.FC = () => {
         }
         avatarIdToUse = avatars[0].id
       }
-      
+
       setAvatarId(avatarIdToUse)
-      
+
       const res = await Network.request({
         url: `/api/order-dispatch/avatar/${avatarIdToUse}/accept/${orderId}`,
         method: 'POST'
@@ -740,37 +739,39 @@ const Index: React.FC = () => {
                   <Text className="banner-btn-text create">免费创建，立即赚钱</Text>
                 </View>
               </>
-            ) : !allHostingEnabled ? (
-              <>
-                <View className="banner-tag">
-                  <Zap size={20} color="#FBBF24" />
-                  <Text className="banner-tag-text">收益翻倍</Text>
-                </View>
-                <Text className="banner-title">开启托管 让分身24h赚钱</Text>
-                <Text className="banner-desc">自动抢单+自动生成+自动发布，不错过任何收益</Text>
-                <View className="banner-btn">
-                  <Text className="banner-btn-text">一键开启</Text>
-                  <ChevronRight size={24} color="#6366F1" />
-                </View>
-              </>
-            ) : (
-              <>
-                <View className="banner-referral-header">
-                  <Gift size={32} color="#FBBF24" />
-                  <Text className="banner-title-referral">{BANNER_TITLE}</Text>
-                </View>
-                <Text className="banner-desc-referral">{BANNER_DESC(invitedCount)}</Text>
-                <View className="banner-referral-bottom">
-                  <View className="referral-code-tag">
-                    <Text className="referral-code-text">邀请码：{referralCode || '加载中...'}</Text>
+            )
+              // : !allHostingEnabled ? (
+              // <>
+              //   <View className="banner-tag">
+              //     <Zap size={20} color="#FBBF24" />
+              //     <Text className="banner-tag-text">收益翻倍</Text>
+              //   </View>
+              //   <Text className="banner-title">开启托管 让分身24h赚钱</Text>
+              //   <Text className="banner-desc">自动抢单+自动生成+自动发布，不错过任何收益</Text>
+              //   <View className="banner-btn">
+              //     <Text className="banner-btn-text">一键开启</Text>
+              //     <ChevronRight size={24} color="#6366F1" />
+              //   </View>
+              // </>
+              // )
+              : (
+                <>
+                  <View className="banner-referral-header">
+                    <Gift size={32} color="#FBBF24" />
+                    <Text className="banner-title-referral">{BANNER_TITLE}</Text>
                   </View>
-                  <View className="banner-btn-referral">
-                    <Text className="banner-btn-text-referral">立即邀请</Text>
-                    <ChevronRight size={20} color="#FFFFFF" />
+                  <Text className="banner-desc-referral">{BANNER_DESC(invitedCount)}</Text>
+                  <View className="banner-referral-bottom">
+                    <View className="referral-code-tag">
+                      <Text className="referral-code-text">邀请码：{referralCode || '加载中...'}</Text>
+                    </View>
+                    <View className="banner-btn-referral">
+                      <Text className="banner-btn-text-referral">立即邀请</Text>
+                      <ChevronRight size={20} color="#FFFFFF" />
+                    </View>
                   </View>
-                </View>
-              </>
-            )}
+                </>
+              )}
           </View>
           <View className="banner-decoration">
             <View className="deco-circle circle-1" />
@@ -932,14 +933,14 @@ const Index: React.FC = () => {
                     )}
 
                     {/* 截止时间行 */}
-                    {deadlineInfo && (
+                    {/* {deadlineInfo && (
                       <View className="po-deadline-row" onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}>
                         <Clock size={14} color={deadlineInfo.color} />
                         <Text className="po-deadline-text" style={{ color: deadlineInfo.color }}>
                           截止：{deadlineInfo.text}
                         </Text>
                       </View>
-                    )}
+                    )} */}
 
                     {/* 接单后流程（始终可见，一行展示） */}
                     <View className="po-steps">
@@ -989,41 +990,33 @@ const Index: React.FC = () => {
 
                     {/* 操作按钮 */}
                     <View className="po-card-actions">
-                      {deadlineInfo?.text === '已截止' ? (
-                        <View className="po-btn po-btn-disabled">
+                      <View
+                        className="po-btn po-btn-accept"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (!order.isAcceptedByMe && !acceptingOrderIds[order.id]) {
+                            handleAcceptOrder(order.id)
+                          }
+                        }}
+                      >
+                        {acceptingOrderIds[order.id] ? (
                           <>
-                            <Text className="po-btn-label po-btn-label-primary">已截止</Text>
+                            <View className="po-btn-mini-spinner" />
+                            <Text className="po-btn-label po-btn-label-primary">接单中...</Text>
                           </>
-
-                        </View>
-                      ) : (
-                        <View
-                          className="po-btn po-btn-accept"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            if (!order.isAcceptedByMe && !acceptingOrderIds[order.id]) {
-                              handleAcceptOrder(order.id)
-                            }
-                          }}
-                        >
-                          {acceptingOrderIds[order.id] ? (
-                            <>
-                              <View className="po-btn-mini-spinner" />
-                              <Text className="po-btn-label po-btn-label-primary">接单中...</Text>
-                            </>
-                          ) : order.isAcceptedByMe ? (
-                            <>
-                              <CircleCheckBig size={16} color="#fff" />
-                              <Text className="po-btn-label po-btn-label-primary">已接单</Text>
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles size={16} color="#fff" />
-                              <Text className="po-btn-label po-btn-label-primary">接单赚¥{order.estimatedEarning.toFixed(2)}</Text>
-                              <ChevronRight size={14} color="rgba(255,255,255,0.7)" />
-                            </>
-                          )}
-                        </View>)}
+                        ) : order.isAcceptedByMe ? (
+                          <>
+                            <CircleCheckBig size={16} color="#fff" />
+                            <Text className="po-btn-label po-btn-label-primary">已接单</Text>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={16} color="#fff" />
+                            <Text className="po-btn-label po-btn-label-primary">接单赚¥{order.estimatedEarning.toFixed(2)}</Text>
+                            <ChevronRight size={14} color="rgba(255,255,255,0.7)" />
+                          </>
+                        )}
+                      </View>
                     </View>
                   </View>
                 )
@@ -1106,6 +1099,45 @@ const Index: React.FC = () => {
                 <Text className="notification-modal-btn-text">我知道了</Text>
               </View>
             </View>
+          </View>
+        </View>
+      )}
+
+      {/* 分身选择弹窗 */}
+      {showAvatarPicker && avatarPickerData.avatars.length > 0 && (
+        <View className="avatar-picker-overlay" onClick={() => {
+          if (avatarPickerData.resolve) {
+            avatarPickerData.resolve(-1)
+          }
+        }}
+        >
+          <View className="avatar-picker-modal" onClick={(e) => e.stopPropagation()}>
+            <View className="avatar-picker-header">
+              <Text className="avatar-picker-title">选择分身</Text>
+              <View className="avatar-picker-close" onClick={() => {
+                if (avatarPickerData.resolve) {
+                  avatarPickerData.resolve(-1)
+                }
+              }}
+              >
+                <Text className="avatar-picker-close-text">×</Text>
+              </View>
+            </View>
+            <ScrollView scrollY className="avatar-picker-list">
+              {avatarPickerData.avatars.map((avatar: any, idx: number) => (
+                <View
+                  key={avatar.id}
+                  className="avatar-picker-item"
+                  onClick={() => {
+                    if (avatarPickerData.resolve) {
+                      avatarPickerData.resolve(idx)
+                    }
+                  }}
+                >
+                  <Text className="avatar-picker-item-text">{avatar.name}</Text>
+                </View>
+              ))}
+            </ScrollView>
           </View>
         </View>
       )}

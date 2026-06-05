@@ -18,7 +18,7 @@ export class OrderTimeoutService {
 
   // 超时配置（秒）
   private readonly DISPATCH_TIMEOUT = 10 * 60;      // 10分钟未接单视为超时
-  private readonly FEEDBACK_TIMEOUT = 30 * 60;       // 30分钟未提交反馈视为超时
+  private readonly FEEDBACK_TIMEOUT = 12 * 60 * 60;  // 12小时未提交反馈视为超时
   private readonly MAX_RETRIES = 3;                   // 最大重试派单次数
 
   constructor(private readonly redisService: RedisService) {}
@@ -70,8 +70,9 @@ export class OrderTimeoutService {
   }
 
   /**
-   * 2. 检查反馈超时（接单后30分钟未提交反馈）
-   * 流程：accepted派单超过30分钟未变成 awaiting_acceptance → 标记expired → 名额释放
+   * 2. 检查反馈超时（接单后12小时未提交反馈）
+   * 流程：accepted派单超过12小时未提交反馈 → 标记expired → 名额释放
+   * 注意：已提交反馈的记录不会被判为超期
    */
   private async checkFeedbackTimeouts(): Promise<number> {
     const client = await getMySQLClient();
@@ -81,9 +82,11 @@ export class OrderTimeoutService {
       `SELECT od.id, od.order_id, od.avatar_id, od.accepted_at
        FROM order_dispatch_requests od
        JOIN orders o ON od.order_id = o.id
+       LEFT JOIN content_generation_requests cg ON od.order_id = cg.order_id AND od.avatar_id = cg.avatar_id
        WHERE od.status = 'accepted'
        AND od.accepted_at IS NOT NULL
-       AND od.accepted_at < ?`,
+       AND od.accepted_at < ?
+       AND cg.id IS NULL`,
       [timeoutTime]
     );
 
