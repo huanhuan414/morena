@@ -1016,6 +1016,35 @@ async getExecutionProgress(orderId: string) {
     let wasAlreadyAccepted = false
 
     // =====================================================
+    // 第零阶段：区域限制检查
+    // =====================================================
+    // 获取订单的接单区域限制
+    const orderRegionRows = await db.query('SELECT accept_regions FROM orders WHERE id = ?', [orderId])
+    const acceptRegionsStr = (orderRegionRows as any[])?.[0]?.acceptRegions || (orderRegionRows as any[])?.[0]?.accept_regions
+    const acceptRegions = this.safeParseJson<string[]>(acceptRegionsStr, [])
+
+    // 如果订单有区域限制，检查分身地址是否在限制区域内
+    if (acceptRegions.length > 0) {
+      const avatarRows = await db.query('SELECT location_text FROM avatars WHERE id = ?', [avatarId])
+      const avatarLocationText = (avatarRows as any[])?.[0]?.locationText || (avatarRows as any[])?.[0]?.location_text || ''
+      
+      // 提取省份（与前端逻辑一致：split(/[省市区县]/) 取第一个部分）
+      const parts = avatarLocationText.split(/[省市区县]/)
+      const avatarProvince = parts.length > 0 ? parts[0].trim() : ''
+
+      this.logger.log(`[acceptOrder] 区域检查: 分身省份=${avatarProvince}, 订单区域=${JSON.stringify(acceptRegions)}`)
+
+      // 检查分身省份是否在订单限制区域内
+      const isRegionMatched = acceptRegions.some(region => 
+        avatarProvince.includes(region) || region.includes(avatarProvince)
+      )
+
+      if (!isRegionMatched) {
+        throw new BadRequestException(`该订单限制了接单区域：${acceptRegions.join('、')}，您的分身地址不在这些区域内，无法接单`)
+      }
+    }
+
+    // =====================================================
     // 第一阶段：Redis快速检查（毫秒级，快速拒绝已满订单）
     // =====================================================
 

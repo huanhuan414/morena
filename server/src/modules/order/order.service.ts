@@ -835,6 +835,7 @@ export class OrderService {
       `SELECT o.id, o.user_id, o.avatar_id, o.title, o.description, o.content_type, o.platforms, o.platform,
               o.requirements, o.target_audience, o.priority, o.deadline, o.content_deadline_at,
               o.budget, o.base_amount, o.content_amount, o.price, o.status, o.expected_quantity, o.avatar_count, o.quantity_per_avatar, o.is_paid,
+              o.accept_regions, o.personality,
               o.created_at, o.updated_at,
               COALESCE(a_order.name, a_latest.name, u.nickname) as publisher_nickname,
               COALESCE(a_order.avatar_url, a_latest.avatar_url, u.avatar) as publisher_avatar,
@@ -938,7 +939,9 @@ export class OrderService {
       publisherNickname: row.publisherNickname || row.publisher_nickname || '发布方',
       publisherAvatar: row.publisherAvatar || row.publisher_avatar || '',
       acceptCount: Number(row.acceptCount || row.accept_count || 0),
-      isAcceptedByMe: Boolean(row.isAcceptedByMe ?? row.is_accepted_by_me ?? 0)
+      isAcceptedByMe: Boolean(row.isAcceptedByMe ?? row.is_accepted_by_me ?? 0),
+      acceptRegions: this.safeParseJson<string[]>(row.acceptRegions || row.accept_regions, []),
+      personality: this.safeParseJson<{ tags: string; niches: string }>(row.personality || '{}', { tags: '', niches: '' })
       })
     })
 
