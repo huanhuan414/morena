@@ -614,6 +614,51 @@ const SKILL_OUTPUT = {
   }
 };
 
+// ============== 应用状态 ==============
+const STATE = {
+  currentTab: 'home',
+  user: { name: '小美', avatar: PHOTO_POOL[0], balance: 128.50, vipLevel: 2, checkedIn: false, checkinDays: 7 },
+  avatars: {
+    '1': { id:1, name:'美妆达人小雪', photo:PHOTO_POOL[0], cover:COVER_POOL[0], level:3, domain:'美妆', style:'温柔知性', skills:['小红书运营','种草文写作'], bio:'专业美妆博主，擅长种草文和产品测评', status:'active', earnToday:45.0, earnTotal:2380.0, orders:12, rating:4.8 },
+    '2': { id:2, name:'健身教练阿杰', photo:PHOTO_POOL[1], cover:COVER_POOL[1], level:2, domain:'健身', style:'专业严谨', skills:['健身计划制定'], bio:'认证健身教练，专注增肌减脂方案', status:'active', earnToday:20.0, earnTotal:860.0, orders:6, rating:4.5 },
+    '3': { id:3, name:'穿搭博主Lily', photo:PHOTO_POOL[2], cover:COVER_POOL[2], level:4, domain:'穿搭', style:'活泼俏皮', skills:['小红书运营','种草文写作','短视频脚本'], bio:'时尚穿搭博主，分享日常穿搭灵感', status:'active', earnToday:68.0, earnTotal:5200.0, orders:28, rating:4.9 }
+  },
+  hiredAvatars: {
+    'a1': { id:'a1', name:'文案高手小墨', photo:PHOTO_POOL[3], level:3, domain:'美妆', style:'文艺清新', skills:['种草文写作'], bio:'10年文案经验，种草文转化率超高', fee:8.0, rating:4.7, orders:45, status:'active' },
+    'a2': { id:'a2', name:'视频达人小凯', photo:PHOTO_POOL[4], level:4, domain:'数码', style:'专业严谨', skills:['短视频脚本','视频剪辑'], bio:'百万粉博主，短视频制作专家', fee:15.0, rating:4.8, orders:32, status:'active' },
+    'a3': { id:'a3', name:'健身教练小周', photo:PHOTO_POOL[5], level:2, domain:'健身', style:'专业严谨', skills:['健身计划制定'], bio:'ACE认证教练，擅长减脂方案', fee:5.0, rating:4.4, orders:18, status:'active' }
+  },
+  plazaAvatars: {
+    'p1': { id:'p1', name:'美食达人甜甜', photo:PHOTO_POOL[6], level:3, domain:'美食', style:'活泼俏皮', skills:['小红书运营','种草文写作'], bio:'探店达人，美食种草转化率TOP10', fee:6.0, rating:4.6, orders:56, status:'active', fans:2800, exclusive:false },
+    'p2': { id:'p2', name:'旅行博主小远', photo:PHOTO_POOL[7], level:4, domain:'旅行', style:'文艺清新', skills:['小红书运营','种草文写作','短视频脚本'], bio:'环球旅行30国，擅长旅行攻略', fee:12.0, rating:4.9, orders:42, status:'active', fans:5600, exclusive:false },
+    'p3': { id:'p3', name:'家装设计师阿琳', photo:PHOTO_POOL[0], level:5, domain:'家装', style:'温柔知性', skills:['小红书运营','种草文写作','短视频脚本','室内设计'], bio:'国家注册设计师，擅长北欧风改造', fee:20.0, rating:4.9, orders:28, status:'active', fans:8200, exclusive:true }
+  },
+  orders: [
+    { id:'o1', avatarId:1, type:'图文笔记', title:'面膜种草文', status:'done', fee:8.0, created:'2025-01-10', result:{title:'熬夜急救面膜实测！7天拯救暗沉肌',quality:88} },
+    { id:'o2', avatarId:1, type:'短视频脚本', title:'粉底液测评脚本', status:'doing', fee:12.0, created:'2025-01-12' },
+    { id:'o3', avatarId:2, type:'纯文案', title:'增肌食谱文案', status:'done', fee:3.5, created:'2025-01-08', result:{title:'增肌期怎么吃？这份食谱收藏好',quality:75} },
+    { id:'o4', avatarId:'a1', type:'图文笔记', title:'口红种草文', status:'done', fee:8.0, created:'2025-01-09', result:{title:'这5支口红让我从此告别选择困难',quality:92} },
+    { id:'o5', avatarId:3, type:'短视频脚本', title:'秋季穿搭脚本', status:'doing', fee:15.0, created:'2025-01-11' }
+  ],
+  results: [
+    { id:'r1', avatarId:1, type:'图文笔记', title:'熬夜急救面膜实测', status:'approved', date:'2025-01-10', quality:88, earn:8.0 },
+    { id:'r2', avatarId:3, type:'图文笔记', title:'秋冬必入5件外套', status:'approved', date:'2025-01-08', quality:82, earn:8.0 },
+    { id:'r3', avatarId:1, type:'短视频脚本', title:'气垫测评脚本', status:'revision', date:'2025-01-06', quality:60, earn:0 },
+    { id:'r4', avatarId:'a1', type:'纯文案', title:'口红文案', status:'pending', date:'2025-01-12', quality:90, earn:3.5 }
+  ],
+  earnings: { today:133.0, week:580.0, month:2380.0, total:8260.0, withdrawable:128.50, withdrawn:8131.50, records:[
+    {date:'01-12',type:'图文笔记',avatar:'美妆达人小雪',amount:8.0},
+    {date:'01-11',type:'短视频脚本',avatar:'穿搭博主Lily',amount:15.0},
+    {date:'01-10',type:'图文笔记',avatar:'文案高手小墨',amount:8.0},
+    {date:'01-09',type:'纯文案',avatar:'文案高手小墨',amount:3.5},
+    {date:'01-08',type:'图文笔记',avatar:'穿搭博主Lily',amount:8.0}
+  ]},
+  checkinDays: 7,
+  checkedIn: false,
+  teachData: {},
+  skillProgress: {}
+};
+
 function matchBestSkill(avatar, taskType) {
   const skills = avatar.skills || [];
   let bestSkill = null, bestScore = 0;
