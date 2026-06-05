@@ -669,6 +669,7 @@ export default function OrderDetailPage() {
                 completed: { label: '已验收', color: '#10B981', icon: '✅' },
                 rejected: { label: '已拒绝', color: '#EF4444', icon: '❌' },
                 expired: { label: '已过期', color: '#9CA3AF', icon: '⏰' },
+                cancelled: { label: '已过期', color: '#9CA3AF', icon: '⏰' },
               }
               const cfg = statusConfig[avatarStatus] || statusConfig.pending
               const hasContent = ['preview', 'publishing', 'submitted', 'published', 'awaiting_acceptance', 'feedback_submitted', 'completed'].includes(avatarStatus)
@@ -1033,19 +1034,19 @@ export default function OrderDetailPage() {
                       </View>
                       <Text className="block od-dialog-no-content-title">
                         {avatarStatus === 'generating' ? '内容生成中' :
-                         avatarStatus === 'accepted' ? '准备生成中' :
-                         avatarStatus === 'pending' ? '等待接单' :
-                         avatarStatus === 'rejected' ? '已拒绝订单' :
-                         avatarStatus === 'expired' ? '接单已过期' :
-                         '暂无内容'}
+                          avatarStatus === 'accepted' ? '准备生成中' :
+                            avatarStatus === 'pending' ? '等待接单' :
+                              avatarStatus === 'rejected' ? '已拒绝订单' :
+                                avatarStatus === 'expired' ? '接单已过期' :
+                                  '暂无内容'}
                       </Text>
                       <Text className="block od-dialog-no-content-desc">
                         {avatarStatus === 'generating' ? '分身正在创作内容，请稍后查看' :
-                         avatarStatus === 'accepted' ? '分身已接单，即将开始创作' :
-                         avatarStatus === 'pending' ? '等待分身确认接单' :
-                         avatarStatus === 'rejected' ? '该分身已拒绝此订单' :
-                         avatarStatus === 'expired' ? '分身未在规定时间内接单' :
-                         '内容生成后将在此展示'}
+                          avatarStatus === 'accepted' ? '分身已接单，即将开始创作' :
+                            avatarStatus === 'pending' ? '等待分身确认接单' :
+                              avatarStatus === 'rejected' ? '该分身已拒绝此订单' :
+                                avatarStatus === 'expired' ? '分身未在规定时间内接单' :
+                                  '内容生成后将在此展示'}
                       </Text>
                     </View>
                   )}
