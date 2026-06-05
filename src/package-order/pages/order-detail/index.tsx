@@ -42,24 +42,24 @@ const CONTENT_TYPE_MAP: Record<string, { label: string; icon: any }> = {
 
 // ===== 状态配置 =====
 const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; phase: number; desc: string }> = {
-  pending_payment:    { label: '待支付',   color: '#F59E0B', bgColor: '#FEF3C7', phase: 0, desc: '请尽快完成支付，超时订单将自动取消' },
-  pending:            { label: '匹配中',   color: '#7C3AED', bgColor: '#F5F3FF', phase: 1, desc: '系统正在为你匹配合适的分身' },
-  awaiting_acceptance:{ label: '等待接单', color: '#6366F1', bgColor: '#EEF2FF', phase: 1, desc: '分身正在确认接单' },
+  pending_payment: { label: '待支付', color: '#F59E0B', bgColor: '#FEF3C7', phase: 0, desc: '请尽快完成支付，超时订单将自动取消' },
+  pending: { label: '匹配中', color: '#7C3AED', bgColor: '#F5F3FF', phase: 1, desc: '系统正在为你匹配合适的分身' },
+  awaiting_acceptance: { label: '等待接单', color: '#6366F1', bgColor: '#EEF2FF', phase: 1, desc: '分身正在确认接单' },
   pending_acceptance: { label: '等待接单', color: '#6366F1', bgColor: '#EEF2FF', phase: 1, desc: '分身正在确认接单' },
-  accepted:           { label: '已接单',   color: '#10B981', bgColor: '#ECFDF5', phase: 2, desc: '分身已接单，正在制作内容' },
-  in_progress:        { label: '制作中',   color: '#10B981', bgColor: '#ECFDF5', phase: 2, desc: '分身正在创作内容' },
-  content_generated:  { label: '已生成',   color: '#8B5CF6', bgColor: '#F5F3FF', phase: 2, desc: '内容已生成，等待发布' },
-  submitted:          { label: '待发布',   color: '#8B5CF6', bgColor: '#F5F3FF', phase: 3, desc: '内容已提交，即将发布' },
-  published:          { label: '已发布',   color: '#059669', bgColor: '#ECFDF5', phase: 3, desc: '内容已成功发布' },
-  pending_verify:     { label: '待验收',   color: '#F59E0B', bgColor: '#FEF3C7', phase: 4, desc: '内容已发布，请验收确认' },
-  revision_requested: { label: '待修改',   color: '#F97316', bgColor: '#FFF7ED', phase: 2, desc: '已发起修改，请等待分身重新提交' },
-  completed:          { label: '已完成',   color: '#059669', bgColor: '#ECFDF5', phase: 5, desc: '订单已全部完成' },
-  publish_failed:     { label: '发布失败', color: '#EF4444', bgColor: '#FEF2F2', phase: -1, desc: '发布遇到问题，请查看详情' },
-  publish_timeout:    { label: '发布超时', color: '#EF4444', bgColor: '#FEF2F2', phase: -1, desc: '发布超时，请查看详情' },
-  cancelled:          { label: '已取消',   color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1, desc: '订单已取消' },
-  auto_cancelled:     { label: '自动取消', color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1, desc: '订单因超时自动取消' },
-  timeout:            { label: '已超时',   color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1, desc: '订单已超时' },
-  expired:            { label: '已过期',   color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1, desc: '订单已过期' },
+  accepted: { label: '已接单', color: '#10B981', bgColor: '#ECFDF5', phase: 2, desc: '分身已接单，正在制作内容' },
+  in_progress: { label: '制作中', color: '#10B981', bgColor: '#ECFDF5', phase: 2, desc: '分身正在创作内容' },
+  content_generated: { label: '已生成', color: '#8B5CF6', bgColor: '#F5F3FF', phase: 2, desc: '内容已生成，等待发布' },
+  submitted: { label: '待发布', color: '#8B5CF6', bgColor: '#F5F3FF', phase: 3, desc: '内容已提交，即将发布' },
+  published: { label: '已发布', color: '#059669', bgColor: '#ECFDF5', phase: 3, desc: '内容已成功发布' },
+  pending_verify: { label: '待验收', color: '#F59E0B', bgColor: '#FEF3C7', phase: 4, desc: '内容已发布，请验收确认' },
+  revision_requested: { label: '待修改', color: '#F97316', bgColor: '#FFF7ED', phase: 2, desc: '已发起修改，请等待分身重新提交' },
+  completed: { label: '已完成', color: '#059669', bgColor: '#ECFDF5', phase: 5, desc: '订单已全部完成' },
+  publish_failed: { label: '发布失败', color: '#EF4444', bgColor: '#FEF2F2', phase: -1, desc: '发布遇到问题，请查看详情' },
+  publish_timeout: { label: '发布超时', color: '#EF4444', bgColor: '#FEF2F2', phase: -1, desc: '发布超时，请查看详情' },
+  cancelled: { label: '已取消', color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1, desc: '订单已取消' },
+  auto_cancelled: { label: '自动取消', color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1, desc: '订单因超时自动取消' },
+  timeout: { label: '已超时', color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1, desc: '订单已超时' },
+  expired: { label: '已过期', color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1, desc: '订单已过期' },
 }
 
 // 5阶段进度定义
@@ -147,6 +147,7 @@ export default function OrderDetailPage() {
   const [dialogTab, setDialogTab] = useState('content')
   const [assetSummary, setAssetSummary] = useState<{ total: number; ready: number; generating: number; failed: number; images: number; videos: number; user_uploaded: number; ai_generated: number } | null>(null)
   const [assetImages, setAssetImages] = useState<string[]>([])
+  const [assetVideos, setAssetVideos] = useState<string[]>([])
   const [assetTotal, setAssetTotal] = useState(0)
   const [assetPage, setAssetPage] = useState(1)
   const [assetHasMore, setAssetHasMore] = useState(false)
@@ -213,10 +214,25 @@ export default function OrderDetailPage() {
     }
   }, [orderId])
 
+  const fetchAssetVideos = useCallback(async () => {
+    if (!orderId) return
+    try {
+      const res = await Network.request({ url: `/api/order-assets/${orderId}?type=video&pageSize=100&page=1` })
+      if (res.data?.code === 200 && res.data?.data) {
+        const d = res.data.data
+        const urls = (d.list || []).map((a: any) => a.asset_url).filter(Boolean)
+        setAssetVideos(urls)
+      }
+    } catch (err) {
+      console.error('[OrderDetail] asset videos error:', err)
+    }
+  }, [orderId])
+
   useEffect(() => {
     fetchAssetSummary()
     fetchAssetImages(1, false)
-  }, [fetchAssetSummary, fetchAssetImages])
+    fetchAssetVideos()
+  }, [fetchAssetSummary, fetchAssetImages, fetchAssetVideos])
 
   // 如果是从支付跳转过来的，轮询状态
   useEffect(() => {
@@ -588,6 +604,22 @@ export default function OrderDetailPage() {
               </View>
             )}
 
+            {/* 视频列表 */}
+            {assetVideos.length > 0 && (
+              <View className="od-asset-grid">
+                {assetVideos.map((url: string, idx: number) => (
+                  <View key={idx} className="od-asset-video-wrap" onClick={() => Taro.previewMedia({ sources: [{ url, type: 'video' }] })}>
+                    <Image src="" className="od-asset-video-thumb" mode="aspectFill" />
+                    <View className="od-asset-video-overlay" />
+                    <View className="od-asset-video-play">
+                      <Text className="block od-asset-video-play-icon">▶</Text>
+                    </View>
+                    <Text className="block od-asset-video-label">点击播放视频</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
             {/* 加载更多 */}
             {assetHasMore && (
               <View className="od-asset-more" onClick={() => !assetLoading && fetchAssetImages(assetPage + 1, true)}>
@@ -689,13 +721,13 @@ export default function OrderDetailPage() {
                         const kickTime = avatar.acceptedAt || avatar.updatedAt || avatar.createdAt
                         return kickTime && (Date.now() - new Date(kickTime).getTime() > 5 * 60 * 1000)
                       })() && (
-                        <View
-                          style={{ marginTop: '6px', padding: '2px 8px', backgroundColor: '#FEF2F2', borderRadius: '10px', border: '1px solid #FECACA' }}
-                          onClick={(e) => { e.stopPropagation(); handleKickAvatar(avatar.avatarId, avatar.avatarName || `分身${idx + 1}`) }}
-                        >
-                          <Text style={{ fontSize: '11px', color: '#DC2626' }}>踢出</Text>
-                        </View>
-                      )}
+                          <View
+                            style={{ marginTop: '6px', padding: '2px 8px', backgroundColor: '#FEF2F2', borderRadius: '10px', border: '1px solid #FECACA' }}
+                            onClick={(e) => { e.stopPropagation(); handleKickAvatar(avatar.avatarId, avatar.avatarName || `分身${idx + 1}`) }}
+                          >
+                            <Text style={{ fontSize: '11px', color: '#DC2626' }}>踢出</Text>
+                          </View>
+                        )}
                     </View>
                   </View>
                 </View>
@@ -996,8 +1028,8 @@ export default function OrderDetailPage() {
                     <View className="od-dialog-no-content">
                       <View className="od-dialog-no-content-icon">
                         {avatarStatus === 'generating' ? <Loader size={40} color="#8B5CF6" /> :
-                         avatarStatus === 'pending' ? <Clock size={40} color="#9CA3AF" /> :
-                         <CircleX size={40} color="#EF4444" />}
+                          avatarStatus === 'pending' ? <Clock size={40} color="#9CA3AF" /> :
+                            <CircleX size={40} color="#EF4444" />}
                       </View>
                       <Text className="block od-dialog-no-content-title">
                         {avatarStatus === 'generating' ? '内容生成中' :
