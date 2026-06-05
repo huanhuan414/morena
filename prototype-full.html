@@ -495,7 +495,102 @@ const SKILL_DETAILS = {
       keywords: ['社群','活跃','KOC','分层','团购','话题','打卡','福利','转化','内容日历']
     }
   }
+}
+
+// 技能→服务映射：学完技能后可以提供什么服务
+const SERVICE_MAP = {
+  '小红书运营': {
+    serviceTypes: ['图文笔记', '纯文案'],
+    canDo: ['写小红书种草文', '写图文笔记', '选话题标签', '优化笔记标题'],
+    qualityKey: 'writing', // 决定质量的能力维度
+    samples: {
+      high: '【7天急救实录】熬夜党的暗沉自救指南\n\n最近连续加班两周，皮肤直接崩了😭 发黄+粗糙+卡粉三连击...闺蜜安利了这款急救面膜，说熬夜后敷一片等于睡了8小时！\n\n💡使用感受：\n上脸很服帖，精华超多但不黏腻。最神奇的是第二天起来，皮肤居然是透亮的！不是那种假滑，是从内而外的光泽感✨\n\n📊7天记录：\nDay1-2: 暗沉有改善，但还明显\nDay3-4: 同事说气色好了！\nDay5-7: 素颜也敢出门了\n\n#护肤分享 #熬夜急救 #平价好物 #面膜推荐',
+      medium: '分享一个熬夜急救好物\n\n最近加班太多皮肤变差了，买了这款面膜试试\n用了几天感觉确实有效果，暗沉改善了\n精华挺多的，不会觉得干\n价格也还可以接受\n\n#护肤 #面膜 #好物推荐',
+      low: '这个面膜还可以\n用了几天\n感觉还行\n\n#护肤'
+    }
+  },
+  '抖音脚本': {
+    serviceTypes: ['短视频脚本', '短视频'],
+    canDo: ['写短视频脚本', '设计分镜', '写口播词', '设计视频钩子'],
+    qualityKey: 'creativity',
+    samples: {
+      high: '【30秒种草脚本】\n\n🎬 分镜1(0-3s)：产品特写+悬念钩子\n口播："你还在用手洗脸？难怪毛孔越来越大！"\n画面：放大毛孔特写→产品出场\n\n🎬 分镜2(3-15s)：使用演示\n口播："试试这个洁面仪，1分钟深层清洁"\n画面：上脸使用+泡沫特写+清洗过程\n\n🎬 分镜3(15-25s)：效果对比\n口播："7天下来，毛孔真的visibly变小了"\n画面：Day1 vs Day7对比+肤质检测仪数据\n\n🎬 分镜4(25-30s)：CTA\n口播："点个赞，下期教你怎么选洁面仪"\n画面：点赞动画+关注引导\n\n📝 话题：#护肤好物 #洁面仪 #毛孔清洁',
+      medium: '【短视频脚本】\n\n开头：介绍产品\n中间：使用过程展示\n结尾：效果+推荐\n\n口播：这个产品很好用，推荐大家试试\n\n#好物推荐',
+      low: '视频脚本：\n展示产品→使用→说好用\n\n#推荐'
+    }
+  },
+  'SEO优化': {
+    serviceTypes: ['纯文案'],
+    canDo: ['关键词研究', '内容SEO优化', '标题优化', '内链策略'],
+    qualityKey: 'professionalism',
+    samples: {
+      high: '【SEO优化方案】\n\n核心关键词：咖啡机推荐\n长尾词：家用咖啡机选购指南、平价意式咖啡机、咖啡机入门推荐\n\nH1: 2024年家用咖啡机选购指南：从入门到专业全覆盖\nH2: 入门级咖啡机推荐（500元以下）\nH3: 小熊咖啡机 vs 德龙入门款\nH2: 进阶级咖啡机对比（500-2000元）\nH2: 专业级咖啡机推荐（2000元以上）\n\n内链策略：\n- 链接到"咖啡豆选购指南"\n- 链接到"咖啡机清洁保养"\n\nLSI词汇：磨豆、萃取、意式、美式、奶泡、半自动、全自动',
+      medium: '关键词：咖啡机\n标题：咖啡机推荐\n\n写一篇关于咖啡机的文章，包含选购建议\n\n相关词：意式、磨豆',
+      low: '咖啡机推荐文章'
+    }
+  },
+  '客服话术': {
+    serviceTypes: ['简单任务'],
+    canDo: ['写客服话术', '处理投诉回复', '写促单话术', '搭建话术库'],
+    qualityKey: 'engagement',
+    samples: {
+      high: '【客服话术库 - 护肤品类】\n\n🟢 问候语（5套变体）：\n1. 亲，有什么可以帮您~ 🌸\n2. 您好呀，欢迎来到XX旗舰店，我是您的专属顾问\n3. 嗨~ 任何护肤问题都可以问我哦 💕\n\n🔴 投诉处理（LEARN法）：\n场景：客户说"用过敏了"\n→ L："我理解您的担心，请您放心我会帮您处理好"\n→ E："非常抱歉给您带来不好的体验！"\n→ A："我完全理解您的心情"\n→ R："请问是哪款产品？我马上帮您查看成分，同时安排退货"\n→ N："24小时内给您回复处理结果"\n\n💰 促单话术：\n犹豫型："很多和您肤质相似的姐妹都选了这款，反馈很好哦~"\n比价型："这个价位能做到这个成分的，真的不多呢"\n限时型："现在下单今天就能发货，还送5片体验装~"',
+      medium: '客服话术：\n\n问候：您好，有什么可以帮您\n投诉：非常抱歉，我来帮您处理\n促单：这个产品很好，推荐购买',
+      low: '话术：你好，有什么问题？'
+    }
+  },
+  '数据分析': {
+    serviceTypes: ['纯文案', '简单任务'],
+    canDo: ['运营数据分析', 'A/B测试方案', '数据报告', '竞品分析'],
+    qualityKey: 'accuracy',
+    samples: {
+      high: '【运营数据分析报告】\n\n📊 近7天核心指标：\n- 平均曝光：4,200/篇（↑12%）\n- CTR：6.3%（↑0.8%）\n- 互动率：4.7%（↓0.3%）\n- 转化率：2.1%（持平）\n\n⚠️ 异常发现：\n周三互动率骤降至1.8%，原因是当天发布了1条硬广\n\n💡 优化建议：\n1. 工作日发软性内容，硬广控制在1条/周\n2. 标题使用"数字+悬念"公式，CTR可提升30%\n3. 周三改为发教程类内容（互动率最高）\n\n📋 A/B测试计划：\n- 测试维度：标题风格\n- A组：数字型「5个方法...」\n- B组：悬念型「用了7天才发现...」\n- 样本量：每组500曝光\n- 指标：CTR差异>5%为显著',
+      medium: '数据分析：\n\n近7天平均曝光4000+\n互动率4%左右\n周三数据下降\n\n建议：减少硬广',
+      low: '数据分析：数据一般，需要优化'
+    }
+  },
+  '视频剪辑': {
+    serviceTypes: ['短视频'],
+    canDo: ['剪辑方案设计', '调色方案', '分镜表', '字幕设计'],
+    qualityKey: 'creativity',
+    samples: {
+      high: '【短视频剪辑方案】\n\n⏱ 总时长：30秒\n🎵 BGM：轻快vlog风格\n\n📐 分镜表：\n| # | 画面 | 口播/字幕 | 时长 | 转场 |\n|---|------|----------|------|------|\n| 1 | 产品开箱特写 | "终于等到了！" | 3s | 硬切 |\n| 2 | 手部特写取产品 | "来开箱看看" | 2s | 推进 |\n| 3 | 产品多角度展示 | "颜值真的绝" | 4s | 旋转 |\n| 4 | 使用过程演示 | 字幕：使用步骤 | 8s | 叠化 |\n| 5 | 效果对比 | "7天变化" | 5s | 左右分屏 |\n| 6 | 细节特写 | "质感超好" | 3s | 微距 |\n| 7 | CTA | "点赞收藏" | 2s | 淡出 |\n\n🎨 调色方案：温暖风\n- 亮度+8 / 对比度-3 / 饱和度-5\n- 色温+12 / 肤色保护开启\n- 柔焦效果 30%\n\n📝 字幕：白色粗体+黑色描边，关键词放大变色',
+      medium: '剪辑方案：\n\n30秒视频\n开头展示产品→使用过程→效果→推荐\n\n调色：暖色调\n字幕：白色中下位置',
+      low: '做一个短视频展示产品'
+    }
+  },
+  '品牌策划': {
+    serviceTypes: ['纯文案'],
+    canDo: ['品牌定位方案', '品牌故事撰写', '营销活动策划', '预算方案'],
+    qualityKey: 'professionalism',
+    samples: {
+      high: '【品牌策划案】\n\n🎯 品牌定位：\n对于25-35岁注重成分的护肤消费者，「XX」是精华液品类中，最能以科学配方实现可见效果的 выбора，因为其独创的微脂囊包裹技术让活性成分渗透率提升300%\n\n📖 品牌故事：\n创始人曾是实验室研究员，发现市面护肤品活性成分大多停留在表皮无法深入。3年研发后，独创微脂囊包裹技术，让有效成分直达真皮层。这不是营销噱头，是真正的技术突破。\n\n📣 营销活动：\n主题：「28天见证改变」挑战赛\n形式：用户打卡分享使用效果\n时间：4周\n激励：连续打卡28天送正装\n渠道：小红书+抖音\n\n💰 预算分配：\nKOL种草 40% → ROI预计3-5\n信息流广告 30% → ROI预计1.5-3\n私域运营 20% → ROI预计5-10\n内容制作 10%',
+      medium: '品牌策划：\n\n定位：面向年轻消费者的护肤品牌\n故事：创始人研发的故事\n活动：打卡活动\n预算：KOL+广告',
+      low: '品牌方案：面向年轻人的品牌'
+    }
+  },
+  '社群运营': {
+    serviceTypes: ['简单任务', '纯文案'],
+    canDo: ['社群运营方案', '内容日历', '促单话术', 'KOC培养方案'],
+    qualityKey: 'engagement',
+    samples: {
+      high: '【社群运营方案】\n\n🏗️ 社群搭建：\n群名：XX护肤研究所\n类型：内容型+服务型\n群规：1️⃣不刷屏 2️⃣不广告 3️⃣友好交流\n\n📅 内容日历：\n周一：🔬 成分科普\n周二：💬 使用心得分享\n周三：❓ 答疑日\n周四：🎁 专属福利\n周五：🔥 话题讨论\n周末：🌸 自由交流\n\n👥 用户分层：\n潜水层60% → @激活+话题\n活跃层25% → 福利激励\n核心层10% → KOC培养\n领袖层5% → 1对1维护\n\n💰 转化SOP：\n预热(1天)→种草(分享效果)→开团(发链接)→跟进(晒单+倒计时)→复盘\n\n话术："姐妹们！品牌方给了专属福利🤩 原价299，群内价只要199！还送5片体验装！限量30套"',
+      medium: '社群方案：\n\n建群→每天发内容→做活动\n周一到周日不同内容\n\n转化：发优惠',
+      low: '社群运营：建群发内容'
+    }
+  }
 };
+
+// 服务类型→需要哪些技能
+const SERVICE_SKILLS = {
+  '图文笔记': ['小红书运营'],
+  '短视频': ['视频剪辑', '抖音脚本'],
+  '短视频脚本': ['抖音脚本'],
+  '纯文案': ['小红书运营', 'SEO优化', '品牌策划', '客服话术'],
+  '简单任务': ['客服话术', '数据分析', '社群运营']
+};
+
+;
 
 ;
 
@@ -532,13 +627,13 @@ const STATE = {
   },
   plazaAvatars: {
     4:{name:'视频达人',photo:PHOTO_POOL[4],cover:COVER_POOL[3],lv:4,stars:4.8,orders:89,follows:567,price:8,
-       skills:['短视频脚本','视频剪辑','分镜设计'],desc:'5年短视频导演，擅长种草和剧情类',style:'搞笑幽默',domains:['数码','美妆'],followed:false},
+       skills:['抖音脚本','视频剪辑'],abilities:{writing:40,creativity:75,professionalism:60,engagement:35,accuracy:50},desc:'5年短视频导演，擅长种草和剧情类',style:'搞笑幽默',domains:['数码','美妆'],followed:false},
     5:{name:'美食探店王',photo:PHOTO_POOL[5],cover:COVER_POOL[4],lv:6,stars:4.9,orders:234,follows:1289,price:6,
-       skills:['美食种草','探店攻略','餐厅评测'],desc:'美食博主，吃遍全城，写过的店都排队',style:'活泼俏皮',domains:['美食'],followed:false},
+       skills:['小红书运营','数据分析'],abilities:{writing:65,creativity:50,professionalism:40,engagement:70,accuracy:55},desc:'美食博主，吃遍全城，写过的店都排队',style:'活泼俏皮',domains:['美食'],followed:false},
     6:{name:'家装设计师',photo:PHOTO_POOL[2],cover:COVER_POOL[5],lv:4,stars:4.7,orders:45,follows:312,price:10,
-       skills:['家装方案','软装搭配','避坑指南'],desc:'10年家装经验，帮你省钱又好看',style:'专业严谨',domains:['家装'],followed:false},
+       skills:['品牌策划','客服话术'],abilities:{writing:50,creativity:45,professionalism:70,engagement:40,accuracy:60},desc:'10年家装经验，帮你省钱又好看',style:'专业严谨',domains:['家装'],followed:false},
     7:{name:'旅行种草官',photo:PHOTO_POOL[7],cover:COVER_POOL[6],lv:5,stars:4.8,orders:156,follows:892,price:7,
-       skills:['旅行攻略','酒店评测','行程规划'],desc:'走遍30+国家，帮你不踩坑又省钱',style:'文艺清新',domains:['旅行'],followed:false}
+       skills:['小红书运营','社群运营'],abilities:{writing:60,creativity:55,professionalism:35,engagement:65,accuracy:40},desc:'走遍30+国家，帮你不踩坑又省钱',style:'文艺清新',domains:['旅行'],followed:false}
   },
   notifications: [
     {icon:'💰',bg:'#dcfce7',title:'收益到账',desc:'美妆小助手完成订单，+¥5.00',time:'10分钟前',read:false},
@@ -724,7 +819,7 @@ function renderHome() {
         </div>
       </div>
       <div class="avatar-acts">
-        <button class="act-btn act-primary" onclick="event.stopPropagation();openSub('hired-chat',{id:${id}})">💬 开始干活</button>
+        <button class="act-btn act-primary" onclick="event.stopPropagation();renderChatWork(${v.avatarId||id})">💬 开始干活</button>
         <button class="act-btn act-secondary" onclick="event.stopPropagation();showToast('查看历史成果')">📋 成果</button>
         <button class="act-btn act-danger" onclick="event.stopPropagation();dismissHired(${id})">解除</button>
       </div>
@@ -974,7 +1069,7 @@ function renderSubContent(el, name, data) {
     case 'my-results': renderMyResults(el); break;
     case 'result-detail': renderResultDetail(el); break;
     case 'my-plaza': renderMyPlaza(el); break;
-    case 'hired-chat': renderHiredChat(el, data); break;
+    case 'hired-chat': renderChatWork(data?.id); break;
     case 'skill-market': renderSkillMarket(el); break;
     case 'privileges': renderPrivileges(el); break;
     case 'settings': renderSettings(el); break;
@@ -1010,47 +1105,296 @@ function renderChatPick(el, data) {
   </div>`;
 }
 
-function renderChatWork(el, id, data) {
-  const a = STATE.avatars[id]; if(!a) return;
-  const task = data?.task||'';
-  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">💬 和${a.name}对话</div><div></div></div>
-  <div style="padding:12px 16px;display:flex;align-items:center;gap:10px;background:#fff;border-bottom:1px solid #f1f5f9">
-    <img src="${a.photo}" class="avatar-photo sm" /><div><div style="font-weight:600;font-size:14px">${a.name}</div><div style="font-size:11px;color:#94a3b8">${statusText(a.status)} · ${a.skills.join('·')}</div></div>
-  </div>
-  <div class="chat-messages" id="chatMsgs">
-    <div class="chat-msg system">${a.name}已就位，告诉我你需要什么</div>
-    ${task?`<div class="chat-msg user">${task}</div><div class="chat-msg bot">好的，我来帮你${task}！让我分析一下需求...</div>`:''}
-  </div>
-  <div style="position:sticky;bottom:0;background:#fff;padding:12px 16px;border-top:1px solid #f1f5f9">
-    <div class="talk-input-row">
-      <input class="talk-input" id="chatInput" placeholder="对${a.name}说..." onkeydown="if(event.key==='Enter')sendChat(${id})" />
-      <button class="talk-send" onclick="sendChat(${id})">➤</button>
+// === 核心产出引擎：根据技能+能力值生成真实内容 ===
+function generateContent(avatar, serviceType, userInput) {
+  const sm = SERVICE_MAP;
+  const ab = avatar.abilities || {};
+  // 找到这个分身能用的、匹配服务类型的技能
+  let bestSkill = null;
+  let bestQuality = 0;
+  for (const skillName of avatar.skills) {
+    const map = sm[skillName];
+    if (!map) continue;
+    if (!map.serviceTypes.includes(serviceType)) continue;
+    const quality = ab[map.qualityKey] || 0;
+    if (quality > bestQuality) {
+      bestQuality = quality;
+      bestSkill = skillName;
+    }
+  }
+  if (!bestSkill) return { ok: false, msg: '分身尚未掌握相关技能，无法完成此任务。请先让分身学习对应技能。' };
+  const map = sm[bestSkill];
+  const qualityLevel = bestQuality >= 70 ? 'high' : bestQuality >= 40 ? 'medium' : 'low';
+  const qualityLabel = bestQuality >= 70 ? '⭐⭐⭐ 优质' : bestQuality >= 40 ? '⭐⭐ 良好' : '⭐ 基础';
+  let output = map.samples[qualityLevel] || map.samples.medium;
+  // 个性化替换
+  if (userInput) {
+    output = output.replace(/咖啡机|面膜|洁面仪|护肤品/g, userInput.keyword || '产品');
+  }
+  return {
+    ok: true,
+    skill: bestSkill,
+    quality: bestQuality,
+    qualityLabel,
+    qualityLevel,
+    content: output,
+    abilityImpact: map.qualityKey,
+    canDoList: map.canDo
+  };
+}
+
+// === 获取分身可提供的服务列表 ===
+function getAvailableServices(avatar) {
+  const sm = SERVICE_MAP;
+  const services = {};
+  for (const skillName of avatar.skills) {
+    const map = sm[skillName];
+    if (!map) continue;
+    for (const st of map.serviceTypes) {
+      if (!services[st]) services[st] = { skills: [], canDo: [], quality: 0 };
+      services[st].skills.push(skillName);
+      services[st].canDo.push(...map.canDo);
+      const q = avatar.abilities?.[map.qualityKey] || 0;
+      if (q > services[st].quality) services[st].quality = q;
+    }
+  }
+  return services;
+}
+
+// === 重写：干活聊天（含真实内容生成） ===
+function renderChatWork(avatarId) {
+  const a = STATE.avatars[avatarId] || STATE.plazaAvatars[avatarId];
+  if (!a) return;
+  const hired = STATE.hiredAvatars?.find(h => h.avatarId === avatarId);
+  const services = getAvailableServices(a);
+  const hasSkills = Object.keys(services).length > 0;
+  const el = document.getElementById('sub-dynamic');
+  el.className = 'subpage'; el.style.display = 'block';
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSubDynamic()">←</button><div class="sub-title">🛠️ 让${a.name}干活</div><div></div></div>
+  <div class="sub-body" style="padding-bottom:80px">
+    <!-- 分身技能概览 -->
+    <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:16px;padding:16px;color:#fff;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+        <img src="${a.photo}" style="width:48px;height:48px;border-radius:50%;border:2px solid rgba(255,255,255,.5)">
+        <div><div style="font-size:16px;font-weight:700">${a.name}</div><div style="font-size:12px;opacity:.8">Lv.${a.lv} · ${a.skills.length}个技能</div></div>
+      </div>
+      ${hasSkills ? `<div style="font-size:12px;opacity:.9;margin-bottom:6px">✅ 可提供服务：${Object.keys(services).join('、')}</div>
+      <div style="font-size:11px;opacity:.7">能做的事：${Object.values(services).flatMap(s=>s.canDo).slice(0,6).join('、')}` :
+      `<div style="font-size:12px;opacity:.9">⚠️ 还没有掌握技能，请先去"教分身→学技能"</div>
+      <div style="font-size:11px;opacity:.7">学习技能后才能干活产出内容</div>`}
+      </div>
     </div>
-    <div class="quick-tags" style="margin-top:8px">
-      <span class="quick-tag" onclick="fillChat(${id},'写一篇小红书种草文')">写种草文</span>
-      <span class="quick-tag" onclick="fillChat(${id},'帮我做个图文笔记')">做图文</span>
-      <span class="quick-tag" onclick="fillChat(${id},'写个短视频脚本')">视频脚本</span>
+    ${hasSkills ? `
+    <!-- 选择服务类型 -->
+    <div style="font-size:14px;font-weight:700;margin-bottom:8px">📋 选择要做什么</div>
+    ${Object.entries(services).map(([type, info]) => {
+      const pricing = PRICING[type];
+      const qLabel = info.quality >= 70 ? '优质' : info.quality >= 40 ? '良好' : '基础';
+      const qColor = info.quality >= 70 ? '#16a34a' : info.quality >= 40 ? '#d97706' : '#94a3b8';
+      return `<div style="background:#fff;border-radius:14px;padding:14px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.04);cursor:pointer" onclick="selectServiceType(${avatarId},'${type}')">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:600;font-size:14px">${type}</div>
+          <span style="font-size:11px;color:${qColor};background:${qColor}15;padding:2px 8px;border-radius:10px">${qLabel}</span>
+        </div>
+        <div style="font-size:12px;color:#64748b;margin-top:4px">${info.canDo.slice(0,3).join(' · ')}</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:2px">依赖技能：${info.skills.join('、')} · 质量${info.quality}/100</div>
+        ${pricing ? `<div style="font-size:11px;color:#6d28d9;margin-top:4px">💰 最低出场费¥${pricing.minFee} + 生成费¥${pricing.genPrice}/套</div>` : ''}
+      </div>`;
+    }).join('')}
+    <!-- 或者直接对话模式 -->
+    <div style="text-align:center;margin:12px 0;color:#94a3b8;font-size:12px">—— 或者直接告诉它你要做什么 ——</div>
+    ` : ''}
+    <!-- 聊天区域 -->
+    <div id="workChatMsgs" style="min-height:200px;max-height:400px;overflow-y:auto;padding:8px 0">
+      <div class="chat-msg bot">你好！我是${a.name}${hasSkills ? '，我掌握了'+a.skills.join('、')+'这些技能，随时可以帮你干活！选择上面的服务类型，或者直接告诉我你要做什么~' : '，我还没学什么技能呢😅 你先去"教分身"让我学点技能吧，学完我就能帮你干活了！'}</div>
     </div>
+  </div>
+  <!-- 底部输入栏 -->
+  <div style="position:fixed;bottom:0;left:0;right:0;display:flex;gap:8px;padding:10px 12px;background:#fff;border-top:1px solid #f1f5f9;z-index:100">
+    <div style="flex:1;background:#f8fafc;border-radius:20px;padding:8px 14px">
+      <input id="workChatInput" style="width:100%;border:none;background:transparent;font-size:14px;outline:none" placeholder="${hasSkills ? '告诉它你要做什么...' : '先去教分身学技能吧'}" ${hasSkills ? '' : 'disabled'}>
+    </div>
+    <button class="act-btn act-primary" style="flex:0;padding:8px 16px;border-radius:20px" onclick="sendWorkMsg(${avatarId})">发送</button>
   </div>`;
 }
-const CHAT_REPLIES = {
-  '种草文':['好的，帮你写种草文！先确认下品牌和产品...','收到！我来分析竞品的种草文风格...','种草文框架已搭好，正在填充内容...'],
-  '图文':['图文笔记开始制作！先选配图风格...','文案部分已完成，正在匹配图片...','图文笔记生成完毕！'],
-  '脚本':['短视频脚本开始创作！确认下时长要求...','分镜已设计完成，正在写口播词...','脚本生成好了，包含分镜和口播词！'],
-  '分析':['竞品分析开始！我先收集数据...','已分析3个竞品，整理出差异点...','竞品分析报告生成完毕！'],
-  'default':['收到！我来帮你处理...','正在思考最佳方案...','已完成初步方案，请查看！','好的，让我来搞定这件事！']
-};
-function sendChat(avatarId) {
-  const input = document.getElementById('chatInput');
-  const msg = input.value.trim(); if(!msg) return;
-  input.value = '';
-  const msgs = document.getElementById('chatMsgs');
-  msgs.innerHTML += `<div class="chat-msg user">${msg}</div>`;
-  const key = Object.keys(CHAT_REPLIES).find(k=>msg.includes(k))||'default';
-  const replies = CHAT_REPLIES[key];
-  const reply = replies[Math.floor(Math.random()*replies.length)];
-  setTimeout(()=>{msgs.innerHTML+=`<div class="chat-msg bot">${reply}</div>`;msgs.scrollTop=msgs.scrollHeight;}, 600);
+
+// 选择服务类型后进入下单+生成流程
+function selectServiceType(avatarId, serviceType) {
+  const a = STATE.avatars[avatarId];
+  const pricing = PRICING[serviceType];
+  const services = getAvailableServices(a);
+  const info = services[serviceType];
+  const qLabel = info.quality >= 70 ? '优质' : info.quality >= 40 ? '良好' : '基础';
+  const el = document.getElementById('sub-dynamic');
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="renderChatWork(${avatarId})">←</button><div class="sub-title">📝 ${serviceType}下单</div><div></div></div>
+  <div class="sub-body">
+    <div style="background:#f3f0ff;border-radius:14px;padding:16px;margin-bottom:16px">
+      <div style="font-size:15px;font-weight:700;color:#6d28d9;margin-bottom:6px">${serviceType} · ${a.name}</div>
+      <div style="font-size:12px;color:#6d28d9">质量等级：${qLabel}(${info.quality}/100) · 依赖技能：${info.skills.join('、')}</div>
+    </div>
+    <div style="font-size:14px;font-weight:700;margin-bottom:8px">💡 告诉我你的需求</div>
+    <div style="font-size:12px;color:#64748b;margin-bottom:10px">例如：帮我写一篇小红书种草文，产品是补水面膜，目标人群是25岁干皮女生</div>
+    <textarea id="serviceInput" class="form-textarea" style="min-height:100px;margin-bottom:12px" placeholder="描述你的需求..."></textarea>
+    ${pricing ? `<div style="background:#f8fafc;border-radius:12px;padding:12px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:6px">💰 费用预估</div>
+      <div style="font-size:12px;color:#64748b">出场费：¥${pricing.minFee}起</div>
+      <div style="font-size:12px;color:#64748b">生成费：¥${pricing.genPrice}/套</div>
+      <div style="font-size:12px;color:#6d28d9;margin-top:4px;font-weight:600">预估总价：¥${(pricing.minFee + pricing.genPrice).toFixed(1)}起</div>
+    </div>` : ''}
+    <button class="act-btn act-primary" style="width:100%;margin-bottom:8px" onclick="executeService(${avatarId},'${serviceType}')">🚀 让${a.name}开始干活</button>
+    <div style="font-size:11px;color:#94a3b8;text-align:center">分身将根据技能水平产出内容，质量由能力值决定</div>
+  </div>`;
 }
+
+// 执行服务 - 生成真实内容
+function executeService(avatarId, serviceType) {
+  const a = STATE.avatars[avatarId];
+  const input = document.getElementById('serviceInput');
+  const userNeed = input ? input.value.trim() : '';
+  if (!userNeed) { showToast('请描述你的需求'); return; }
+  // 生成内容
+  const result = generateContent(a, serviceType, null);
+  const el = document.getElementById('sub-dynamic');
+  if (!result.ok) {
+    el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="renderChatWork(${avatarId})">←</button><div class="sub-title">⚠️ 无法完成</div><div></div></div>
+    <div class="sub-body" style="text-align:center;padding:40px 20px">
+      <div style="font-size:48px;margin-bottom:12px">😔</div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:8px">${a.name}暂时无法完成此任务</div>
+      <div style="font-size:13px;color:#64748b;margin-bottom:16px">${result.msg}</div>
+      <button class="act-btn act-primary" onclick="renderChatWork(${avatarId})">返回</button>
+    </div>`;
+    return;
+  }
+  // 显示生成中动画
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="renderChatWork(${avatarId})">←</button><div class="sub-title">⏳ ${a.name}正在干活...</div><div></div></div>
+  <div class="sub-body" style="text-align:center;padding:40px 20px">
+    <div class="spinner" style="margin:0 auto 16px"></div>
+    <div style="font-size:15px;font-weight:600;margin-bottom:4px">${a.name}正在为你生成${serviceType}</div>
+    <div style="font-size:12px;color:#64748b">使用技能：${result.skill} · 质量${result.qualityLabel}</div>
+  </div>`;
+  // 模拟生成延迟
+  setTimeout(() => showDeliveryResult(avatarId, serviceType, result, userNeed), 2000);
+}
+
+// 展示交付结果
+function showDeliveryResult(avatarId, serviceType, result, userNeed) {
+  const a = STATE.avatars[avatarId];
+  const pricing = PRICING[serviceType];
+  const el = document.getElementById('sub-dynamic');
+  const qualityColor = result.qualityLevel === 'high' ? '#16a34a' : result.qualityLevel === 'medium' ? '#d97706' : '#94a3b8';
+  const qualityDesc = result.qualityLevel === 'high' ? '优秀！分身能力充足，产出高质量内容' : result.qualityLevel === 'medium' ? '良好，内容质量中等，建议继续学习提升' : '基础水平，建议让分身深入学习后再使用';
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="renderChatWork(${avatarId})">←</button><div class="sub-title">📦 交付结果</div><div></div></div>
+  <div class="sub-body">
+    <!-- 成功提示 -->
+    <div style="text-align:center;padding:16px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:16px;color:#fff;margin-bottom:14px">
+      <div style="font-size:28px;margin-bottom:4px">✅</div>
+      <div style="font-size:16px;font-weight:700">${a.name}已完成${serviceType}</div>
+      <div style="font-size:12px;opacity:.8">使用技能：${result.skill} · ${result.qualityLabel}</div>
+    </div>
+    <!-- 质量评估 -->
+    <div style="background:${qualityColor}10;border-radius:12px;padding:12px;margin-bottom:14px;border:1px solid ${qualityColor}30">
+      <div style="font-size:13px;font-weight:600;color:${qualityColor};margin-bottom:4px">📊 质量评估</div>
+      <div style="font-size:12px;color:#475569">${qualityDesc}</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+        <div class="progress-bar" style="flex:1;height:8px"><div class="progress-fill" style="width:${result.quality}%;background:${qualityColor}"></div></div>
+        <span style="font-size:12px;color:${qualityColor};font-weight:600">${result.quality}/100</span>
+      </div>
+    </div>
+    <!-- 用户需求 -->
+    <div style="background:#f8fafc;border-radius:12px;padding:12px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:4px">你的需求</div>
+      <div style="font-size:13px;color:#1e293b">${userNeed}</div>
+    </div>
+    <!-- 生成内容 -->
+    <div style="font-size:14px;font-weight:700;margin-bottom:8px">📝 ${a.name}的产出</div>
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:14px;font-size:13px;line-height:1.8;color:#334155;white-space:pre-wrap">${result.content}</div>
+    <!-- 费用明细 -->
+    ${pricing ? `<div style="background:#fefce8;border-radius:12px;padding:12px;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:6px">💰 费用明细</div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:#64748b;margin-bottom:2px"><span>出场费(Lv.${a.lv})</span><span>¥${pricing.minFee}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:#64748b;margin-bottom:2px"><span>生成费(1套)</span><span>¥${pricing.genPrice}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;color:#92400e;margin-top:4px;padding-top:4px;border-top:1px dashed #e5e5e5"><span>合计</span><span>¥${(pricing.minFee + pricing.genPrice).toFixed(1)}</span></div>
+    </div>` : ''}
+    <!-- 操作按钮 -->
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <button class="act-btn act-primary" style="flex:1" onclick="acceptDelivery(${avatarId},'${serviceType}',${result.quality})">✅ 接受交付</button>
+      <button class="act-btn" style="flex:1;background:#f1f5f9;color:#475569" onclick="requestRevision(${avatarId},'${serviceType}')">🔄 要求修改</button>
+    </div>
+    <button class="act-btn" style="width:100%;background:#fef2f2;color:#ef4444" onclick="renderChatWork(${avatarId})">❌ 拒绝，返回</button>
+  </div>`;
+}
+
+// 接受交付
+function acceptDelivery(avatarId, serviceType, quality) {
+  const a = STATE.avatars[avatarId];
+  const pricing = PRICING[serviceType];
+  // 记录订单完成
+  if (!STATE.completedOrders) STATE.completedOrders = [];
+  STATE.completedOrders.unshift({
+    id: Date.now(), avatarId, avatarName: a.name,
+    serviceType, quality, time: '刚刚',
+    price: pricing ? pricing.minFee + pricing.genPrice : 0
+  });
+  // 分身获得经验和可能升级
+  a.xp = Math.min(a.xpMax, a.xp + 50);
+  checkLevelUp(avatarId);
+  showToast(`交付完成！${a.name}+50 XP`);
+  // 回到干活页面
+  setTimeout(() => renderChatWork(avatarId), 500);
+}
+
+// 要求修改
+function requestRevision(avatarId, serviceType) {
+  const msgs = document.getElementById('workChatMsgs');
+  showToast('已要求修改，分身会重新生成');
+  // 重新执行
+  setTimeout(() => {
+    const a = STATE.avatars[avatarId];
+    const result = generateContent(a, serviceType, null);
+    if (result.ok) {
+      showDeliveryResult(avatarId, serviceType, result, '修改版本');
+    }
+  }, 1000);
+}
+
+// 发送聊天消息（自由对话模式）
+function sendWorkMsg(avatarId) {
+  const input = document.getElementById('workChatInput');
+  const msg = input ? input.value.trim() : '';
+  if (!msg) return;
+  input.value = '';
+  const msgs = document.getElementById('workChatMsgs');
+  msgs.innerHTML += `<div class="chat-msg user">${msg}</div>`;
+  const a = STATE.avatars[avatarId];
+  // 判断是否包含任务关键词
+  const taskKeywords = ['写','做','生成','帮我','制作','剪辑','运营','策划','分析','话术','脚本'];
+  const isTask = taskKeywords.some(k => msg.includes(k));
+  setTimeout(() => {
+    if (isTask && a.skills.length > 0) {
+      // 识别服务类型
+      let serviceType = '简单任务';
+      if (msg.includes('视频') || msg.includes('剪辑')) serviceType = '短视频';
+      else if (msg.includes('脚本')) serviceType = '短视频脚本';
+      else if (msg.includes('笔记') || msg.includes('种草') || msg.includes('小红书')) serviceType = '图文笔记';
+      else if (msg.includes('文案') || msg.includes('策划') || msg.includes('方案') || msg.includes('SEO')) serviceType = '纯文案';
+      msgs.innerHTML += `<div class="chat-msg bot">好的！我来帮你做${serviceType}，让我准备一下... 🛠️</div>`;
+      msgs.scrollTop = msgs.scrollHeight;
+      setTimeout(() => selectServiceType(avatarId, serviceType), 800);
+    } else if (a.skills.length === 0) {
+      msgs.innerHTML += `<div class="chat-msg bot">我还没学什么技能呢😅 你先去"教分身→学技能"让我学点东西吧，学完就能帮你干活了！</div>`;
+    } else {
+      msgs.innerHTML += `<div class="chat-msg bot">收到！如果你想让我做具体的事，可以直接说，比如"帮我写一篇小红书种草文"或"做一个视频剪辑方案" ✨</div>`;
+    }
+    msgs.scrollTop = msgs.scrollHeight;
+  }, 600);
+}
+
+function closeSubDynamic() {
+  const el = document.getElementById('sub-dynamic');
+  el.style.display = 'none'; el.className = 'subpage';
+}
+
+
 function fillChat(id, text) {
   document.getElementById('chatInput').value = text;
   sendChat(id);
@@ -1252,28 +1596,54 @@ function confirmDelete(id) {
 function renderPlazaDetail(el, data) {
   const id = data?.id||4;
   const a = STATE.plazaAvatars[id]; if(!a) return;
+  const services = getAvailableServices(a);
+  const hasServices = Object.keys(services).length > 0;
+  const abNames = {writing:'✍️ 写作力',creativity:'🎨 创意力',professionalism:'💼 专业度',engagement:'📱 互动力',accuracy:'📊 精准度'};
+  const ab = a.abilities || {};
   el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">分身详情</div><div></div></div>
-  <div style="position:relative"><img src="${a.cover}" style="width:100%;height:140px;object-fit:cover" /><div style="position:absolute;bottom:-28px;left:16px"><img src="${a.photo}" style="width:64px;height:64px;border-radius:50%;border:3px solid #fff;object-fit:cover;box-shadow:0 2px 8px rgba(0,0,0,.2)" /></div></div>
-  <div style="padding:40px 16px 16px">
-    <div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px;font-weight:700">${a.name}</span><span class="lv ${lvClass(a.lv)}" style="font-size:12px;padding:2px 10px">Lv.${a.lv}</span></div>
-    <div style="font-size:13px;color:#64748b;margin-top:4px">${a.desc}</div>
-    <div style="font-size:12px;color:#94a3b8;margin-top:2px">风格：${a.style} · ⭐${a.stars} · ${a.orders}单 · ❤️${a.follows}关注</div>
-  </div>
-  <div style="padding:0 16px;display:flex;gap:8px;margin-bottom:16px">
-    <button class="act-btn ${a.followed?'act-secondary':'act-primary'}" style="flex:1" onclick="toggleFollow(${id})">${a.followed?'❤️ 已关注':'+ 关注'}</button>
-    ${STATE.hiredAvatars[id]?`<button class="act-btn act-success" style="flex:2" onclick="closeSub();openSub('hired-chat',{id:${id}})">💬 开始干活</button>`:`<button class="act-btn act-primary" style="flex:2" onclick="hireAvatar(${id})">💰 雇佣 ¥${a.price}/次</button>`}
-  </div>
-  <div class="section">
-    <div style="font-size:14px;font-weight:600;margin-bottom:8px">擅长技能</div>
-    <div class="avatar-skills">${a.skills.map(s=>'<span class="skill-tag mastered">'+s+'</span>').join('')}</div>
-  </div>
-  <div class="section">
-    <div style="font-size:14px;font-weight:600;margin-bottom:8px">用户评价</div>
-    <div style="background:#f8fafc;border-radius:12px;padding:12px;margin-bottom:8px"><div style="font-size:12px;color:#94a3b8;margin-bottom:4px">用户D · ⭐5.0</div><div style="font-size:13px">非常专业，内容质量很高</div></div>
-    <div style="background:#f8fafc;border-radius:12px;padding:12px"><div style="font-size:12px;color:#94a3b8;margin-bottom:4px">用户E · ⭐4.9</div><div style="font-size:13px">速度快，风格独特，强烈推荐！</div></div>
-  </div>
-  <div style="padding:16px"><button class="act-btn act-secondary" style="width:100%" onclick="tryChat(${id})">💬 试聊一下</button></div>`;
+  <div style="position:relative"><img src="${a.cover}" style="width:100%;height:140px;object-fit:cover" /><div style="position:absolute;bottom:-28px;left:16px"><img src="${a.photo}" style="width:64px;height:64px;border-radius:50%;border:3px solid #fff" /></div></div>
+  <div style="padding:36px 16px 16px">
+    <div style="display:flex;justify-content:space-between;align-items:start"><div><div style="font-size:18px;font-weight:700">${a.name}</div><div style="font-size:12px;color:#94a3b8">${a.desc}</div></div><span class="lv lv${a.lv}">Lv.${a.lv}</span></div>
+    <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">${a.skills.map(s=>{const d=SKILL_DETAILS[s];return d?`<span style="background:#ede9fe;color:#6d28d9;font-size:11px;padding:3px 8px;border-radius:10px">${d.icon} ${s}</span>`:''}).join('')}</div>
+    <!-- 能力面板 -->
+    <div style="margin-top:14px"><div style="font-size:13px;font-weight:600;margin-bottom:6px">📊 能力值</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">${Object.entries(abNames).map(([k,label])=>{const v=ab[k]||0;const c=v>=70?'#16a34a':v>=40?'#d97706':'#94a3b8';return `<div style="display:flex;align-items:center;gap:4px;font-size:11px"><span>${label}</span><div class="progress-bar" style="flex:1;height:4px"><div class="progress-fill" style="width:${v}%;background:${c}"></div></div><span style="color:${c}">${v}</span></div>`}).join('')}</div></div>
+    ${hasServices ? `
+    <!-- 可提供服务 -->
+    <div style="margin-top:14px"><div style="font-size:13px;font-weight:600;margin-bottom:6px">🛠️ 可提供服务</div>
+    ${Object.entries(services).map(([type,info])=>{
+      const qLabel=info.quality>=70?'优质':info.quality>=40?'良好':'基础';
+      const qColor=info.quality>=70?'#16a34a':info.quality>=40?'#d97706':'#94a3b8';
+      const pricing=PRICING[type];
+      return `<div style="background:#f8fafc;border-radius:10px;padding:10px;margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="font-weight:600">${type}</span><span style="color:${qColor};font-size:11px">${qLabel}(${info.quality})</span></div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:2px">${info.canDo.slice(0,3).join(' · ')}</div>
+        ${pricing?`<div style="font-size:11px;color:#6d28d9;margin-top:2px">💰 ¥${pricing.minFee}+¥${pricing.genPrice}/套</div>`:''}
+      </div>`;
+    }).join('')}</div>` : `<div style="margin-top:14px;text-align:center;padding:20px;background:#f8fafc;border-radius:12px"><div style="font-size:12px;color:#94a3b8">此分身暂未学习技能</div></div>`}
+    <!-- 出场费 -->
+    <div style="margin-top:14px;background:#fefce8;border-radius:12px;padding:12px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">💰 出场费</div>
+      <div style="font-size:20px;font-weight:700;color:#92400e">¥${a.price||99}<span style="font-size:12px;font-weight:400">/次</span></div>
+      <div style="font-size:11px;color:#92400e;margin-top:2px">平台抽成30% · 分身得70%</div>
+    </div>
+    <!-- 雇佣按钮 -->
+    <button class="act-btn act-primary" style="width:100%;margin-top:14px;padding:14px;font-size:15px" onclick="hireFromPlaza(${id})">🤝 雇佣${a.name}</button>
+  </div>`;
 }
+function hireFromPlaza(plazaId) {
+  const a = STATE.plazaAvatars[plazaId]; if(!a) return;
+  if(!STATE.hiredAvatars) STATE.hiredAvatars = [];
+  // Check if already hired
+  if(STATE.hiredAvatars.find(h=>h.avatarId===plazaId)) { showToast('已雇佣此分身'); return; }
+  STATE.hiredAvatars.push({ avatarId: plazaId, name: a.name, photo: a.photo, hiredAt: '刚刚', status: 'idle' });
+  showToast(`🎉 已雇佣${a.name}！去首页找它干活吧`);
+  closeSub();
+  // Refresh home page
+  const homeEl = document.getElementById('sub-dynamic');
+  renderSubContent(homeEl, 'home', {});
+}
+
 function toggleFollow(id) {
   const a = STATE.plazaAvatars[id]; if(!a) return;
   a.followed = !a.followed;
@@ -2119,15 +2489,21 @@ function openModal(type, data) {
     }
     case 'plaza-toggle': {
       const a = STATE.avatars[data.id];
+      const services = getAvailableServices(a);
+      const hasSkills = a.skills && a.skills.length > 0;
+      const abNames = {writing:'写作力',creativity:'创意力',professionalism:'专业度',engagement:'互动力',accuracy:'精准度'};
+      const ab = a.abilities||{};
       box.innerHTML = `
       <div style="font-size:17px;font-weight:700;margin-bottom:16px;text-align:center">${data.action==='on'?'📢 挂到广场':'⏸️ 下架分身'}</div>
       ${data.action==='on'?`
-      <div style="margin-bottom:12px"><div style="font-weight:600">${a.name}将出现在广场，其他人可以雇佣它</div></div>
+      <div style="margin-bottom:12px"><div style="font-weight:600">${a.name}将出现在广场，买家可雇佣它干活</div></div>
+      ${!hasSkills?'<div style="background:#fef2f2;border-radius:12px;padding:10px;margin-bottom:10px;font-size:12px;color:#991b1b">⚠️ 此分身尚未学习任何技能，挂出后买家无法下单。建议先教分身学技能！</div>':''}
+      ${hasSkills?`<div style="background:#f3f0ff;border-radius:12px;padding:10px;margin-bottom:10px"><div style="font-size:12px;font-weight:600;color:#6d28d9;margin-bottom:4px">🎯 已掌握技能</div><div style="font-size:11px;color:#6d28d9">${a.skills.map(s=>{const d=SKILL_DETAILS[s];return d?d.icon+s:s}).join('、')}</div><div style="font-size:11px;color:#6d28d9;margin-top:2px">可提供服务：${Object.keys(services).join('、')||'无'}</div></div>`:''}
       <div style="background:#f8fafc;border-radius:12px;padding:12px;margin-bottom:12px">
-        <div class="price-row"><span class="label">当前出场费</span><span class="val">¥${a.plazaPrice||PRICING['纯文案'].minFee}/次</span></div>
+        ${hasSkills?Object.entries(services).map(([t,info])=>{const p=PRICING[t];return p?`<div class="price-row"><span class="label">${t}(质量${info.quality})</span><span class="val">¥${p.minFee}+¥${p.genPrice}/套</span></div>`:''}).join(''):'<div class="price-row"><span class="label">当前出场费</span><span class="val">¥'+(a.plazaPrice||PRICING[Object.keys(PRICING)[0]].minFee)+'/次</span></div>'}
         <div class="price-row"><span class="label">分成规则</span><span class="val">你70% / 平台30%</span></div>
       </div>
-      <div style="display:flex;gap:10px"><button class="act-btn act-secondary" style="flex:1" onclick="closeModal()">取消</button><button class="act-btn act-primary" style="flex:1" onclick="doTogglePlaza(${data.id},'on')">确认挂出</button></div>
+      <div style="display:flex;gap:10px"><button class="act-btn act-secondary" style="flex:1" onclick="closeModal()">取消</button><button class="act-btn act-primary" style="flex:1" onclick="doTogglePlaza(${data.id},'on')">${hasSkills?'确认挂出':'仍然挂出'}</button></div>
       `:`
       <div style="margin-bottom:12px">下架后${a.name}将不再出现在广场，已进行的订单不受影响</div>
       <div style="display:flex;gap:10px"><button class="act-btn act-secondary" style="flex:1" onclick="closeModal()">取消</button><button class="act-btn act-danger" style="flex:1" onclick="doTogglePlaza(${data.id},'off')">确认下架</button></div>
