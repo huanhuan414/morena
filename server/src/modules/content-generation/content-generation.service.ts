@@ -196,55 +196,75 @@ export class ContentGenerationService implements OnModuleInit {
   }
 
   /**
-   * 模块初始化：已禁用卡住任务自动恢复
-   * 原有逻辑：启动时+每5分钟检查创建超过30分钟仍在处理中的任务，智能恢复
-   * 当前状态：全部关闭
+   * 模块初始化时检查并恢复卡住的内容生成任务
    */
   async onModuleInit() {
-    this.logger.log('ContentGenerationService 初始化（卡住任务自动恢复已禁用）')
+    this.logger.log('ContentGenerationService 初始化，检查卡住的生成任务...')
+    try {
+      await this.recoverStuckGenerations()
+    } catch (err: any) {
+      this.logger.warn(`恢复卡住任务时出错: ${err.message}`)
+    }
+    // 每5分钟检查一次
+    setInterval(() => {
+      this.recoverStuckGenerations().catch(err => {
+        this.logger.warn(`定时恢复卡住任务时出错: ${err.message}`)
+      })
+    }, 5 * 60 * 1000)
   }
 
-  // private async recoverStuckGenerations() {
-  //   try {
-  //     const pool = getPool()
-  //     const stuckStatuses = ['generating_text', 'generating_images', 'generating_video', 'pending', 'processing']
-  //     const [rows]: any = await pool.execute(
-  //       `SELECT id, status, content, images, video_url FROM content_generation_requests WHERE status IN (${stuckStatuses.map(() => '?').join(',')}) AND created_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)`,
-  //       stuckStatuses
-  //     )
-  //     const stuckRecords: any[] = rows
-  //     if (stuckRecords.length === 0) return
-  //
-  //     this.logger.warn(`发现 ${stuckRecords.length} 条卡住的生成任务（创建超过30分钟仍在处理中），将智能恢复`)
-  //     const db = getMySQLClient()
-  //     for (const record of stuckRecords) {
-  //       const hasContent = record.content && record.content.trim().length > 0
-  //       let images: string[] = []
-  //       try {
-  //         images = record.images ? JSON.parse(record.images) : []
-  //       } catch { images = [] }
-  //       const hasImages = images.length > 0
-  //       const hasVideo = record.video_url && record.video_url.trim().length > 0
-  //
-  //       let recoverStatus: string
-  //       if (hasContent && (hasImages || hasVideo)) {
-  //         recoverStatus = 'preview'
-  //       } else if (hasContent) {
-  //         recoverStatus = 'partial_failed'
-  //         this.logger.warn(`恢复卡住任务(部分失败): id=${record.id}, 有文案但无图片/视频`)
-  //       } else {
-  //         recoverStatus = 'failed'
-  //         this.logger.warn(`恢复卡住任务(完全失败): id=${record.id}, 无任何内容`)
-  //       }
-  //
-  //       this.logger.warn(`恢复卡住任务: id=${record.id}, status=${record.status}→${recoverStatus}, hasContent=${hasContent}, hasImages=${hasImages}, hasVideo=${hasVideo}`)
-  //       await db.update('content_generation_requests', record.id, { status: recoverStatus })
-  //       setCache(record.id, null)
-  //     }
-  //   } catch (err: any) {
-  //     this.logger.warn(`恢复卡住任务失败: ${err.message}`)
-  //   }
-  // }
+  /**
+   * 恢复卡住的生成任务（创建超过30分钟仍在处理中的请求）
+   * 智能判断：有文案无图片→partial_failed，无任何内容→failed，有完整内容→preview
+   */
+  private async recoverStuckGenerations() {
+    try {
+      const pool = getPool()
+      const stuckStatuses = ['generating_text', 'generating_images', 'generating_video', 'pending', 'processing']
+      // 用 SQL 的 DATE_SUB(NOW(), INTERVAL 30 MINUTE) 做时间比较
+      // 避免因 Node.js toISOString() 写入 UTC 时间而数据库 NOW() 返回本地时间导致时区偏差
+      const [rows]: any = await pool.execute(
+        `SELECT id, status, content, images, video_url FROM content_generation_requests WHERE status IN (${stuckStatuses.map(() => '?').join(',')}) AND created_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)`,
+        stuckStatuses
+      )
+      const stuckRecords: any[] = rows
+      if (stuckRecords.length === 0) return
+
+      this.logger.warn(`发现 ${stuckRecords.length} 条卡住的生成任务（创建超过30分钟仍在处理中），将智能恢复`)
+      const db = getMySQLClient()
+      for (const record of stuckRecords) {
+        // 智能判断恢复状态：检查是否有已生成的内容
+        const hasContent = record.content && record.content.trim().length > 0
+        let images: string[] = []
+        try {
+          images = record.images ? JSON.parse(record.images) : []
+        } catch { images = [] }
+        const hasImages = images.length > 0
+        const hasVideo = record.video_url && record.video_url.trim().length > 0
+
+        let recoverStatus: string
+        if (hasContent && (hasImages || hasVideo)) {
+          // 有文案且有图片或视频 → 可以预览
+          recoverStatus = 'preview'
+        } else if (hasContent) {
+          // 有文案但没图片没视频 → 部分失败
+          recoverStatus = 'partial_failed'
+          this.logger.warn(`恢复卡住任务(部分失败): id=${record.id}, 有文案但无图片/视频`)
+        } else {
+          // 什么都没有 → 完全失败
+          recoverStatus = 'failed'
+          this.logger.warn(`恢复卡住任务(完全失败): id=${record.id}, 无任何内容`)
+        }
+
+        this.logger.warn(`恢复卡住任务: id=${record.id}, status=${record.status}→${recoverStatus}, hasContent=${hasContent}, hasImages=${hasImages}, hasVideo=${hasVideo}`)
+        await db.update('content_generation_requests', record.id, { status: recoverStatus })
+        // 清除缓存
+        setCache(record.id, null)
+      }
+    } catch (err: any) {
+      this.logger.warn(`恢复卡住任务失败: ${err.message}`)
+    }
+  }
 
   /**
    * 创建内容生成请求 - 立即返回，后台异步生成
@@ -2080,7 +2100,7 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
   /**
    * 定时任务：每 30 秒扫描 generating_video 状态且有 seedance_task_id 的记录
    * 轮询 Seedance 任务状态，完成后更新记录
-   * 注意：超时自动标记已禁用，视频生成不再有自动超时
+   * 超时保护：超过 30 分钟仍未完成的自动标记失败
    */
   @Cron('*/30 * * * * *')
   async pollPendingVideoTasks() {
@@ -2088,15 +2108,24 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
       this.logger.log('[VideoPoll] ====== 开始执行视频轮询任务 ======')
       const pool = getPool()
 
-      // 超时保护已禁用：不再自动标记超时的视频生成任务
-      // const [timeoutRows]: any = await pool.execute(
-      //   `SELECT id, order_id FROM content_generation_requests
-      //    WHERE status = 'generating_video' AND seedance_task_id IS NOT NULL
-      //    AND updated_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)`
-      // )
-      // if (timeoutRows && timeoutRows.length > 0) { ... }
+      // 1. 超时保护：generating_video 超过 30 分钟自动标记失败
+      const [timeoutRows]: any = await pool.execute(
+        `SELECT id, order_id FROM content_generation_requests
+         WHERE status = 'generating_video' AND seedance_task_id IS NOT NULL
+         AND updated_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)`
+      )
+      if (timeoutRows && timeoutRows.length > 0) {
+        for (const row of timeoutRows) {
+          this.logger.warn(`[VideoPoll] 视频生成超时(>30min): requestId=${row.id}`)
+          await pool.execute(
+            'UPDATE content_generation_requests SET status = ?, error = ?, seedance_task_id = NULL, updated_at = NOW() WHERE id = ?',
+            ['partial_failed', '视频生成超时（30分钟）', row.id]
+          )
+          try { await this.syncOrderStatus(row.order_id) } catch (e: any) { /* ignore */ }
+        }
+      }
 
-      // 正常轮询：所有 generating_video 状态的记录
+      // 2. 正常轮询：未超时的记录
       const [rows]: any = await pool.execute(
         `SELECT id, order_id, seedance_task_id, content, images, platform
          FROM content_generation_requests

@@ -71,12 +71,6 @@ export class OrderController {
     return { code: 200, data: stats, message: '获取成功' }
   }
 
-  @Get('price-config')
-  async getPriceConfig() {
-    const configs = await this.orderService.getAllPriceConfigs()
-    return { code: 200, data: configs, message: '获取成功' }
-  }
-
   @Get(':id')
   async get(@Param('id') orderId: string) {
     const order = await this.orderService.getOrderById(orderId)

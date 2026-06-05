@@ -1,1 +1,0 @@
-SELECT COUNT(*) as cnt, status FROM content_generation_requests GROUP BY status;

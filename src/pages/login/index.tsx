@@ -66,29 +66,23 @@ const Login: React.FC = () => {
 
     if (data.referralReward && data.referralReward > 0) {
       Taro.showToast({ title: `注册成功，获得邀请奖励 ${data.referralReward} 积分`, icon: 'none', duration: 3000 })
-      setTimeout(() => {
-        doNavigate()
-      }, 3100)
     } else {
-      Taro.showToast({ title: data.isNewUser ? '注册成功' : '登录成功', icon: 'success', duration: 1500 })
-      setTimeout(() => {
-        doNavigate()
-      }, 1600)
+      Taro.showToast({ title: data.isNewUser ? '注册成功' : '登录成功', icon: 'success' })
     }
-  }
 
-  const doNavigate = () => {
-    const redirect = getRedirectUrl()
-    if (redirect) {
-      const tabbarPages = ['/pages/index/index', '/pages/mind-chat/index', '/package-avatar/pages/generated-content/index', '/pages/profile/index']
-      if (tabbarPages.some(p => redirect.startsWith(p))) {
-        Taro.switchTab({ url: redirect.split('?')[0] })
+    setTimeout(() => {
+      const redirect = getRedirectUrl()
+      if (redirect) {
+        const tabbarPages = ['/pages/index/index', '/pages/mind-chat/index', '/package-avatar/pages/generated-content/index', '/pages/profile/index']
+        if (tabbarPages.some(p => redirect.startsWith(p))) {
+          Taro.switchTab({ url: redirect.split('?')[0] })
+        } else {
+          Taro.redirectTo({ url: redirect })
+        }
       } else {
-        Taro.redirectTo({ url: redirect })
+        Taro.switchTab({ url: '/pages/index/index' })
       }
-    } else {
-      Taro.switchTab({ url: '/pages/index/index' })
-    }
+    }, 1000)
   }
 
   const sendCode = async () => {

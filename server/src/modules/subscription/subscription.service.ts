@@ -295,7 +295,7 @@ export class SubscriptionService {
     if (benefits.dailyOrderLimit !== 999999 && todayCount >= benefits.dailyOrderLimit) {
       return {
         allowed: false,
-        reason: `今日接单次数已用完(${todayCount}/${benefits.dailyOrderLimit})，请升级会员获得更多接单次数`
+        reason: `今日接单次数已用完(${todayCount}/${benefits.dailyOrderLimit})`
       }
     }
     

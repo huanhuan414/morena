@@ -1,1 +1,0 @@
-SELECT * FROM content_generation WHERE order_id = '2d7088a7-71da-4d14-bcab-71db0996f947';

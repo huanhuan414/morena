@@ -365,30 +365,6 @@
   gap: 4rpx;
 }
 
-.type-price-split {
-  display: flex;
-  align-items: center;
-  gap: 4rpx;
-}
-
-.type-price-base {
-  font-size: 20rpx;
-  color: #6366f1;
-  font-weight: 600;
-}
-
-.type-price-plus {
-  font-size: 20rpx;
-  color: #94a3b8;
-  font-weight: 400;
-}
-
-.type-price-content {
-  font-size: 20rpx;
-  color: #6366f1;
-  font-weight: 600;
-}
-
 .type-price {
   font-size: 22rpx;
   color: #6366f1;
@@ -406,152 +382,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-/* ========== 接单区域选择 ========== */
-.region-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-}
-
-.region-tag {
-  padding: 12rpx 20rpx;
-  background: #f8fafc;
-  border-radius: 16rpx;
-  border: 2rpx solid #e2e8f0;
-  transition: all 0.2s ease;
-}
-
-.region-tag.active {
-  background: #eef2ff;
-  border-color: #8b5cf6;
-}
-
-.region-tag-text {
-  font-size: 24rpx;
-  color: #64748b;
-}
-
-.region-tag.active .region-tag-text {
-  color: #6366f1;
-  font-weight: 500;
-}
-
-.region-selected-hint {
-  margin-top: 16rpx;
-  padding: 12rpx 16rpx;
-  background: #fef3c7;
-  border-radius: 12rpx;
-}
-
-.region-selected-hint-text {
-  font-size: 22rpx;
-  color: #92400e;
-}
-
-/* ========== 接单区域弹窗 ========== */
-.region-trigger {
-  display: flex;
-  align-items: center;
-  gap: 4rpx;
-}
-
-.region-picker-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 1000;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-}
-
-.region-picker-content {
-  width: 100%;
-  max-height: 80vh;
-  background: #fff;
-  border-radius: 32rpx 32rpx 0 0;
-  padding: 0 0 env(safe-area-inset-bottom);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.region-picker-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 32rpx 32rpx 24rpx;
-  border-bottom: 1rpx solid #e2e8f0;
-}
-
-.region-picker-title {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.region-picker-close {
-  width: 56rpx;
-  height: 56rpx;
-  border-radius: 50%;
-  background: #f1f5f9;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.region-picker-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-  padding: 24rpx 32rpx;
-  overflow-y: auto;
-  max-height: 60vh;
-}
-
-.region-picker-footer {
-  display: flex;
-  gap: 24rpx;
-  padding: 24rpx 32rpx;
-  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
-  border-top: 1rpx solid #e2e8f0;
-}
-
-.region-picker-clear {
-  flex: 1;
-  height: 88rpx;
-  border-radius: 44rpx;
-  background: #f1f5f9;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.region-picker-clear-text {
-  font-size: 30rpx;
-  color: #64748b;
-  font-weight: 500;
-}
-
-.region-picker-confirm {
-  flex: 2;
-  height: 88rpx;
-  border-radius: 44rpx;
-  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.region-picker-confirm-text {
-  font-size: 30rpx;
-  color: #fff;
-  font-weight: 600;
 }
 
 /* ========== 平台选择 ========== */
@@ -926,60 +756,6 @@
   font-weight: 500;
 }
 
-/* ========== 自定义价格卡片 ========== */
-.custom-price-section {
-  margin-top: 24rpx;
-}
-
-.custom-price-content {
-  margin-top: 20rpx;
-}
-
-.custom-price-input-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16rpx;
-}
-
-.input-label {
-  font-size: 26rpx;
-  color: #64748b;
-}
-
-.input-wrapper {
-  display: flex;
-  align-items: center;
-  background: #f8fafc;
-  border-radius: 12rpx;
-  padding: 12rpx 20rpx;
-  border: 1rpx solid #e2e8f0;
-}
-
-.input-prefix {
-  font-size: 26rpx;
-  color: #94a3b8;
-  margin-right: 8rpx;
-}
-
-.price-input {
-  width: 120rpx;
-  font-size: 28rpx;
-  color: #1e293b;
-  text-align: right;
-}
-
-.input-suffix {
-  font-size: 24rpx;
-  color: #94a3b8;
-  margin-left: 8rpx;
-}
-
-.custom-price-note {
-  font-size: 22rpx;
-  color: #94a3b8;
-}
-
 /* ========== 价格卡片 ========== */
 .price-card {
   background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
@@ -1009,61 +785,13 @@
   margin-bottom: 12rpx;
 }
 
-.price-row-container {
-  display: flex;
-  flex-direction: column;
-  gap: 4rpx;
-  margin-bottom: 12rpx;
+.price-row:last-child {
+  margin-bottom: 0;
 }
 
 .price-label {
   font-size: 24rpx;
   color: rgba(255, 255, 255, 0.6);
-}
-
-.price-label-column {
-  display: flex;
-  flex-direction: column;
-  gap: 4rpx;
-  flex: 1;
-}
-
-.price-label-row {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-}
-
-.price-label-detail-row {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  justify-content: flex-end;
-}
-
-.price-label-detail {
-  font-size: 20rpx;
-  color: rgba(255, 255, 255, 0.4);
-}
-
-.price-label-detail-right {
-  font-size: 20rpx;
-  color: rgba(255, 255, 255, 0.4);
-  text-align: right;
-}
-
-.price-edit-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rpx 4rpx;
-  border-radius: 4rpx;
-  background-color: transparent;
-}
-
-.price-edit-text {
-  font-size: 20rpx;
-  color: #6366F1;
 }
 
 .price-value {
@@ -1356,10 +1084,6 @@
 }
 .asset-ai-switch.active {
   background: #8B5CF6;
-}
-.asset-ai-switch.locked {
-  opacity: 0.7;
-  cursor: not-allowed;
 }
 .asset-ai-switch-dot {
   width: 36rpx;

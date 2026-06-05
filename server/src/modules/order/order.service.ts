@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Injectable, Inject, forwardRef, Logger } from '@nestjs/common'
+import { Injectable, Inject, forwardRef } from '@nestjs/common'
 import * as crypto from 'crypto'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { EarningService } from '../earning/earning.service'
@@ -8,6 +8,7 @@ import { OrderDispatchService } from '../order-dispatch/order-dispatch.service'
 import { WechatPayService } from '../payment/wechat-pay.service'
 import { ContentGenerationService } from '../content-generation/content-generation.service'
 import { RedisService } from '../redis/redis.service'
+import { PriceConfigService } from './price-config.service'
 
 /**
  * 字段命名规则说明：
@@ -16,28 +17,8 @@ import { RedisService } from '../redis/redis.service'
  * - SQL AS 别名：如 `x as avatar_id`，返回值也是 camelCase → `avatarId`
  */
 
-// 价格配置相关接口
-export interface ContentTypePrice {
-  id: string
-  contentType: string
-  label: string
-  icon: string
-  basePrice: number
-  contentPrice: number
-  desc: string
-  output: string
-}
-
-export interface PriceCalculation {
-  base: number
-  content: number
-  total: number
-}
-
 @Injectable()
 export class OrderService {
-  private readonly logger = new Logger(OrderService.name)
-
   constructor(
     @Inject(EarningService) private readonly earningService: EarningService,
     @Inject(NotificationService) private readonly notificationService: NotificationService,
@@ -45,6 +26,7 @@ export class OrderService {
     @Inject(forwardRef(() => WechatPayService)) private readonly wechatPayService: WechatPayService,
     @Inject(forwardRef(() => ContentGenerationService)) private readonly contentGenService: ContentGenerationService,
     @Inject(RedisService) private readonly redisService: RedisService,
+    @Inject(PriceConfigService) private readonly priceConfigService: PriceConfigService,
   ) {}
 
   private safeParseJson<T>(value: any, fallback: T): T {
@@ -59,104 +41,6 @@ export class OrderService {
     }
     return fallback
   }
-
-  // ========== 价格配置相关方法 ==========
-
-  async getAllPriceConfigs(): Promise<ContentTypePrice[]> {
-    try {
-      const db = getMySQLClient()
-      this.logger.log('[价格配置] 开始查询数据库...')
-      
-      const result = await db.query(
-        `SELECT id, content_type, name, icon, base_price, content_price, description, output_unit, sort_order
-         FROM content_type_prices
-         WHERE is_active = TRUE
-         ORDER BY sort_order ASC`
-      )
-      
-      // 处理 db.query 返回的两种格式：数组或 {data: [...]}
-      const rows = Array.isArray(result) ? result : (result?.data || [])
-      this.logger.log(`[价格配置] 查询到 ${rows.length} 条记录`)
-
-      const configs: ContentTypePrice[] = []
-      for (const row of rows as any[]) {
-        const contentType = row.contentType || row.content_type
-        const basePrice = row.basePrice || row.base_price
-        const contentPrice = row.contentPrice || row.content_price
-        const outputUnit = row.outputUnit || row.output_unit
-        
-        configs.push({
-          id: row.id,
-          contentType: contentType,
-          label: row.name,
-          icon: row.icon || '',
-          basePrice: Number(basePrice) || 0,
-          contentPrice: Number(contentPrice) || 0,
-          desc: row.description || row.desc || '',
-          output: outputUnit || '',
-        })
-      }
-      
-      return configs
-    } catch (error: any) {
-      this.logger.error(`[价格配置] 加载失败: ${error.message}`)
-      throw error
-    }
-  }
-
-  async getPriceConfig(contentType: string): Promise<ContentTypePrice | undefined> {
-    const configs = await this.getAllPriceConfigs()
-    return configs.find(c => c.contentType === contentType)
-  }
-
-  async calculatePrice(
-    contentType: string,
-    avatarCount: number,
-    quantityPerAvatar: number
-  ): Promise<PriceCalculation> {
-    // 映射数据库存储的 contentType 到价格配置的 contentType
-    const mappedContentType = contentType === 'simple_task' ? 'simple' : contentType
-    
-    const config = await this.getPriceConfig(mappedContentType)
-    if (!config) {
-      this.logger.warn(`[价格计算] 未知内容类型: ${contentType}, 数据库中未找到配置`)
-      throw new Error(`未知的内容类型: ${contentType}`)
-    }
-
-    const base = config.basePrice * avatarCount
-    const content = config.contentPrice * quantityPerAvatar * avatarCount
-    const total = base + content
-
-    this.logger.log(
-      `[价格计算] contentType=${contentType}, avatarCount=${avatarCount}, quantityPerAvatar=${quantityPerAvatar}, base=${base}, content=${content}, total=${total}`
-    )
-
-    return { base, content, total }
-  }
-
-  async validatePrice(
-    contentType: string,
-    avatarCount: number,
-    quantityPerAvatar: number,
-    expectedBase: number,
-    expectedContent: number
-  ): Promise<{ valid: boolean; actual: PriceCalculation }> {
-    const actual = await this.calculatePrice(contentType, avatarCount, quantityPerAvatar)
-
-    const valid =
-      Math.abs(actual.base - expectedBase) < 0.01 &&
-      Math.abs(actual.content - expectedContent) < 0.01
-
-    if (!valid) {
-      this.logger.warn(
-        `[价格校验] 不匹配: contentType=${contentType}, expected={base:${expectedBase}, content:${expectedContent}}, actual={base:${actual.base}, content:${actual.content}}`
-      )
-    }
-
-    return { valid, actual }
-  }
-
-  // ========== 订单相关方法 ==========
 
   private normalizeDispatchStatus(status?: string): string {
     if (status === 'confirmed') {
@@ -244,6 +128,8 @@ export class OrderService {
       } else if (allContentSubmitted) {
         newStatus = 'awaiting_acceptance'
         if (allContentStatuses.some(s => ['published', 'completed'].includes(s)) && !allContentStatuses.some(s => s === 'awaiting_acceptance')) {
+          // 只有所有需要的分身都已完成时，才设为 submitted
+          // 否则还有分身未接单/未完成，应保持 in_progress 或 pending_acceptance
           if (!hasPending && completedDispatchCount >= requiredAvatarCount) {
             newStatus = 'submitted'
           } else if (hasPending) {
@@ -321,11 +207,24 @@ export class OrderService {
     const contentType = orderData.contentType || orderData.content_type || 'text'
     const quantityPerAvatar = Number(orderData.quantityPerAvatar || orderData.quantity_per_avatar || 1)
     
-    // 直接使用前端传来的价格，不做任何计算
-    const budget = Number(orderData.total_price || orderData.budget || 0)
-    const baseAmount = Number(orderData.base_price || orderData.basePrice || 0)
-    const contentAmount = Number(orderData.content_price || orderData.contentPrice || 0)
-    const customBasePrice = orderData.customBasePrice ? Number(orderData.customBasePrice) : null
+    const priceCalc = await this.priceConfigService.calculatePrice(contentType, avatarCount, quantityPerAvatar)
+    
+    if (orderData.basePrice !== undefined || orderData.contentPrice !== undefined) {
+      const validation = await this.priceConfigService.validatePrice(
+        contentType,
+        avatarCount,
+        quantityPerAvatar,
+        Number(orderData.basePrice || 0),
+        Number(orderData.contentPrice || 0)
+      )
+      if (!validation.valid) {
+        console.warn(`[OrderService] 价格校验失败: userId=${userId}, contentType=${contentType}, 预期={base:${orderData.basePrice}, content:${orderData.contentPrice}}, 实际={base:${validation.actual.base}, content:${validation.actual.content}}`)
+      }
+    }
+    
+    const baseAmount = priceCalc.base
+    const contentAmount = priceCalc.content
+    const budget = priceCalc.total
 
     const insertData: Record<string, any> = {
       id,
@@ -333,13 +232,11 @@ export class OrderService {
       title: orderData.title,
       description: orderData.description || '',
       content_type: orderData.contentType || orderData.content_type || 'text',
-      accept_regions: JSON.stringify(orderData.acceptRegions || orderData.accept_regions || []),
       platforms: JSON.stringify(orderData.platforms || []),
       requirements: JSON.stringify(orderData.requirements || {}),
       budget,
       base_amount: baseAmount,
       content_amount: contentAmount,
-      custom_base_price: customBasePrice,
       status: 'pending_payment',
       expected_quantity: avatarCount,
       avatar_count: avatarCount,
@@ -418,7 +315,7 @@ export class OrderService {
     const db = getMySQLClient()
     
     const orderRows = await db.query(
-      `SELECT id, user_id, avatar_id, title, description, content_type, accept_regions,
+      `SELECT id, user_id, avatar_id, title, description, content_type, 
        platforms, requirements, budget, base_amount, content_amount, status, result, created_at, updated_at,
        completed_at, latitude, longitude, location_text, target_audience,
        expected_quantity, deadline, order_type, priority, assigned_to,
@@ -532,9 +429,6 @@ export class OrderService {
       title: order.title,
       description: order.description,
       contentType: order.contentType,
-      acceptRegions: typeof order.acceptRegions === 'string' 
-        ? JSON.parse(order.acceptRegions) 
-        : (order.acceptRegions || []),
       platforms: typeof order.platforms === 'string' 
         ? JSON.parse(order.platforms) 
         : (order.platforms || []),
@@ -563,7 +457,7 @@ export class OrderService {
     }
     
     const rows = await db.query(
-      `SELECT id, title, description, content_type, accept_regions, platforms, requirements, 
+      `SELECT id, title, description, content_type, platforms, requirements, 
               budget, base_amount, content_amount, status, expected_quantity, avatar_count, is_paid, created_at
        FROM orders ${whereClause} ORDER BY created_at DESC LIMIT 100`,
       params
@@ -671,11 +565,6 @@ export class OrderService {
         try { requirements = JSON.parse(requirements) } catch { requirements = {} }
       }
       
-      let acceptRegions = row.acceptRegions
-      if (typeof acceptRegions === 'string') {
-        try { acceptRegions = JSON.parse(acceptRegions) } catch { acceptRegions = [] }
-      }
-      
       let createdAt = ''
       if (row.createdAt) {
         if (row.createdAt instanceof Date) {
@@ -707,7 +596,6 @@ export class OrderService {
         title: row.title,
         description: row.description,
         contentType: row.contentType,
-        acceptRegions,
         platforms,
         requirements,
         budget: row.budget,

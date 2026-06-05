@@ -448,8 +448,7 @@ export class AuthService {
   }
 
   /**
-   * 微信静默登录（只查找用户，不创建新用户）
-   * 用于已注册用户的自动登录，新用户需要手动授权登录
+   * 微信登录
    */
   async wechatLogin(
     code: string,
@@ -469,25 +468,59 @@ export class AuthService {
       }
 
       const openid = wxData.openid;
-      const db = getMySQLClient();
-      const result = await db.query("users", { openid });
-      const existingUser = Array.isArray(result)
-        ? result[0]
-        : (result as any)?.data?.[0];
-      
-      if (existingUser) {
-        return {
-          user: existingUser,
-          token: this.generateToken(existingUser.id),
-          isNewUser: false,
-        };
-      }
-      
-      // 用户不存在，不自动创建，需要手动授权登录
-      throw new Error("用户不存在，请使用手机号登录或微信授权登录");
+      const sessionKey = wxData.session_key;
+      return await this.createOrGetUser(openid);
     } catch (error: any) {
       throw new Error(`微信登录失败: ${error.message}`);
     }
+  }
+
+  /**
+   * 创建或获取微信用户
+   */
+  private async createOrGetUser(
+    openid: string,
+    nickname?: string,
+    avatar?: string,
+  ) {
+    const db = getMySQLClient();
+    const result = await db.query("users", { openid });
+    const existingUser = Array.isArray(result)
+      ? result[0]
+      : (result as any)?.data?.[0];
+    if (existingUser) {
+      return {
+        user: existingUser,
+        token: this.generateToken(existingUser.id),
+        isNewUser: false,
+      };
+    }
+
+    const userId = require("uuid").v4();
+    const newUserData = {
+      id: userId,
+      openid,
+      nickname: nickname || "微信用户",
+      avatar: avatar || "",
+      level: 1,
+      exp: 0,
+      credits: 100,
+      referral_code: this.generateReferralCode(),
+      created_at: new Date().toISOString().slice(0, 19).replace("T", " "),
+      updated_at: new Date().toISOString().slice(0, 19).replace("T", " "),
+    };
+    await db.insert("users", newUserData);
+    const newUserResult = await db.query("users", { openid });
+    const newUser = (newUserResult as any)?.data?.[0];
+    if (!newUser) {
+      throw new Error("创建用户失败");
+    }
+
+    return {
+      user: newUser,
+      token: this.generateToken(newUser.id),
+      isNewUser: true,
+    };
   }
 
   /**

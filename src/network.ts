@@ -203,66 +203,36 @@ const clearAdminAuthStorage = () => {
   }
 }
 
-// silentLogin 已禁用（整个函数注释掉）
-// const silentLogin = async (): Promise<boolean> => {
-//   try {
-//     const loginRes = await Taro.login()
-//     if (!loginRes.code) return false
-//     
-//     const domain = PROJECT_DOMAIN || ''
-//     const res = await Taro.request({
-//       url: `${domain}/api/auth/wechat-login`,
-//       method: 'POST',
-//       data: { code: loginRes.code },
-//       header: { 'Content-Type': 'application/json' }
-//     })
-//     
-//     if (res.statusCode === 200 && res.data?.code === 200) {
-//       const { user, token } = res.data.data || {}
-//       if (user && token) {
-//         Taro.setStorageSync('token', token)
-//         Taro.setStorageSync('userInfo', user)
-//         return true
-//       }
-//     }
-//     return false
-//   } catch {
-//     return false
-//   }
-// }
-
-const handleAuthError = async (originalUrl: string): Promise<boolean> => {
-  if (isHandlingAuthError) return false
+const handleAuthError = (originalUrl: string) => {
+  if (isHandlingAuthError) return
 
   const isAdminRequest = isAdminApi(originalUrl)
   const loginPath = isAdminRequest ? '/package-admin/pages/login/index' : '/pages/login/index'
   const currentPath = buildCurrentPath()
-  if (currentPath.startsWith(loginPath)) return false
+  if (currentPath.startsWith(loginPath)) return
 
   isHandlingAuthError = true
-  // 禁用静默登录
-  // if (!isAdminRequest) {
-  //   const success = await silentLogin()
-  //   if (success) {
-  //     isHandlingAuthError = false
-  //     return true
-  //   }
-  // }
-  
   if (isAdminRequest) {
     clearAdminAuthStorage()
   } else {
     clearUserAuthStorage()
   }
 
-  const redirect = currentPath ? `?redirect=${encodeURIComponent(currentPath)}` : ''
+  // const now = Date.now()
+  // if (now - lastAuthToastAt > 1500) {
+  //   lastAuthToastAt = now
+  //   Taro.showToast({ title: '需要重新登录', icon: 'none' })
+  // }
+
+  // const redirect = currentPath ? `?redirect=${encodeURIComponent(currentPath)}` : ''
+  // setTimeout(() => {
+  //   Taro.navigateTo({ url: `${loginPath}${redirect}` }).finally(() => {
+  //     isHandlingAuthError = false
+  //   })
+  // }, 200)
   setTimeout(() => {
-    Taro.navigateTo({ url: `${loginPath}${redirect}` }).finally(() => {
-      isHandlingAuthError = false
-    })
-  }, 200)
-  
-  return false
+    isHandlingAuthError = false
+  }, 1000)
 }
 
 const detectAuthErrorFromResponse = (res: any) => {
@@ -316,17 +286,9 @@ const request = async (option: any) => {
         ...createAuthHeaders(option.url, option.header),
         ...(option.header || {}),
       }
-      let res = await Taro.request({ ...option, url, header })
+      const res = await Taro.request({ ...option, url, header })
       if (detectAuthErrorFromResponse(res)) {
-        const retry = await handleAuthError(option.url)
-        if (retry) {
-          const retryHeader = {
-            'Content-Type': 'application/json',
-            ...createAuthHeaders(option.url, option.header),
-            ...(option.header || {}),
-          }
-          res = await Taro.request({ ...option, url, header: retryHeader })
-        }
+        handleAuthError(option.url)
       }
       if (isNetDebugEnabled()) {
         let size: number | undefined
@@ -362,17 +324,9 @@ const request = async (option: any) => {
     ...createAuthHeaders(option.url, option.header),
     ...(option.header || {}),
   }
-  let res = await Taro.request({ ...option, url, header })
+  const res = await Taro.request({ ...option, url, header })
   if (detectAuthErrorFromResponse(res)) {
-    const retry = await handleAuthError(option.url)
-    if (retry) {
-      const retryHeader = {
-        'Content-Type': 'application/json',
-        ...createAuthHeaders(option.url, option.header),
-        ...(option.header || {}),
-      }
-      res = await Taro.request({ ...option, url, header: retryHeader })
-    }
+    handleAuthError(option.url)
   }
   if (startedAt) {
     let size: number | undefined

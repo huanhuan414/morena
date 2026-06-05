@@ -1,1 +1,0 @@
-INSERT INTO content_type_prices (id, content_type, name, icon, base_price, content_price, description, output_unit, is_active, sort_order) VALUES ('ctp_simple_task', 'simple_task', '简单任务', '✅', 0.50, 0.00, '关注/点赞/转发等', '个任务', 1, 1) ON DUPLICATE KEY UPDATE base_price = 0.50;
