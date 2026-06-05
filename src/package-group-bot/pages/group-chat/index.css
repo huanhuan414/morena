@@ -1,0 +1,325 @@
+/* 群聊详情页 */
+.chat-page {
+  min-height: 100vh;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-scroll {
+  flex: 1;
+  padding-bottom: 120rpx;
+}
+
+/* 消息气泡 */
+.msg-bubble {
+  margin-bottom: 24rpx;
+}
+
+.msg-avatar {
+  /* 分身消息样式 */
+}
+
+.msg-user {
+  /* 用户消息样式 */
+}
+
+.msg-sender {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 8rpx;
+}
+
+.msg-sender-icon {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12rpx;
+}
+
+.msg-sender-icon-avatar {
+  background: #dbeafe;
+}
+
+.msg-sender-icon-user {
+  background: #f3f4f6;
+}
+
+.msg-sender-name {
+  font-size: 22rpx;
+  color: #6b7280;
+}
+
+.msg-badge {
+  margin-left: 8rpx;
+}
+
+.msg-time {
+  font-size: 20rpx;
+  color: #d1d5db;
+  margin-left: 8rpx;
+}
+
+.msg-content {
+  margin-left: 60rpx;
+  border-radius: 20rpx;
+  padding: 20rpx;
+}
+
+.msg-content-avatar {
+  background: #eff6ff;
+}
+
+.msg-content-user {
+  background: #fff;
+}
+
+.msg-text {
+  display: block;
+  font-size: 28rpx;
+  color: #1f2937;
+  line-height: 1.6;
+}
+
+/* 分身回复区 */
+.msg-reply-area {
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #bfdbfe;
+}
+
+.msg-reply-label {
+  display: block;
+  font-size: 22rpx;
+  color: #60a5fa;
+  margin-bottom: 4rpx;
+}
+
+.msg-reply-text {
+  display: block;
+  font-size: 28rpx;
+  color: #374151;
+}
+
+/* 纠正区 */
+.msg-correction-area {
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #fed7aa;
+}
+
+.msg-correction-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 8rpx;
+}
+
+.msg-correction-label {
+  font-size: 22rpx;
+  color: #f97316;
+  margin-left: 4rpx;
+}
+
+.msg-correction-text {
+  display: block;
+  font-size: 28rpx;
+  color: #374151;
+}
+
+/* 学习结果 */
+.msg-learned {
+  margin-top: 16rpx;
+  background: #f0fdf4;
+  border-radius: 12rpx;
+  padding: 16rpx;
+}
+
+.msg-learned-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.msg-learned-label {
+  font-size: 22rpx;
+  color: #16a34a;
+  font-weight: 600;
+  margin-left: 4rpx;
+}
+
+.msg-learned-text {
+  display: block;
+  font-size: 22rpx;
+  color: #15803d;
+  margin-top: 4rpx;
+}
+
+/* 纠正输入 */
+.msg-correct-input {
+  margin-top: 24rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid #e5e7eb;
+}
+
+.msg-correct-label {
+  display: block;
+  font-size: 22rpx;
+  color: #6b7280;
+  margin-bottom: 12rpx;
+}
+
+.msg-correct-textarea-wrap {
+  background: #f9fafb;
+  border-radius: 16rpx;
+  padding: 16rpx;
+  margin-bottom: 16rpx;
+}
+
+.msg-correct-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 16rpx;
+}
+
+.msg-correct-action {
+  flex: 1;
+}
+
+/* 操作按钮 */
+.msg-actions {
+  display: flex;
+  flex-direction: row;
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #f3f4f6;
+}
+
+.msg-action-btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-right: 32rpx;
+}
+
+.msg-action-text {
+  font-size: 22rpx;
+  color: #f97316;
+  margin-left: 4rpx;
+}
+
+/* 状态条 */
+.chat-status-bar {
+  padding: 16rpx 28rpx;
+  background: #f9fafb;
+}
+
+.chat-status-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chat-status-left {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.chat-status-text {
+  font-size: 22rpx;
+  color: #6b7280;
+  margin-left: 8rpx;
+}
+
+.chat-status-right {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.chat-status-refresh {
+  font-size: 22rpx;
+  color: #9ca3af;
+  margin-left: 4rpx;
+}
+
+/* 提示条 */
+.chat-tip {
+  padding: 0 28rpx 16rpx;
+}
+
+.chat-tip-inner {
+  background: #eff6ff;
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+}
+
+.chat-tip-text {
+  display: block;
+  font-size: 22rpx;
+  color: #3b82f6;
+  line-height: 1.5;
+}
+
+/* 消息列表区 */
+.chat-messages {
+  padding: 0 28rpx 28rpx;
+}
+
+/* 空状态 */
+.chat-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 96rpx 0;
+}
+
+.chat-empty-title {
+  display: block;
+  font-size: 28rpx;
+  color: #9ca3af;
+  margin-top: 24rpx;
+}
+
+.chat-empty-desc {
+  display: block;
+  font-size: 24rpx;
+  color: #d1d5db;
+  margin-top: 8rpx;
+}
+
+/* 底部输入栏 */
+.chat-input-bar {
+  /* position and flex set via inline style for H5 compat */
+}
+
+.chat-input-wrap {
+  flex: 1;
+  background: #f8fafc;
+  border-radius: 40rpx;
+  padding: 16rpx 24rpx;
+}
+
+.chat-input-btn {
+  flex-shrink: 0;
+}
+
+/* 加载 */
+.chat-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 96rpx 0;
+}
+
+.chat-loading-text {
+  display: block;
+  font-size: 28rpx;
+  color: #9ca3af;
+}

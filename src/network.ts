@@ -203,32 +203,33 @@ const clearAdminAuthStorage = () => {
   }
 }
 
-const silentLogin = async (): Promise<boolean> => {
-  try {
-    const loginRes = await Taro.login()
-    if (!loginRes.code) return false
-    
-    const domain = PROJECT_DOMAIN || ''
-    const res = await Taro.request({
-      url: `${domain}/api/auth/wechat-login`,
-      method: 'POST',
-      data: { code: loginRes.code },
-      header: { 'Content-Type': 'application/json' }
-    })
-    
-    if (res.statusCode === 200 && res.data?.code === 200) {
-      const { user, token } = res.data.data || {}
-      if (user && token) {
-        Taro.setStorageSync('token', token)
-        Taro.setStorageSync('userInfo', user)
-        return true
-      }
-    }
-    return false
-  } catch {
-    return false
-  }
-}
+// silentLogin 已禁用（整个函数注释掉）
+// const silentLogin = async (): Promise<boolean> => {
+//   try {
+//     const loginRes = await Taro.login()
+//     if (!loginRes.code) return false
+//     
+//     const domain = PROJECT_DOMAIN || ''
+//     const res = await Taro.request({
+//       url: `${domain}/api/auth/wechat-login`,
+//       method: 'POST',
+//       data: { code: loginRes.code },
+//       header: { 'Content-Type': 'application/json' }
+//     })
+//     
+//     if (res.statusCode === 200 && res.data?.code === 200) {
+//       const { user, token } = res.data.data || {}
+//       if (user && token) {
+//         Taro.setStorageSync('token', token)
+//         Taro.setStorageSync('userInfo', user)
+//         return true
+//       }
+//     }
+//     return false
+//   } catch {
+//     return false
+//   }
+// }
 
 const handleAuthError = async (originalUrl: string): Promise<boolean> => {
   if (isHandlingAuthError) return false

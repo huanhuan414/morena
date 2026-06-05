@@ -524,8 +524,8 @@ const MindChat: React.FC = () => {
               content: '免费版/基础版用户托管后需手动确认订单\n\n升级专业版即可解锁：\n① 订单优先派发，快速响应\n② 自动接单，无需确认，躺着赚钱\n\n限时优惠价：99.9元/月',
               confirmText: '立即升级',
               cancelText: '稍后再说',
-              success: (res) => {
-                if (res.confirm) {
+              success: (confirmRes) => {
+                if (confirmRes.confirm) {
                   Taro.navigateTo({ url: '/package-avatar/pages/subscription/index' })
                 }
               }

@@ -64,7 +64,7 @@ export default function OrderCreate() {
     customCopywriting: '',
     customBasePrice: 0, // 图文类型自定义基础单价
   })
-  const [customBasePriceInput, setCustomBasePriceInput] = useState('') // 输入框显示值
+  const [, setCustomBasePriceInput] = useState('') // 输入框显示值
   const [uploadedAssets, setUploadedAssets] = useState<{ id: string; url: string; type: 'image' | 'video'; filename: string; size: number; mimeType: string }[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [zipProgress, setZipProgress] = useState<{ status: string; message: string; totalFiles: number; processedFiles: number } | null>(null)
@@ -329,12 +329,12 @@ export default function OrderCreate() {
 
   const selectedType = contentTypes.find(t => t.contentType === form.contentType)
   const basePricePerUnit = selectedType?.basePrice ?? 0
-  const contentPricePerUnit = selectedType?.contentPrice ?? 0
+  void selectedType?.contentPrice // contentPricePerUnit (unused but kept for future use)
 
   // 获取不同内容类型的价格配置（用于计算内容费用）
   const imageTypeConfig = contentTypes.find(t => t.contentType === 'image')
   const videoTypeConfig = contentTypes.find(t => t.contentType === 'video')
-  const textTypeConfig = contentTypes.find(t => t.contentType === 'text')
+  void contentTypes.find(t => t.contentType === 'text') // textTypeConfig (unused but kept for future use)
   const imageContentPrice = imageTypeConfig?.contentPrice ?? 0
   const videoContentPrice = videoTypeConfig?.contentPrice ?? 0
 

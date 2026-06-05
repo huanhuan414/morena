@@ -672,7 +672,7 @@ export default function AvatarCreate() {
               className="form-picker-trigger"
               onClick={() => setShowGenderPicker(true)}
             >
-              <Text className={`form-picker-text ${formData.gender ? 'has-value' : ''}`}>
+              <Text className={`form-picker-text ${formData.gender ? 'hasval' : ''}`}>
                 {getGenderDisplay() || '请选择性别'}
               </Text>
               <ChevronDown size={18} color="#94A3B8" />
@@ -694,7 +694,7 @@ export default function AvatarCreate() {
             >
               <View className="form-picker-trigger">
                 <Calendar size={18} color="#8B5CF6" />
-                <Text className={`form-picker-text ${formData.birthday ? 'has-value' : ''}`}>
+                <Text className={`form-picker-text ${formData.birthday ? 'hasval' : ''}`}>
                   {formData.birthday ? calculateAge(formData.birthday) : '请选择出生日期'}
                 </Text>
                 <ChevronDown size={18} color="#94A3B8" />
@@ -712,7 +712,7 @@ export default function AvatarCreate() {
               className="form-picker-trigger"
               onClick={() => setShowIdentityPicker(true)}
             >
-              <Text className={`form-picker-text ${formData.identity ? 'has-value' : ''}`}>
+              <Text className={`form-picker-text ${formData.identity ? 'hasval' : ''}`}>
                 {getIdentityDisplay() || '请选择职业'}
               </Text>
               <ChevronDown size={18} color="#94A3B8" />
@@ -731,7 +731,7 @@ export default function AvatarCreate() {
                 onClick={handleGetLocation}
               >
                 <MapPin size={18} color="#8B5CF6" />
-                <Text className={`location-text ${formData.location ? 'has-value' : ''}`}>
+                <Text className={`location-text ${formData.location ? 'hasval' : ''}`}>
                   {formData.location || '点击选择位置'}
                 </Text>
               </View>

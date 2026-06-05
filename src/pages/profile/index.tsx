@@ -1,4 +1,4 @@
-import Taro, { useLoad, useDidShow, navigateTo, reLaunch, showModal } from '@tarojs/taro'
+import Taro, { useDidShow, navigateTo, reLaunch, showModal } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Network } from '@/network'
@@ -9,8 +9,8 @@ import {
 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import '@/styles/variables.css'
-import './index.css'
 import logoImage from '@/static/logo.jpg'
+import './index.css'
 
 interface UserStats {
   avatarCount: number
