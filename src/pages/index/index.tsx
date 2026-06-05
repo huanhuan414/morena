@@ -828,7 +828,7 @@ const Index: React.FC = () => {
                 const contentTypeTag = getContentTypeTag(order)
                 const priorityColor = urgencyTag ? urgencyTag.color : '#6366F1'
                 const isExpanded = expandedOrderId === order.id
-                const deadlineInfo = formatDeadline(order.deadline || order.contentDeadlineAt)
+                void formatDeadline(order.deadline || order.contentDeadlineAt) // deadlineInfo (unused)
                 const reqTags = Array.isArray(order.requirements)
                   ? (order.requirements as string[]).slice(0, 4)
                   : (typeof order.requirements === 'object' && order.requirements?.skills)
