@@ -359,7 +359,7 @@ export default function GeneratedContentPage() {
       case 'failed':
         return [
           { key: 'delete', label: '删除', icon: Trash2, type: 'danger' },
-          { key: 'regenerate', label: '重新生成', icon: RefreshCw, type: 'primary' },
+          // { key: 'regenerate', label: '重新生成', icon: RefreshCw, type: 'primary' },
         ]
       case 'rejected':
         if (content && (content.revisionCount || content.revision_count || 0) >= 2) {
@@ -368,7 +368,7 @@ export default function GeneratedContentPage() {
           ]
         }
         return [
-          { key: 'regenerate', label: '重新生成', icon: RefreshCw, type: 'primary' },
+          // { key: 'regenerate', label: '重新生成', icon: RefreshCw, type: 'primary' },
           { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
         ]
       case 'cancelled':

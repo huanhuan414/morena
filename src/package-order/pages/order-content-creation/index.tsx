@@ -803,9 +803,9 @@ export default function OrderContentCreation() {
             {/* 操作按钮 - 只有待发布状态才显示 */}
             {rawStatus === 'preview' && (
               <View className="cc-action-bar">
-                <View className="cc-action-btn cc-action-secondary" onClick={handleRetry}>
+                {/* <View className="cc-action-btn cc-action-secondary" onClick={handleRetry}>
                   <Text className="cc-action-secondary-text">重新生成</Text>
-                </View>
+                </View> */}
                 <View className="cc-action-btn cc-action-primary" onClick={handlePublish}>
                   <Text className="cc-action-primary-text">去发布</Text>
                 </View>
