@@ -25,7 +25,7 @@ const CONTENT_TYPE_CONFIG: Record<string, { name: string; color: string }> = {
   article: { name: '文章', color: '#10B981' },
   image_text: { name: '图文', color: '#F59E0B' },
   video_text: { name: '短视频', color: '#EF4444' },
-  simple_task: { name: '简单任务', color: '#6366F1' },
+  simple: { name: '简单任务', color: '#6366F1' },
 }
 
 interface GeneratedContent {
@@ -169,7 +169,7 @@ export default function OrderPublishFeedback() {
       if (typeof v === 'string') {
         const trimmed = v.trim()
         if (trimmed.startsWith('[')) {
-          try { const r = JSON.parse(trimmed); if (Array.isArray(r)) r.forEach(tryAdd) } catch {}
+          try { const r = JSON.parse(trimmed); if (Array.isArray(r)) r.forEach(tryAdd) } catch { }
         } else if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
           result.push(trimmed)
         }

@@ -349,7 +349,7 @@ export class ContentGenerationService implements OnModuleInit {
       })
 
       // 3. 简单任务直接标记完成，不走AI生成
-      if (input.contentType === 'simple_task') {
+      if (input.contentType === 'simple') {
         this.logger.log(`简单任务，跳过AI生成: ${requestId}`)
         // 先更新content字段为订单描述，让分身能看到任务要求
         try {
@@ -396,7 +396,7 @@ export class ContentGenerationService implements OnModuleInit {
    */
   private resolveContentType(primarySkill: string, orderContentType: string): string {
     // 简单任务不需要AI生成，直接返回原类型
-    if (orderContentType === 'simple_task') {
+    if (orderContentType === 'simple') {
       return orderContentType
     }
     const skillStrategy = getSkillStrategy(primarySkill)

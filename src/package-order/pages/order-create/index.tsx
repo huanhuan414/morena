@@ -485,7 +485,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         data: {
           prompt,
           platforms: form.platforms,
-          contentType: form.contentType === 'text' ? 'copywriting' : form.contentType === 'video' ? 'video_script' : form.contentType === 'simple' ? 'simple_task' : 'copywriting',
+          contentType: form.contentType === 'text' ? 'copywriting' : form.contentType === 'video' ? 'video_script' : form.contentType === 'simple' ? 'simple' : 'copywriting',
         },
       })
 
@@ -663,7 +663,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         console.warn('[OrderCreate] 获取openid失败:', e)
       }
 
-      // simple -> simple_task 映射：前端用short id，后端存full id
+      // simple -> simple 映射：前端用short id，后端存full id
       const backendContentType = form.contentType
 
       // 将 key 转换为显示名称（name）

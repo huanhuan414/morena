@@ -164,7 +164,7 @@ const STEPS_SIMPLE: StepDef[] = [
 
 // 获取当前步骤列表
 function getSteps(contentType?: string): StepDef[] {
-  if (contentType === 'simple_task') return STEPS_SIMPLE
+  if (contentType === 'simple') return STEPS_SIMPLE
   if (contentType === 'video' || contentType === 'video_text') return STEPS_VIDEO
   if (contentType === 'text') return STEPS_TEXT
   return STEPS_IMAGE
@@ -172,7 +172,7 @@ function getSteps(contentType?: string): StepDef[] {
 
 // rawStatus → 当前步骤索引 (0-based)
 function getStepIndex(rawStatus: string, contentType?: string): number {
-  const isSimpleTask = contentType === 'simple_task'
+  const isSimpleTask = contentType === 'simple'
   switch (rawStatus) {
     case 'pending':
     case 'processing':
@@ -220,7 +220,7 @@ function getStepHint(rawStatus: string, contentType?: string, isTimeout?: boolea
   if (queueHint) return queueHint
   const isVideo = contentType === 'video' || contentType === 'video_text'
   const isTextOnly = contentType === 'text'
-  const isSimpleTask = contentType === 'simple_task'
+  const isSimpleTask = contentType === 'simple'
   switch (rawStatus) {
     case 'pending':
     case 'processing':
@@ -333,8 +333,8 @@ export default function OrderContentCreation() {
 
         const terminalStatuses = ['completed', 'published', 'awaiting_acceptance', 'feedback_submitted', 'settled', 'done', 'preview', 'failed', 'partial_failed', 'rejected']
         const reachedTerminal = terminalStatuses.includes(data.rawStatus) || terminalStatuses.includes(data.status)
-        // simple_task的ready状态也是终端状态（任务准备就绪，等待分身执行）
-        const isSimpleTaskReady = (data.rawStatus === 'ready' || data.status === 'ready') && (data.contentType === 'simple_task')
+        // simple的ready状态也是终端状态（任务准备就绪，等待分身执行）
+        const isSimpleTaskReady = (data.rawStatus === 'ready' || data.status === 'ready') && (data.contentType === 'simple')
         if (!reachedTerminal && !isSimpleTaskReady) return
 
         if (timerRef.current) clearInterval(timerRef.current)
@@ -389,8 +389,8 @@ export default function OrderContentCreation() {
   // 生成中的状态集合 —— 只有这些状态算"还在生成"
   const GENERATING_STATUSES = ['pending', 'processing', 'generating_text', 'generating_images', 'generating_video']
   const isPartialFailed = rawStatus === 'partial_failed'
-  const isSimpleTask = contentType === 'simple_task'
-  // simple_task的ready状态：任务已就绪，不算"生成中"，算"任务待执行"
+  const isSimpleTask = contentType === 'simple'
+  // simple的ready状态：任务已就绪，不算"生成中"，算"任务待执行"
   const isSimpleTaskReady = isSimpleTask && rawStatus === 'ready'
   const isGenerating = GENERATING_STATUSES.includes(rawStatus) || (isSimpleTask && ['pending', 'processing'].includes(rawStatus))
   const isRejected = rawStatus === 'rejected'
@@ -443,7 +443,7 @@ export default function OrderContentCreation() {
   const videoEmpty = needVideo && displayVideos.length === 0
   const isPreviewWithMissing = rawStatus === 'preview' && (imageEmpty || videoEmpty)
   const effectiveIsPartialFailed = isPartialFailed || isPreviewWithMissing
-  // simple_task的ready状态不算完成（等待执行），其他类型的ready状态实际上不会出现
+  // simple的ready状态不算完成（等待执行），其他类型的ready状态实际上不会出现
   const isCompleted = !GENERATING_STATUSES.includes(rawStatus) && rawStatus !== 'failed' && !effectiveIsPartialFailed && !isRejected && !(rawStatus === 'ready' && isSimpleTask)
 
   // 完成状态文案

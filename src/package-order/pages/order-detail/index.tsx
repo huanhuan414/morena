@@ -32,7 +32,7 @@ const PLATFORM_MAP: Record<string, string> = {
 
 // ===== 内容类型映射 =====
 const CONTENT_TYPE_MAP: Record<string, { label: string; icon: any }> = {
-  simple_task: { label: '简单任务', icon: CircleCheckBig },
+  simple: { label: '简单任务', icon: CircleCheckBig },
   text: { label: '纯文案', icon: FileText },
   image_text: { label: '图文', icon: Camera },
   article: { label: '长文', icon: FileText },

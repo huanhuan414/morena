@@ -1804,8 +1804,8 @@ async getExecutionProgress(orderId: string) {
       orderDescription: request.description || order.description || '',
       platforms: normalizedPlatforms,
       contentType: order.content_type || order.contentType || 'image_text',
-      // simple_task类型不需要AI生成内容，直接标记ready
-      skipGeneration: (order.content_type || order.contentType) === 'simple_task',
+      // simple类型不需要AI生成内容，直接标记ready
+      skipGeneration: (order.content_type || order.contentType) === 'simple',
       targetAudience: request.target_audience || order.targetAudience || '年轻用户',
       contentQuantity: request.quantityPerAvatar || request.quantity_per_avatar || order.quantityPerAvatar || order.quantity_per_avatar || 1,
       avatarName,

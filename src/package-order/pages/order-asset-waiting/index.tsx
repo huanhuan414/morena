@@ -208,7 +208,7 @@ export default function OrderAssetWaiting() {
   // 后端有防重入锁，重复触发不会重复生成
   useEffect(() => {
     if (loading || !summary || autoFillTriggered) return
-    if (contentType === 'text' || contentType === 'simple_task' || !aiAutoFill) return
+    if (contentType === 'text' || contentType === 'simple' || !aiAutoFill) return
 
     const totalReady = summary.ready || 0
     const totalGenerating = summary.generating || 0
@@ -330,7 +330,7 @@ export default function OrderAssetWaiting() {
   const isSufficient = noAssetNeeded || (aiAutoFill
     ? (readyImages >= requiredImageCount && readyVideos >= requiredVideoCount)
     : (readyImages > 0 || readyVideos > 0))
-  const needMoreImages = (contentType !== 'text' && contentType !== 'video' && contentType !== 'simple_task' && aiAutoFill) ? Math.max(0, requiredImageCount - readyImages - (summary?.generating || 0)) : 0
+  const needMoreImages = (contentType !== 'text' && contentType !== 'video' && contentType !== 'simple' && aiAutoFill) ? Math.max(0, requiredImageCount - readyImages - (summary?.generating || 0)) : 0
   const needMoreVideos = (contentType === 'video' && aiAutoFill) ? Math.max(0, requiredVideoCount - readyVideos - (summary?.generating || 0)) : 0
   const needMoreCount = needMoreImages + needMoreVideos
 

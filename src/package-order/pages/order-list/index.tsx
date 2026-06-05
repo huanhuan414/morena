@@ -24,7 +24,7 @@ const PLATFORM_MAP: Record<string, string> = {
 
 // ===== 内容类型映射 =====
 const CONTENT_TYPE_MAP: Record<string, { label: string; icon: any }> = {
-  simple_task: { label: '简单任务', icon: CircleCheck },
+  simple: { label: '简单任务', icon: CircleCheck },
   text: { label: '纯文案', icon: FileText },
   image_text: { label: '图文', icon: Camera },
   article: { label: '长文', icon: FileText },
@@ -40,23 +40,23 @@ const STATUS_CONFIG: Record<string, {
   icon: any
   phase: number
 }> = {
-  pending_payment:    { label: '待支付',   color: '#F59E0B', bgColor: '#FFFBEB', icon: Wallet,       phase: 0 },
-  pending:            { label: '匹配中',   color: '#7C3AED', bgColor: '#F5F3FF', icon: Loader,       phase: 1 },
-  awaiting_acceptance:{ label: '等待接单', color: '#6366F1', bgColor: '#EEF2FF', icon: Users,        phase: 1 },
-  pending_acceptance: { label: '等待接单', color: '#6366F1', bgColor: '#EEF2FF', icon: Users,        phase: 1 },
-  accepted:           { label: '已接单',   color: '#10B981', bgColor: '#ECFDF5', icon: CircleCheck,  phase: 2 },
-  in_progress:        { label: '制作中',   color: '#10B981', bgColor: '#ECFDF5', icon: Loader,       phase: 2 },
-  content_generated:  { label: '已生成',   color: '#8B5CF6', bgColor: '#F5F3FF', icon: FileText,     phase: 2 },
-  submitted:          { label: '待发布',   color: '#8B5CF6', bgColor: '#F5F3FF', icon: FileText,     phase: 3 },
-  published:          { label: '已发布',   color: '#059669', bgColor: '#ECFDF5', icon: CircleCheck,  phase: 3 },
-  revision_requested: { label: '待修改',   color: '#F97316', bgColor: '#FFF7ED', icon: Zap,          phase: 2 },
-  completed:          { label: '已完成',   color: '#059669', bgColor: '#ECFDF5', icon: CircleCheck,  phase: 4 },
-  publish_failed:     { label: '发布失败', color: '#EF4444', bgColor: '#FEF2F2', icon: TriangleAlert, phase: -1 },
-  publish_timeout:    { label: '发布超时', color: '#EF4444', bgColor: '#FEF2F2', icon: TriangleAlert, phase: -1 },
-  cancelled:          { label: '已取消',   color: '#9CA3AF', bgColor: '#F9FAFB', icon: CircleX,       phase: -1 },
-  auto_cancelled:     { label: '自动取消', color: '#9CA3AF', bgColor: '#F9FAFB', icon: CircleX,       phase: -1 },
-  timeout:            { label: '已超时',   color: '#9CA3AF', bgColor: '#F9FAFB', icon: CircleX,       phase: -1 },
-  expired:            { label: '已过期',   color: '#9CA3AF', bgColor: '#F9FAFB', icon: CircleX,       phase: -1 },
+  pending_payment: { label: '待支付', color: '#F59E0B', bgColor: '#FFFBEB', icon: Wallet, phase: 0 },
+  pending: { label: '匹配中', color: '#7C3AED', bgColor: '#F5F3FF', icon: Loader, phase: 1 },
+  awaiting_acceptance: { label: '等待接单', color: '#6366F1', bgColor: '#EEF2FF', icon: Users, phase: 1 },
+  pending_acceptance: { label: '等待接单', color: '#6366F1', bgColor: '#EEF2FF', icon: Users, phase: 1 },
+  accepted: { label: '已接单', color: '#10B981', bgColor: '#ECFDF5', icon: CircleCheck, phase: 2 },
+  in_progress: { label: '制作中', color: '#10B981', bgColor: '#ECFDF5', icon: Loader, phase: 2 },
+  content_generated: { label: '已生成', color: '#8B5CF6', bgColor: '#F5F3FF', icon: FileText, phase: 2 },
+  submitted: { label: '待发布', color: '#8B5CF6', bgColor: '#F5F3FF', icon: FileText, phase: 3 },
+  published: { label: '已发布', color: '#059669', bgColor: '#ECFDF5', icon: CircleCheck, phase: 3 },
+  revision_requested: { label: '待修改', color: '#F97316', bgColor: '#FFF7ED', icon: Zap, phase: 2 },
+  completed: { label: '已完成', color: '#059669', bgColor: '#ECFDF5', icon: CircleCheck, phase: 4 },
+  publish_failed: { label: '发布失败', color: '#EF4444', bgColor: '#FEF2F2', icon: TriangleAlert, phase: -1 },
+  publish_timeout: { label: '发布超时', color: '#EF4444', bgColor: '#FEF2F2', icon: TriangleAlert, phase: -1 },
+  cancelled: { label: '已取消', color: '#9CA3AF', bgColor: '#F9FAFB', icon: CircleX, phase: -1 },
+  auto_cancelled: { label: '自动取消', color: '#9CA3AF', bgColor: '#F9FAFB', icon: CircleX, phase: -1 },
+  timeout: { label: '已超时', color: '#9CA3AF', bgColor: '#F9FAFB', icon: CircleX, phase: -1 },
+  expired: { label: '已过期', color: '#9CA3AF', bgColor: '#F9FAFB', icon: CircleX, phase: -1 },
 }
 
 // Tab 配置
@@ -116,7 +116,7 @@ export default function OrderListPage() {
   const statusBarHeight = getStatusBarHeight()
   const [showBackToTop, setShowBackToTop] = useState(false)
   const [scrollTop, setScrollTop] = useState(0)
-  
+
   // 滚动监听（只用于显示按钮）
   const handleScroll = (e: any) => {
     const currentScrollTop = e.detail.scrollTop
@@ -134,9 +134,9 @@ export default function OrderListPage() {
     const promise = (async () => {
       try {
         const res = await Network.request({ url: '/api/order/list', dedupKey: 'order:list' })
-      const raw = res.data?.data
-      const list = Array.isArray(raw) ? raw : []
-      setOrders(list)
+        const raw = res.data?.data
+        const list = Array.isArray(raw) ? raw : []
+        setOrders(list)
       } catch (err) {
         console.error('[OrderList] fetch error:', err)
       } finally {
@@ -157,7 +157,7 @@ export default function OrderListPage() {
     fetchOrders()
   }, [fetchOrders])
 
-   // 筛选 + 排序
+  // 筛选 + 排序
   // const filteredOrders = orders
   //   .filter(o => isStatusInTab(o.status, activeTab))
   //   .sort((a, b) => {
@@ -297,7 +297,7 @@ export default function OrderListPage() {
 
       {/* ===== 统计栏 ===== */}
       <View className="ol-stats">
-        
+
         <View className="ol-stat-item">
           <Text className="block ol-stat-num">{statsData.total}</Text>
           <Text className="block ol-stat-label">全部</Text>
@@ -323,7 +323,7 @@ export default function OrderListPage() {
           <Text className="block ol-stat-label">已关闭</Text>
         </View>
       </View>
- 
+
       {/* ===== Tab 筛选 ===== */}
       <ScrollView scrollX className="ol-tabs">
         {STATUS_TABS.map(tab => (
@@ -339,7 +339,7 @@ export default function OrderListPage() {
           </View>
         ))}
       </ScrollView>
-     
+
       {/* ===== 内容区域 ===== */}
       {loading && orders.length === 0 ? (
         <View className="ol-loading">

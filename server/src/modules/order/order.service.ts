@@ -115,7 +115,7 @@ export class OrderService {
     quantityPerAvatar: number
   ): Promise<PriceCalculation> {
     // 映射数据库存储的 contentType 到价格配置的 contentType
-    const mappedContentType = contentType === 'simple_task' ? 'simple' : contentType
+    const mappedContentType = contentType === 'simple' ? 'simple' : contentType
     
     const config = await this.getPriceConfig(mappedContentType)
     if (!config) {
