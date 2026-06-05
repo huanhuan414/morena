@@ -94,8 +94,8 @@
 
 /* 状态提示 */
 .content-scroll {
-  height: calc(100vh - 180rpx);
-  padding-bottom: 40rpx;
+  height: calc(100vh - 180rpx - env(safe-area-inset-bottom));
+  padding-bottom: 120rpx;
 }
 
 .status-banner {
