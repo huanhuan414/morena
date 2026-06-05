@@ -495,798 +495,150 @@ const SKILL_DETAILS = {
       keywords: ['社群','活跃','KOC','分层','团购','话题','打卡','福利','转化','内容日历']
     }
   }
-};
+}
 
-;
+// ===== 技能产出生成器：每个技能绑定的真实内容生成 =====
 
-const ABILITY_LABELS = {
-  creativity: { name: '创意能力', icon: '🎨', color: '#8b5cf6' },
-  platform: { name: '平台运营', icon: '📱', color: '#3b82f6' },
-  writing: { name: '写作能力', icon: '✍️', color: '#059669' },
-  technical: { name: '技术能力', icon: '⚙️', color: '#64748b' },
-  communication: { name: '沟通能力', icon: '💬', color: '#f59e0b' },
-  analysis: { name: '分析能力', icon: '📊', color: '#6366f1' },
-  strategy: { name: '策略能力', icon: '🎯', color: '#ef4444' },
-  empathy: { name: '共情能力', icon: '❤️', color: '#ec4899' }
-};
-
-let nextId = 8;
-const STATE = {
-  checkedIn: false, checkinDays: 3,
-  currentTab: 'home',
-  hiredAvatars: {}, // 雇佣的广场分身 {id: {avatar, tasks: [], remainingUses}}
-  user: {name:'小雨',id:'xiaoyu_2024',avatar:PHOTO_POOL[0],balance:486.50,totalEarn:2846.80,avatarCount:3,orderCount:45,skillCount:5,vip:false},
-  avatars: {
-    1:{name:'美妆小助手',photo:PHOTO_POOL[1],cover:COVER_POOL[0],lv:5,xp:1280,xpMax:1500,earning:328,weekEarning:89,totalEarning:1280,orders:127,weekOrders:12,stars:4.9,status:'working',
-      skills:['爆款种草文','成分党测评','小红书运营','美妆种草'],learning:['短视频脚本'],
-      abilities:{writing:85,creativity:78,professionalism:80,engagement:82,accuracy:75},
-      hangPlaza:true,plazaPrice:5,desc:'5年美妆博主经验，擅长小红书种草和成分分析',style:'温柔知性',domains:['美妆'],created:'2024-01-15'},
-    2:{name:'穿搭博主',photo:PHOTO_POOL[3],cover:COVER_POOL[1],lv:3,xp:680,xpMax:900,earning:156,weekEarning:42,totalEarning:586,orders:58,weekOrders:6,stars:4.7,status:'idle',
-      skills:['穿搭推荐','OOTD日常'],learning:['衣品改造'],
-      abilities:{writing:65,creativity:72,professionalism:55,engagement:68,accuracy:60},
-      hangPlaza:true,plazaPrice:3,desc:'每日穿搭推荐，衣品改造达人，分享最in的搭配灵感',style:'活泼俏皮',domains:['穿搭'],created:'2024-03-20'},
-    3:{name:'健身教练',photo:PHOTO_POOL[6],cover:COVER_POOL[2],lv:1,xp:120,xpMax:300,earning:18,weekEarning:0,totalEarning:18,orders:3,weekOrders:0,stars:4.5,status:'learning',
-      skills:[],learning:['健身计划'],
-      abilities:{writing:20,creativity:15,professionalism:25,engagement:10,accuracy:30},
-      hangPlaza:false,plazaPrice:0,desc:'健身新手，正在学习健身计划制定',style:'专业严谨',domains:['健身'],created:'2024-06-10'}
+const SKILL_OUTPUT = {
+  '小红书运营': {
+    taskTypes: ['图文笔记','纯文案'],
+    generate(avatar, task) {
+      const ab = avatar.abilities || {};
+      const writingLv = (ab.writing||0) + (ab.creativity||0);
+      const quality = writingLv >= 100 ? 'S' : writingLv >= 60 ? 'A' : writingLv >= 30 ? 'B' : 'C';
+      if (quality === 'S') {
+        return { quality, title: '小红书爆款种草文', content: '姐妹们！！这个产品真的绝绝子\n\n💡 使用感受：\n上脸秒吸收，精华超多但完全不黏腻！\n\n📊 7天对比：\n· Day1-2：补水效果立竿见影\n· Day3-4：暗沉明显改善\n· Day5-7：毛孔真的细腻了\n\n🎯 适合谁：\n✅ 熬夜党、暗沉肌\n❌ 严重敏感肌建议先耳后测试\n\n#护肤分享 #平价好物 #熬夜急救', hashtags: ['#护肤分享','#平价好物','#熬夜急救','#种草'], score: 98 };
+      } else if (quality === 'A') {
+        return { quality, title: '小红书种草文', content: '入手一周了，来说说真实感受～\n\n✨ 使用体验：精华量足，肤感舒服\n📈 效果：补水很明显，肤色有提亮\n💡 建议：连续用效果更好\n\n#护肤 #好物推荐', hashtags: ['#护肤','#好物推荐'], score: 82 };
+      } else if (quality === 'B') {
+        return { quality, title: '产品分享', content: '试了这款产品，补水效果还可以，用完脸不紧绷。\n价格便宜可以试试。\n\n#护肤', hashtags: ['#护肤'], score: 65 };
+      } else {
+        return { quality, title: '产品测评', content: '产品用了几次，感觉一般，保湿效果还行。', hashtags: ['#测评'], score: 40 };
+      }
+    }
   },
-  plazaAvatars: {
-    4:{name:'视频达人',photo:PHOTO_POOL[4],cover:COVER_POOL[3],lv:4,stars:4.8,orders:89,follows:567,price:8,
-       skills:['短视频脚本','视频剪辑','分镜设计'],desc:'5年短视频导演，擅长种草和剧情类',style:'搞笑幽默',domains:['数码','美妆'],followed:false},
-    5:{name:'美食探店王',photo:PHOTO_POOL[5],cover:COVER_POOL[4],lv:6,stars:4.9,orders:234,follows:1289,price:6,
-       skills:['美食种草','探店攻略','餐厅评测'],desc:'美食博主，吃遍全城，写过的店都排队',style:'活泼俏皮',domains:['美食'],followed:false},
-    6:{name:'家装设计师',photo:PHOTO_POOL[2],cover:COVER_POOL[5],lv:4,stars:4.7,orders:45,follows:312,price:10,
-       skills:['家装方案','软装搭配','避坑指南'],desc:'10年家装经验，帮你省钱又好看',style:'专业严谨',domains:['家装'],followed:false},
-    7:{name:'旅行种草官',photo:PHOTO_POOL[7],cover:COVER_POOL[6],lv:5,stars:4.8,orders:156,follows:892,price:7,
-       skills:['旅行攻略','酒店评测','行程规划'],desc:'走遍30+国家，帮你不踩坑又省钱',style:'文艺清新',domains:['旅行'],followed:false}
+  '抖音脚本': {
+    taskTypes: ['短视频脚本','短视频'],
+    generate(avatar, task) {
+      const ab = avatar.abilities || {};
+      const cl = (ab.creativity||0) + (ab.writing||0);
+      const quality = cl >= 100 ? 'S' : cl >= 60 ? 'A' : cl >= 30 ? 'B' : 'C';
+      if (quality === 'S') {
+        return { quality, title: '30秒种草短视频脚本', content: '🎬 脚本时长：30秒 | 预计完播率：65%+\n\n【0-3秒】钩子镜头（快节奏）\n画面：素颜→上妆 分屏对比\n口播：「你绝对不知道，3步就能变成妈生好皮」\n\n【3-8秒】产品亮相\n画面：产品开箱特写\n口播：「就是这瓶，我已经空瓶3次了」\n\n【8-20秒】使用过程\n画面：上脸→按摩→等待→揭下\n口播：「精华超多不黏腻，敷完直接素颜出门」\n\n【20-26秒】效果展示\n画面：使用前后对比\n口播：「7天暗沉全没了」\n\n【26-30秒】CTA\n口播：「评论区扣1，教你选最适合自己的」', score: 97 };
+      } else if (quality === 'A') {
+        return { quality, title: '30秒短视频脚本', content: '🎬 脚本时长：30秒\n\n【0-3秒】钩子\n口播：「这个面膜用了7天，变化太大了」\n\n【3-15秒】产品展示+使用\n口播：「精华超多，敷完不黏腻」\n\n【15-25秒】效果\n口播：「皮肤明显变好，推荐」\n\n【25-30秒】CTA\n口播：「想试试的姐妹评论区见」', score: 78 };
+      } else {
+        return { quality, title: '短视频脚本', content: '展示产品，说推荐语，结尾引导购买。', score: 40 };
+      }
+    }
   },
-  notifications: [
-    {icon:'💰',bg:'#dcfce7',title:'收益到账',desc:'美妆小助手完成订单，+¥5.00',time:'10分钟前',read:false},
-    {icon:'⭐',bg:'#fef3c7',title:'好评通知',desc:'美妆小助手收到⭐5.0好评',time:'30分钟前',read:false},
-    {icon:'📢',bg:'#ede9fe',title:'广场通知',desc:'穿搭博主被2人关注了',time:'1小时前',read:false},
-    {icon:'💪',bg:'#ede9fe',title:'技能学习',desc:'穿搭博主学会了「衣品改造」',time:'2小时前',read:true},
-    {icon:'🎯',bg:'#dbeafe',title:'新订单',desc:'有1个新订单匹配你的分身',time:'3小时前',read:true},
-    {icon:'🏆',bg:'#fef3c7',title:'等级提升',desc:'美妆小助手升级到Lv.5！',time:'昨天',read:true}
-  ],
-  orders: {
-    1:{type:'urgent',label:'🔥 急单',title:'小红书种草文×5篇',contentType:'图文笔记',
-       avatars:2,price:10.00,earning:7.00,deadline:'2小时内',status:'open',
-       desc:'美妆品牌推广，需要5篇种草文，含配图和话题',
-       materials:{provided:{配图:2,文案:1,话题:1},total:{配图:5,文案:5,话题:5}},
-       exclusive:false,aiSupplement:true},
-    2:{type:'new',label:'🆕 新单',title:'抖音短视频脚本×3条',contentType:'短视频脚本',
-       avatars:1,price:5.00,earning:3.50,deadline:'24小时',status:'open',
-       desc:'零食品牌短视频脚本，含分镜和文案',
-       materials:{provided:{参考脚本:1},total:{参考脚本:3,话题:3}},
-       exclusive:false,aiSupplement:true},
-    3:{type:'normal',label:'✅ 常规',title:'产品客服话术×1套',contentType:'纯文案',
-       avatars:1,price:1.50,earning:1.05,deadline:'3天',status:'open',
-       desc:'电商客服标准话术，含常见问题回复',
-       materials:{provided:{参考文案:1},total:{参考文案:1,话题:1}},
-       exclusive:false,aiSupplement:false}
+  '视频剪辑': {
+    taskTypes: ['短视频'],
+    generate(avatar, task) {
+      const ab = avatar.abilities || {};
+      const el = (ab.creativity||0) + (ab.professionalism||0);
+      const quality = el >= 100 ? 'S' : el >= 60 ? 'A' : el >= 30 ? 'B' : 'C';
+      if (quality === 'S') {
+        return { quality, title: '🎬 专业视频剪辑方案', content: '📹 项目：30秒 | 9:16竖版 | 30fps | 清新种草风\n\n🎞️ 分镜表（8个镜头）\n1. [0-2s] 产品特写旋转 → 硬切\n2. [2-5s] 开箱手部特写 → 推进\n3. [5-8s] 质地展示慢镜 → 淡入\n4. [8-12s] 上脸演示 → 硬切\n5. [12-18s] 等待过程+计时 → 变速\n6. [18-23s] 效果对比分屏 → 推拉\n7. [23-27s] 细节特写 → 淡入\n8. [27-30s] 产品+CTA → 缩放\n\n🎨 调色方案\n· 预设：温暖柔光\n· 亮度+12 | 对比度-5 | 饱和度-8\n· 色温+15 | 肤色保护：开 | 柔焦20%\n\n🎵 音效设计\n· BGM：轻快清新风（BPM 120）\n· 踩点：每个切换对准节拍\n· 音效：开箱咔哒、水滴、叮声\n\n✍️ 字幕样式\n· 思源黑体Bold | 白色+黑描边\n· 逐字弹入 | 关键词放大变色\n\n📱 导出：1080×1920 H.264 8Mbps MP4', score: 96 };
+      } else if (quality === 'A') {
+        return { quality, title: '视频剪辑方案', content: '📹 30秒/9:16/30fps\n\n分镜（6个镜头）：\n1. 产品特写 (2s)\n2. 开箱展示 (3s)\n3. 使用过程 (5s)\n4. 效果展示 (5s)\n5. 对比画面 (4s)\n6. CTA (3s)\n\n调色：暖色调，亮度+10\nBGM：轻快风格\n字幕：白色加描边', score: 76 };
+      } else {
+        return { quality, title: '简单剪辑方案', content: '拍产品、拍使用、拍效果，加字幕加音乐。', score: 40 };
+      }
+    }
   },
-  results: [
-    {type:'done',label:'✅ 已交付',title:'小红书种草文×3篇',contentType:'图文笔记',stars:5.0,earning:4.20,avatar:'美妆小助手',time:'2小时前'},
-    {type:'done',label:'✅ 已交付',title:'穿搭OOTD图文×2组',contentType:'图文笔记',stars:4.8,earning:2.80,avatar:'穿搭博主',time:'昨天'},
-    {type:'gen',label:'⏳ 生成中',title:'美妆成分测评×1篇',contentType:'纯文案',stars:null,earning:1.50,avatar:'美妆小助手',time:'进行中'}
-  ],
-  earnings: {week:[42,68,35,89,56,0,0],weekLabels:['一','二','三','四','五','六','日']},
-  editAvatar: null,
-  selectedPhoto: null,
-  selectedCover: null,
-  // 教学数据
-  teachData: {
-    // 对话教学记录 { avatarId: [{role,text,time}] }
-    chatHistory: {},
-    // 教学模式: style(风格) / knowledge(知识) / example(示例)
-    chatMode: {},
-    // 喂资料记录 { avatarId: [{name,type,status,progress,addedXP,time}] }
-    materials: {},
-    // 纠正记录 { avatarId: [{original,correction,category,time,applied}] }
-    corrections: {},
-    // 技能学习进度 { avatarId: { skillName: {progress,maxStep,currentStep,status} } }
-    skillProgress: {}
+  'SEO优化': {
+    taskTypes: ['纯文案'],
+    generate(avatar, task) {
+      const ab = avatar.abilities || {};
+      const sl = (ab.professionalism||0) + (ab.accuracy||0);
+      const quality = sl >= 80 ? 'A' : sl >= 40 ? 'B' : 'C';
+      if (quality === 'A') {
+        return { quality, title: '🔍 SEO优化方案', content: '📋 关键词分析\n· 核心词：面膜推荐（月搜索12万）\n· 长尾词：补水面膜推荐（3.2万）、敏感肌面膜（2.1万）\n· LSI词：保湿、精华、敷面膜、护肤步骤\n\n📝 标题优化\nH1: 2024年补水面膜推荐｜5款亲测好用的平价之选\nH2: 为什么要用补水面膜？\nH2: 5款补水面膜深度测评\n\n📊 内容布局\n· 关键词密度：3.2%（目标2-5%）\n· 首段前100字含核心词\n· 内链3条\n\n🔗 外链策略\n· 行业媒体投稿2篇（dofollow）\n· 社交媒体分享引流', score: 85 };
+      } else {
+        return { quality, title: 'SEO建议', content: '标题含关键词，正文多提几次，加几个链接。', score: 45 };
+      }
+    }
+  },
+  '客服话术': {
+    taskTypes: ['简单任务'],
+    generate(avatar, task) {
+      const ab = avatar.abilities || {};
+      const sl = (ab.engagement||0) + (ab.professionalism||0);
+      const quality = sl >= 80 ? 'A' : sl >= 40 ? 'B' : 'C';
+      if (quality === 'A') {
+        return { quality, title: '💬 专业客服话术库', content: '📋 标准话术库（5大类30条）\n\n【问候语】\n1. 亲，有什么可以帮您～\n2. 您好呀，欢迎来到XX旗舰店！\n3. 嗨～我是您的专属顾问\n\n【投诉处理-LEARN法】\nL：「我理解您的心情」\nE：「换作是我也会很生气」\nA：「真的很抱歉，这是我们的问题」\nR：「我马上为您处理」\nN：「您好，处理已完成」\n\n【促单转化】\n犹豫：「这款只剩最后3件了」\n比价：「这个价位品质真的不多」\n\n【物流相关】\n催单：「包裹已到您城市，预计明天送达」\n\n【结束语】\n感谢咨询，有问题随时找我～', score: 88 };
+      } else {
+        return { quality, title: '客服话术', content: '常见回复：好的/稍等/马上处理', score: 40 };
+      }
+    }
+  },
+  '数据分析': {
+    taskTypes: ['简单任务'],
+    generate(avatar, task) {
+      const ab = avatar.abilities || {};
+      const dl = (ab.accuracy||0) + (ab.professionalism||0);
+      const quality = dl >= 80 ? 'A' : dl >= 40 ? 'B' : 'C';
+      if (quality === 'A') {
+        return { quality, title: '📊 数据分析报告', content: '📈 运营数据周报\n\n| 指标 | 本周 | 上周 | 变化 |\n|------|------|------|------|\n| 曝光量 | 52,300 | 48,100 | +8.7% |\n| 点击率 | 5.2% | 4.8% | +0.4% |\n| 互动率 | 3.8% | 4.1% | -0.3% ⚠️ |\n| 转化率 | 2.1% | 1.9% | +0.2% |\n\n🔍 关键发现：\n1. 曝光上升但互动率下降→内容吸引力需提升\n2. 周三互动率骤降→当日硬广导致\n3. 视频类互动率是图文2.3倍\n\n💡 优化建议：\n1. 减少硬广比例（30%→15%）\n2. 增加视频内容（2条→4条/周）\n3. A/B测试标题类型', score: 90 };
+      } else {
+        return { quality, title: '数据简报', content: '本周曝光5万+，互动率3%左右。', score: 35 };
+      }
+    }
+  },
+  '品牌策划': {
+    taskTypes: ['纯文案','简单任务'],
+    generate(avatar, task) {
+      const ab = avatar.abilities || {};
+      const bl = (ab.creativity||0) + (ab.professionalism||0);
+      const quality = bl >= 80 ? 'A' : bl >= 40 ? 'B' : 'C';
+      if (quality === 'A') {
+        return { quality, title: '🎯 品牌策划方案', content: '📋 品牌定位\n· 目标人群：25-35岁都市女性\n· 核心价值：用最少步骤实现最大护肤效果\n· 差异化：极简护肤理念，3步替代7步\n\n📖 品牌故事\n「创始人曾是996广告人，发现极简护肤理念后辞职创业，2年研发出3步护肤套装」\n\n🎪 营销活动：「7天蜕变挑战」\n· 形式：用户打卡分享使用效果\n· 激励：连续7天打卡送正装\n· 渠道：小红书+抖音\n· 预算：5万元\n· 预期ROI：3.5+', score: 87 };
+      } else {
+        return { quality, title: '品牌建议', content: '定位清晰，做好内容，找KOL推广。', score: 35 };
+      }
+    }
+  },
+  '社群运营': {
+    taskTypes: ['简单任务'],
+    generate(avatar, task) {
+      const ab = avatar.abilities || {};
+      const sl = (ab.engagement||0) + (ab.writing||0);
+      const quality = sl >= 80 ? 'A' : sl >= 40 ? 'B' : 'C';
+      if (quality === 'A') {
+        return { quality, title: '👥 社群运营方案', content: '📋 社群搭建\n· 群名：XX护肤研究所\n· 类型：内容+服务型\n· 规模：500人/群\n\n📅 内容日历\n· 周一：护肤小知识\n· 周二：产品测评分享\n· 周三：问题答疑日\n· 周四：福利日\n· 周五：话题讨论\n\n👤 用户分层\n· 潜水层60%：@激活+话题引导\n· 活跃层25%：福利激励\n· 核心层10%：培养KOC\n· 领袖层5%：1对1维护\n\n💰 转化SOP\n1. 预热（提前1天预告）\n2. 种草（分享使用效果）\n3. 开团（发布团购链接）\n4. 跟进（晒单+倒计时）\n5. 复盘（分析数据）', score: 85 };
+      } else {
+        return { quality, title: '社群建议', content: '建群、发内容、做活动。', score: 35 };
+      }
+    }
   }
 };
 
-// ============== 工具函数 ==============
-function showToast(msg) {
-  const t = document.createElement('div'); t.className='toast'; t.textContent=msg;
-  document.body.appendChild(t); setTimeout(()=>t.remove(),2000);
-}
-function lvClass(lv){return 'lv'+Math.min(lv,7)}
-function statusText(s){return s==='working'?'⚡工作中':s==='idle'?'✅空闲':s==='learning'?'📖学习中':'⏸️休息'}
-function statusClass(s){return s==='working'?'st-work':s==='idle'?'st-idle':s==='learning'?'st-learn':'st-off'}
-
-function calcCoverage(contentType, materials) {
-  const p = PRICING[contentType]; if(!p) return 0;
-  let totalW=0, gotW=0;
-  p.dims.forEach(d=>{
-    totalW+=d.weight;
-    const have = (materials.provided[d.name]||0);
-    const need = (materials.total[d.name]||0) * (contentType==='短视频脚本'?1:1);
-    gotW += d.weight * Math.min(1, have/need);
-  });
-  return totalW>0 ? Math.round(gotW/totalW*100) : 0;
-}
-function calcPrice(contentType, avatars, materials, exclusive, aiSupplement, customFee) {
-  const p = PRICING[contentType]; if(!p) return {total:0,fee:0,gen:0};
-  const coverage = calcCoverage(contentType, materials);
-  const fee = customFee && customFee >= p.minFee ? customFee : p.minFee;
-  const totalFee = fee * avatars;
-  const genSets = exclusive ? avatars : 1;
-  const genCost = aiSupplement ? p.genPrice * (1-coverage/100) * genSets : 0;
-  return {total: Math.round((totalFee+genCost)*100)/100, fee:totalFee, genCost, coverage, feePerAvatar:fee, genSets, minFee:p.minFee, genUnitPrice:p.genPrice};
-}
-function calcPlatformIncome(contentType, avatars, materials, exclusive, aiSupplement, customFee) {
-  const p = PRICING[contentType]; if(!p) return 0;
-  const fee = customFee && customFee >= p.minFee ? customFee : p.minFee;
-  const coverage = calcCoverage(contentType, materials);
-  const genSets = exclusive ? avatars : 1;
-  const basePlatform = p.minFee * avatars * 0.3;
-  const extraPlatform = Math.max(0, fee - p.minFee) * avatars * 0.2;
-  const genPlatform = aiSupplement ? p.genPrice * (1-coverage/100) * genSets : 0;
-  return Math.round((basePlatform+extraPlatform+genPlatform)*100)/100;
-}
-function calcAvatarEarning(contentType, avatars, materials, exclusive, aiSupplement, customFee) {
-  const p = PRICING[contentType]; if(!p) return 0;
-  const fee = customFee && customFee >= p.minFee ? customFee : p.minFee;
-  const baseAvatar = p.minFee * 0.7;
-  const extraAvatar = Math.max(0, fee - p.minFee) * 0.8;
-  return Math.round((baseAvatar+extraAvatar)*100)/100;
-}
-
-// ============== Tab切换 ==============
-function switchTab(name) {
-  STATE.currentTab = name;
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.getElementById('page-'+name).classList.add('active');
-  const tabs = document.querySelectorAll('.tabbar-item,.tabbar-center');
-  tabs.forEach(t=>t.classList.remove('active'));
-  const idx = {home:0,avatars:1,orders:2,plaza:3,profile:4}[name];
-  if(idx>=0 && tabs[idx]) tabs[idx].classList.add('active');
-  renderPage(name);
-}
-
-// ============== 渲染主页面 ==============
-function renderPage(name) {
-  const el = document.getElementById('page-'+name+'-content');
-  if(!el) return;
-  switch(name) {
-    case 'home': el.innerHTML = renderHome(); break;
-    case 'avatars': el.innerHTML = renderAvatars(); break;
-    case 'orders': el.innerHTML = renderOrders(); break;
-    case 'plaza': el.innerHTML = renderPlaza(); break;
-    case 'profile': el.innerHTML = renderProfile(); break;
+function matchBestSkill(avatar, taskType) {
+  const skills = avatar.skills || [];
+  let bestSkill = null, bestScore = 0;
+  for (const skillName of skills) {
+    const output = SKILL_OUTPUT[skillName];
+    if (output && output.taskTypes.includes(taskType)) {
+      const ab = avatar.abilities || {};
+      const score = Object.values(ab).reduce((s,v)=>s+v,0);
+      if (score > bestScore) { bestScore = score; bestSkill = skillName; }
+    }
   }
+  return bestSkill;
 }
 
-function renderHome() {
-  const a = STATE.avatars;
-  const workCount = Object.values(a).filter(x=>x.status==='working').length;
-  const idleCount = Object.values(a).filter(x=>x.status==='idle').length;
-  const unread = STATE.notifications.filter(n=>!n.read).length;
-  return `
-  <div class="gradient-header">
-    <div class="header-row">
-      <div><h1>👋 Hi，${STATE.user.name}</h1><p>${Object.keys(a).length}个分身已就位 · ${workCount>0?workCount+'个工作中':'全部空闲'}</p></div>
-      <div class="header-actions">
-        <button class="header-btn" onclick="openSub('notify')">🔔${unread>0?'<span style="position:absolute;top:-2px;right:-2px;width:16px;height:16px;background:#ef4444;border-radius:50%;font-size:9px;color:#fff;display:flex;align-items:center;justify-content:center">'+unread+'</span>':''}</button>
-      </div>
-    </div>
-    <div class="quick-grid">
-      <div class="quick-item" onclick="openSub('chat-pick')"><div class="icon">💬</div><div class="text">对话干活</div></div>
-      <div class="quick-item" onclick="switchTab('orders')"><div class="icon">📋</div><div class="text">接单赚钱</div></div>
-      <div class="quick-item" onclick="openSub('skill-market')"><div class="icon">📚</div><div class="text">学技能</div></div>
-      <div class="quick-item" onclick="switchTab('plaza')"><div class="icon">🔥</div><div class="text">逛广场</div></div>
-    </div>
-  </div>
-  <div class="section">
-    <div class="section-head"><div class="section-title">⏳ 正在进行</div></div>
-    ${workCount>0?Object.entries(a).filter(([k,v])=>v.status==='working').map(([id,v])=>`
-    <div class="card" onclick="openSub('chat-work${id>1?id:''}')">
-      <div style="display:flex;align-items:center;gap:10px">
-        <img src="${v.photo}" class="avatar-photo sm" />
-        <div style="flex:1"><div style="font-weight:600;font-size:14px">${v.name}</div><div style="font-size:12px;color:#94a3b8">正在生成内容...</div></div>
-        <span class="avatar-status st-work">⚡工作中</span>
-      </div>
-    </div>`).join(''):'<div style="text-align:center;padding:20px;color:#94a3b8;font-size:13px">暂无进行中的任务</div>'}
-  </div>
-  <div class="section">
-    <div class="section-head"><div class="section-title">🎯 选分身干活</div><div class="section-more" onclick="switchTab('avatars')">管理分身 →</div></div>
-    ${Object.entries(a).map(([id,v])=>`
-    <div class="avatar-card">
-      <div class="avatar-top">
-        <img src="${v.photo}" class="avatar-photo" />
-        <div class="avatar-info">
-          <div class="avatar-name">${v.name} <span class="lv ${lvClass(v.lv)}">Lv.${v.lv}</span></div>
-          <div class="avatar-meta"><span>${v.skills.length}技能</span><span>本周¥${v.weekEarning}</span><span class="avatar-status ${statusClass(v.status)}">${statusText(v.status)}</span></div>
-          <div class="avatar-skills">${v.skills.map(s=>'<span class="skill-tag mastered">'+s+'</span>').join('')}${v.learning.map(s=>'<span class="skill-tag learning">'+s+'</span>').join('')}</div>
-        </div>
-      </div>
-      <div class="avatar-acts">
-        <button class="act-btn act-primary" onclick="event.stopPropagation();openSub('chat-work${id>1?id:''}')">💬 干活</button>
-        <button class="act-btn act-secondary" onclick="event.stopPropagation();openSub('avatar-detail',{id:${id}})">📊 详情</button>
-        <button class="act-btn act-secondary" onclick="event.stopPropagation();openSub('teach',{id:${id}})">📚 教学</button>
-      </div>
-    </div>`).join('')}
-  </div>
-  ${Object.keys(STATE.hiredAvatars).length>0?`<div class="section">
-    <div class="section-head"><div class="section-title">👥 雇佣的分身</div><div class="section-more" onclick="switchTab('plaza')">去广场 →</div></div>
-    ${Object.entries(STATE.hiredAvatars).map(([id,v])=>`
-    <div class="avatar-card" style="border-left:3px solid #a855f7">
-      <div class="avatar-top">
-        <img src="${v.photo}" class="avatar-photo ring-purple" />
-        <div class="avatar-info">
-          <div class="avatar-name">${v.name} <span class="lv ${lvClass(v.lv)}">Lv.${v.lv}</span> <span style="font-size:10px;background:#ede9fe;color:#7c3aed;padding:1px 6px;border-radius:6px;margin-left:2px">已雇佣</span></div>
-          <div class="avatar-meta"><span>¥${v.price}/次</span><span>⭐${v.stars}</span><span>${v.skills.length}技能</span></div>
-          <div class="avatar-skills">${v.skills.map(s=>'<span class="skill-tag mastered">'+s+'</span>').join('')}</div>
-        </div>
-      </div>
-      <div class="avatar-acts">
-        <button class="act-btn act-primary" onclick="event.stopPropagation();openSub('hired-chat',{id:${id}})">💬 开始干活</button>
-        <button class="act-btn act-secondary" onclick="event.stopPropagation();showToast('查看历史成果')">📋 成果</button>
-        <button class="act-btn act-danger" onclick="event.stopPropagation();dismissHired(${id})">解除</button>
-      </div>
-    </div>`).join('')}
-  </div>`:''}
-  <div class="talk-bar">
-    <div style="font-size:13px;font-weight:600;color:#6d28d9;margin-bottom:8px">🎯 说说你要做什么</div>
-    <div class="talk-input-row">
-      <input class="talk-input" id="homeTalkInput" placeholder="帮我写一篇小红书种草文..." />
-      <button class="talk-send" onclick="sendHomeTalk()">➤</button>
-    </div>
-    <div class="quick-tags">
-      <span class="quick-tag" onclick="fillHomeTalk('写种草文')">写种草文</span>
-      <span class="quick-tag" onclick="fillHomeTalk('做图文笔记')">做图文</span>
-      <span class="quick-tag" onclick="fillHomeTalk('视频脚本')">视频脚本</span>
-      <span class="quick-tag" onclick="fillHomeTalk('竞品分析')">竞品分析</span>
-      <span class="quick-tag" onclick="fillHomeTalk('客服话术')">客服话术</span>
-    </div>
-  </div>
-  <div class="section" style="margin-top:16px">
-    <div class="section-head"><div class="section-title">✨ 近期成果</div><div class="section-more" onclick="openSub('my-results')">查看全部 →</div></div>
-    ${STATE.results.map(r=>`
-    <div class="result-card" onclick="openSub('result-detail')">
-      <span class="result-type ${r.type==='done'?'rt-done':'rt-gen'}">${r.label}</span>
-      <div style="font-weight:600;font-size:14px;margin-top:4px">${r.title}</div>
-      <div style="font-size:12px;color:#94a3b8;margin-top:2px">${r.avatar} · ${r.time} · ${r.earning?'¥'+r.earning.toFixed(2):''}</div>
-    </div>`).join('')}
-  </div>`;
-}
-
-function renderAvatars() {
-  const a = STATE.avatars;
-  const totalEarning = Object.values(a).reduce((s,v)=>s+v.totalEarning,0);
-  const totalOrders = Object.values(a).reduce((s,v)=>s+v.orders,0);
-  const totalSkills = Object.values(a).reduce((s,v)=>s+v.skills.length,0);
-  return `
-  <div class="gradient-header">
-    <div class="header-row">
-      <div><h1>🧑‍💼 我的分身</h1><p>养得越好，赚得越多</p></div>
-      <div class="header-actions">
-        <button class="header-btn" onclick="openSub('create')" style="font-size:18px">＋</button>
-      </div>
-    </div>
-    <div class="stats-row">
-      <div class="stat-card"><div class="stat-val">${Object.keys(a).length}</div><div class="stat-label">分身</div></div>
-      <div class="stat-card"><div class="stat-val">¥${totalEarning}</div><div class="stat-label">总收益</div></div>
-      <div class="stat-card"><div class="stat-val">${totalOrders}</div><div class="stat-label">完成</div></div>
-      <div class="stat-card"><div class="stat-val">${totalSkills}</div><div class="stat-label">技能</div></div>
-    </div>
-  </div>
-  <div class="section">
-    <div class="checkin-card">
-      <div class="checkin-info">
-        <h3>🎁 每日签到</h3>
-        <p>连续签到经验翻倍</p>
-        <div class="checkin-days">
-          ${[1,2,3,4,5,6,7].map(d=>`<div class="checkin-day ${d<=STATE.checkinDays?(d<STATE.checkinDays?'done':'current'):'future'}">${d<=STATE.checkinDays?'✓':d}</div>`).join('')}
-        </div>
-      </div>
-      <button class="checkin-btn ${STATE.checkedIn?'done':'available'}" onclick="doCheckin()">${STATE.checkedIn?'✓ 已签到':'+50 XP'}</button>
-    </div>
-  </div>
-  <div class="section">
-    ${Object.entries(a).map(([id,v])=>`
-    <div class="avatar-big">
-      <div class="avatar-cover">
-        <img class="cov" src="${v.cover}" />
-        <div class="avatar-cover-overlay"></div>
-        <div class="avatar-cover-photo"><img src="${v.photo}" /></div>
-        <div class="avatar-cover-info">
-          <div class="avatar-cover-name">${v.name} <span class="lv ${lvClass(v.lv)}">Lv.${v.lv}</span></div>
-          <div class="avatar-cover-meta">${statusText(v.status)} · ⭐${v.stars}</div>
-        </div>
-        <button class="avatar-cover-edit" onclick="event.stopPropagation();openSub('edit-avatar',{id:${id}})">✏️</button>
-      </div>
-      <div class="avatar-big-body">
-        <div class="avatar-big-stats">
-          <div class="avatar-big-stat"><div class="val">¥${v.weekEarning}</div><div class="label">本周收益</div></div>
-          <div class="avatar-big-stat"><div class="val">${v.weekOrders}</div><div class="label">本周订单</div></div>
-          <div class="avatar-big-stat"><div class="val">${v.skills.length}</div><div class="label">技能</div></div>
-          <div class="avatar-big-stat"><div class="val">¥${v.totalEarning}</div><div class="label">总收益</div></div>
-        </div>
-        <div class="avatar-skills">${v.skills.map(s=>'<span class="skill-tag mastered">'+s+'</span>').join('')}${v.learning.map(s=>'<span class="skill-tag learning">📖 '+s+'</span>').join('')}</div>
-        <div class="avatar-xp-bar" style="margin-top:8px"><div class="avatar-xp-fill" style="width:${v.xp/v.xpMax*100}%"></div></div>
-        <div style="display:flex;justify-content:space-between;margin-top:4px"><span style="font-size:10px;color:#94a3b8">Lv.${v.lv} ${LEVEL_RIGHTS[v.lv].name}</span><span style="font-size:10px;color:#94a3b8">${v.xp}/${v.xpMax} XP</span></div>
-        <div class="avatar-acts" style="margin-top:10px">
-          <button class="act-btn act-primary" onclick="event.stopPropagation();openSub('chat-work${id>1?id:''}')">💬 干活</button>
-          <button class="act-btn act-secondary" onclick="event.stopPropagation();openSub('teach',{id:${id}})">📚 教学</button>
-          <button class="act-btn ${v.lv>=3?'act-secondary':'act-disabled'}" onclick="event.stopPropagation();${v.lv>=3?`togglePlaza(${id})`:`showToast(\"Lv3才能挂广场\")`}">${v.hangPlaza?'📢 已挂广场':'📢 挂广场'}</button>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <button class="act-btn act-secondary" style="flex:1" onclick="event.stopPropagation();openSub('avatar-detail',{id:${id}})">📊 详情</button>
-          <button class="act-btn act-danger" style="flex:0 0 auto;padding:8px 14px" onclick="event.stopPropagation();confirmDelete(${id})">🗑️</button>
-        </div>
-      </div>
-    </div>`).join('')}
-  </div>
-  <div class="section">
-    <div class="section-head"><div class="section-title">💡 养分身攻略</div></div>
-    <div class="card" style="font-size:12px;color:#64748b;line-height:1.8">
-      <div>📌 Lv.3 → 可挂广场接单赚钱</div>
-      <div>📌 Lv.4 → 可自定义出场费</div>
-      <div>📌 Lv.5 → 技能可上架市场</div>
-      <div>📌 Lv.6 → 出场费+30%</div>
-      <div>📌 Lv.7 → 平台推荐+传奇标识</div>
-    </div>
-  </div>`;
-}
-
-function renderOrders() {
-  return `
-  <div class="gradient-header">
-    <div class="header-row"><div><h1>📋 接单广场</h1><p>用分身帮你赚钱</p></div></div>
-    <div class="stats-row">
-      <div class="stat-card"><div class="stat-val">${Object.keys(STATE.orders).length}</div><div class="stat-label">可接订单</div></div>
-      <div class="stat-card"><div class="stat-val">¥${Object.values(STATE.orders).reduce((s,o)=>s+o.earning,0).toFixed(2)}</div><div class="stat-label">可赚</div></div>
-    </div>
-  </div>
-  <div class="section">
-    ${Object.entries(STATE.orders).map(([id,o])=>{
-      const cov = calcCoverage(o.contentType, o.materials);
-      const priceInfo = calcPrice(o.contentType, o.avatars, o.materials, o.exclusive, o.aiSupplement, null);
-      return `
-    <div class="card" onclick="openSub('order-detail',{id:${id}})">
-      <span class="order-type ot-${o.type}">${o.label}</span>
-      <div class="order-title">${o.title}</div>
-      <div class="order-desc">${o.desc}</div>
-      <div class="order-tags">
-        <span class="order-tag">${o.contentType}</span>
-        <span class="order-tag">${o.exclusive?'独享':'共享'}</span>
-        <span class="order-tag">AI${o.aiSupplement?'补足':'不补'}</span>
-        <span class="order-tag">素材${cov}%</span>
-        <span class="order-tag">${o.deadline}</span>
-      </div>
-      <div class="coverage-bar"><div class="coverage-filled" style="width:${cov}%"></div><div class="coverage-empty"></div></div>
-      <div class="order-footer">
-        <div class="order-price">¥${priceInfo.total.toFixed(2)}</div>
-        <div class="order-earning">你能赚 ¥${calcAvatarEarning(o.contentType,o.avatars,o.materials,o.exclusive,o.aiSupplement,null).toFixed(2)}/分身</div>
-      </div>
-    </div>`;
-    }).join('')}
-  </div>`;
-}
-
-function renderPlaza() {
-  const pa = STATE.plazaAvatars;
-  return `
-  <div class="gradient-header">
-    <div class="header-row"><div><h1>🔥 分身广场</h1><p>发现好分身，雇佣来干活</p></div>
-      <div class="header-actions"><button class="header-btn" onclick="openSub('my-plaza')">📢 我的挂单</button></div>
-    </div>
-  </div>
-  <div class="search-bar">
-    <span class="search-ico">🔍</span>
-    <input class="search-input" placeholder="搜索分身、技能、风格..." />
-  </div>
-  <div class="filter-row">
-    ${['推荐','💄美妆','👗穿搭','🏋️健身','🍳美食','🏠家装','✈️旅行'].map((f,i)=>`<span class="filter-chip ${i===0?'active':''}" onclick="filterPlaza(this)">${f}</span>`).join('')}
-  </div>
-  <div class="section">
-    <div class="section-head"><div class="section-title">🌟 热门推荐</div></div>
-    <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch">
-    ${Object.entries(pa).slice(0,3).map(([id,v])=>`
-      <div style="min-width:150px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.06);cursor:pointer;flex-shrink:0" onclick="openSub('plaza-detail',{id:${id}})">
-        <img src="${v.cover}" style="width:100%;height:80px;object-fit:cover" />
-        <div style="padding:10px">
-          <div style="display:flex;align-items:center;gap:6px"><img src="${v.photo}" class="avatar-photo sm" /><div><div style="font-size:13px;font-weight:600">${v.name} <span class="lv ${lvClass(v.lv)}">Lv.${v.lv}</span></div><div style="font-size:10px;color:#94a3b8">⭐${v.stars} · ${v.orders}单</div></div></div>
-          <div style="margin-top:6px;font-weight:700;color:#6d28d9">¥${v.price}/次</div>
-        </div>
-      </div>`).join('')}
-    </div>
-  </div>
-  <div class="section">
-    <div class="section-head"><div class="section-title">📋 发现分身</div></div>
-    <div class="grid-2">
-    ${Object.entries(pa).map(([id,v])=>`
-      <div class="plaza-grid-item" onclick="openSub('plaza-detail',{id:${id}})">
-        <img class="plaza-grid-photo" src="${v.photo}" />
-        <div class="plaza-grid-body">
-          <div class="plaza-grid-name">${v.name} <span class="lv ${lvClass(v.lv)}">${v.lv}</span></div>
-          <div class="plaza-grid-meta">⭐${v.stars} · ${v.orders}单 · ❤️${v.follows}</div>
-          <div class="plaza-grid-skills">${v.skills.slice(0,2).map(s=>'<span class="plaza-grid-skill">'+s+'</span>').join('')}</div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
-            <div class="plaza-grid-price">¥${v.price}/次</div>
-            <button class="plaza-grid-hire" onclick="event.stopPropagation();hireAvatar(${id})">雇佣</button>
-          </div>
-        </div>
-      </div>`).join('')}
-    </div>
-  </div>`;
-}
-
-function renderProfile() {
-  return `
-  <div class="profile-header">
-    <img class="profile-avatar" src="${STATE.user.avatar}" />
-    <div class="profile-name">${STATE.user.name}</div>
-    <div class="profile-id">@${STATE.user.id}</div>
-    <div class="profile-stats">
-      <div class="profile-stat"><div class="val">¥${STATE.user.balance.toFixed(0)}</div><div class="label">余额</div></div>
-      <div class="profile-stat"><div class="val">${STATE.user.avatarCount}</div><div class="label">分身</div></div>
-      <div class="profile-stat"><div class="val">${STATE.user.orderCount}</div><div class="label">订单</div></div>
-    </div>
-  </div>
-  <div class="section">
-    <div class="menu-list">
-      <div class="menu-item" onclick="openSub('earn')"><div class="menu-icon" style="background:#dcfce7">💰</div><div class="menu-text">收益中心</div><div class="menu-arrow">›</div></div>
-      <div class="menu-item" onclick="switchTab('avatars')"><div class="menu-icon" style="background:#ede9fe">👤</div><div class="menu-text">我的分身</div><div class="menu-arrow">›</div></div>
-      <div class="menu-item" onclick="openSub('my-results')"><div class="menu-icon" style="background:#dbeafe">📋</div><div class="menu-text">我的成果</div><div class="menu-arrow">›</div></div>
-      <div class="menu-item" onclick="openSub('skill-market')"><div class="menu-icon" style="background:#fef3c7">📚</div><div class="menu-text">技能市场</div><div class="menu-arrow">›</div></div>
-      <div class="menu-item" onclick="openSub('privileges')"><div class="menu-icon" style="background:#fce7f3">👑</div><div class="menu-text">权益等级</div><div class="menu-arrow">›</div></div>
-      <div class="menu-item" onclick="openSub('settings')"><div class="menu-icon" style="background:#f1f5f9">⚙️</div><div class="menu-text">设置</div><div class="menu-arrow">›</div></div>
-      <div class="menu-item" onclick="openSub('help')"><div class="menu-icon" style="background:#eff6ff">❓</div><div class="menu-text">帮助中心</div><div class="menu-arrow">›</div></div>
-    </div>
-  </div>`;
-}
-
-
-// ============== 子页面 ==============
-function openSub(name, data) {
-  const el = document.getElementById('sub-dynamic');
-  el.className = 'subpage';
-  el.style.display = 'block';
-  renderSubContent(el, name, data);
-}
-function closeSub() {
-  const el = document.getElementById('sub-dynamic');
-  el.classList.add('closing');
-  setTimeout(()=>{ el.style.display='none'; el.className='subpage'; }, 200);
-}
-
-function renderSubContent(el, name, data) {
-  switch(name) {
-    case 'notify': renderNotify(el); break;
-    case 'chat-pick': renderChatPick(el, data); break;
-    case 'chat-work': renderChatWork(el, 1, data); break;
-    case 'chat-work2': renderChatWork(el, 2, data); break;
-    case 'chat-work3': renderChatWork(el, 3, data); break;
-    case 'avatar-detail': renderAvatarDetail(el, data); break;
-    case 'edit-avatar': renderEditAvatar(el, data); break;
-    case 'plaza-detail': renderPlazaDetail(el, data); break;
-    case 'teach': renderTeach(el, data); break;
-    case 'create': renderCreate(el); break;
-    case 'earn': renderEarn(el); break;
-    case 'withdraw': renderWithdraw(el); break;
-    case 'order-detail': renderOrderDetail(el, data); break;
-    case 'my-results': renderMyResults(el); break;
-    case 'result-detail': renderResultDetail(el); break;
-    case 'my-plaza': renderMyPlaza(el); break;
-    case 'hired-chat': renderHiredChat(el, data); break;
-    case 'skill-market': renderSkillMarket(el); break;
-    case 'privileges': renderPrivileges(el); break;
-    case 'settings': renderSettings(el); break;
-    case 'help': renderHelp(el); break;
-    default: el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">${name}</div><div></div></div><div class="sub-body"><p>页面开发中</p></div>`;
+function generateWorkOutput(avatar, taskDesc, taskType) {
+  const matchedSkill = matchBestSkill(avatar, taskType);
+  if (matchedSkill) {
+    const result = SKILL_OUTPUT[matchedSkill].generate(avatar, taskDesc);
+    return { hasSkill:true, skillUsed:matchedSkill, quality:result.quality, title:result.title, content:result.content, hashtags:result.hashtags||[], score:result.score, avatarName:avatar.name };
   }
+  const genericOutputs = { '图文笔记':{quality:'D',title:'产品分享',content:'这个产品还不错，可以试试看。',score:15}, '短视频脚本':{quality:'D',title:'简单脚本',content:'展示产品，说几句推荐语。',score:12}, '短视频':{quality:'D',title:'简单视频',content:'拍产品+说推荐语。',score:10}, '纯文案':{quality:'D',title:'文案草稿',content:'产品好用，推荐购买。',score:15}, '简单任务':{quality:'D',title:'任务结果',content:'已完成基本任务。',score:10} };
+  const generic = genericOutputs[taskType] || genericOutputs['简单任务'];
+  return { hasSkill:false, skillUsed:null, quality:generic.quality, title:generic.title, content:generic.content, hashtags:[], score:generic.score, avatarName:avatar.name };
 }
 
-function renderNotify(el) {
-  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">消息中心</div><button class="sub-header-btn" style="background:#f3f0ff;color:#6d28d9" onclick="markAllRead()">全部已读</button></div><div class="sub-body">
-  ${STATE.notifications.map((n,i)=>`<div class="notify-item" onclick="readNotify(${i})"><div class="notify-icon" style="background:${n.bg}">${n.icon}</div><div class="notify-content"><div class="notify-title">${n.title}</div><div class="notify-desc">${n.desc}</div><div class="notify-time">${n.time}</div></div><div class="notify-dot ${n.read?'read':''}"></div></div>`).join('')}
-  </div>`;
-}
-function markAllRead(){STATE.notifications.forEach(n=>n.read=true);renderNotify(document.getElementById('sub-dynamic'));showToast('已全部已读')}
-function readNotify(i){STATE.notifications[i].read=true;renderNotify(document.getElementById('sub-dynamic'))}
-
-function renderChatPick(el, data) {
-  const task = data?.task||'';
-  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">选择分身</div><div></div></div><div class="sub-body">
-  ${task?`<div style="background:#f3f0ff;border-radius:12px;padding:12px;margin-bottom:16px;font-size:13px;color:#6d28d9">🎯 任务：${task}</div>`:''}
-  ${Object.entries(STATE.avatars).map(([id,a])=>`
-  <div class="avatar-card" onclick="closeSub();openSub('chat-work${id>1?id:''}',{task:'${task}'})" style="margin-bottom:10px">
-    <div class="avatar-top">
-      <img src="${a.photo}" class="avatar-photo" />
-      <div class="avatar-info">
-        <div class="avatar-name">${a.name} <span class="lv ${lvClass(a.lv)}">Lv.${a.lv}</span></div>
-        <div class="avatar-meta"><span class="avatar-status ${statusClass(a.status)}">${statusText(a.status)}</span><span>${a.skills.length}技能</span></div>
-        <div class="avatar-skills">${a.skills.map(s=>'<span class="skill-tag mastered">'+s+'</span>').join('')}</div>
-      </div>
-    </div>
-  </div>`).join('')}
-  <div style="text-align:center;padding:20px"><button class="act-btn act-secondary" style="display:inline-block;padding:10px 24px" onclick="closeSub();switchTab('plaza')">去广场雇一个 →</button></div>
-  </div>`;
-}
-
-function renderChatWork(el, id, data) {
-  const a = STATE.avatars[id]; if(!a) return;
-  const task = data?.task||'';
-  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">💬 和${a.name}对话</div><div></div></div>
-  <div style="padding:12px 16px;display:flex;align-items:center;gap:10px;background:#fff;border-bottom:1px solid #f1f5f9">
-    <img src="${a.photo}" class="avatar-photo sm" /><div><div style="font-weight:600;font-size:14px">${a.name}</div><div style="font-size:11px;color:#94a3b8">${statusText(a.status)} · ${a.skills.join('·')}</div></div>
-  </div>
-  <div class="chat-messages" id="chatMsgs">
-    <div class="chat-msg system">${a.name}已就位，告诉我你需要什么</div>
-    ${task?`<div class="chat-msg user">${task}</div><div class="chat-msg bot">好的，我来帮你${task}！让我分析一下需求...</div>`:''}
-  </div>
-  <div style="position:sticky;bottom:0;background:#fff;padding:12px 16px;border-top:1px solid #f1f5f9">
-    <div class="talk-input-row">
-      <input class="talk-input" id="chatInput" placeholder="对${a.name}说..." onkeydown="if(event.key==='Enter')sendChat(${id})" />
-      <button class="talk-send" onclick="sendChat(${id})">➤</button>
-    </div>
-    <div class="quick-tags" style="margin-top:8px">
-      <span class="quick-tag" onclick="fillChat(${id},'写一篇小红书种草文')">写种草文</span>
-      <span class="quick-tag" onclick="fillChat(${id},'帮我做个图文笔记')">做图文</span>
-      <span class="quick-tag" onclick="fillChat(${id},'写个短视频脚本')">视频脚本</span>
-    </div>
-  </div>`;
-}
-const CHAT_REPLIES = {
-  '种草文':['好的，帮你写种草文！先确认下品牌和产品...','收到！我来分析竞品的种草文风格...','种草文框架已搭好，正在填充内容...'],
-  '图文':['图文笔记开始制作！先选配图风格...','文案部分已完成，正在匹配图片...','图文笔记生成完毕！'],
-  '脚本':['短视频脚本开始创作！确认下时长要求...','分镜已设计完成，正在写口播词...','脚本生成好了，包含分镜和口播词！'],
-  '分析':['竞品分析开始！我先收集数据...','已分析3个竞品，整理出差异点...','竞品分析报告生成完毕！'],
-  'default':['收到！我来帮你处理...','正在思考最佳方案...','已完成初步方案，请查看！','好的，让我来搞定这件事！']
-};
-function sendChat(avatarId) {
-  const input = document.getElementById('chatInput');
-  const msg = input.value.trim(); if(!msg) return;
-  input.value = '';
-  const msgs = document.getElementById('chatMsgs');
-  msgs.innerHTML += `<div class="chat-msg user">${msg}</div>`;
-  const key = Object.keys(CHAT_REPLIES).find(k=>msg.includes(k))||'default';
-  const replies = CHAT_REPLIES[key];
-  const reply = replies[Math.floor(Math.random()*replies.length)];
-  setTimeout(()=>{msgs.innerHTML+=`<div class="chat-msg bot">${reply}</div>`;msgs.scrollTop=msgs.scrollHeight;}, 600);
-}
-function fillChat(id, text) {
-  document.getElementById('chatInput').value = text;
-  sendChat(id);
-}
-
-function renderAvatarDetail(el, data) {
-  const id = data?.id||1;
-  const a = STATE.avatars[id]; if(!a) return;
-  const rights = LEVEL_RIGHTS[a.lv];
-  const nextRights = LEVEL_RIGHTS[a.lv+1];
-  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">${a.name}</div><button class="sub-header-btn" style="background:#f3f0ff;color:#6d28d9" onclick="closeSub();openSub('edit-avatar',{id:${id}})">✏️ 编辑</button></div>
-  <div style="position:relative">
-    <img src="${a.cover}" style="width:100%;height:140px;object-fit:cover" />
-    <div style="position:absolute;bottom:-28px;left:16px"><img src="${a.photo}" style="width:64px;height:64px;border-radius:50%;border:3px solid #fff;object-fit:cover;box-shadow:0 2px 8px rgba(0,0,0,.2)" /></div>
-  </div>
-  <div style="padding:40px 16px 16px">
-    <div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px;font-weight:700">${a.name}</span><span class="lv ${lvClass(a.lv)}" style="font-size:12px;padding:2px 10px">Lv.${a.lv} ${rights.name}</span></div>
-    <div style="font-size:13px;color:#64748b;margin-top:4px">${a.desc}</div>
-    <div style="font-size:12px;color:#94a3b8;margin-top:2px">风格：${a.style} · 领域：${a.domains.join('、')}</div>
-  </div>
-  <div class="tab-row" id="detailTabs">
-    <div class="tab-item active" onclick="switchDetailTab(0,${id})">📊 概览</div>
-    <div class="tab-item" onclick="switchDetailTab(1,${id})">🛡️ 权益</div>
-    <div class="tab-item" onclick="switchDetailTab(2,${id})">💰 收益</div>
-    <div class="tab-item" onclick="switchDetailTab(3,${id})">⭐ 评价</div>
-  </div>
-  <div id="detailTabContent">
-    <div class="tab-content active" id="dtc0">
-      <div class="avatar-big-stats" style="margin-bottom:16px">
-        <div class="avatar-big-stat"><div class="val">¥${a.totalEarning}</div><div class="label">总收益</div></div>
-        <div class="avatar-big-stat"><div class="val">${a.orders}</div><div class="label">完成</div></div>
-        <div class="avatar-big-stat"><div class="val">⭐${a.stars}</div><div class="label">评分</div></div>
-        <div class="avatar-big-stat"><div class="val">${a.skills.length}</div><div class="label">技能</div></div>
-      </div>
-      <div style="margin-bottom:16px"><div style="font-size:13px;font-weight:600;margin-bottom:8px">成长进度</div>
-        <div class="progress-bar"><div class="progress-fill purple" style="width:${a.xp/a.xpMax*100}%"></div></div>
-        <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:#94a3b8"><span>Lv.${a.lv}</span><span>${a.xp}/${a.xpMax} XP</span><span>Lv.${a.lv+1}</span></div>
-      </div>
-      <div style="margin-bottom:16px"><div style="margin-bottom:16px"><div style="font-size:13px;font-weight:600;margin-bottom:8px">🎯 能力面板</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${
-          Object.entries({writing:'✍️ 写作力',creativity:'🎨 创意力',professionalism:'💼 专业度',engagement:'📱 互动力',accuracy:'📊 精准度'}).map(([k,label])=>{
-            const val=(a.abilities&&a.abilities[k])||0;
-            const color=val>=80?'#16a34a':val>=50?'#d97706':val>=20?'#3b82f6':'#94a3b8';
-            return `<div style="background:#f8fafc;border-radius:8px;padding:6px 8px"><div style="display:flex;justify-content:space-between;font-size:11px"><span>${label}</span><span style="color:${color};font-weight:600">${val}</span></div><div class="progress-bar" style="height:4px;margin-top:3px"><div class="progress-fill" style="width:${val}%;background:${color}"></div></div></div>`;
-          }).join('')
-        }</div>
-      </div>
-      <div style="font-size:13px;font-weight:600;margin-bottom:8px">已掌握技能</div>
-        <div class="avatar-skills">${a.skills.map(s=>'<span class="skill-tag mastered">'+s+'</span>').join('')}${a.learning.map(s=>'<span class="skill-tag learning">📖 '+s+'</span>').join('')}</div>
-      </div>
-      ${a.hangPlaza?`<div style="background:#f3f0ff;border-radius:12px;padding:12px;margin-bottom:12px"><div style="font-size:13px;font-weight:600;color:#6d28d9">📢 已挂广场</div><div style="font-size:12px;color:#6d28d9">出场费 ¥${a.plazaPrice}/次 · ${a.orders}人雇佣</div></div>`:''}
-      <div style="font-size:12px;color:#94a3b8">创建于 ${a.created}</div>
-    </div>
-    <div class="tab-content" id="dtc1">
-      <div style="margin-bottom:16px"><div style="font-size:14px;font-weight:600;margin-bottom:8px">当前权益 · Lv.${a.lv} ${rights.name}</div>
-        ${rights.perks.map(p=>`<div style="font-size:13px;color:#475569;padding:4px 0">✅ ${p}</div>`).join('')}
-      </div>
-      ${nextRights?`<div style="margin-bottom:16px"><div style="font-size:14px;font-weight:600;margin-bottom:8px">下一级 · Lv.${a.lv+1} ${nextRights.name}</div>
-        ${nextRights.perks.filter(p=>!rights.perks.includes(p)).map(p=>`<div style="font-size:13px;color:#94a3b8;padding:4px 0">🔒 ${p}</div>`).join('')}
-        <div style="margin-top:8px;font-size:12px;color:#94a3b8">还需 ${a.xpMax-a.xp} XP 升级</div></div>`:''}
-      <div style="font-size:14px;font-weight:600;margin-bottom:8px">全部等级</div>
-      ${Object.entries(LEVEL_RIGHTS).map(([lv,info])=>`
-      <div class="level-node ${parseInt(lv)<=a.lv?'':'level-locked'} ${parseInt(lv)===a.lv?'level-current':''}">
-        <div class="level-badge" style="background:${info.color}">${lv}</div>
-        <div class="level-info"><div class="level-name">${info.name}</div><div class="level-perks">${info.perks.join(' · ')}</div></div>
-      </div>`).join('')}
-    </div>
-    <div class="tab-content" id="dtc2">
-      <div style="text-align:center;padding:16px 0"><div style="font-size:28px;font-weight:700;color:#6d28d9">¥${a.totalEarning}</div><div style="font-size:12px;color:#94a3b8">累计收益</div></div>
-      <div style="font-size:13px;font-weight:600;margin-bottom:8px">近7天收益</div>
-      <div class="earn-chart">${STATE.earnings.week.map((v,i)=>`<div class="earn-bar" style="height:${Math.max(v/89*100,4)}%"><div class="earn-bar-val">¥${v}</div><div class="earn-bar-label">${STATE.earnings.weekLabels[i]}</div></div>`).join('')}</div>
-      <div style="height:24px"></div>
-      <div style="font-size:13px;font-weight:600;margin-bottom:8px">分成规则</div>
-      <div style="background:#f8fafc;border-radius:12px;padding:12px;font-size:12px;color:#64748b;line-height:1.8">
-        <div>💰 最低出场费：平台 30% / 分身 70%</div>
-        <div>💰 加价部分：平台 20% / 分身 80%</div>
-        <div>💰 生成费：平台 100%</div>
-      </div>
-    </div>
-    <div class="tab-content" id="dtc3">
-      <div style="text-align:center;padding:16px 0"><div style="font-size:32px">⭐ ${a.stars}</div><div style="font-size:12px;color:#94a3b8">${a.orders}条评价</div></div>
-      <div style="font-size:13px;font-weight:600;margin-bottom:8px">最新评价</div>
-      <div style="background:#f8fafc;border-radius:12px;padding:12px;margin-bottom:8px"><div style="font-size:12px;color:#94a3b8;margin-bottom:4px">用户A · ⭐5.0 · 2小时前</div><div style="font-size:13px">种草文写得很好，风格很贴近我的需求！</div></div>
-      <div style="background:#f8fafc;border-radius:12px;padding:12px;margin-bottom:8px"><div style="font-size:12px;color:#94a3b8;margin-bottom:4px">用户B · ⭐4.8 · 昨天</div><div style="font-size:13px">响应快，质量稳定，会继续雇佣</div></div>
-      <div style="background:#f8fafc;border-radius:12px;padding:12px"><div style="font-size:12px;color:#94a3b8;margin-bottom:4px">用户C · ⭐5.0 · 3天前</div><div style="font-size:13px">完美！比我自己写的强多了</div></div>
-    </div>
-  </div>`;
-}
-function switchDetailTab(idx, avatarId) {
-  document.querySelectorAll('#detailTabs .tab-item').forEach((t,i)=>{t.classList.toggle('active',i===idx)});
-  document.querySelectorAll('#detailTabContent .tab-content').forEach((t,i)=>{t.classList.toggle('active',i===idx)});
-}
-
-function renderEditAvatar(el, data) {
-  const id = data?.id;
-  const a = id ? STATE.avatars[id] : null;
-  const isNew = !a;
-  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">${isNew?'创建分身':'编辑分身'}</div><div></div></div><div class="sub-body">
-  <div class="form-group">
-    <div class="form-label">分身照片 <span class="req">*</span></div>
-    <div class="form-photo-row">
-      <div class="form-photo-upload" onclick="pickPhoto(${id||0})">
-        ${a?`<img src="${a.photo}" />`:'<div class="ph">📷</div><div class="pt">上传照片</div>'}
-      </div>
-      <div class="form-cover-upload" onclick="pickCover(${id||0})">
-        ${a?`<img src="${a.cover}" />`:'<div class="ph">🖼️</div><div class="pt">上传封面</div>'}
-      </div>
-    </div>
-    <div class="form-hint">建议使用清晰的人像照片，这样更吸引人哦</div>
-  </div>
-  <div class="form-group">
-    <label class="form-label">分身名称 <span class="req">*</span></label>
-    <input class="form-input" id="editName" value="${a?a.name:''}" placeholder="给你的分身起个名字" maxlength="12" />
-  </div>
-  <div class="form-group">
-    <label class="form-label">简介</label>
-    <textarea class="form-textarea" id="editDesc" placeholder="描述你的分身擅长什么...">${a?a.desc:''}</textarea>
-  </div>
-  <div class="form-group">
-    <label class="form-label">擅长领域 <span class="req">*</span></label>
-    <div class="form-chips" id="editDomains">
-      ${DOMAINS.map(d=>`<span class="form-chip ${(a&&a.domains.includes(d))||(!a&&d==='美妆')?'selected':''}" onclick="toggleChip(this)">${d}</span>`).join('')}
-    </div>
-  </div>
-  <div class="form-group">
-    <label class="form-label">说话风格</label>
-    <div class="form-chips" id="editStyle">
-      ${STYLES.map(s=>`<span class="form-chip ${a&&a.style===s?'selected':(!a&&s==='温柔知性')?'selected':''}" onclick="selectSingleChip(this,'editStyle')">${s}</span>`).join('')}
-    </div>
-  </div>
-  ${a&&a.lv>=3?`<div class="form-group">
-    <label class="form-label">广场出场费（元/次）</label>
-    <input class="form-input" id="editPrice" type="number" value="${a.plazaPrice}" min="${PRICING['纯文案'].minFee}" step="0.5" />
-    <div class="form-hint">最低 ¥${PRICING['纯文案'].minFee}/次（Lv.${a.lv}可自定义，但不能低于最低出场费）</div>
-  </div>`:''}
-  ${a?`<div class="form-group">
-    <label class="form-label">广场状态</label>
-    <div class="switch-row">
-      <div><div class="switch-label">挂到广场</div><div class="switch-desc">让别人雇佣你的分身</div></div>
-      <div class="sw ${a.hangPlaza?'on':''}" onclick="toggleSwitch(this)"><div class="knob"></div></div>
-    </div>
-  </div>`:''}
-  <button class="act-btn act-primary" style="margin-top:16px" onclick="saveAvatar(${id||0})">${isNew?'创建分身':'保存修改'}</button>
-  ${a?`<button class="act-btn act-danger" style="margin-top:8px" onclick="confirmDelete(${id})">🗑️ 删除分身</button>`:''}
-  </div>`;
-}
-function toggleChip(el){el.classList.toggle('selected')}
-function selectSingleChip(el,parentId){document.getElementById(parentId).querySelectorAll('.form-chip').forEach(c=>c.classList.remove('selected'));el.classList.add('selected')}
-function toggleSwitch(el){el.classList.toggle('on')}
-function pickPhoto(id){
-  const url = PHOTO_POOL[Math.floor(Math.random()*PHOTO_POOL.length)];
-  const container = event.currentTarget;
-  container.innerHTML = `<img src="${url}" />`;
-  STATE.selectedPhoto = url;
-  showToast('照片已选择');
-}
-function pickCover(){
-  const url = COVER_POOL[Math.floor(Math.random()*COVER_POOL.length)];
-  const container = event.currentTarget;
-  container.innerHTML = `<img src="${url}" />`;
-  STATE.selectedCover = url;
-  showToast('封面已选择');
-}
-function saveAvatar(id) {
-  const name = document.getElementById('editName').value.trim();
-  if(!name){showToast('请输入分身名称');return}
-  const desc = document.getElementById('editDesc')?.value||'';
-  const domains = Array.from(document.getElementById('editDomains').querySelectorAll('.form-chip.selected')).map(c=>c.textContent);
-  if(domains.length===0){showToast('请选择至少一个领域');return}
-  const styleEl = document.getElementById('editStyle').querySelector('.form-chip.selected');
-  const style = styleEl?styleEl.textContent:'温柔知性';
-  if(id && STATE.avatars[id]) {
-    const a = STATE.avatars[id];
-    a.name = name; a.desc = desc; a.domains = domains; a.style = style;
-    if(STATE.selectedPhoto) a.photo = STATE.selectedPhoto;
-    if(STATE.selectedCover) a.cover = STATE.selectedCover;
-    const priceInput = document.getElementById('editPrice');
-    if(priceInput) { const p = parseFloat(priceInput.value); if(p >= PRICING['纯文案'].minFee) a.plazaPrice = p; }
-    const sw = document.querySelector('.sw');
-    if(sw) a.hangPlaza = sw.classList.contains('on');
-    showToast('分身已更新');
-  } else {
-    const newId = nextId++;
-    STATE.avatars[newId] = {name,photo:STATE.selectedPhoto||PHOTO_POOL[newId%PHOTO_POOL.length],cover:STATE.selectedCover||COVER_POOL[newId%COVER_POOL.length],
-      lv:1,xp:0,xpMax:300,earning:0,weekEarning:0,totalEarning:0,orders:0,weekOrders:0,stars:0,status:'idle',
-      skills:[],learning:[],hangPlaza:false,plazaPrice:0,desc,style,domains,created:new Date().toISOString().split('T')[0]};
-    STATE.user.avatarCount = Object.keys(STATE.avatars).length;
-    showToast('分身创建成功！');
-  }
-  STATE.selectedPhoto = null; STATE.selectedCover = null;
-  closeSub(); renderPage(STATE.currentTab);
-}
-function confirmDelete(id) {
-  const a = STATE.avatars[id]; if(!a) return;
-  if(a.status==='working'){showToast('工作中的分身不能删除');return}
-  openModal('delete',{id,name:a.name});
-}
-
-function renderPlazaDetail(el, data) {
-  const id = data?.id||4;
-  const a = STATE.plazaAvatars[id]; if(!a) return;
-  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">分身详情</div><div></div></div>
-  <div style="position:relative"><img src="${a.cover}" style="width:100%;height:140px;object-fit:cover" /><div style="position:absolute;bottom:-28px;left:16px"><img src="${a.photo}" style="width:64px;height:64px;border-radius:50%;border:3px solid #fff;object-fit:cover;box-shadow:0 2px 8px rgba(0,0,0,.2)" /></div></div>
-  <div style="padding:40px 16px 16px">
-    <div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px;font-weight:700">${a.name}</span><span class="lv ${lvClass(a.lv)}" style="font-size:12px;padding:2px 10px">Lv.${a.lv}</span></div>
-    <div style="font-size:13px;color:#64748b;margin-top:4px">${a.desc}</div>
-    <div style="font-size:12px;color:#94a3b8;margin-top:2px">风格：${a.style} · ⭐${a.stars} · ${a.orders}单 · ❤️${a.follows}关注</div>
-  </div>
-  <div style="padding:0 16px;display:flex;gap:8px;margin-bottom:16px">
-    <button class="act-btn ${a.followed?'act-secondary':'act-primary'}" style="flex:1" onclick="toggleFollow(${id})">${a.followed?'❤️ 已关注':'+ 关注'}</button>
-    ${STATE.hiredAvatars[id]?`<button class="act-btn act-success" style="flex:2" onclick="closeSub();openSub('hired-chat',{id:${id}})">💬 开始干活</button>`:`<button class="act-btn act-primary" style="flex:2" onclick="hireAvatar(${id})">💰 雇佣 ¥${a.price}/次</button>`}
-  </div>
-  <div class="section">
-    <div style="font-size:14px;font-weight:600;margin-bottom:8px">擅长技能</div>
-    <div class="avatar-skills">${a.skills.map(s=>'<span class="skill-tag mastered">'+s+'</span>').join('')}</div>
-  </div>
-  <div class="section">
-    <div style="font-size:14px;font-weight:600;margin-bottom:8px">用户评价</div>
-    <div style="background:#f8fafc;border-radius:12px;padding:12px;margin-bottom:8px"><div style="font-size:12px;color:#94a3b8;margin-bottom:4px">用户D · ⭐5.0</div><div style="font-size:13px">非常专业，内容质量很高</div></div>
-    <div style="background:#f8fafc;border-radius:12px;padding:12px"><div style="font-size:12px;color:#94a3b8;margin-bottom:4px">用户E · ⭐4.9</div><div style="font-size:13px">速度快，风格独特，强烈推荐！</div></div>
-  </div>
-  <div style="padding:16px"><button class="act-btn act-secondary" style="width:100%" onclick="tryChat(${id})">💬 试聊一下</button></div>`;
-}
-function toggleFollow(id) {
-  const a = STATE.plazaAvatars[id]; if(!a) return;
-  a.followed = !a.followed;
-  showToast(a.followed?'已关注':'已取消关注');
-  renderPlazaDetail(document.getElementById('sub-dynamic'),{id});
-}
-function hireAvatar(id) { openModal('hire',{id}); }
-function tryChat(id) { showToast('试聊功能：和分身简单对话了解风格'); }
-function dismissHired(id) {
-  delete STATE.hiredAvatars[id];
-  showToast('已解除雇佣');
-  renderPage(STATE.currentTab);
-}
 
 function renderHiredChat(el, data) {
   const id = data?.id;
@@ -1294,97 +646,214 @@ function renderHiredChat(el, data) {
   const pa = STATE.plazaAvatars[id];
   const a = ha || pa;
   if(!a) { el.innerHTML='<div class="sub-body"><p>分身不存在</p></div>'; return; }
+  // Check skill coverage for each task type
+  const skillCoverage = {};
+  CONTENT_TYPES.forEach(ct => {
+    const matched = matchBestSkill(a, ct);
+    skillCoverage[ct] = matched;
+  });
+  
   el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">💬 让${a.name}干活</div><div></div></div>
   <div style="padding:14px 16px;display:flex;align-items:center;gap:12px;background:#fff;border-bottom:1px solid #f1f5f9">
     <img src="${a.photo}" class="avatar-photo lg ring-purple" />
     <div style="flex:1">
       <div style="font-size:16px;font-weight:700">${a.name} <span class="lv ${lvClass(a.lv)}">Lv.${a.lv}</span></div>
-      <div style="font-size:12px;color:#94a3b8;margin-top:2px">${a.style} · ⭐${a.stars} · ${a.skills.join('·')}</div>
+      <div style="font-size:12px;color:#94a3b8;margin-top:2px">${a.style} · ⭐${a.stars}</div>
       <div style="font-size:11px;color:#16a34a;margin-top:2px">✅ 已雇佣 · 可以开始干活了</div>
     </div>
+    <div style="text-align:center;background:#ede9fe;border-radius:10px;padding:6px 10px">
+      <div style="font-size:11px;color:#6d28d9;font-weight:600">技能</div>
+      <div style="font-size:18px;font-weight:700;color:#6d28d9">${a.skills.length}</div>
+    </div>
   </div>
+  ${a.skills.length > 0 ? `<div style="padding:8px 16px;display:flex;flex-wrap:wrap;gap:4px;background:#faf5ff">
+    ${a.skills.map(s => { const d=SKILL_DETAILS[s]; return d ? `<span style="background:#ede9fe;color:#6d28d9;padding:3px 8px;border-radius:20px;font-size:11px">${d.icon} ${s}</span>` : ''; }).join('')}
+  </div>` : `<div style="padding:8px 16px;background:#fef3c7;font-size:11px;color:#92400e">⚠️ ${a.name}还没有掌握任何技能，建议先去学习，产出质量会大幅提升</div>`}
   <div style="background:linear-gradient(135deg,#f3f0ff,#ede9fe);padding:14px 16px;margin:12px;border-radius:14px">
     <div style="font-size:14px;font-weight:600;color:#5b21b6;margin-bottom:8px">🎯 告诉${a.name}你要做什么</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+    ${a.skills.length > 0 ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
       ${a.skills.map(s=>`<span class="quick-tag" onclick="fillHiredChat(${id},'帮我用${s}技能，')">🎯 ${s}</span>`).join('')}
-    </div>
+    </div>` : ''}
     <div class="talk-input-row">
-      <input class="talk-input" id="hiredChatInput" placeholder="描述你的需求，比如：帮我写一篇小红书种草文..." onkeydown="if(event.key==='Enter')sendHiredChat(${id})" />
+      <input class="talk-input" id="hiredChatInput" placeholder="${a.skills.length > 0 ? '描述你的需求，比如：帮我写一篇小红书种草文...' : '先让分身学技能吧，否则只能做简单任务...'}" onkeydown="if(event.key==='Enter')sendHiredChat(${id})" />
       <button class="talk-send" onclick="sendHiredChat(${id})">➤</button>
     </div>
   </div>
   <div class="chat-messages" id="hiredChatMsgs">
-    <div class="chat-msg system">🎉 ${a.name}已就位！告诉我你需要什么，我马上开始干活</div>
+    <div class="chat-msg system">🎉 ${a.name}已就位！${a.skills.length > 0 ? '我已掌握'+a.skills.join('、')+'，可以直接开始相关任务' : '我还没学技能，建议先去学习，否则产出质量会比较低'}。</div>
   </div>
   <div style="padding:0 16px 16px">
     <div style="font-size:13px;font-weight:600;margin-bottom:8px">⚡ 快速任务</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      ${CONTENT_TYPES.map(ct=>`<div style="background:#fff;border-radius:12px;padding:10px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.04);text-align:center" onclick="quickTask(${id},'${ct}')">
-        <div style="font-size:20px;margin-bottom:2px">${ct==='图文笔记'?'📝':ct==='短视频'?'🎬':ct==='短视频脚本'?'📋':ct==='纯文案'?'✍️':'🎯'}</div>
-        <div style="font-size:12px;font-weight:500">${ct}</div>
-        <div style="font-size:10px;color:#94a3b8">¥${PRICING[ct].minFee}起</div>
-      </div>`).join('')}
+      ${CONTENT_TYPES.map(ct => {
+        const hasSkill = !!skillCoverage[ct];
+        const skillName = skillCoverage[ct];
+        const icon = ct==='图文笔记'?'📝':ct==='短视频'?'🎬':ct==='短视频脚本'?'📋':ct==='纯文案'?'✍️':'🎯';
+        return `<div style="background:${hasSkill?'#fff':'#f8fafc'};border-radius:12px;padding:10px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.04);border:1px solid ${hasSkill?'#ede9fe':'#e5e7eb'}" onclick="quickTask(${id},'${ct}')">
+          <div style="font-size:20px;margin-bottom:2px">${icon} ${hasSkill?'✅':''}</div>
+          <div style="font-size:12px;font-weight:500">${ct}</div>
+          <div style="font-size:10px;color:${hasSkill?'#16a34a':'#94a3b8'}">${hasSkill ? skillName+'·高质量' : '无技能·基础版'}</div>
+          <div style="font-size:10px;color:#94a3b8">¥${PRICING[ct].minFee}起</div>
+        </div>`;
+      }).join('')}
     </div>
   </div>
   <div style="padding:0 16px 16px">
     <div style="background:#f8fafc;border-radius:12px;padding:12px">
       <div style="font-size:12px;color:#64748b;line-height:1.6">
         <div>💡 <b>怎么让分身帮你干活？</b></div>
-        <div>1️⃣ 描述你的需求，越具体越好</div>
-        <div>2️⃣ 或者点上面的快速任务/技能标签</div>
-        <div>3️⃣ 分身会生成内容，你可以修改和确认</div>
-        <div>4️⃣ 不满意可以让它重做</div>
+        <div>1️⃣ 选快速任务或描述你的需求</div>
+        <div>2️⃣ ✅ 表示分身已掌握对应技能，产出质量高</div>
+        <div>3️⃣ 分身会生成真实内容，你可以验收/修改</div>
+        <div>4️⃣ 不满意可以让它重做，满意后确认交付</div>
       </div>
     </div>
   </div>`;
 }
+
+
 function fillHiredChat(id, text) {
   document.getElementById('hiredChatInput').value = text;
   sendHiredChat(id);
 }
 function sendHiredChat(id) {
   const input = document.getElementById('hiredChatInput');
-  const msg = input.value.trim(); if(!msg) return;
-  input.value = '';
+  const msg = input.value.trim(); if(!msg) return; input.value='';
   const msgs = document.getElementById('hiredChatMsgs');
   msgs.innerHTML += `<div class="chat-msg user">${msg}</div>`;
-  const key = Object.keys(CHAT_REPLIES).find(k=>msg.includes(k))||'default';
-  const replies = CHAT_REPLIES[key];
-  const reply = replies[Math.floor(Math.random()*replies.length)];
-  setTimeout(()=>{
-    msgs.innerHTML += `<div class="chat-msg bot">${reply}</div>`;
+  const a = STATE.hiredAvatars[id] || STATE.plazaAvatars[id];
+  if(!a) return;
+  
+  // Analyze task type from message
+  let taskType = '简单任务';
+  if(msg.includes('小红书') || msg.includes('种草') || msg.includes('图文') || msg.includes('笔记')) taskType = '图文笔记';
+  else if(msg.includes('脚本') || msg.includes('分镜')) taskType = '短视频脚本';
+  else if(msg.includes('视频') || msg.includes('剪辑') || msg.includes('剪')) taskType = '短视频';
+  else if(msg.includes('文案') || msg.includes('写') || msg.includes('文章')) taskType = '纯文案';
+  
+  // Generate real output based on skills
+  const output = generateWorkOutput(a, msg, taskType);
+  
+  setTimeout(() => {
+    if(output.hasSkill) {
+      // Has skill → show high quality output with delivery card
+      msgs.innerHTML += `<div class="chat-msg bot">
+        <div style="font-size:12px;color:#6d28d9;margin-bottom:4px">🎯 使用技能：${output.skillUsed}</div>
+        <div style="font-size:12px;color:#16a34a;margin-bottom:6px">品质评级：${output.quality}级 · 评分：${output.score}/100</div>
+        <div style="background:#f3f0ff;border-radius:12px;padding:12px;margin-bottom:8px">
+          <div style="font-weight:600;font-size:14px;margin-bottom:6px">${output.title}</div>
+          <div style="font-size:13px;line-height:1.8;color:#475569;white-space:pre-wrap">${output.content}</div>
+          ${output.hashtags && output.hashtags.length > 0 ? `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px">${output.hashtags.map(h=>`<span style="background:#ede9fe;color:#6d28d9;padding:2px 8px;border-radius:12px;font-size:11px">${h}</span>`).join('')}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="act-btn act-primary" style="flex:1;font-size:12px;padding:6px" onclick="acceptWork(${id},'${output.skillUsed}','${output.quality}',${output.score})">✅ 验收通过</button>
+          <button class="act-btn" style="flex:1;font-size:12px;padding:6px;background:#fef3c7;color:#92400e" onclick="sendHiredChat(${id})">🔄 重做</button>
+        </div>
+      </div>`;
+    } else {
+      // No skill → low quality generic output
+      msgs.innerHTML += `<div class="chat-msg bot">
+        <div style="font-size:12px;color:#ef4444;margin-bottom:4px">⚠️ 未掌握对应技能，产出质量较低</div>
+        <div style="font-size:12px;color:#94a3b8;margin-bottom:6px">品质评级：${output.quality}级 · 评分：${output.score}/100</div>
+        <div style="background:#fef2f2;border-radius:12px;padding:12px;margin-bottom:8px">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px">${output.title}</div>
+          <div style="font-size:12px;color:#64748b">${output.content}</div>
+        </div>
+        <div style="background:#fffbeb;border-radius:8px;padding:8px 10px;font-size:11px;color:#92400e;margin-bottom:8px">💡 建议：先让${a.name}学习对应技能，产出质量将从${output.quality}级提升到S/A级！<br>去 <b>我的分身→教分身→学技能</b> 开始学习</div>
+        <div style="display:flex;gap:8px">
+          <button class="act-btn" style="flex:1;font-size:12px;padding:6px;opacity:0.7" onclick="acceptWork(${id},null,'${output.quality}',${output.score})">勉强验收</button>
+          <button class="act-btn act-primary" style="flex:1;font-size:12px;padding:6px" onclick="goTeachAvatar(${id})">📚 去学技能</button>
+        </div>
+      </div>`;
+    }
     msgs.scrollTop = msgs.scrollHeight;
-    // 第二轮回复 - 生成内容
-    setTimeout(()=>{
-      msgs.innerHTML += `<div class="chat-msg bot">📝 内容已生成！<br><br><span style="background:#f3f0ff;padding:8px 12px;border-radius:8px;display:inline-block;margin-top:4px;font-size:13px">这是根据你的需求生成的初稿，你可以让我修改或重新生成 ✨</span></div>`;
-      msgs.scrollTop = msgs.scrollHeight;
-      // 显示操作按钮
-      setTimeout(()=>{
-        msgs.innerHTML += `<div style="display:flex;gap:6px;margin-top:4px;align-self:flex-start">
-          <button class="act-btn act-success" style="padding:6px 12px;font-size:11px" onclick="showToast('✅ 已确认采用')">✅ 采用</button>
-          <button class="act-btn act-secondary" style="padding:6px 12px;font-size:11px" onclick="sendHiredChat(${id})">🔄 重做</button>
-          <button class="act-btn act-secondary" style="padding:6px 12px;font-size:11px" onclick="showToast('已复制到剪贴板')">📋 复制</button>
-        </div>`;
-        msgs.scrollTop = msgs.scrollHeight;
-      }, 500);
-    }, 1500);
-  }, 600);
+  }, 800 + Math.random()*700);
 }
-function quickTask(id, contentType) {
+
+function quickTask(id, taskType) {
+  const a = STATE.hiredAvatars[id] || STATE.plazaAvatars[id];
+  if(!a) return;
+  const msgs = document.getElementById('hiredChatMsgs');
+  const icons = {'图文笔记':'📝','短视频':'🎬','短视频脚本':'📋','纯文案':'✍️','简单任务':'🎯'};
+  
+  msgs.innerHTML += `<div class="chat-msg user">${icons[taskType]||'🎯'} 我需要一个${taskType}内容</div>`;
+  
+  const output = generateWorkOutput(a, taskType, taskType);
+  
+  setTimeout(() => {
+    if(output.hasSkill) {
+      msgs.innerHTML += `<div class="chat-msg bot">
+        <div style="font-size:12px;color:#6d28d9;margin-bottom:4px">🎯 使用技能：${output.skillUsed} · 品质：${output.quality}级</div>
+        <div style="background:#f3f0ff;border-radius:12px;padding:12px;margin-bottom:8px">
+          <div style="font-weight:600;font-size:14px;margin-bottom:6px">${output.title}</div>
+          <div style="font-size:13px;line-height:1.8;color:#475569;white-space:pre-wrap">${output.content}</div>
+          ${output.hashtags && output.hashtags.length > 0 ? `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px">${output.hashtags.map(h=>`<span style="background:#ede9fe;color:#6d28d9;padding:2px 8px;border-radius:12px;font-size:11px">${h}</span>`).join('')}</div>` : ''}
+        </div>
+        <div style="font-size:12px;color:#16a34a;margin-bottom:6px">📊 评分：${output.score}/100 · ${output.quality}级品质</div>
+        <div style="display:flex;gap:8px">
+          <button class="act-btn act-primary" style="flex:1;font-size:12px;padding:6px" onclick="acceptWork(${id},'${output.skillUsed}','${output.quality}',${output.score})">✅ 验收通过</button>
+          <button class="act-btn" style="flex:1;font-size:12px;padding:6px;background:#fef3c7;color:#92400e" onclick="quickTask(${id},'${taskType}')">🔄 重做</button>
+        </div>
+      </div>`;
+    } else {
+      const needSkill = {'图文笔记':'小红书运营','短视频':'视频剪辑','短视频脚本':'抖音脚本','纯文案':'SEO优化','简单任务':'客服话术'};
+      const suggest = needSkill[taskType] || '小红书运营';
+      msgs.innerHTML += `<div class="chat-msg bot">
+        <div style="font-size:12px;color:#ef4444;margin-bottom:4px">⚠️ ${a.name}没有掌握「${suggest}」技能</div>
+        <div style="background:#fef2f2;border-radius:12px;padding:12px;margin-bottom:8px">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px">${output.title}</div>
+          <div style="font-size:12px;color:#64748b">${output.content}</div>
+        </div>
+        <div style="background:#fffbeb;border-radius:8px;padding:8px 10px;font-size:11px;color:#92400e;margin-bottom:8px">💡 学了「${suggest}」技能后，${taskType}品质可从${output.quality}级提升到S/A级！<br>内容详细度提升5-10倍，评分从${output.score}提升到80-98分</div>
+        <div style="display:flex;gap:8px">
+          <button class="act-btn" style="flex:1;font-size:12px;padding:6px;opacity:0.7" onclick="acceptWork(${id},null,'${output.quality}',${output.score})">勉强验收</button>
+          <button class="act-btn act-primary" style="flex:1;font-size:12px;padding:6px" onclick="goTeachAvatar(${id})">📚 去学技能</button>
+        </div>
+      </div>`;
+    }
+    msgs.scrollTop = msgs.scrollHeight;
+  }, 1000 + Math.random()*500);
+}
+
+function acceptWork(id, skillUsed, quality, score) {
+  const a = STATE.hiredAvatars[id] || STATE.plazaAvatars[id];
+  if(!a) return;
+  const msgs = document.getElementById('hiredChatMsgs');
+  
+  // Calculate payment
+  let fee = 10;
+  if(skillUsed) {
+    const pricing = {S:99,A:59,B:29,C:15,D:10};
+    fee = pricing[quality] || 29;
+  } else {
+    fee = 5; // no skill = minimal fee
+  }
+  
+  // Add XP to avatar
+  a.xp = Math.min(a.xpMax, a.xp + (skillUsed ? 30 : 10));
+  checkLevelUp(id);
+  
+  msgs.innerHTML += `<div class="chat-msg system">
+    ✅ 任务已验收完成！<br>
+    ${skillUsed ? `技能：${skillUsed} · 品质：${quality}级 · 评分：${score}/100<br>` : ''}
+    费用：¥${fee} · ${a.name}获得${skillUsed?30:10}XP
+  </div>`;
+  msgs.scrollTop = msgs.scrollHeight;
+  showToast(`✅ 验收完成！支付¥${fee}`);
+}
+
+function goTeachAvatar(id) {
+  closeSub();
+  setTimeout(() => openSub('teach', {id}), 300);
+}
+
+function fillHiredChat(id, text) {
   const input = document.getElementById('hiredChatInput');
-  if(!input) return;
-  const taskMap = {
-    '图文笔记':'帮我做一组图文笔记，包含配图和文案',
-    '短视频':'帮我做一个短视频，包含脚本和分镜',
-    '短视频脚本':'帮我写一个短视频脚本，含分镜和口播词',
-    '纯文案':'帮我写一篇文案',
-    '简单任务':'帮我完成一个简单任务'
-  };
-  input.value = taskMap[contentType]||'帮我完成一个任务';
+  if(input) input.value = text;
   sendHiredChat(id);
 }
 
-// ===== TEACH SYSTEM v2: Full Business Logic =====
+
 function renderTeach(el, data) {
   const id = data?.id||1;
   const a = STATE.avatars[id]; if(!a) return;
@@ -1726,15 +1195,15 @@ function startLearnStep(skillName,id){
     </div>
     <div style="font-size:14px;font-weight:600;margin-bottom:8px">📖 学习内容</div>
     <div style="background:#f8fafc;border-radius:12px;padding:14px;margin-bottom:14px;font-size:13px;line-height:1.8;color:#475569">
-      ${step.content.split('\\n').map(line=>line.trim()?`<div style="margin-bottom:4px">${line}</div>`:'').join('')}
+      ${step.content.split('\n').map(line=>line.trim()?`<div style="margin-bottom:4px">${line}</div>`:'').join('')}
     </div>
     ${step.example?`<div style="font-size:14px;font-weight:600;margin-bottom:8px">💡 示例</div>
     <div style="background:#fef3c7;border-radius:12px;padding:14px;margin-bottom:14px;font-size:13px;line-height:1.6;color:#92400e">
-      ${step.example.split('\\n').map(line=>line.trim()?`<div style="margin-bottom:2px">${line}</div>`:'').join('')}
+      ${step.example.split('\n').map(line=>line.trim()?`<div style="margin-bottom:2px">${line}</div>`:'').join('')}
     </div>`:''}
     ${step.tips?`<div style="font-size:14px;font-weight:600;margin-bottom:8px">⚠️ 注意事项</div>
     <div style="background:#fef2f2;border-radius:12px;padding:14px;margin-bottom:14px;font-size:13px;line-height:1.6;color:#991b1b">
-      ${step.tips.split('\\n').map(line=>line.trim()?`<div style="margin-bottom:2px">${line}</div>`:'').join('')}
+      ${step.tips.split('\n').map(line=>line.trim()?`<div style="margin-bottom:2px">${line}</div>`:'').join('')}
     </div>`:''}
     ${step.practice?`<div style="font-size:14px;font-weight:600;margin-bottom:8px">✍️ 练一练</div>
     <div style="background:#eff6ff;border-radius:12px;padding:14px;margin-bottom:14px;font-size:13px;line-height:1.6;color:#1e40af">
@@ -1812,7 +1281,7 @@ function submitExam(skillName,id){
     a.learning=a.learning.filter(s=>s!==skillName);
     if(!a.skills.includes(skillName))a.skills.push(skillName);
     // Update abilities
-    if(!a.abilities)a.abilities={writing:0,creativity:0,professional:0,social:0,data:0};
+    if(!a.abilities)a.abilities={writing:0,creativity:0,professionalism:0,engagement:0,accuracy:0};
     for(const[k,v] of Object.entries(detail.gain)){
       a.abilities[k]=Math.min(100,(a.abilities[k]||0)+v);
     }
@@ -2085,14 +1554,23 @@ function openModal(type, data) {
   switch(type) {
     case 'hire': {
       const a = STATE.plazaAvatars[data.id];
+      const skillCount = (a.skills||[]).length;
       box.innerHTML = `
-      <div style="font-size:17px;font-weight:700;margin-bottom:16px;text-align:center">雇佣确认</div>
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px"><img src="${a.photo}" class="avatar-photo" /><div><div style="font-weight:600">${a.name} <span class="lv ${lvClass(a.lv)}">Lv.${a.lv}</span></div><div style="font-size:12px;color:#94a3b8">⭐${a.stars} · ${a.orders}单</div></div></div>
-      <div style="background:#f8fafc;border-radius:12px;padding:12px;margin-bottom:16px">
-        <div class="price-row"><span class="label">出场费</span><span class="val">¥${a.price}/次</span></div>
-        <div class="price-row total"><span class="label">合计</span><span class="val">¥${a.price.toFixed(2)}</span></div>
+      <div style="font-size:17px;font-weight:700;margin-bottom:16px;text-align:center">💰 雇佣${a.name}</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <img src="${a.photo}" style="width:48px;height:48px;border-radius:50%;object-fit:cover" />
+        <div style="flex:1"><div style="font-weight:600">${a.name} <span class="lv ${lvClass(a.lv)}">Lv.${a.lv}</span></div><div style="font-size:12px;color:#94a3b8">${a.style} · ⭐${a.stars}</div></div>
       </div>
-      <div style="font-size:12px;color:#94a3b8;margin-bottom:16px">雇佣后分身将按你的需求生成内容，费用从余额扣除</div>
+      ${skillCount > 0 ? `<div style="background:#faf5ff;border-radius:12px;padding:10px;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:600;color:#6d28d9;margin-bottom:4px">🎯 可用技能（${skillCount}个）</div>
+        <div style="display:flex;flex-wrap:wrap;gap:3px">${a.skills.map(s=>{const d=SKILL_DETAILS[s];return d?`<span style="background:#ede9fe;color:#6d28d9;padding:2px 6px;border-radius:10px;font-size:10px">${d.icon} ${s}</span>`:''}).join('')}</div>
+        <div style="font-size:10px;color:#6d28d9;margin-top:4px">有技能 = 高品质产出 = 更值得雇佣</div>
+      </div>` : ''}
+      <div style="background:#f8fafc;border-radius:12px;padding:12px;margin-bottom:12px">
+        <div class="price-row"><span class="label">出场费</span><span class="val">¥${a.price}</span></div>
+        <div class="price-row"><span class="label">可接任务</span><span class="val">${skillCount > 0 ? CONTENT_TYPES.filter(ct => !!matchBestSkill(a, ct)).join('、') : '仅简单任务'}</span></div>
+        <div class="price-row"><span class="label">品质保证</span><span class="val">${skillCount > 0 ? 'S/A级' : 'D级'}</span></div>
+      </div>
       <div style="display:flex;gap:10px"><button class="act-btn act-secondary" style="flex:1" onclick="closeModal()">取消</button><button class="act-btn act-primary" style="flex:1" onclick="doHire(${data.id})">确认雇佣</button></div>`;
       break;
     }
@@ -2119,15 +1597,32 @@ function openModal(type, data) {
     }
     case 'plaza-toggle': {
       const a = STATE.avatars[data.id];
+      // Calculate recommended price based on skills
+      const skillCount = (a.skills||[]).length;
+      const abilitySum = Object.values(a.abilities||{}).reduce((s,v)=>s+v,0);
+      const avgAbility = abilitySum / 5;
+      const basePrice = PRICING['纯文案'].minFee;
+      const skillBonus = skillCount * 15;
+      const abilityBonus = Math.floor(avgAbility / 10) * 5;
+      const recommendedPrice = basePrice + skillBonus + abilityBonus;
+      
       box.innerHTML = `
       <div style="font-size:17px;font-weight:700;margin-bottom:16px;text-align:center">${data.action==='on'?'📢 挂到广场':'⏸️ 下架分身'}</div>
       ${data.action==='on'?`
       <div style="margin-bottom:12px"><div style="font-weight:600">${a.name}将出现在广场，其他人可以雇佣它</div></div>
+      ${(a.skills||[]).length > 0 ? `<div style="background:#faf5ff;border-radius:12px;padding:12px;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:600;color:#6d28d9;margin-bottom:6px">🎯 可提供的技能服务</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">${(a.skills||[]).map(s=>{const d=SKILL_DETAILS[s];return d?`<span style="background:#ede9fe;color:#6d28d9;padding:3px 8px;border-radius:20px;font-size:11px">${d.icon} ${s}</span>`:''}).join('')}</div>
+        <div style="font-size:11px;color:#6d28d9">技能越多 → 可接任务越多 → 收入越高</div>
+      </div>` : `<div style="background:#fef3c7;border-radius:12px;padding:12px;margin-bottom:12px;font-size:12px;color:#92400e">⚠️ ${a.name}还没学技能，挂广场后只能接简单任务，建议先去学习</div>`}
       <div style="background:#f8fafc;border-radius:12px;padding:12px;margin-bottom:12px">
-        <div class="price-row"><span class="label">当前出场费</span><span class="val">¥${a.plazaPrice||PRICING['纯文案'].minFee}/次</span></div>
+        <div class="price-row"><span class="label">推荐出场费</span><span class="val" style="color:#16a34a;font-weight:600">¥${recommendedPrice}/次</span></div>
+        <div class="price-row"><span class="label">定价依据</span><span class="val">基础¥${basePrice} + 技能${skillCount}×15 + 能力${Math.floor(avgAbility/10)}×5</span></div>
         <div class="price-row"><span class="label">分成规则</span><span class="val">你70% / 平台30%</span></div>
+        <div class="price-row"><span class="label">预计月收入</span><span class="val">¥${recommendedPrice * 30 * 0.7}~¥${recommendedPrice * 80 * 0.7}（按30-80单估算）</span></div>
+        ${a.lv >= 4 ? `<div style="margin-top:8px;font-size:12px"><label style="color:#64748b">自定义出场费</label><div style="display:flex;align-items:center;gap:6px;margin-top:4px"><span>¥</span><input type="number" value="${recommendedPrice}" style="border:1px solid #e5e7eb;border-radius:8px;padding:6px 10px;width:80px;font-size:14px" id="customPrice" onchange="document.getElementById('customPrice').value=this.value" /><span style="font-size:11px;color:#94a3b8">/次</span></div></div>` : ''}
       </div>
-      <div style="display:flex;gap:10px"><button class="act-btn act-secondary" style="flex:1" onclick="closeModal()">取消</button><button class="act-btn act-primary" style="flex:1" onclick="doTogglePlaza(${data.id},'on')">确认挂出</button></div>
+      <div style="display:flex;gap:10px"><button class="act-btn act-secondary" style="flex:1" onclick="closeModal()">取消</button><button class="act-btn act-primary" style="flex:1" onclick="doTogglePlaza(${data.id},'on',${recommendedPrice})">确认挂出</button></div>
       `:`
       <div style="margin-bottom:12px">下架后${a.name}将不再出现在广场，已进行的订单不受影响</div>
       <div style="display:flex;gap:10px"><button class="act-btn act-secondary" style="flex:1" onclick="closeModal()">取消</button><button class="act-btn act-danger" style="flex:1" onclick="doTogglePlaza(${data.id},'off')">确认下架</button></div>
@@ -2169,12 +1664,17 @@ function togglePlaza(id){
   if(a.hangPlaza){openModal('plaza-toggle',{id,action:'off'})}
   else{a.plazaPrice=a.plazaPrice||PRICING['纯文案'].minFee;openModal('plaza-toggle',{id,action:'on'})}
 }
-function doTogglePlaza(id,action){
-  const a=STATE.avatars[id];if(!a)return;
-  a.hangPlaza=action==='on';
-  if(a.hangPlaza&&a.plazaPrice===0)a.plazaPrice=PRICING['纯文案'].minFee;
-  showToast(a.hangPlaza?'已挂到广场':'已从广场下架');
-  closeModal();renderPage(STATE.currentTab);
+function doTogglePlaza(id, action, recPrice) {
+  const a = STATE.avatars[id]; if(!a) return;
+  a.hangPlaza = action === 'on';
+  if(a.hangPlaza) {
+    const customEl = document.getElementById('customPrice');
+    a.plazaPrice = customEl ? parseInt(customEl.value) || recPrice : recPrice || PRICING['纯文案'].minFee;
+    // Also sync to plaza avatar
+    if(STATE.plazaAvatars[id]) STATE.plazaAvatars[id].price = a.plazaPrice;
+  }
+  showToast(a.hangPlaza ? `已挂到广场，出场费¥${a.plazaPrice}/次` : '已从广场下架');
+  closeModal(); renderPage(STATE.currentTab);
 }
 
 // ============== 其他操作 ==============
@@ -2197,6 +1697,254 @@ function sendHomeTalk(){
 function filterPlaza(el){el.parentElement.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');showToast('筛选：'+el.textContent)}
 
 // ============== 初始化 ==============
+
+// ============== 核心路由 ==============
+function switchTab(tab) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tabbar-item,.tabbar-center').forEach(t => t.classList.remove('active'));
+  const page = document.getElementById('page-' + tab);
+  if (page) page.classList.add('active');
+  const tabItems = document.querySelectorAll('.tabbar-item,.tabbar-center');
+  const tabMap = { home: 0, avatars: 1, orders: 2, plaza: 3, profile: 4 };
+  if (tabMap[tab] !== undefined && tabItems[tabMap[tab]]) tabItems[tabMap[tab]].classList.add('active');
+  closeSub();
+  renderPage(tab);
+  STATE.currentTab = tab;
+}
+
+function openSub(page, data) {
+  const el = document.getElementById('sub-dynamic');
+  el.style.display = 'block';
+  el.className = 'subpage active';
+  renderSubContent(el, page, data);
+}
+
+function closeSub() {
+  const el = document.getElementById('sub-dynamic');
+  if (el) { el.style.display = 'none'; el.className = 'subpage'; }
+}
+
+function renderSubContent(el, page, data) {
+  switch(page) {
+    case 'teach': renderTeach(el, data); break;
+    case 'hired-chat': renderHiredChat(el, data); break;
+    case 'chat-pick': renderChatPick(el, data); break;
+    case 'withdraw': renderWithdraw(el, data); break;
+    case 'result-detail': renderResultDetail(el, data); break;
+    case 'edit-avatar': renderEditAvatar(el, data); break;
+    default: el.innerHTML = '<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">页面</div><div></div></div><div class="sub-body"><p>页面未找到</p></div>';
+  }
+}
+
+function renderPage(tab) {
+  switch(tab) {
+    case 'home': renderHome(); break;
+    case 'avatars': renderAvatars(); break;
+    case 'orders': renderOrders(); break;
+    case 'plaza': renderPlaza(); break;
+    case 'profile': renderProfile(); break;
+  }
+}
+
+function renderHome() {
+  const el = document.getElementById('page-home-content');
+  const avatarCount = Object.keys(STATE.avatars).length;
+  const totalEarnings = STATE.earnings?.total || 0;
+  const skillCount = Object.values(STATE.avatars).reduce((s,a) => s + (a.skills?.length||0), 0);
+  const plazaCount = Object.values(STATE.avatars).filter(a => a.hangPlaza).length;
+  const recentResults = STATE.results?.slice(0,3) || [];
+  el.innerHTML = `
+  <div style="padding:16px;padding-bottom:80px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff">🤖</div>
+      <div><div style="font-size:18px;font-weight:700">AI分身平台</div><div style="font-size:12px;color:#94a3b8">打造你的数字分身军团</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <div style="background:#f0f9ff;border-radius:12px;padding:14px"><div style="font-size:24px;font-weight:700;color:#0284c7">${avatarCount}</div><div style="font-size:12px;color:#64748b">我的分身</div></div>
+      <div style="background:#f0fdf4;border-radius:12px;padding:14px"><div style="font-size:24px;font-weight:700;color:#16a34a">${skillCount}</div><div style="font-size:12px;color:#64748b">已学技能</div></div>
+      <div style="background:#faf5ff;border-radius:12px;padding:14px"><div style="font-size:24px;font-weight:700;color:#7c3aed">${plazaCount}</div><div style="font-size:12px;color:#64748b">广场挂单</div></div>
+      <div style="background:#fff7ed;border-radius:12px;padding:14px"><div style="font-size:24px;font-weight:700;color:#ea580c">¥${totalEarnings}</div><div style="font-size:12px;color:#64748b">累计收益</div></div>
+    </div>
+    <div style="margin-bottom:12px;font-size:15px;font-weight:600">💬 对分身说话</div>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <div style="flex:1;background:#f8fafc;border-radius:20px;padding:10px 14px;font-size:14px;color:#94a3b8" contenteditable="true" id="homeTalkInput">说点什么...</div>
+      <button style="background:#6366f1;color:#fff;border:none;border-radius:20px;padding:10px 18px;font-size:14px;cursor:pointer" onclick="sendHomeTalk()">发送</button>
+    </div>
+    <div style="font-size:15px;font-weight:600;margin-bottom:10px">📋 最近产出</div>
+    ${recentResults.length === 0 ? '<div style="text-align:center;padding:20px;color:#94a3b8;font-size:13px">还没有产出记录<br>雇佣分身开始干活吧</div>' : recentResults.map(r => `
+    <div style="background:#fff;border:1px solid #f1f5f9;border-radius:12px;padding:12px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <span style="font-size:12px;padding:2px 6px;border-radius:4px;background:${r.quality==='S'?'#fef3c7':r.quality==='A'?'#dbeafe':'#f1f5f9'};color:${r.quality==='S'?'#92400e':r.quality==='A'?'#1e40af':'#64748b'};font-weight:600">${r.quality}级</span>
+        <span style="font-weight:600;font-size:13px">${r.title||r.label}</span>
+      </div>
+      <div style="font-size:12px;color:#94a3b8">${r.avatar||''} · ${r.time||''}</div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function renderAvatars() {
+  const el = document.getElementById('page-avatars-content');
+  const avatars = Object.entries(STATE.avatars);
+  el.innerHTML = `
+  <div style="padding:16px;padding-bottom:80px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-size:18px;font-weight:700">我的分身</div>
+      <button style="background:#6366f1;color:#fff;border:none;border-radius:20px;padding:8px 16px;font-size:13px;cursor:pointer" onclick="openModal('create')">+ 创建分身</button>
+    </div>
+    ${avatars.length === 0 ? '<div style="text-align:center;padding:40px;color:#94a3b8">还没有分身<br>创建你的第一个AI分身吧</div>' : avatars.map(([id,a]) => `
+    <div style="background:#fff;border:1px solid #f1f5f9;border-radius:16px;padding:16px;margin-bottom:12px;cursor:pointer" onclick="openModal('avatar-detail',{id:${id}})">
+      <div style="display:flex;gap:12px;align-items:center">
+        <img src="${a.photo}" style="width:56px;height:56px;border-radius:50%;object-fit:cover" />
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:6px"><span style="font-weight:600">${a.name}</span><span class="lv ${lvClass(a.lv)}" style="font-size:11px">Lv.${a.lv}</span>${a.hangPlaza?'<span style="font-size:10px;background:#dcfce7;color:#16a34a;padding:1px 6px;border-radius:8px">广场</span>':''}</div>
+          <div style="font-size:12px;color:#94a3b8;margin-top:2px">${a.style} · ⭐${a.stars}</div>
+          <div style="display:flex;gap:3px;margin-top:4px;flex-wrap:wrap">${(a.skills||[]).map(s=>'<span style="background:#ede9fe;color:#6d28d9;padding:1px 6px;border-radius:8px;font-size:10px">'+s+'</span>').join('')}</div>
+        </div>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function renderOrders() {
+  const el = document.getElementById('page-orders-content');
+  const hired = Object.entries(STATE.hiredAvatars || {});
+  el.innerHTML = `
+  <div style="padding:16px;padding-bottom:80px">
+    <div style="font-size:18px;font-weight:700;margin-bottom:16px">我的订单</div>
+    ${hired.length === 0 ? '<div style="text-align:center;padding:40px;color:#94a3b8">还没有雇佣分身<br>去广场看看吧</div>' : hired.map(([id,a]) => `
+    <div style="background:#fff;border:1px solid #f1f5f9;border-radius:16px;padding:16px;margin-bottom:12px;cursor:pointer" onclick="openSub('hired-chat',{id:${id}})">
+      <div style="display:flex;gap:12px;align-items:center">
+        <img src="${a.photo}" style="width:48px;height:48px;border-radius:50%;object-fit:cover" />
+        <div style="flex:1">
+          <div style="font-weight:600">${a.name} <span class="lv ${lvClass(a.lv)}">Lv.${a.lv}</span></div>
+          <div style="font-size:12px;color:#94a3b8">${a.style} · 剩余${a.remainingUses||0}次</div>
+        </div>
+        <div style="font-size:14px;color:#6366f1;font-weight:600">¥${a.price}</div>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function renderPlaza() {
+  const el = document.getElementById('page-plaza-content');
+  const avatars = Object.entries(STATE.plazaAvatars || {});
+  el.innerHTML = `
+  <div style="padding:16px;padding-bottom:80px">
+    <div style="font-size:18px;font-weight:700;margin-bottom:16px">🔥 分身广场</div>
+    <div style="display:flex;gap:6px;margin-bottom:16px;overflow-x:auto">
+      <button class="filter-chip active" onclick="filterPlaza(this)">全部</button>
+      <button class="filter-chip" onclick="filterPlaza(this)">图文</button>
+      <button class="filter-chip" onclick="filterPlaza(this)">视频</button>
+      <button class="filter-chip" onclick="filterPlaza(this)">文案</button>
+      <button class="filter-chip" onclick="filterPlaza(this)">运营</button>
+    </div>
+    ${avatars.length === 0 ? '<div style="text-align:center;padding:40px;color:#94a3b8">广场暂无分身<br>让你的分身来接单吧</div>' : avatars.map(([id,a]) => `
+    <div style="background:#fff;border:1px solid #f1f5f9;border-radius:16px;padding:16px;margin-bottom:12px;cursor:pointer" onclick="openModal('hire',{id:${id}})">
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px">
+        <img src="${a.photo}" style="width:48px;height:48px;border-radius:50%;object-fit:cover" />
+        <div style="flex:1">
+          <div style="font-weight:600">${a.name} <span class="lv ${lvClass(a.lv)}">Lv.${a.lv}</span></div>
+          <div style="font-size:12px;color:#94a3b8">${a.style} · ${a.orders}次雇佣 · ⭐${a.stars}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:16px;font-weight:700;color:#6366f1">¥${a.price}</div>
+          <div style="font-size:10px;color:#94a3b8">/次</div>
+        </div>
+      </div>
+      ${(a.skills&&a.skills.length>0)?'<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px">'+a.skills.map(s=>'<span style="background:#ede9fe;color:#6d28d9;padding:1px 6px;border-radius:8px;font-size:10px">'+s+'</span>').join('')+'</div>':''}
+      <div style="font-size:12px;color:#64748b;line-height:1.5">${a.desc||''}</div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function renderProfile() {
+  const el = document.getElementById('page-profile-content');
+  const u = STATE.user;
+  el.innerHTML = `
+  <div style="padding:16px;padding-bottom:80px">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff;margin:0 auto 8px">👤</div>
+      <div style="font-size:18px;font-weight:700">${u.name||'用户'}</div>
+      <div style="font-size:12px;color:#94a3b8">ID: ${u.id||'10001'}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <div style="background:#f0f9ff;border-radius:12px;padding:14px;text-align:center"><div style="font-size:20px;font-weight:700;color:#0284c7">¥${u.balance||0}</div><div style="font-size:12px;color:#64748b">余额</div></div>
+      <div style="background:#f0fdf4;border-radius:12px;padding:14px;text-align:center"><div style="font-size:20px;font-weight:700;color:#16a34a">¥${STATE.earnings?.total||0}</div><div style="font-size:12px;color:#64748b">累计收益</div></div>
+    </div>
+    <div style="background:#fff;border:1px solid #f1f5f9;border-radius:12px;overflow:hidden">
+      <div style="padding:14px 16px;border-bottom:1px solid #f1f5f9;cursor:pointer" onclick="STATE.checkedIn?null:doCheckin()"><span style="margin-right:8px">📅</span>每日签到 ${STATE.checkedIn?'✅ 已签到':'+50 XP'}</div>
+      <div style="padding:14px 16px;border-bottom:1px solid #f1f5f9;cursor:pointer" onclick="openSub('withdraw')"><span style="margin-right:8px">💰</span>收益提现</div>
+      <div style="padding:14px 16px;border-bottom:1px solid #f1f5f9"><span style="margin-right:8px">📊</span>分身统计：${Object.keys(STATE.avatars).length}个</div>
+      <div style="padding:14px 16px"><span style="margin-right:8px">⚙️</span>设置</div>
+    </div>
+  </div>`;
+}
+
+function renderChatPick(el, data) {
+  const task = data?.task || '';
+  const avatars = Object.entries(STATE.avatars);
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">选择分身</div><div></div></div><div class="sub-body">
+  <div style="font-size:13px;color:#64748b;margin-bottom:12px">任务：${task}</div>
+  ${avatars.length === 0 ? '<div style="text-align:center;padding:20px;color:#94a3b8">还没有分身</div>' : avatars.map(([id,a]) => `
+  <div style="background:#fff;border:1px solid #f1f5f9;border-radius:12px;padding:12px;margin-bottom:8px;cursor:pointer" onclick="closeSub();setTimeout(()=>openSub('hired-chat',{id:${id}}),200)">
+    <div style="display:flex;gap:10px;align-items:center">
+      <img src="${a.photo}" style="width:40px;height:40px;border-radius:50%;object-fit:cover" />
+      <div style="flex:1"><div style="font-weight:600;font-size:13px">${a.name} <span class="lv ${lvClass(a.lv)}">Lv.${a.lv}</span></div>
+      <div style="font-size:11px;color:#94a3b8">${(a.skills||[]).join('、')||'暂无技能'}</div></div>
+    </div>
+  </div>`).join('')}
+  </div>`;
+}
+
+function renderWithdraw(el) {
+  const totalE = STATE.earnings?.total || 0;
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">💰 提现</div><div></div></div><div class="sub-body">
+  <div style="text-align:center;margin-bottom:20px">
+    <div style="font-size:32px;font-weight:700;color:#16a34a">¥${totalE}</div>
+    <div style="font-size:13px;color:#94a3b8">可提现金额</div>
+  </div>
+  <button class="act-btn act-primary" style="width:100%" onclick="showToast('提现功能开发中')">立即提现</button>
+  </div>`;
+}
+
+function renderResultDetail(el, data) {
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">产出详情</div><div></div></div><div class="sub-body">
+  <div style="text-align:center;padding:40px;color:#94a3b8">产出详情页开发中</div>
+  </div>`;
+}
+
+function renderEditAvatar(el, data) {
+  const id = data?.id;
+  const a = STATE.avatars[id]; if(!a) return;
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">✏️ 修改定价</div><div></div></div><div class="sub-body">
+  <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px">
+    <img src="${a.photo}" style="width:48px;height:48px;border-radius:50%;object-fit:cover" />
+    <div><div style="font-weight:600">${a.name}</div><div style="font-size:12px;color:#94a3b8">当前出场费：¥${a.plazaPrice||0}/次</div></div>
+  </div>
+  <div style="font-size:13px;font-weight:600;margin-bottom:8px">设置出场费</div>
+  <input type="number" value="${a.plazaPrice||30}" id="editPriceInput" style="width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;font-size:16px" />
+  <button class="act-btn act-primary" style="width:100%;margin-top:12px" onclick="STATE.avatars[${id}].plazaPrice=parseInt(document.getElementById('editPriceInput').value)||30;showToast('已更新');closeSub()">保存</button>
+  </div>`;
+}
+
+
+function showToast(msg) {
+  let t = document.getElementById('toast-msg');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast-msg';
+    t.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:#fff;padding:8px 20px;border-radius:20px;font-size:13px;z-index:9999;transition:opacity .3s';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = 1;
+  setTimeout(() => { t.style.opacity = 0; }, 2000);
+}
+
+function toggleChip(el) {
+  el.classList.toggle('active');
+}
+
 function init() {
   const app = document.getElementById('app');
   app.innerHTML = `
