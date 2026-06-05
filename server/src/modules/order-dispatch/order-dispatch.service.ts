@@ -587,17 +587,7 @@ async getExecutionProgress(orderId: string) {
       try {
         const redisKey = `order:accept:count:${orderId}`
         await this.redisService.getClient().decr(redisKey)
-        // 校验补偿：比对Redis与DB
-        const [orderRow] = await db.query(
-          `SELECT GREATEST(COALESCE(NULLIF(avatar_count, 0), NULLIF(expected_quantity, 0), 1), 1) as required_count FROM orders WHERE id = ?`,
-          [orderId]
-        )
-        const redisVal = parseInt(await this.redisService.getClient().get(redisKey) || '0', 10)
-        const dbCount = await this.getDbAcceptCount(orderId)
-        if (redisVal !== dbCount) {
-          console.warn(`[Redis校验] 拒绝分身后不一致 orderId=${orderId} redis=${redisVal} db=${dbCount}, 修正`)
-          await this.redisService.getClient().set(redisKey, String(dbCount), 'EX', OrderDispatchService.REDIS_TTL_SECONDS)
-        }
+        // 注意：不做DB同步补偿。并发时DB事务延迟会导致补偿覆盖INCR/DECR的正确结果
       } catch (err) {
         console.warn('[Redis] 拒绝分身DECR失败:', err.message)
       }
@@ -750,6 +740,17 @@ async getExecutionProgress(orderId: string) {
       }
       avatarIds.push(avatar.id)
       
+      // autoAccept分身直接accepted，需要同步INCR Redis计数器
+      if (avatar.autoAccept) {
+        try {
+          const redisKey = `order:accept:count:${orderId}`
+          await this.redisService.getClient().incr(redisKey)
+          this.logger.log(`[dispatchToAllAvatars] autoAccept Redis INCR: key=${redisKey}, avatarId=${avatar.id}`)
+        } catch (redisErr) {
+          this.logger.warn(`[dispatchToAllAvatars] autoAccept Redis INCR失败(可忽略): ${(redisErr as Error).message}`)
+        }
+      }
+      
       // 📌 记录事件：已派单（自动接单时记录 accepted 事件）
       this.eventService.recordEvent({
         orderId,
@@ -819,6 +820,9 @@ async getExecutionProgress(orderId: string) {
         console.error('[dispatchToAllAvatars] 创建用户通知失败:', err)
       }
     }
+
+    // 派单结束后：校验补偿Redis与DB一致性
+    // 注意：不做DB同步补偿。并发时DB事务延迟会导致补偿覆盖INCR/DECR的正确结果
     
     return { count: avatars.length, avatarIds, smsSentCount }
   }
@@ -877,15 +881,16 @@ async getExecutionProgress(orderId: string) {
     // 用SET NX确保只初始化一次
     const requiredSet = await this.redisService.setNX(redisKeyRequired, String(requiredCount), OrderDispatchService.REDIS_TTL_SECONDS * 1000)
     if (requiredSet) {
-      // 首次初始化：从数据库读取当前已接单数并同步到Redis
-      const currentAcceptedRows = await db.query(
-        `SELECT COUNT(DISTINCT avatar_id) as count
-         FROM order_dispatch_requests
-         WHERE order_id = ? AND status IN ('accepted', 'completed')`,
-        [orderId]
+      // 首次初始化：用SET NX初始化redisKeyAccepted（不覆盖已存在的INCR结果）
+      // 关键：并发时，其他请求可能已经先INCR了redisKeyAccepted，
+      // 如果用SET会覆盖INCR结果导致超卖，所以必须用SET NX
+      const acceptedSetResult = await this.redisService.getClient().set(
+        redisKeyAccepted, '0', 'NX', 'EX', OrderDispatchService.REDIS_TTL_SECONDS
       )
-      const currentAccepted = Number((currentAcceptedRows as any[])?.[0]?.count || 0)
-      await this.redisService.getClient().set(redisKeyAccepted, String(currentAccepted), 'EX', OrderDispatchService.REDIS_TTL_SECONDS)
+      if (!acceptedSetResult) {
+        // redisKeyAccepted已被其他并发请求INCR创建，无需初始化
+        this.logger.log(`redisKeyAccepted已存在，跳过初始化: orderId=${orderId}`)
+      }
     }
 
     // 独占模式校验：分身数不能超过可用素材数
@@ -912,48 +917,19 @@ async getExecutionProgress(orderId: string) {
     }
 
     // 1.3 原子占位：INCR递增已接单计数
-    // 先检查Redis计数器是否与数据库一致，不一致则强制同步
-    try {
-      const currentAcceptedRows = await db.query(
-        `SELECT COUNT(DISTINCT avatar_id) as count
-         FROM order_dispatch_requests
-         WHERE order_id = ? AND status IN ('accepted', 'completed')`,
-        [orderId]
-      )
-      const dbAccepted = Number((currentAcceptedRows as any[])?.[0]?.count || 0)
-      const redisAccepted = await this.redisService.getCounter(redisKeyAccepted)
-      
-      if (redisAccepted !== dbAccepted) {
-        this.logger.log(`Redis计数器不一致，强制同步: orderId=${orderId}, Redis=${redisAccepted}, DB=${dbAccepted}`)
-        await this.redisService.getClient().set(redisKeyAccepted, String(dbAccepted), 'EX', OrderDispatchService.REDIS_TTL_SECONDS)
-      }
-    } catch (err: any) {
-      this.logger.warn(`Redis计数器同步失败: ${err.message}`)
-    }
+    // 关键：INCR之前不做DB同步检查！
+    // DB事务提交有延迟，并发时"先读DB再覆盖Redis"会导致INCR结果被覆盖，造成超卖。
+    // Redis计数器仅通过INCR/DECR原子操作管理，不需要从DB同步。
+    // 如果Redis计数器因重启丢失，SET NX初始化时已从DB同步过一次。
 
     // INCR是原子操作，返回递增后的值。如果超过名额，立即DECR回滚并拒绝
     // 这确保了即使100个请求同时到达，也只有requiredCount个能通过
     const redisRequiredCount = await this.redisService.getCounter(redisKeyRequired)
     const slotNumber = await this.redisService.getClient().incr(redisKeyAccepted)
     if (slotNumber > redisRequiredCount && redisRequiredCount > 0) {
-      // 超出名额，回滚占位
+      // 超出名额，回滚占位（DECR是原子操作，无需额外补偿）
+      // 不做DB同步补偿！并发时DB事务延迟会导致补偿覆盖INCR/DECR的正确结果
       await this.redisService.getClient().decr(redisKeyAccepted)
-
-      // 校验补偿：回滚后比对Redis与DB，不一致则修正
-      try {
-        const [dbCheckResult] = await pool.query(
-          `SELECT COUNT(DISTINCT CASE WHEN status IN ('accepted','completed') THEN avatar_id END) as cnt FROM order_dispatch_requests WHERE order_id = ?`,
-          [orderId]
-        )
-        const dbCnt = (dbCheckResult as any)?.cnt ?? (dbCheckResult as any)?.[0]?.cnt ?? 0
-        const currentRedis = await this.redisService.getClient().get(redisKeyAccepted)
-        const currentRedisNum = parseInt(currentRedis || '0', 10)
-        if (currentRedisNum !== dbCnt) {
-          this.logger.warn(`接单占位回滚后Redis不一致，修正: key=${redisKeyAccepted}, redis=${currentRedisNum}, db=${dbCnt}`)
-          await this.redisService.getClient().set(redisKeyAccepted, String(dbCnt), 'EX', OrderDispatchService.REDIS_TTL_SECONDS)
-        }
-      } catch (e) { /* 校验失败不影响主流程 */ }
-
       throw new ConflictException('名额已满，请抢其他订单')
     }
 
@@ -1325,11 +1301,26 @@ async getExecutionProgress(orderId: string) {
       throw new NotFoundException('分派记录不存在')
     }
     
+    const wasAccepted = request.status === 'accepted'
+    const orderId = request.orderId
+
     await db.updateWhere('order_dispatch_requests', { id: dispatchId }, {
       status: 'rejected',
       responded_at: new Date(),
       updated_at: new Date()
     })
+    
+    // 释放Redis已接单计数器（仅之前是accepted状态才需要DECR）
+    if (wasAccepted) {
+      try {
+        const redisKey = `order:accept:count:${orderId}`
+        await this.redisService.getClient().decr(redisKey)
+        this.logger.log(`declineOrder Redis DECR: key=${redisKey}, orderId=${orderId}`)
+        // 注意：不做DB同步补偿。并发时DB事务延迟会导致补偿覆盖DECR的正确结果
+      } catch (redisErr) {
+        this.logger.warn(`declineOrder Redis DECR失败(可忽略): ${(redisErr as Error).message}`)
+      }
+    }
     
     let declinedAvatarName = '分身'
     try {
@@ -1935,22 +1926,12 @@ async getExecutionProgress(orderId: string) {
       this.logger.log(`释放素材: orderId=${orderId}, cgrId=${cgrId}, 释放${(releaseResult as any)?.affectedRows || 0}条素材`)
     }
 
-    // 6.5 释放Redis已接单计数器（含校验补偿）
+    // 6.5 释放Redis已接单计数器
     const redisKeyAccepted = `order:accept:count:${orderId}`
     try {
       const currentCount = await this.redisService.getClient().decr(redisKeyAccepted)
       this.logger.log(`Redis DECR: key=${redisKeyAccepted}, 释放后计数=${currentCount}`)
-
-      // 校验补偿：DECR后比对Redis与DB，不一致则修正
-      const [dbCountResult] = await db.query(
-        `SELECT COUNT(DISTINCT CASE WHEN status IN ('accepted','completed') THEN avatar_id END) as cnt FROM order_dispatch_requests WHERE order_id = ?`,
-        [orderId]
-      )
-      const dbCount = dbCountResult?.cnt ?? dbCountResult?.[0]?.cnt ?? 0
-      if (currentCount !== dbCount) {
-        this.logger.warn(`Redis计数不一致，修正: key=${redisKeyAccepted}, redis=${currentCount}, db=${dbCount}`)
-        await this.redisService.getClient().set(redisKeyAccepted, String(dbCount), 'EX', OrderDispatchService.REDIS_TTL_SECONDS)
-      }
+      // 注意：不做DB同步补偿。并发时DB事务延迟会导致补偿覆盖DECR的正确结果
     } catch (redisErr) {
       this.logger.warn(`Redis DECR失败(可忽略): ${(redisErr as Error).message}`)
     }
@@ -1971,21 +1952,11 @@ async getExecutionProgress(orderId: string) {
         `UPDATE order_dispatch_requests SET status = 'accepted', accepted_at = NOW(), updated_at = NOW() WHERE id = ?`,
         [pending.id]
       )
-      // 自动接单也需要 INCR Redis 计数器（含校验补偿）
+      // 自动接单也需要 INCR Redis 计数器
       try {
         const afterIncr = await this.redisService.getClient().incr(redisKeyAccepted)
         this.logger.log(`自动接单 Redis INCR: key=${redisKeyAccepted}, 计数=${afterIncr}`)
-
-        // 校验补偿：INCR后比对Redis与DB，不一致则修正
-        const [dbCountResult2] = await db.query(
-          `SELECT COUNT(DISTINCT CASE WHEN status IN ('accepted','completed') THEN avatar_id END) as cnt FROM order_dispatch_requests WHERE order_id = ?`,
-          [orderId]
-        )
-        const dbCount2 = dbCountResult2?.cnt ?? dbCountResult2?.[0]?.cnt ?? 0
-        if (afterIncr !== dbCount2) {
-          this.logger.warn(`自动接单后Redis计数不一致，修正: key=${redisKeyAccepted}, redis=${afterIncr}, db=${dbCount2}`)
-          await this.redisService.getClient().set(redisKeyAccepted, String(dbCount2), 'EX', OrderDispatchService.REDIS_TTL_SECONDS)
-        }
+        // 注意：不做DB同步补偿。并发时DB事务延迟会导致补偿覆盖INCR的正确结果
       } catch (redisErr2) {
         this.logger.warn(`自动接单 Redis INCR失败(可忽略): ${(redisErr2 as Error).message}`)
       }

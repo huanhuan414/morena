@@ -872,8 +872,10 @@ export class OrderProcessingService {
     mergedFeedback.revisionHistory = revisionHistory
     mergedFeedback.rejectReason = feedback.rejectReason || ''
 
+    const isFinalRejection = revisionCount >= 2
+
     const record = await this.updateRecordByIdentifier(identifier, {
-      status: 'rejected',
+      status: isFinalRejection ? 'rejected' : 'revision_requested',
       revision_count: revisionCount,
       revision_requested_at: new Date(),
       publish_feedback: JSON.stringify(mergedFeedback)
@@ -886,27 +888,24 @@ export class OrderProcessingService {
 
     const db = getMySQLClient()
     if (normalized.orderId && normalized.avatarId) {
+      // 首次驳回：dispatch保持accepted（分身仍可重新生成，ENUM无revision_requested值）
+      // 最终驳回：dispatch改为rejected（释放名额）
+      const dispatchStatus = isFinalRejection ? 'rejected' : 'accepted'
       await db.query(
-        `UPDATE order_dispatch_requests SET status = 'rejected', reject_reason = ?, updated_at = NOW() WHERE order_id = ? AND avatar_id = ?`,
-        [feedback.rejectReason || '', normalized.orderId, normalized.avatarId]
+        `UPDATE order_dispatch_requests SET status = ?, reject_reason = ?, updated_at = NOW() WHERE order_id = ? AND avatar_id = ?`,
+        [dispatchStatus, feedback.rejectReason || '', normalized.orderId, normalized.avatarId]
       )
-      this.logger.log(`[驳回] 已更新派单记录状态: orderId=${normalized.orderId}, avatarId=${normalized.avatarId}`)
+      this.logger.log(`[驳回] 已更新派单记录状态: orderId=${normalized.orderId}, avatarId=${normalized.avatarId}, dispatchStatus=${dispatchStatus}`)
 
-      // 第二次驳回后立即释放名额
-      if (revisionCount >= 2) {
+      // 最终驳回：释放Redis名额（用DECR，不用SET）
+      if (isFinalRejection) {
         try {
-          const redisKeyAccepted = `order:${normalized.orderId}:accepted`
-          const currentAcceptedRows = await db.query(
-            `SELECT COUNT(DISTINCT avatar_id) as count
-             FROM order_dispatch_requests
-             WHERE order_id = ? AND status IN ('accepted', 'completed')`,
-            [normalized.orderId]
-          )
-          const currentAccepted = Number((currentAcceptedRows as any[])?.[0]?.count || 0)
-          await this.redisService.getClient().set(redisKeyAccepted, String(currentAccepted), 'EX', 3600)
-          this.logger.log(`[驳回] 已释放名额: orderId=${normalized.orderId}, 当前接单数=${currentAccepted}`)
+          const redisKey = `order:accept:count:${normalized.orderId}`
+          await this.redisService.getClient().decr(redisKey)
+          this.logger.log(`[驳回] Redis DECR: key=${redisKey}, orderId=${normalized.orderId}`)
+          // 注意：不做DB同步补偿。并发时DB事务延迟会导致补偿覆盖DECR的正确结果
         } catch (err: any) {
-          this.logger.warn(`[驳回] 释放名额失败: ${err.message}`)
+          this.logger.warn(`[驳回] 释放名额Redis操作失败: ${err.message}`)
         }
       }
 
