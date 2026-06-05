@@ -30,6 +30,7 @@ export class AvatarController {
       location?: string;
       latitude?: number;
       longitude?: number;
+      personality?: Record<string, any> | string;
     }
   ) {
     try {
@@ -49,6 +50,7 @@ export class AvatarController {
         location: body.location,
         latitude: body.latitude,
         longitude: body.longitude,
+        personality: body.personality,
       })
       return { code: 200, msg: 'success', data: avatar }
     } catch (err) {
