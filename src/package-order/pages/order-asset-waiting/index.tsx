@@ -191,7 +191,7 @@ export default function OrderAssetWaiting() {
         await fetchSummary()
         return true
       },
-      onData: () => {},
+      onData: () => { },
     })
     pollUnsubRef.current = unsubscribe
 
@@ -291,7 +291,7 @@ export default function OrderAssetWaiting() {
         Taro.previewMedia({
           sources: [{ url: asset.asset_url, type: 'video' }],
           current: 0,
-        }).catch(() => {})
+        }).catch(() => { })
       } else {
         // H5端打开视频链接
         window.open(asset.asset_url, '_blank')
@@ -304,7 +304,7 @@ export default function OrderAssetWaiting() {
       Taro.previewImage({
         urls,
         current: current >= 0 ? current : 0,
-      }).catch(() => {})
+      }).catch(() => { })
     }
   }
 
@@ -319,8 +319,8 @@ export default function OrderAssetWaiting() {
   const hasFailed = (summary?.failed || 0) > 0
   const hasGenerating = (summary?.generating || 0) > 0
 
-  // 纯文字/纯文案类型不需要素材，始终可以下一步
-  const noAssetNeeded = contentType === 'text'
+  // 纯文字/纯文案类型和简单任务类型不需要素材，始终可以下一步
+  const noAssetNeeded = contentType === 'text' || contentType === 'simple'
   // 素材是否充足
   const totalReady = summary?.ready || 0
   const readyImages = summary?.images || 0
@@ -391,12 +391,12 @@ export default function OrderAssetWaiting() {
               </Text>
               {/* 进度条 */}
               {aiAutoFill && requiredImageCount > 0 && (
-              <View className="aw-progress-bar">
-                <View
-                  className="aw-progress-fill"
-                  style={{ width: `${Math.min(100, ((summary?.ready || 0) / requiredImageCount) * 100)}%` }}
-                />
-              </View>
+                <View className="aw-progress-bar">
+                  <View
+                    className="aw-progress-fill"
+                    style={{ width: `${Math.min(100, ((summary?.ready || 0) / requiredImageCount) * 100)}%` }}
+                  />
+                </View>
               )}
             </View>
           ) : hasFailed && !hasGenerating ? (
