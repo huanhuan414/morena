@@ -1,5 +1,8 @@
-import { Controller, Get, Inject } from '@nestjs/common';
+import { Controller, Get, Inject, Res } from '@nestjs/common';
 import { AppService } from '@/app.service';
+import { Response } from 'express';
+import * as path from 'path';
+import * as fs from 'fs';
 
 @Controller()
 export class AppController {
@@ -19,5 +22,19 @@ export class AppController {
       status: 'success',
       data: new Date().toISOString(),
     };
+  }
+
+  @Get('prototype')
+  servePrototype(@Res() res: Response) {
+    const projectRoot = process.cwd().includes('server')
+      ? path.join(process.cwd(), '..')
+      : process.cwd();
+    const filePath = path.join(projectRoot, 'prototype-full.html');
+    if (fs.existsSync(filePath)) {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.sendFile(filePath);
+    } else {
+      res.status(404).send('Prototype not found');
+    }
   }
 }
