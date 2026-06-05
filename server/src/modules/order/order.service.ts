@@ -336,6 +336,10 @@ export class OrderService {
       accept_regions: JSON.stringify(orderData.acceptRegions || orderData.accept_regions || []),
       platforms: JSON.stringify(orderData.platforms || []),
       requirements: JSON.stringify(orderData.requirements || {}),
+      // 添加 personality 字段，保存风格偏好和领域偏好
+      personality: typeof orderData.personality === 'string' 
+        ? orderData.personality 
+        : JSON.stringify(orderData.personality || { tags: [], niches: [] }),
       budget,
       base_amount: baseAmount,
       content_amount: contentAmount,
