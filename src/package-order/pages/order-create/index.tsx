@@ -947,70 +947,6 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           <Text className="field-hint">好的标题能帮AI更精准地匹配擅长该领域的分身</Text>
         </View>
 
-
-
-        {/* 图文类型自定义基础价格 */}
-        {form.contentType === 'image' && (
-          <View className="section custom-price-section">
-            <View className="section-header">
-              <View className="section-title-row">
-                <View className="title-dot accent" />
-                <Text className="section-title">自定义基础单价</Text>
-              </View>
-              <Text className="section-hint">默认 {basePricePerUnit}元/分身</Text>
-            </View>
-            <View className="custom-price-content">
-              <View className="custom-price-input-row">
-                <Text className="input-label">基础单价</Text>
-                <View className="input-wrapper">
-                  <Text className="input-prefix">¥</Text>
-                  <Input
-                    className="price-input"
-                    type="digit"
-                    placeholder={String(basePricePerUnit)}
-                    value={customBasePriceInput}
-                    onInput={(e) => {
-                      let inputValue = e.detail.value
-
-                      // 过滤负号（不允许负数）
-                      if (inputValue.includes('-')) {
-                        inputValue = inputValue.replace(/-/g, '')
-                      }
-
-                      // 直接更新输入框显示值
-                      setCustomBasePriceInput(inputValue)
-
-                      // 解析数值并更新表单
-                      if (!inputValue || inputValue.trim() === '' || inputValue === '.') {
-                        setForm(prev => ({ ...prev, customBasePrice: 0 }))
-                        return
-                      }
-
-                      const numValue = parseFloat(inputValue)
-                      if (Number.isNaN(numValue)) {
-                        setForm(prev => ({ ...prev, customBasePrice: 0 }))
-                        return
-                      }
-
-                      // 必须大于0
-                      if (numValue <= 0) {
-                        setForm(prev => ({ ...prev, customBasePrice: 0 }))
-                        return
-                      }
-
-                      // 保留2位小数
-                      const finalValue = Math.round(numValue * 100) / 100
-                      setForm(prev => ({ ...prev, customBasePrice: finalValue }))
-                    }}
-                  />
-                  <Text className="input-suffix">/分身</Text>
-                </View>
-              </View>
-              <Text className="custom-price-note">提示：基础费用 = 单价 × 分身数量，单价必须大于0且最多2位小数</Text>
-            </View>
-          </View>
-        )}
-
         {/* 内容风格偏好 */}
         <View className="section">
           <View className="section-header">
@@ -1069,40 +1005,6 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           </View>
         </View>
 
-        {/* 任务描述 */}
-        <View className="section">
-          <View className="section-header">
-            <View className="section-title-row">
-              <View className="title-dot" />
-              <Text className="section-title">任务描述</Text>
-            </View>
-            <View className="ai-button" onClick={handleAIGenerate}>
-              {aiLoading ? (
-                <Loader size={12} color="#fff" className="ai-loading" />
-              ) : (
-                <Sparkles size={12} color="#fff" />
-              )}
-              <Text className="ai-text">{aiLoading ? 'AI生成中...' : 'AI帮写'}</Text>
-            </View>
-          </View>
-          <View className="textarea-wrapper">
-            <Textarea
-              className="desc-textarea"
-              style={{ height: '240px' }}
-              placeholder="详细描述任务要求，如：产品特点、推广重点、禁忌词等..."
-              value={form.description}
-              onInput={e => setForm(prev => ({ ...prev, description: e.detail.value }))}
-              maxlength={2000}
-            />
-          </View>
-          <View className="desc-footer">
-            <View className="ai-hint">
-              <Lightbulb size={12} color="#8B5CF6" />
-              <Text className="ai-hint-text">不知道怎么写？点击AI帮写，一键生成专业任务描述</Text>
-            </View>
-            <Text className="char-count">{form.description.length}/2000</Text>
-          </View>
-        </View>
 
         {/* 自定义文案 - 简单任务不需要 */}
         {form.contentType !== 'simple' && (
@@ -1263,6 +1165,41 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                 )}
               </View>
             ))}
+          </View>
+        </View>
+
+        {/* 任务描述 */}
+        <View className="section">
+          <View className="section-header">
+            <View className="section-title-row">
+              <View className="title-dot" />
+              <Text className="section-title">任务描述</Text>
+            </View>
+            <View className="ai-button" onClick={handleAIGenerate}>
+              {aiLoading ? (
+                <Loader size={12} color="#fff" className="ai-loading" />
+              ) : (
+                <Sparkles size={12} color="#fff" />
+              )}
+              <Text className="ai-text">{aiLoading ? 'AI生成中...' : 'AI帮写'}</Text>
+            </View>
+          </View>
+          <View className="textarea-wrapper">
+            <Textarea
+              className="desc-textarea"
+              style={{ height: '240px' }}
+              placeholder="详细描述任务要求，如：产品特点、推广重点、禁忌词等..."
+              value={form.description}
+              onInput={e => setForm(prev => ({ ...prev, description: e.detail.value }))}
+              maxlength={2000}
+            />
+          </View>
+          <View className="desc-footer">
+            <View className="ai-hint">
+              <Lightbulb size={12} color="#8B5CF6" />
+              <Text className="ai-hint-text">不知道怎么写？点击AI帮写，一键生成专业任务描述</Text>
+            </View>
+            <Text className="char-count">{form.description.length}/2000</Text>
           </View>
         </View>
         {/* 接单区域选择 */}
