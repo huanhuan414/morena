@@ -551,6 +551,15 @@
   font-size: 20rpx;
   font-weight: 600;
 }
+.po-region-pill {
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+  flex-shrink: 0;
+}
+.po-region-pill-text {
+  font-size: 20rpx;
+  font-weight: 600;
+}
 .po-avatar-match {
   font-size: 22rpx;
   font-weight: 700;

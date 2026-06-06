@@ -37,23 +37,32 @@ export class PriceConfigService {
          WHERE is_active = TRUE
          ORDER BY sort_order ASC`
       )
+      if (rows && rows.length > 0) {
+        this.cache.clear()
+        for (const row of rows as any[]) {
+          // getMySQLClient 的 query 方法会自动将字段名转为 camelCase
+          const contentType: string = row.contentType ?? row.content_type ?? ''
+          const name: string = row.name ?? ''
+          const icon: string = row.icon ?? ''
+          const basePrice: number = Number(row.basePrice ?? row.base_price ?? 0)
+          const contentPrice: number = Number(row.contentPrice ?? row.content_price ?? 0)
+          const description: string = row.description ?? ''
+          const outputUnit: string = row.outputUnit ?? row.output_unit ?? ''
 
-      this.cache.clear()
-      for (const row of rows as any[]) {
-        this.cache.set(row.content_type, {
-          id: row.content_type,
-          label: row.name,
-          icon: row.icon || '',
-          basePrice: Number(row.base_price),
-          contentPrice: Number(row.content_price),
-          desc: row.description || '',
-          output: row.output_unit || '',
-        })
+          this.cache.set(contentType, {
+            id: contentType,
+            label: name,
+            icon: icon,
+            basePrice: basePrice,
+            contentPrice: contentPrice,
+            desc: description,
+            output: outputUnit,
+          })
+        }
+        this.cacheTime = Date.now()
+        this.logger.log(`[价格配置] 已加载 ${this.cache.size} 个内容类型价格`)
+        return Array.from(this.cache.values())
       }
-      this.cacheTime = Date.now()
-
-      this.logger.log(`[价格配置] 已加载 ${this.cache.size} 个内容类型价格`)
-      return Array.from(this.cache.values())
     } catch (error: any) {
       this.logger.error(`[价格配置] 加载失败: ${error.message}，使用默认配置`)
       const defaults = this.getDefaultPriceConfigs()

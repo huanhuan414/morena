@@ -42,6 +42,104 @@ export class OrderService {
     return fallback
   }
 
+  // ========== 价格配置相关方法 ==========
+
+  async getAllPriceConfigs(): Promise<ContentTypePrice[]> {
+    try {
+      const db = getMySQLClient()
+      this.logger.log('[价格配置] 开始查询数据库...')
+      
+      const result = await db.query(
+        `SELECT id, content_type, name, icon, base_price, content_price, description, output_unit, sort_order
+         FROM content_type_prices
+         WHERE is_active = TRUE
+         ORDER BY sort_order ASC`
+      )
+      
+      // 处理 db.query 返回的两种格式：数组或 {data: [...]}
+      const rows = Array.isArray(result) ? result : (result?.data || [])
+      this.logger.log(`[价格配置] 查询到 ${rows.length} 条记录`)
+
+      const configs: ContentTypePrice[] = []
+      for (const row of rows as any[]) {
+        const contentType = row.contentType || row.content_type
+        const basePrice = row.basePrice || row.base_price
+        const contentPrice = row.contentPrice || row.content_price
+        const outputUnit = row.outputUnit || row.output_unit
+        
+        configs.push({
+          id: row.id,
+          contentType: contentType,
+          label: row.name,
+          icon: row.icon || '',
+          basePrice: Number(basePrice) || 0,
+          contentPrice: Number(contentPrice) || 0,
+          desc: row.description || row.desc || '',
+          output: outputUnit || '',
+        })
+      }
+      
+      return configs
+    } catch (error: any) {
+      this.logger.error(`[价格配置] 加载失败: ${error.message}`)
+      throw error
+    }
+  }
+
+  async getPriceConfig(contentType: string): Promise<ContentTypePrice | undefined> {
+    const configs = await this.getAllPriceConfigs()
+    return configs.find(c => c.contentType === contentType)
+  }
+
+  async calculatePrice(
+    contentType: string,
+    avatarCount: number,
+    quantityPerAvatar: number
+  ): Promise<PriceCalculation> {
+    // 映射数据库存储的 contentType 到价格配置的 contentType
+    const mappedContentType = contentType === 'simple' ? 'simple' : contentType
+    
+    const config = await this.getPriceConfig(mappedContentType)
+    if (!config) {
+      this.logger.warn(`[价格计算] 未知内容类型: ${contentType}, 数据库中未找到配置`)
+      throw new Error(`未知的内容类型: ${contentType}`)
+    }
+
+    const base = config.basePrice * avatarCount
+    const content = config.contentPrice * quantityPerAvatar * avatarCount
+    const total = base + content
+
+    this.logger.log(
+      `[价格计算] contentType=${contentType}, avatarCount=${avatarCount}, quantityPerAvatar=${quantityPerAvatar}, base=${base}, content=${content}, total=${total}`
+    )
+
+    return { base, content, total }
+  }
+
+  async validatePrice(
+    contentType: string,
+    avatarCount: number,
+    quantityPerAvatar: number,
+    expectedBase: number,
+    expectedContent: number
+  ): Promise<{ valid: boolean; actual: PriceCalculation }> {
+    const actual = await this.calculatePrice(contentType, avatarCount, quantityPerAvatar)
+
+    const valid =
+      Math.abs(actual.base - expectedBase) < 0.01 &&
+      Math.abs(actual.content - expectedContent) < 0.01
+
+    if (!valid) {
+      this.logger.warn(
+        `[价格校验] 不匹配: contentType=${contentType}, expected={base:${expectedBase}, content:${expectedContent}}, actual={base:${actual.base}, content:${actual.content}}`
+      )
+    }
+
+    return { valid, actual }
+  }
+
+  // ========== 订单相关方法 ==========
+
   private normalizeDispatchStatus(status?: string): string {
     if (status === 'confirmed') {
       return 'accepted'
@@ -234,6 +332,10 @@ export class OrderService {
       content_type: orderData.contentType || orderData.content_type || 'text',
       platforms: JSON.stringify(orderData.platforms || []),
       requirements: JSON.stringify(orderData.requirements || {}),
+      // 添加 personality 字段，保存风格偏好和领域偏好
+      personality: typeof orderData.personality === 'string' 
+        ? orderData.personality 
+        : JSON.stringify(orderData.personality || { tags: [], niches: [] }),
       budget,
       base_amount: baseAmount,
       content_amount: contentAmount,
@@ -720,6 +822,7 @@ export class OrderService {
       `SELECT o.id, o.user_id, o.avatar_id, o.title, o.description, o.content_type, o.platforms, o.platform,
               o.requirements, o.target_audience, o.priority, o.deadline, o.content_deadline_at,
               o.budget, o.base_amount, o.content_amount, o.price, o.status, o.expected_quantity, o.avatar_count, o.quantity_per_avatar, o.is_paid,
+              o.accept_regions, o.personality,
               o.created_at, o.updated_at,
               COALESCE(a_order.name, a_latest.name, u.nickname) as publisher_nickname,
               COALESCE(a_order.avatar_url, a_latest.avatar_url, u.avatar) as publisher_avatar,
@@ -823,7 +926,9 @@ export class OrderService {
       publisherNickname: row.publisherNickname || row.publisher_nickname || '发布方',
       publisherAvatar: row.publisherAvatar || row.publisher_avatar || '',
       acceptCount: Number(row.acceptCount || row.accept_count || 0),
-      isAcceptedByMe: Boolean(row.isAcceptedByMe ?? row.is_accepted_by_me ?? 0)
+      isAcceptedByMe: Boolean(row.isAcceptedByMe ?? row.is_accepted_by_me ?? 0),
+      acceptRegions: this.safeParseJson<string[]>(row.acceptRegions || row.accept_regions, []),
+      personality: this.safeParseJson<{ tags: string; niches: string }>(row.personality || '{}', { tags: '', niches: '' })
       })
     })
 

@@ -153,7 +153,10 @@ export class AvatarService {
       name: avatarData.name,
       description: avatarData.description || '',
       avatar_url: avatarData.photo || avatarData.avatar_url || '',
-      personality: JSON.stringify({ tags: avatarData.tags || [], abilities: avatarData.abilities || {} }),
+      // 直接保存前端传递的 personality 对象
+      personality: typeof avatarData.personality === 'string'
+        ? avatarData.personality
+        : JSON.stringify(avatarData.personality || {}),
       skills: JSON.stringify(avatarData.selectedSkills || []),
       content_styles: JSON.stringify(avatarData.contentStyles || []),
       niche_tags: JSON.stringify(avatarData.nicheTags || []),
@@ -205,7 +208,10 @@ export class AvatarService {
         name: avatarData.name,
         description: '',
         avatar_url: avatarData.photo || '',
-        personality: JSON.stringify({ tags: avatarData.tags || [], abilities: avatarData.abilities || {} }),
+        // 直接保存前端传递的 personality 对象
+        personality: typeof avatarData.personality === 'string'
+          ? avatarData.personality
+          : JSON.stringify(avatarData.personality || {}),
         skills: JSON.stringify(avatarData.selectedSkills || []),
         content_styles: JSON.stringify(avatarData.contentStyles || []),
         niche_tags: JSON.stringify(avatarData.nicheTags || []),

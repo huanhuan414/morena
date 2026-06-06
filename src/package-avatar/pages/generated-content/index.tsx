@@ -84,7 +84,7 @@ function getContentTypeInfo(type: string): { icon: any; name: string } {
   switch (type) {
     case 'text': return { icon: FileText, name: '图文文章' }
     case 'video_text': case 'video_script': case 'video': return { icon: Play, name: '视频' }
-    case 'simple_task': return { icon: CircleCheckBig, name: '简单任务' }
+    case 'simple': return { icon: CircleCheckBig, name: '简单任务' }
     default: return { icon: ImagePlus, name: '文案+配图' }
   }
 }
@@ -325,7 +325,7 @@ export default function GeneratedContentPage() {
   const getCardActions = (rawStatus: string, contentType?: string, content?: any) => {
     const status = BACKEND_STATUS_TO_TAB[rawStatus] || rawStatus
     const isVideo = ['video_text', 'video_script', 'video'].includes(contentType || '')
-    const isSimpleTask = contentType === 'simple_task'
+    const isSimpleTask = contentType === 'simple'
     switch (status) {
       case 'preview':
         if (isSimpleTask) {
@@ -359,7 +359,7 @@ export default function GeneratedContentPage() {
       case 'failed':
         return [
           { key: 'delete', label: '删除', icon: Trash2, type: 'danger' },
-          { key: 'regenerate', label: '重新生成', icon: RefreshCw, type: 'primary' },
+          // { key: 'regenerate', label: '重新生成', icon: RefreshCw, type: 'primary' },
         ]
       case 'rejected':
         if (content && (content.revisionCount || content.revision_count || 0) >= 2) {
@@ -368,7 +368,7 @@ export default function GeneratedContentPage() {
           ]
         }
         return [
-          { key: 'regenerate', label: '重新生成', icon: RefreshCw, type: 'primary' },
+          // { key: 'regenerate', label: '重新生成', icon: RefreshCw, type: 'primary' },
           { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
         ]
       case 'cancelled':

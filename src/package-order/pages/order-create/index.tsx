@@ -121,7 +121,7 @@ export default function OrderCreate() {
   useEffect(() => {
     const fetchPriceConfig = async () => {
       try {
-        const res = await Network.request({ url: '/api/order/price-config' })
+        const res = await Network.request({ url: '/api/price-config' })
         if (res.data?.code === 200 && Array.isArray(res.data.data) && res.data.data.length > 0) {
           setContentTypes(res.data.data)
         }
@@ -436,7 +436,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         data: {
           prompt,
           platforms: form.platforms,
-          contentType: form.contentType === 'text' ? 'copywriting' : form.contentType === 'video' ? 'video_script' : form.contentType === 'simple' ? 'simple_task' : 'copywriting',
+          contentType: form.contentType === 'text' ? 'copywriting' : form.contentType === 'video' ? 'video_script' : form.contentType === 'simple' ? 'simple' : 'copywriting',
         },
       })
 
@@ -612,8 +612,17 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         console.warn('[OrderCreate] 获取openid失败:', e)
       }
 
-      // simple -> simple_task 映射：前端用short id，后端存full id
-      const backendContentType = form.contentType === 'simple' ? 'simple_task' : form.contentType
+      // simple -> simple 映射：前端用short id，后端存full id
+      const backendContentType = form.contentType
+
+      // 将 key 转换为显示名称（name）
+      const styleName = form.preferredStyle
+        ? CONTENT_STYLES.find(s => s.key === form.preferredStyle)?.name || form.preferredStyle
+        : ''
+      const nicheName = form.preferredNiche
+        ? NICHE_TAGS.find(n => n.key === form.preferredNiche)?.name || form.preferredNiche
+        : ''
+
       const orderData = {
         title: form.title,
         description: form.description,
@@ -621,6 +630,11 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         platforms: canonicalizePlatforms(form.platforms),
         preferred_style: form.preferredStyle,
         preferred_niche: form.preferredNiche,
+        // 添加 personality 字段，保存风格偏好和领域偏好的显示名称
+        personality: {
+          tags: styleName,
+          niches: nicheName,
+        },
         avatar_count: form.avatarCount,
         quantity_per_avatar: form.quantityPerAvatar,
         base_price: totalPrice.avatarFee,

@@ -369,7 +369,7 @@ export class ContentGenerationService implements OnModuleInit {
       })
 
       // 3. 简单任务直接标记完成，不走AI生成
-      if (input.contentType === 'simple_task') {
+      if (input.contentType === 'simple') {
         this.logger.log(`简单任务，跳过AI生成: ${requestId}`)
         // 先更新content字段为订单描述，让分身能看到任务要求
         try {
@@ -416,7 +416,7 @@ export class ContentGenerationService implements OnModuleInit {
    */
   private resolveContentType(primarySkill: string, orderContentType: string): string {
     // 简单任务不需要AI生成，直接返回原类型
-    if (orderContentType === 'simple_task') {
+    if (orderContentType === 'simple') {
       return orderContentType
     }
     const skillStrategy = getSkillStrategy(primarySkill)
@@ -2403,6 +2403,19 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
         requirements = typeof order.requirements === 'string' ? JSON.parse(order.requirements) : (order.requirements || {})
       } catch { requirements = {} }
       const aiAutoFill = requirements?.ai_auto_fill !== false // 默认 true（兼容旧数据）
+
+      // 简单任务类型 + aiAutoFill=false → 不需要素材预生成
+      // 简单任务类型 + aiAutoFill=true → 需要素材预生成
+      if (contentType === 'simple' && !aiAutoFill) {
+        console.log(`[预生成] 订单 ${orderId} 内容类型为简单任务，aiAutoFill=false，跳过素材预生成`)
+        return
+      }
+
+      // 纯文案类型不需要素材预生成
+      if (contentType === 'text') {
+        console.log(`[预生成] 订单 ${orderId} 内容类型为纯文案，跳过素材预生成`)
+        return
+      }
 
 
       // 查看已有素材（包含 ready 和 generating 状态，避免重复补足）

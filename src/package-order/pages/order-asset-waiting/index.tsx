@@ -109,12 +109,16 @@ export default function OrderAssetWaiting() {
       const payload = res?.data
       if (payload?.code === 200 && payload?.data) {
         const order = payload.data
-        const mode = order.assetDistributeMode || order.asset_distribute_mode || order.requirements?.asset_distribute_mode || 'shared'
+        // 解析 requirements（可能是 JSON 字符串）
+        let reqs = order.requirements || {}
+        if (typeof reqs === 'string') {
+          try { reqs = JSON.parse(reqs) } catch { reqs = {} }
+        }
+        const mode = order.assetDistributeMode || order.asset_distribute_mode || reqs.asset_distribute_mode || 'shared'
         setDistributeMode(mode)
         setContentType(order.contentType || order.content_type || 'image_text')
 
         // 读取 AI 补足开关
-        const reqs = order.requirements || {}
         const autoFill = reqs.ai_auto_fill !== undefined ? reqs.ai_auto_fill : true
         setAiAutoFill(autoFill)
 
@@ -191,7 +195,7 @@ export default function OrderAssetWaiting() {
         await fetchSummary()
         return true
       },
-      onData: () => {},
+      onData: () => { },
     })
     pollUnsubRef.current = unsubscribe
 
@@ -208,7 +212,11 @@ export default function OrderAssetWaiting() {
   // 后端有防重入锁，重复触发不会重复生成
   useEffect(() => {
     if (loading || !summary || autoFillTriggered) return
-    if (contentType === 'text' || contentType === 'simple_task' || !aiAutoFill) return
+    // 纯文案类型不需要AI生成
+    // 简单任务类型+aiAutoFill=false 不需要AI生成
+    // 其他类型+aiAutoFill=false 不需要AI生成
+    if (contentType === 'text') return
+    if (!aiAutoFill) return
 
     const totalReady = summary.ready || 0
     const totalGenerating = summary.generating || 0
@@ -291,7 +299,7 @@ export default function OrderAssetWaiting() {
         Taro.previewMedia({
           sources: [{ url: asset.asset_url, type: 'video' }],
           current: 0,
-        }).catch(() => {})
+        }).catch(() => { })
       } else {
         // H5端打开视频链接
         window.open(asset.asset_url, '_blank')
@@ -304,7 +312,7 @@ export default function OrderAssetWaiting() {
       Taro.previewImage({
         urls,
         current: current >= 0 ? current : 0,
-      }).catch(() => {})
+      }).catch(() => { })
     }
   }
 
@@ -320,7 +328,8 @@ export default function OrderAssetWaiting() {
   const hasGenerating = (summary?.generating || 0) > 0
 
   // 纯文字/纯文案类型不需要素材，始终可以下一步
-  const noAssetNeeded = contentType === 'text'
+  // 简单任务类型：aiAutoFill=false 不需要素材，aiAutoFill=true 需要AI生成素材
+  const noAssetNeeded = contentType === 'text' || (contentType === 'simple' && !aiAutoFill) || (contentType === 'video' && !aiAutoFill)
   // 素材是否充足
   const totalReady = summary?.ready || 0
   const readyImages = summary?.images || 0
@@ -330,7 +339,7 @@ export default function OrderAssetWaiting() {
   const isSufficient = noAssetNeeded || (aiAutoFill
     ? (readyImages >= requiredImageCount && readyVideos >= requiredVideoCount)
     : (readyImages > 0 || readyVideos > 0))
-  const needMoreImages = (contentType !== 'text' && contentType !== 'video' && contentType !== 'simple_task' && aiAutoFill) ? Math.max(0, requiredImageCount - readyImages - (summary?.generating || 0)) : 0
+  const needMoreImages = (contentType !== 'text' && contentType !== 'video' && contentType !== 'simple' && aiAutoFill) ? Math.max(0, requiredImageCount - readyImages - (summary?.generating || 0)) : 0
   const needMoreVideos = (contentType === 'video' && aiAutoFill) ? Math.max(0, requiredVideoCount - readyVideos - (summary?.generating || 0)) : 0
   const needMoreCount = needMoreImages + needMoreVideos
 
@@ -391,12 +400,12 @@ export default function OrderAssetWaiting() {
               </Text>
               {/* 进度条 */}
               {aiAutoFill && requiredImageCount > 0 && (
-              <View className="aw-progress-bar">
-                <View
-                  className="aw-progress-fill"
-                  style={{ width: `${Math.min(100, ((summary?.ready || 0) / requiredImageCount) * 100)}%` }}
-                />
-              </View>
+                <View className="aw-progress-bar">
+                  <View
+                    className="aw-progress-fill"
+                    style={{ width: `${Math.min(100, ((summary?.ready || 0) / requiredImageCount) * 100)}%` }}
+                  />
+                </View>
               )}
             </View>
           ) : hasFailed && !hasGenerating ? (
