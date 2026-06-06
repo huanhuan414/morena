@@ -1220,7 +1220,8 @@ async getExecutionProgress(orderId: string) {
     // =====================================================
     // 第四阶段：名额满时更新订单状态（Redis原子判断，不依赖事务隔离级别）
     // =====================================================
-    if (slotNumber === redisRequiredCount) {
+    const redisRequiredValue = Number(await this.redisService.getClient().get(redisKeyRequired) || requiredCount)
+    if (slotNumber === redisRequiredValue) {
       // 我是最后一个占位成功的请求，负责更新订单状态和踢人
       try {
         // 更新订单为 in_progress
