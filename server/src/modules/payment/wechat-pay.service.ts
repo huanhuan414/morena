@@ -18,8 +18,19 @@ export class WechatPayService {
   ) {
     this.appId = process.env.WECHAT_PAY_APPID || '';
     this.mchId = process.env.WECHAT_PAY_MCHID || '';
-    this.apiKeyV2 = process.env.WECHAT_PAY_APIV2_KEY || process.env.WECHAT_PAY_APIV3_KEY || '';
     this.notifyUrl = process.env.WECHAT_PAY_NOTIFY_URL || '';
+
+    // V2签名必须使用APIv2密钥，不能用APIv3密钥代替
+    if (process.env.WECHAT_PAY_APIV2_KEY) {
+      this.apiKeyV2 = process.env.WECHAT_PAY_APIV2_KEY;
+    } else {
+      this.apiKeyV2 = process.env.WECHAT_PAY_APIV3_KEY || '';
+      this.logger.warn('⚠️ 未配置 WECHAT_PAY_APIV2_KEY，当前 fallback 使用 APIV3_KEY，V2签名可能失败！请在 .env 中配置 WECHAT_PAY_APIV2_KEY');
+    }
+
+    if (!this.apiKeyV2) {
+      this.logger.error('❌ 未配置任何微信支付密钥！请配置 WECHAT_PAY_APIV2_KEY');
+    }
 
     // 加载商户私钥（用于生成前端支付签名）
     const privateKeyPath = process.env.WECHAT_PAY_PRIVATE_KEY_PATH;
@@ -30,7 +41,7 @@ export class WechatPayService {
       this.logger.error('商户私钥文件不存在，请检查 WECHAT_PAY_PRIVATE_KEY_PATH 配置');
     }
 
-    this.logger.log(`微信支付(V2)初始化 - AppID: ${this.appId}, MchID: ${this.mchId}`);
+    this.logger.log(`微信支付(V2)初始化 - AppID: ${this.appId}, MchID: ${this.mchId}, APIv2Key: ${this.apiKeyV2 ? '已配置' : '未配置'}`);
   }
 
   /**
@@ -91,17 +102,20 @@ export class WechatPayService {
     // 2. 调用微信V2统一下单API
     const amountInFen = Math.round(amount * 100);
 
+    const sanitizedBody = this.sanitizeBody(description);
+
     const unifiedOrderParams: Record<string, string> = {
       appid: this.appId,
       mch_id: this.mchId,
       nonce_str: crypto.randomUUID().replace(/-/g, '').substring(0, 32),
-      body: description,
+      body: sanitizedBody,
       out_trade_no: outTradeNo,
       total_fee: String(amountInFen),
       spbill_create_ip: '127.0.0.1',
       notify_url: this.notifyUrl,
       trade_type: 'JSAPI',
       openid: openid,
+      sign_type: 'MD5',
     };
 
     // V2签名：MD5签名
@@ -110,7 +124,7 @@ export class WechatPayService {
     // 将参数转为XML
     const xmlBody = this.buildXml(unifiedOrderParams);
 
-    this.logger.log(`调用微信V2统一下单: outTradeNo=${outTradeNo}, amount=${amountInFen}分`);
+    this.logger.log(`调用微信V2统一下单: outTradeNo=${outTradeNo}, amount=${amountInFen}分, body=${sanitizedBody}`);
 
     let prepayId: string;
     try {
@@ -134,7 +148,7 @@ export class WechatPayService {
       if (returnCode !== 'SUCCESS' || resultCode !== 'SUCCESS') {
         const errMsg = result.err_code_des || result.return_msg || '下单失败';
         const errCode = result.err_code || '';
-        this.logger.error(`微信统一下单失败: err_code=${errCode}, err_msg=${errMsg}`);
+        this.logger.error(`微信统一下单失败: err_code=${errCode}, err_msg=${errMsg}, return_code=${returnCode}, result_code=${resultCode}, body值="${sanitizedBody}"`);
 
         // 更新本地订单状态
         const db2 = getMySQLClient();
@@ -224,10 +238,54 @@ export class WechatPayService {
 
   /**
    * 将对象转为微信支付V2所需的XML格式
+   * 过滤掉 undefined/null 值，避免生成空节点
    */
   private buildXml(params: Record<string, string>): string {
-    const xmlParts = Object.entries(params).map(([k, v]) => `<${k}><![CDATA[${v}]]></${k}>`);
+    const xmlParts = Object.entries(params)
+      .filter(([_, v]) => v !== undefined && v !== null && v !== '')
+      .map(([k, v]) => `<${k}><![CDATA[${v}]]></${k}>`);
     return `<xml>${xmlParts.join('')}</xml>`;
+  }
+
+  /**
+   * 清理并校验 body（商品描述）字段
+   * 微信支付V2对body字段要求：
+   * 1. 必填，不能为空
+   * 2. 最长128字节（UTF-8中文3字节）
+   * 3. 不能包含控制字符和XML破坏性序列
+   */
+  private sanitizeBody(description: string): string {
+    const DEFAULT_BODY = 'Morena AI服务';
+
+    // 1. 空值兜底
+    let body = description || '';
+    if (!body.trim()) {
+      this.logger.warn(`微信支付body为空，使用默认值: ${DEFAULT_BODY}`);
+      return DEFAULT_BODY;
+    }
+
+    // 2. 清理控制字符和CDATA破坏性序列
+    body = body
+      .replace(/[\x00-\x1F\x7F]/g, '')  // 移除控制字符
+      .replace(/\]\]>/g, '')              // 移除CDATA结束符（防止XML解析中断）
+      .trim();
+
+    if (!body) {
+      return DEFAULT_BODY;
+    }
+
+    // 3. 截断到128字节（UTF-8中文3字节，英文1字节）
+    const MAX_BYTES = 128;
+    let byteLen = 0;
+    let result = '';
+    for (const char of body) {
+      const charBytes = char.charCodeAt(0) > 127 ? 3 : 1;
+      if (byteLen + charBytes > MAX_BYTES) break;
+      byteLen += charBytes;
+      result += char;
+    }
+
+    return result || DEFAULT_BODY;
   }
 
   /**

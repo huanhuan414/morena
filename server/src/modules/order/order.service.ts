@@ -286,11 +286,12 @@ export class OrderService {
     const openid = orderData.openid
     if (openid && budget > 0) {
       try {
+        const orderTitle = orderData.title || '发单支付';
         const payResult = await this.wechatPayService.createMiniProgramOrder({
           userId,
           openid,
           planId: id,
-          description: `Morena AI 任务: ${orderData.title || '发单支付'}`,
+          description: `Morena AI 任务: ${orderTitle}`,
           amount: Number(budget),
           orderType: 'order',
         })
@@ -1132,11 +1133,12 @@ export class OrderService {
     }
 
     // 创建新的支付单
+    const repayTitle = order.title || '发单支付';
     const payResult = await this.wechatPayService.createMiniProgramOrder({
       userId,
       openid,
       planId: orderId,
-      description: `Morena AI 任务: ${order.title || '发单支付'}`,
+      description: `Morena AI 任务: ${repayTitle}`,
       amount: budget,
       orderType: 'order',
     })

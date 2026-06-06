@@ -60,11 +60,12 @@ export class PaymentController {
       }
 
       // 创建支付订单
+      const planName = plan.name || plan.planId || '订阅服务';
       const result = await this.wechatPayService.createMiniProgramOrder({
         userId,
         openid,
         planId,
-        description: `${plan.name} - Morena AI订阅`,
+        description: `${planName} - Morena AI订阅`,
         amount: Number(plan.price),
         orderType: 'subscription',
       });
@@ -352,12 +353,14 @@ export class PaymentController {
 
       const pkg = packages[0];
       const totalCoins = Number(pkg.coins) + Number(pkg.bonus || 0);
+      const coinsDesc = Number(pkg.coins) || 0;
+      const bonusDesc = Number(pkg.bonus) || 0;
 
       const result = await this.wechatPayService.createMiniProgramOrder({
         userId,
         openid,
         planId: packageId,
-        description: `充值${pkg.coins}币${pkg.bonus > 0 ? `+赠送${pkg.bonus}币` : ''} - Morena AI`,
+        description: `充值${coinsDesc}币${bonusDesc > 0 ? `+赠送${bonusDesc}币` : ''} - Morena AI`,
         amount: Number(pkg.price),
         orderType: 'coin_recharge',
       });
