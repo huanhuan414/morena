@@ -109,12 +109,16 @@ export default function OrderAssetWaiting() {
       const payload = res?.data
       if (payload?.code === 200 && payload?.data) {
         const order = payload.data
-        const mode = order.assetDistributeMode || order.asset_distribute_mode || order.requirements?.asset_distribute_mode || 'shared'
+        // 解析 requirements（可能是 JSON 字符串）
+        let reqs = order.requirements || {}
+        if (typeof reqs === 'string') {
+          try { reqs = JSON.parse(reqs) } catch { reqs = {} }
+        }
+        const mode = order.assetDistributeMode || order.asset_distribute_mode || reqs.asset_distribute_mode || 'shared'
         setDistributeMode(mode)
         setContentType(order.contentType || order.content_type || 'image_text')
 
         // 读取 AI 补足开关
-        const reqs = order.requirements || {}
         const autoFill = reqs.ai_auto_fill !== undefined ? reqs.ai_auto_fill : true
         setAiAutoFill(autoFill)
 
@@ -208,7 +212,11 @@ export default function OrderAssetWaiting() {
   // 后端有防重入锁，重复触发不会重复生成
   useEffect(() => {
     if (loading || !summary || autoFillTriggered) return
-    if (contentType === 'text' || contentType === 'simple' || !aiAutoFill) return
+    // 纯文案类型不需要AI生成
+    // 简单任务类型+aiAutoFill=false 不需要AI生成
+    // 其他类型+aiAutoFill=false 不需要AI生成
+    if (contentType === 'text') return
+    if (!aiAutoFill) return
 
     const totalReady = summary.ready || 0
     const totalGenerating = summary.generating || 0
@@ -319,8 +327,9 @@ export default function OrderAssetWaiting() {
   const hasFailed = (summary?.failed || 0) > 0
   const hasGenerating = (summary?.generating || 0) > 0
 
-  // 纯文字/纯文案类型和简单任务类型不需要素材，始终可以下一步
-  const noAssetNeeded = contentType === 'text' || contentType === 'simple'
+  // 纯文字/纯文案类型不需要素材，始终可以下一步
+  // 简单任务类型：aiAutoFill=false 不需要素材，aiAutoFill=true 需要AI生成素材
+  const noAssetNeeded = contentType === 'text' || (contentType === 'simple' && !aiAutoFill) || (contentType === 'video' && !aiAutoFill)
   // 素材是否充足
   const totalReady = summary?.ready || 0
   const readyImages = summary?.images || 0

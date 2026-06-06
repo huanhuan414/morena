@@ -235,17 +235,17 @@ export class OrderDispatchService {
   private calculateMatchScore(avatar: any, order: any): { score: number; details: { skillScore: number; styleScore: number; nicheScore: number; regionScore: number } } {
     const details = { skillScore: 0, styleScore: 0, nicheScore: 0, regionScore: 100 } // regionScore 固定100，因为区域匹配已在筛选时处理
 
-    this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 开始计算匹配分数`)
+    // this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 开始计算匹配分数`)
     
     // 解析分身的 personality 字段：{"tags": [], "niches": []}
     const avatarPersonality = this.safeParseJson(avatar.personality, { tags: [], niches: [] })
-    this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} personality 原始值: ${avatar.personality}`)
-    this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} personality 解析后: ${JSON.stringify(avatarPersonality)}`)
+    // this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} personality 原始值: ${avatar.personality}`)
+    // this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} personality 解析后: ${JSON.stringify(avatarPersonality)}`)
     
     const avatarStyles: string[] = Array.isArray(avatarPersonality?.tags) ? avatarPersonality.tags : []
     const avatarNiches: string[] = Array.isArray(avatarPersonality?.niches) ? avatarPersonality.niches : []
-    this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 风格数组: ${JSON.stringify(avatarStyles)}`)
-    this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 领域数组: ${JSON.stringify(avatarNiches)}`)
+    // this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 风格数组: ${JSON.stringify(avatarStyles)}`)
+    // this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 领域数组: ${JSON.stringify(avatarNiches)}`)
     
     // 优先使用 avatar_skills 表的技能数据，fallback 到 avatars.skills 字段
     const avatarSkills: string[] = (avatar._skillsFromTable && avatar._skillsFromTable.length > 0)
@@ -253,14 +253,14 @@ export class OrderDispatchService {
       : this.safeParseJson(avatar.skills, [])
 
     // 解析订单的 personality 字段：{"tags": '', "niches": ''}
-    this.logger.log(`[calculateMatchScore] 订单 personality 原始值: ${order.personality}`)
+    // this.logger.log(`[calculateMatchScore] 订单 personality 原始值: ${order.personality}`)
     const orderPersonality = this.safeParseJson(order.personality, { tags: '', niches: '' })
-    this.logger.log(`[calculateMatchScore] 订单 personality 解析后: ${JSON.stringify(orderPersonality)}`)
+    // this.logger.log(`[calculateMatchScore] 订单 personality 解析后: ${JSON.stringify(orderPersonality)}`)
     
     const orderStyle: string = orderPersonality?.tags || ''
     const orderNiche: string = orderPersonality?.niches || ''
-    this.logger.log(`[calculateMatchScore] 订单风格偏好: ${orderStyle}`)
-    this.logger.log(`[calculateMatchScore] 订单领域偏好: ${orderNiche}`)
+    // this.logger.log(`[calculateMatchScore] 订单风格偏好: ${orderStyle}`)
+    // this.logger.log(`[calculateMatchScore] 订单领域偏好: ${orderNiche}`)
     
     // 订单的 content_type 和 platforms 也作为技能匹配依据
     const orderContentType = (order.content_type || order.contentType || '').toLowerCase()
@@ -271,19 +271,19 @@ export class OrderDispatchService {
     if (orderStyle && avatarStyles.length > 0) {
       if (avatarStyles.includes(orderStyle)) {
         details.styleScore = 40  // 完全匹配
-        this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 风格匹配: 订单风格=${orderStyle}, 分身风格=${JSON.stringify(avatarStyles)}, 匹配成功, styleScore=40`)
+        // this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 风格匹配: 订单风格=${orderStyle}, 分身风格=${JSON.stringify(avatarStyles)}, 匹配成功, styleScore=40`)
       } else {
         details.styleScore = 0   // 不匹配
-        this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 风格不匹配: 订单风格=${orderStyle}, 分身风格=${JSON.stringify(avatarStyles)}, styleScore=0`)
+        // this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 风格不匹配: 订单风格=${orderStyle}, 分身风格=${JSON.stringify(avatarStyles)}, styleScore=0`)
       }
     } else if (orderStyle) {
       // 订单有风格要求但分身没设风格，给一半分
       details.styleScore = 20
-      this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 有订单风格要求但分身无风格, styleScore=20`)
+      // this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 有订单风格要求但分身无风格, styleScore=20`)
     } else {
       // 订单无风格要求，给满分
       details.styleScore = 40
-      this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 订单无风格要求, styleScore=40`)
+      // this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 订单无风格要求, styleScore=40`)
     }
 
     // 维度二：领域匹配（权重40%）- 主要匹配因素
@@ -291,19 +291,19 @@ export class OrderDispatchService {
     if (orderNiche && avatarNiches.length > 0) {
       if (avatarNiches.includes(orderNiche)) {
         details.nicheScore = 40  // 完全匹配
-        this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 领域匹配: 订单领域=${orderNiche}, 分身领域=${JSON.stringify(avatarNiches)}, 匹配成功, nicheScore=40`)
+        // this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 领域匹配: 订单领域=${orderNiche}, 分身领域=${JSON.stringify(avatarNiches)}, 匹配成功, nicheScore=40`)
       } else {
         details.nicheScore = 0   // 不匹配
-        this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 领域不匹配: 订单领域=${orderNiche}, 分身领域=${JSON.stringify(avatarNiches)}, nicheScore=0`)
+        // this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 领域不匹配: 订单领域=${orderNiche}, 分身领域=${JSON.stringify(avatarNiches)}, nicheScore=0`)
       }
     } else if (orderNiche) {
       // 订单有领域要求但分身没设领域，给一半分
       details.nicheScore = 20
-      this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 有订单领域要求但分身无领域, nicheScore=20`)
+      // this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 有订单领域要求但分身无领域, nicheScore=20`)
     } else {
       // 订单无领域要求，给满分
       details.nicheScore = 40
-      this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 订单无领域要求, nicheScore=40`)
+      // this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 订单无领域要求, nicheScore=40`)
     }
 
     // 维度三：技能匹配（权重20%）- 辅助匹配因素

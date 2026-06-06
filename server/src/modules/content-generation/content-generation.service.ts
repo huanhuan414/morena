@@ -2375,6 +2375,19 @@ ${skillTextStrategy ? `【技能专属文案策略】\n${skillTextStrategy}\n\n`
       } catch { requirements = {} }
       const aiAutoFill = requirements?.ai_auto_fill !== false // 默认 true（兼容旧数据）
 
+      // 简单任务类型 + aiAutoFill=false → 不需要素材预生成
+      // 简单任务类型 + aiAutoFill=true → 需要素材预生成
+      if (contentType === 'simple' && !aiAutoFill) {
+        console.log(`[预生成] 订单 ${orderId} 内容类型为简单任务，aiAutoFill=false，跳过素材预生成`)
+        return
+      }
+
+      // 纯文案类型不需要素材预生成
+      if (contentType === 'text') {
+        console.log(`[预生成] 订单 ${orderId} 内容类型为纯文案，跳过素材预生成`)
+        return
+      }
+
 
       // 查看已有素材（包含 ready 和 generating 状态，避免重复补足）
       let existingImageCount = 0
