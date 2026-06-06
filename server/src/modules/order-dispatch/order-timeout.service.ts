@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
 import { v4 as uuidv4 } from 'uuid';
 import { getMySQLClient } from '../../storage/database/mysql-client';
 import { NotificationService } from '../notification/notification.service';
@@ -11,6 +10,9 @@ import { RedisService } from '../redis/redis.service';
  * 处理核心超时问题：
  * 1. 分身不接单 → 派单超时自动作废，名额释放
  * 2. 分身接单后30分钟未提交反馈 → 派单超时作废，名额释放
+ *
+ * 注意：Cron 已禁用，改为通过 API 手动触发 handleTimeoutOrders()
+ * 原因：定时任务在高并发时可能导致 Redis 计数器漂移
  */
 @Injectable()
 export class OrderTimeoutService {
@@ -24,9 +26,8 @@ export class OrderTimeoutService {
   constructor(private readonly redisService: RedisService) {}
 
   /**
-   * 定时任务：每分钟检查超时订单
+   * 手动触发：检查超时订单（原 Cron 已禁用）
    */
-  @Cron(CronExpression.EVERY_MINUTE)
   async handleTimeoutOrders() {
     const result = { dispatch: 0, feedback: 0, total: 0 }
     try {
@@ -108,8 +109,9 @@ export class OrderTimeoutService {
       );
 
       // 同步Redis计数器：从数据库重新计算accepted数量
+      // 注意：必须使用与 OrderDispatchService 一致的 key 前缀 'order:accept:count:'
       try {
-        const redisKeyAccepted = `order:${dispatch.order_id}:accepted`;
+        const redisKeyAccepted = `order:accept:count:${dispatch.order_id}`;
         const currentAcceptedRows = await client.query(
           `SELECT COUNT(DISTINCT avatar_id) as count
            FROM order_dispatch_requests
@@ -117,7 +119,7 @@ export class OrderTimeoutService {
           [dispatch.order_id]
         );
         const currentAccepted = Number((currentAcceptedRows as any[])?.[0]?.count || 0);
-        await this.redisService.getClient().set(redisKeyAccepted, String(currentAccepted), 'EX', 3600);
+        await this.redisService.getClient().set(redisKeyAccepted, String(currentAccepted), 'EX', 86400 * 7);
         this.logger.log(`Redis计数器已同步: orderId=${dispatch.order_id}, accepted=${currentAccepted}`);
       } catch (err) {
         this.logger.warn(`Redis计数器同步失败: ${err.message}`);
@@ -168,8 +170,9 @@ export class OrderTimeoutService {
       );
 
       // 同步Redis计数器：从数据库重新计算accepted数量
+      // 注意：必须使用与 OrderDispatchService 一致的 key 前缀 'order:accept:count:'
       try {
-        const redisKeyAccepted = `order:${dispatch.order_id}:accepted`;
+        const redisKeyAccepted = `order:accept:count:${dispatch.order_id}`;
         const currentAcceptedRows = await client.query(
           `SELECT COUNT(DISTINCT avatar_id) as count
            FROM order_dispatch_requests
@@ -177,7 +180,7 @@ export class OrderTimeoutService {
           [dispatch.order_id]
         );
         const currentAccepted = Number((currentAcceptedRows as any[])?.[0]?.count || 0);
-        await this.redisService.getClient().set(redisKeyAccepted, String(currentAccepted), 'EX', 3600);
+        await this.redisService.getClient().set(redisKeyAccepted, String(currentAccepted), 'EX', 86400 * 7);
         this.logger.log(`Redis计数器已同步: orderId=${dispatch.order_id}, accepted=${currentAccepted}`);
       } catch (err) {
         this.logger.warn(`Redis计数器同步失败: ${err.message}`);

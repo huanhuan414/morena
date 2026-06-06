@@ -911,7 +911,7 @@ async getExecutionProgress(orderId: string) {
       console.warn(`[acceptOrder] 独占模式校验失败:`, err.message)
     }
 
-    // 1.3 原子占位：INCR递增已接单计数
+    // 1.3 原子占位：使用 Lua 脚本实现 INCR + 超额判断 + 自动回滚（原子操作）
     // 先检查Redis计数器是否与数据库一致，不一致则强制同步
     try {
       const currentAcceptedRows = await db.query(
@@ -931,15 +931,27 @@ async getExecutionProgress(orderId: string) {
       this.logger.warn(`Redis计数器同步失败: ${err.message}`)
     }
 
-    // INCR是原子操作，返回递增后的值。如果超过名额，立即DECR回滚并拒绝
-    // 这确保了即使100个请求同时到达，也只有requiredCount个能通过
-    const redisRequiredCount = await this.redisService.getCounter(redisKeyRequired)
-    const slotNumber = await this.redisService.getClient().incr(redisKeyAccepted)
-    if (slotNumber > redisRequiredCount && redisRequiredCount > 0) {
-      // 超出名额，回滚占位
-      await this.redisService.getClient().decr(redisKeyAccepted)
+    // Lua 脚本：原子 INCR + 超额判断 + 自动 DECR 回滚
+    // 避免 INCR 和 DECR 之间的竞态窗口（进程崩溃导致计数器漂移）
+    const ACQUIRE_SLOT_LUA = `
+      local accepted = redis.call('INCR', KEYS[1])
+      local required = tonumber(redis.call('GET', KEYS[2]) or '0')
+      if required > 0 and accepted > required then
+        redis.call('DECR', KEYS[1])
+        return -1
+      end
+      return accepted
+    `
+    const slotNumber = await this.redisService.eval(
+      ACQUIRE_SLOT_LUA,
+      2,
+      redisKeyAccepted,
+      redisKeyRequired
+    ) as number
+    if (slotNumber === -1) {
+      // 超出名额（Lua 脚本已自动回滚 DECR，无需手动 DECR）
 
-      // 校验补偿：回滚后比对Redis与DB，不一致则修正
+      // 校验补偿：比对Redis与DB，不一致则修正
       try {
         const [dbCheckResult] = await pool.query(
           `SELECT COUNT(DISTINCT CASE WHEN status IN ('accepted','completed') THEN avatar_id END) as cnt FROM order_dispatch_requests WHERE order_id = ?`,
@@ -949,7 +961,7 @@ async getExecutionProgress(orderId: string) {
         const currentRedis = await this.redisService.getClient().get(redisKeyAccepted)
         const currentRedisNum = parseInt(currentRedis || '0', 10)
         if (currentRedisNum !== dbCnt) {
-          this.logger.warn(`接单占位回滚后Redis不一致，修正: key=${redisKeyAccepted}, redis=${currentRedisNum}, db=${dbCnt}`)
+          this.logger.warn(`接单被拒后Redis不一致，修正: key=${redisKeyAccepted}, redis=${currentRedisNum}, db=${dbCnt}`)
           await this.redisService.getClient().set(redisKeyAccepted, String(dbCnt), 'EX', OrderDispatchService.REDIS_TTL_SECONDS)
         }
       } catch (e) { /* 校验失败不影响主流程 */ }
@@ -1121,6 +1133,9 @@ async getExecutionProgress(orderId: string) {
         const currentStatus = String(currentRow?.status || '').trim().toLowerCase()
         if (currentRow && currentAvatarId === actualAvatarId && ['accepted', 'completed'].includes(currentStatus)) {
           wasAlreadyAccepted = true
+          // 幂等情况：该分身已被计数，Lua INCR 多算了一次，需要 DECR 回滚
+          await this.redisService.getClient().decr(redisKeyAccepted)
+          this.logger.log(`幂等接单，回滚Redis INCR: key=${redisKeyAccepted}`)
         } else {
           throw new ConflictException('手慢了，订单已被其他人抢走')
         }
