@@ -18,7 +18,7 @@ export default function OrderAcceptanceFeedback() {
   const [data, setData] = useState<any>(null)
   const [currentUserId, setCurrentUserId] = useState<string>('')
   const [orderUserId, setOrderUserId] = useState<string>('')
-  const [roleVerified, setRoleVerified] = useState(false)
+  const [, setRoleVerified] = useState(false)
 
   // 通过 URL 参数和用户ID双重验证判断角色
   // role=avatar 表示分身视角（接单者），否则为发单者

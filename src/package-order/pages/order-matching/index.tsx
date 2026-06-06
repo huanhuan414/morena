@@ -1,11 +1,11 @@
 import Taro, { useLoad, useDidShow, useRouter, showToast, showLoading, hideLoading } from '@tarojs/taro'
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Network } from '@/network'
 import {
   ArrowLeft, Sparkles, Check, Star, Trophy, TrendingUp,
-  Users, Loader, Crown, ThumbsUp, Send, Target, MapPin
+  Users, Loader, ThumbsUp, Send, Target, MapPin
 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import './index.css'
@@ -26,6 +26,8 @@ interface Avatar {
   platforms?: string[]
   contentTypes?: string[]
   location?: string
+  niches?: string[]
+  province?: string
 }
 
 interface OrderInfo {
@@ -49,18 +51,12 @@ export default function OrderMatchingPage() {
   const [loading, setLoading] = useState(true)
   const [dispatching, setDispatching] = useState(false)
   const [step, setStep] = useState(1)
-  const [filterType, setFilterType] = useState<'all' | 'exact' | 'region' | 'other'>('all')
+  const [filterType] = useState<'all' | 'exact' | 'region' | 'other'>('all')
   const pollTimerRef = useRef<any>(null)
 
   // 分类统计
   const regionMatchCount = recommendations.filter(a => a.matchType === 'region').length
   const otherMatchCount = recommendations.filter(a => a.matchType === 'other').length
-
-  // 过滤后的列表
-  const filteredAvatars = useMemo(() => {
-    if (filterType === 'all') return recommendations
-    return recommendations.filter(a => a.matchType === filterType)
-  }, [recommendations, filterType])
 
   /* ── 支付后状态轮询 ── */
   const startStatusPolling = (oid: string) => {
@@ -562,11 +558,11 @@ export default function OrderMatchingPage() {
             {/* 区域匹配组 */}
             {(filterType === 'all' || filterType === 'region') && regionMatchCount > 0 && (
               <View className="match-group">
-                <View className="group-header">
-                  <View className="group-badge region">
-                    <Text className="group-badge-text">区域匹配</Text>
+                <View className="mgrp-header">
+                  <View className="mgrp-badge region">
+                    <Text className="mgrp-badge-text">区域匹配</Text>
                   </View>
-                  <Text className="group-count">{regionMatchCount}个分身</Text>
+                  <Text className="mgrp-count">{regionMatchCount}个分身</Text>
                 </View>
                 <View className="avatars-list">
                   {recommendations.filter(a => a.matchType === 'region').map((avatar, index) => (
@@ -664,11 +660,11 @@ export default function OrderMatchingPage() {
             {/* 随机补充组 */}
             {(filterType === 'all' || filterType === 'other') && otherMatchCount > 0 && (
               <View className="match-group">
-                <View className="group-header">
-                  <View className="group-badge other">
-                    <Text className="group-badge-text">随机补充</Text>
+                <View className="mgrp-header">
+                  <View className="mgrp-badge other">
+                    <Text className="mgrp-badge-text">随机补充</Text>
                   </View>
-                  <Text className="group-count">{otherMatchCount}个分身</Text>
+                  <Text className="mgrp-count">{otherMatchCount}个分身</Text>
                 </View>
                 <View className="avatars-list">
                   {recommendations.filter(a => a.matchType === 'other').map((avatar, index) => (

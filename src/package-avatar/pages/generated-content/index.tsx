@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
-import { ArrowLeft, Clock, FileText, ImagePlus, Play, Eye, Send, MessageSquare, Bell, Trash2, RefreshCw, CircleCheckBig } from 'lucide-react-taro'
+import { ArrowLeft, Clock, FileText, ImagePlus, Play, Eye, Send, MessageSquare, Bell, Trash2, CircleCheckBig } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import { canonicalizePlatform, getPlatformLabel, getPlatformMeta } from '@/constants/publish-platform'

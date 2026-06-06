@@ -122,8 +122,21 @@ export default function OrderCreate() {
     const fetchPriceConfig = async () => {
       try {
         const res = await Network.request({ url: '/api/order/price-config' })
+        console.log('[price-config] res.data:', JSON.stringify(res.data))
         if (res.data?.code === 200 && Array.isArray(res.data.data) && res.data.data.length > 0) {
-          setContentTypes(res.data.data)
+          // 将 API 数据与默认数据合并，保留前端需要的字段（minAvatarFee, genUnitPrice, assetDimensions 等）
+          const merged = res.data.data.map((apiType: any) => {
+            const defaultType = DEFAULT_CONTENT_TYPES.find(d => d.id === apiType.id)
+            return {
+              ...defaultType,   // 保留默认的所有字段
+              ...apiType,       // API 数据覆盖（basePrice, contentPrice 等来自数据库）
+              // 确保 minAvatarFee/genUnitPrice 有值：优先 API → 其次默认 → 兜底 basePrice/contentPrice
+              minAvatarFee: apiType.minAvatarFee ?? defaultType?.minAvatarFee ?? apiType.basePrice ?? 0,
+              genUnitPrice: apiType.genUnitPrice ?? defaultType?.genUnitPrice ?? apiType.contentPrice ?? 0,
+            }
+          })
+          console.log('[price-config] merged contentTypes:', JSON.stringify(merged.map((t: any) => ({ id: t.id, label: t.label }))))
+          setContentTypes(merged)
         }
       } catch (e) {
         console.warn('获取价格配置失败，使用默认配置:', e)
@@ -526,6 +539,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
   }
 
   const handleTypeChange = (typeId: string) => {
+    console.log('[handleTypeChange] typeId:', typeId, 'current contentType:', form.contentType, 'all ids:', contentTypes.map(t => t.id))
     setForm(prev => ({ ...prev, contentType: typeId }))
   }
 
@@ -1009,7 +1023,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                   <Text className="type-desc">{type.desc}</Text>
                   <View className="type-price-row">
                     <Coins size={10} color="#6366F1" />
-                    <Text className="type-price">最低¥{type.minAvatarFee + type.genUnitPrice}/个</Text>
+                    <Text className="type-price">最低¥{(type.minAvatarFee || 0) + (type.genUnitPrice || 0)}/{type.output || '个'}</Text>
                   </View>
                   {isActive && (
                     <View className="type-check">
