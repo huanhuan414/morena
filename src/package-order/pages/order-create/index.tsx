@@ -995,26 +995,30 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
             </View>
           </View>
           <View className="type-grid">
-            {contentTypes.map(type => (
-              <View
-                key={type.id}
-                className={`type-card ${form.contentType === type.id ? 'active' : ''}`}
-                onClick={() => handleTypeChange(type.id)}
-              >
-                <Text className="type-icon">{type.icon}</Text>
-                <Text className="type-label">{type.label}</Text>
-                <Text className="type-desc">{type.desc}</Text>
-                <View className="type-price-row">
-                  <Coins size={10} color="#6366F1" />
-                  <Text className="type-price">最低¥{type.minAvatarFee + type.genUnitPrice}/个</Text>
-                </View>
-                {form.contentType === type.id && (
-                  <View className="type-check">
-                    <Check size={10} color="#fff" />
+            {contentTypes.map(type => {
+              const isActive = form.contentType === type.id
+              return (
+                <View
+                  key={type.id}
+                  className="type-card"
+                  style={isActive ? { background: '#eef2ff', borderColor: '#8b5cf6' } : {}}
+                  onClick={() => handleTypeChange(type.id)}
+                >
+                  <Text className="type-icon">{type.icon}</Text>
+                  <Text className="type-label">{type.label}</Text>
+                  <Text className="type-desc">{type.desc}</Text>
+                  <View className="type-price-row">
+                    <Coins size={10} color="#6366F1" />
+                    <Text className="type-price">最低¥{type.minAvatarFee + type.genUnitPrice}/个</Text>
                   </View>
-                )}
-              </View>
-            ))}
+                  {isActive && (
+                    <View className="type-check">
+                      <Check size={10} color="#fff" />
+                    </View>
+                  )}
+                </View>
+              )
+            })}
           </View>
         </View>
 
