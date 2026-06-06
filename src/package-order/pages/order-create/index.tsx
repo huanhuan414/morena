@@ -121,7 +121,7 @@ export default function OrderCreate() {
   useEffect(() => {
     const fetchPriceConfig = async () => {
       try {
-        const res = await Network.request({ url: '/api/price-config' })
+        const res = await Network.request({ url: '/api/order/price-config' })
         if (res.data?.code === 200 && Array.isArray(res.data.data) && res.data.data.length > 0) {
           setContentTypes(res.data.data)
         }
