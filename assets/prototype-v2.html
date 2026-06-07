@@ -1,0 +1,1622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>分身平台 - 完整业务原型</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;background:#f8fafc;color:#1e293b;font-size:14px;max-width:430px;margin:0 auto;min-height:100vh;overflow-x:hidden}
+.app{min-height:100vh;padding-bottom:68px}
+.page{display:none;padding-bottom:20px}.page.active{display:block}
+.subpage{display:none;position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;height:100%;background:#f8fafc;z-index:200;overflow-y:auto;-webkit-overflow-scrolling:touch;animation:slideIn .25s ease}
+.subpage.closing{animation:slideOut .2s ease forwards}
+@keyframes slideIn{from{transform:translateX(-50%) translateY(100%)}to{transform:translateX(-50%) translateY(0)}}
+@keyframes slideOut{from{transform:translateX(-50%) translateY(0)}to{transform:translateX(-50%) translateY(100%)}}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;align-items:flex-end;justify-content:center}.modal-overlay.show{display:flex;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal-box{background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:430px;padding:24px 20px 32px;animation:modalUp .25s ease;max-height:85vh;overflow-y:auto}
+@keyframes modalUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:#fff;display:flex;align-items:center;justify-content:space-around;height:60px;border-top:1px solid #f1f5f9;z-index:100;padding-bottom:env(safe-area-inset-bottom)}
+.tabbar-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;color:#94a3b8;cursor:pointer;transition:.15s}.tabbar-item.active{color:#7B3FE4}
+.tabbar-item .tab-icon{font-size:20px;height:24px;line-height:24px}
+.tabbar-center{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer}
+.tabbar-center-btn{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6,#a855f7);display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;box-shadow:0 4px 12px rgba(99,102,241,.4);margin-top:-18px}
+.tabbar-center-text{font-size:10px;color:#94a3b8}.tabbar-center.active .tabbar-center-text{color:#7B3FE4}
+.gradient-header{background:linear-gradient(135deg,#6366f1,#8b5cf6,#a855f7);padding:48px 20px 20px;color:#fff;border-radius:0 0 24px 24px;position:relative}
+.gradient-header h1{font-size:22px;font-weight:700;margin-bottom:4px}.gradient-header p{font-size:13px;opacity:.85}
+.header-row{display:flex;align-items:center;justify-content:space-between}
+.header-actions{display:flex;gap:12px;align-items:center}
+.header-btn{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;border:none;position:relative}
+.stats-row{display:flex;gap:10px;margin-top:14px}
+.stat-card{flex:1;background:rgba(255,255,255,.18);border-radius:12px;padding:10px 8px;text-align:center;backdrop-filter:blur(8px)}
+.stat-val{font-size:20px;font-weight:700}.stat-label{font-size:10px;opacity:.8;margin-top:2px}
+.section{padding:0 16px;margin-top:16px}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.section-title{font-size:16px;font-weight:700}.section-more{font-size:12px;color:#6366f1;cursor:pointer}
+.card{background:#fff;border-radius:16px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:10px}
+.avatar-card{background:#fff;border-radius:16px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:10px}
+.avatar-top{display:flex;align-items:center;gap:12px}
+.avatar-photo{width:52px;height:52px;border-radius:50%;object-fit:cover;border:2.5px solid #e9e5ff;flex-shrink:0;background:#f3f0ff}
+.avatar-photo.lg{width:64px;height:64px;border-width:3px}.avatar-photo.sm{width:40px;height:40px;border-width:2px}
+.avatar-photo.ring-gold{border-color:#fbbf24}.avatar-photo.ring-purple{border-color:#8b5cf6}
+.avatar-info{flex:1;min-width:0}
+.avatar-name{font-size:15px;font-weight:600;display:flex;align-items:center;gap:6px}
+.lv{font-size:10px;padding:1px 6px;border-radius:8px;font-weight:500}
+.lv1{background:#f1f5f9;color:#64748b}.lv2{background:#dbeafe;color:#3b82f6}.lv3{background:#d1fae5;color:#059669}.lv4{background:#fef3c7;color:#d97706}.lv5{background:#ede9fe;color:#7c3aed}.lv6{background:#fce7f3;color:#db2777}.lv7{background:#fef2f2;color:#dc2626}
+.avatar-meta{font-size:12px;color:#94a3b8;margin-top:2px;display:flex;gap:8px;flex-wrap:wrap}
+.avatar-status{font-size:11px;padding:2px 8px;border-radius:8px;display:inline-flex;align-items:center;gap:3px}
+.st-work{background:#fef3c7;color:#d97706}.st-idle{background:#dcfce7;color:#16a34a}.st-learn{background:#dbeafe;color:#2563eb}.st-off{background:#f1f5f9;color:#94a3b8}
+.avatar-skills{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.skill-tag{font-size:11px;padding:3px 8px;border-radius:6px;background:#f3f0ff;color:#6d28d9}
+.skill-tag.mastered{background:#ede9fe;color:#5b21b6}
+.skill-tag.learning{background:#fef3c7;color:#92400e;border:1px dashed #fbbf24}
+.avatar-acts{display:flex;gap:8px;margin-top:10px}
+.act-btn{flex:1;padding:8px 0;border-radius:10px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;border:none;transition:.15s}.act-btn:active{transform:scale(.96)}
+.act-primary{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff}
+.act-secondary{background:#f3f0ff;color:#6d28d9}
+.act-disabled{background:#f1f5f9;color:#cbd5e1;cursor:not-allowed}
+.act-danger{background:#fef2f2;color:#ef4444}
+.act-success{background:#dcfce7;color:#16a34a}
+.avatar-big{background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:14px}
+.avatar-cover{height:120px;position:relative;overflow:hidden}
+.avatar-cover img.cov{width:100%;height:100%;object-fit:cover}
+.avatar-cover-overlay{position:absolute;bottom:0;left:0;right:0;height:70px;background:linear-gradient(transparent,rgba(0,0,0,.65))}
+.avatar-cover-photo{position:absolute;bottom:-24px;left:16px;z-index:2}
+.avatar-cover-photo img{width:56px;height:56px;border-radius:50%;border:3px solid #fff;object-fit:cover;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.avatar-cover-info{position:absolute;bottom:10px;left:84px;right:14px}
+.avatar-cover-name{color:#fff;font-size:17px;font-weight:700;text-shadow:0 1px 4px rgba(0,0,0,.3)}
+.avatar-cover-meta{color:rgba(255,255,255,.9);font-size:11px;text-shadow:0 1px 2px rgba(0,0,0,.3)}
+.avatar-cover-edit{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.3);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;border:none;z-index:2}
+.avatar-big-body{padding:16px 14px 14px}
+.avatar-big-stats{display:flex;gap:0;margin-bottom:10px}
+.avatar-big-stat{flex:1;text-align:center;border-right:1px solid #f1f5f9}.avatar-big-stat:last-child{border:none}
+.avatar-big-stat .val{font-size:16px;font-weight:700;color:#1e293b}.avatar-big-stat .label{font-size:10px;color:#94a3b8;margin-top:1px}
+.quick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+.quick-item{background:rgba(255,255,255,.18);border-radius:12px;padding:12px 6px;text-align:center;cursor:pointer;backdrop-filter:blur(8px);transition:.15s}.quick-item:active{transform:scale(.94)}
+.quick-item .icon{font-size:22px;margin-bottom:4px}.quick-item .text{font-size:11px;color:#fff}
+.talk-bar{background:#fff;border-radius:16px;padding:12px;margin:0 16px;box-shadow:0 2px 8px rgba(0,0,0,.06);margin-top:14px}
+.talk-input-row{display:flex;gap:8px;align-items:center}
+.talk-input{flex:1;border:none;outline:none;font-size:14px;padding:10px 14px;background:#f3f0ff;border-radius:20px;color:#1e293b}.talk-input::placeholder{color:#a78bfa}
+.talk-send{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}.talk-send:active{transform:scale(.92)}
+.quick-tags{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.quick-tag{font-size:11px;padding:4px 10px;border-radius:12px;background:#f3f0ff;color:#6d28d9;cursor:pointer;white-space:nowrap}.quick-tag:active{background:#ede9fe}
+.chat-messages{padding:16px;display:flex;flex-direction:column;gap:12px;min-height:200px}
+.chat-msg{max-width:80%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.5;animation:msgIn .3s ease}
+@keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.chat-msg.user{align-self:flex-end;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border-bottom-right-radius:4px}
+.chat-msg.bot{align-self:flex-start;background:#f3f0ff;color:#1e293b;border-bottom-left-radius:4px}
+.chat-msg.system{align-self:center;background:#f1f5f9;color:#64748b;font-size:12px;padding:6px 14px;border-radius:12px}
+.chat-typing{align-self:flex-start;background:#f3f0ff;color:#94a3b8;font-size:13px;padding:8px 14px;border-radius:16px;border-bottom-left-radius:4px;animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.5}}
+.sub-header{display:flex;align-items:center;padding:48px 16px 14px;background:#fff;border-bottom:1px solid #f1f5f9;position:sticky;top:0;z-index:10}
+.sub-back{width:32px;height:32px;border-radius:50%;background:#f3f0ff;border:none;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6d28d9}
+.sub-title{flex:1;text-align:center;font-size:16px;font-weight:600;margin:0 8px}
+.sub-header-btn{padding:6px 14px;border-radius:8px;font-size:12px;border:none;cursor:pointer;font-weight:500}
+.sub-body{padding:16px}
+.form-group{margin-bottom:16px}
+.form-label{font-size:13px;font-weight:600;color:#475569;margin-bottom:6px;display:block}
+.form-label .req{color:#ef4444}
+.form-input{width:100%;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:12px;font-size:14px;outline:none;transition:.2s;background:#fff}.form-input:focus{border-color:#8b5cf6;box-shadow:0 0 0 3px rgba(139,92,246,.1)}
+.form-textarea{width:100%;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:12px;font-size:14px;outline:none;resize:vertical;min-height:80px}.form-textarea:focus{border-color:#8b5cf6;box-shadow:0 0 0 3px rgba(139,92,246,.1)}
+.form-hint{font-size:11px;color:#94a3b8;margin-top:4px}
+.form-chips{display:flex;flex-wrap:wrap;gap:8px}
+.form-chip{padding:6px 14px;border-radius:20px;font-size:12px;border:1.5px solid #e2e8f0;cursor:pointer;transition:.15s;background:#fff}.form-chip.selected{border-color:#8b5cf6;background:#ede9fe;color:#5b21b6}
+.form-photo-upload{width:80px;height:80px;border-radius:50%;border:2px dashed #d4d4d8;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;background:#fafafa;flex-shrink:0}
+.form-photo-upload img{width:100%;height:100%;object-fit:cover}
+.form-photo-upload .ph{font-size:28px;color:#d4d4d8}.form-photo-upload .pt{font-size:9px;color:#94a3b8;margin-top:2px}
+.form-cover-upload{flex:1;height:80px;border-radius:12px;border:2px dashed #d4d4d8;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;background:#fafafa;flex-shrink:0}
+.form-cover-upload img{width:100%;height:100%;object-fit:cover}
+.form-cover-upload .ph{font-size:24px;color:#d4d4d8}.form-cover-upload .pt{font-size:9px;color:#94a3b8;margin-top:2px}
+.tab-row{display:flex;gap:0;background:#fff;border-bottom:1px solid #f1f5f9;padding:0 16px}
+.tab-item{flex:1;padding:10px 0;font-size:13px;color:#94a3b8;text-align:center;cursor:pointer;border-bottom:2px solid transparent;font-weight:500;white-space:nowrap}.tab-item.active{color:#6d28d9;border-bottom-color:#6d28d9}
+.tab-content{display:none;padding:16px}.tab-content.active{display:block}
+.progress-bar{height:8px;background:#f1f5f9;border-radius:8px;overflow:hidden}.progress-fill{height:100%;border-radius:8px;transition:width .6s ease}
+.pf-purple{background:linear-gradient(90deg,#6366f1,#a855f7)}.pf-green{background:linear-gradient(90deg,#22c55e,#16a34a)}.pf-gold{background:linear-gradient(90deg,#fbbf24,#f59e0b)}
+.price-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13px}.price-row .label{color:#64748b}.price-row .val{font-weight:600}
+.price-row.total{border-top:1px solid #f1f5f9;padding-top:10px;margin-top:6px;font-size:16px}.price-row.total .val{color:#6d28d9}
+.level-node{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid #f8fafc}.level-node:last-child{border:none}
+.level-badge{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;color:#fff}
+.level-info{flex:1}.level-name{font-size:14px;font-weight:600}.level-perks{font-size:12px;color:#64748b;margin-top:2px;line-height:1.6}
+.level-locked{opacity:.4}.level-current .level-badge{box-shadow:0 0 0 3px #fff,0 0 0 5px #8b5cf6}
+.search-bar{display:flex;gap:8px;padding:0 16px;margin-bottom:12px;position:relative}
+.search-input{flex:1;padding:10px 14px 10px 36px;background:#fff;border-radius:20px;border:1.5px solid #e2e8f0;font-size:13px;outline:none}.search-input:focus{border-color:#8b5cf6}
+.search-ico{position:absolute;left:28px;top:10px;font-size:14px;color:#94a3b8}
+.filter-row{display:flex;gap:6px;padding:0 16px;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch}.filter-row::-webkit-scrollbar{display:none}
+.filter-chip{white-space:nowrap;padding:6px 14px;border-radius:16px;font-size:12px;background:#fff;border:1px solid #e2e8f0;cursor:pointer;flex-shrink:0}.filter-chip.active{background:#6d28d9;color:#fff;border-color:#6d28d9}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.notify-item{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid #f8fafc;cursor:pointer}
+.notify-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.notify-content{flex:1;min-width:0}.notify-title{font-size:14px;font-weight:500}.notify-desc{font-size:12px;color:#64748b;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.notify-time{font-size:10px;color:#cbd5e1;margin-top:2px}
+.notify-dot{width:8px;height:8px;border-radius:50%;background:#ef4444;flex-shrink:0;margin-top:6px}.notify-dot.read{background:transparent}
+.checkin-card{background:linear-gradient(135deg,#fef3c7,#fde68a);border-radius:16px;padding:16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.checkin-info h3{font-size:15px;font-weight:700;color:#92400e}.checkin-info p{font-size:12px;color:#b45309;margin-top:2px}
+.checkin-days{display:flex;gap:4px;margin-top:6px}
+.checkin-day{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600}
+.checkin-day.done{background:#f59e0b;color:#fff}.checkin-day.current{background:#fff;color:#f59e0b;border:2px solid #f59e0b}.checkin-day.future{background:#fef3c7;color:#d97706}
+.checkin-btn{padding:10px 20px;border-radius:12px;border:none;font-size:14px;font-weight:600;cursor:pointer}.checkin-btn:active{transform:scale(.95)}
+.checkin-btn.available{background:#f59e0b;color:#fff;box-shadow:0 4px 12px rgba(245,158,11,.3)}.checkin-btn.done{background:#fff;color:#d97706}
+.menu-list{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.menu-item{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid #f8fafc;cursor:pointer}.menu-item:last-child{border:none}.menu-item:active{background:#f8fafc}
+.menu-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;margin-right:12px;flex-shrink:0}
+.menu-text{flex:1;font-size:14px}.menu-arrow{color:#cbd5e1;font-size:12px}
+.menu-badge{background:#ef4444;color:#fff;font-size:10px;padding:1px 6px;border-radius:8px;margin-right:8px}
+.order-type{font-size:11px;padding:2px 8px;border-radius:6px;font-weight:600;display:inline-block;margin-bottom:6px}
+.ot-urgent{background:#fef2f2;color:#ef4444}.ot-new{background:#eff6ff;color:#3b82f6}.ot-normal{background:#f0fdf4;color:#22c55e}
+.order-title{font-size:15px;font-weight:600;margin-bottom:4px}.order-desc{font-size:12px;color:#64748b;line-height:1.5;margin-bottom:8px}
+.order-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}.order-tag{font-size:10px;padding:2px 6px;border-radius:4px;background:#f1f5f9;color:#64748b}
+.order-footer{display:flex;align-items:center;justify-content:space-between;padding-top:8px;border-top:1px solid #f8fafc}
+.order-price{font-size:18px;font-weight:700;color:#6d28d9}.order-earning{font-size:12px;color:#22c55e}
+.switch-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #f8fafc}.switch-row:last-child{border:none}
+.switch-label{font-size:14px}.switch-desc{font-size:11px;color:#94a3b8;margin-top:2px}
+.sw{width:44px;height:24px;border-radius:12px;background:#e2e8f0;position:relative;cursor:pointer;transition:.2s;flex-shrink:0}.sw.on{background:#8b5cf6}
+.sw .knob{width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.15)}.sw.on .knob{left:22px}
+.coverage-bar{display:flex;height:20px;border-radius:10px;overflow:hidden;margin:4px 0}.coverage-filled{background:linear-gradient(90deg,#22c55e,#16a34a);transition:width .4s}.coverage-empty{background:#f1f5f9;flex:1}
+.plaza-grid-item{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04);cursor:pointer;transition:.15s}.plaza-grid-item:active{transform:scale(.97)}
+.plaza-grid-photo{width:100%;aspect-ratio:1;object-fit:cover}.plaza-grid-body{padding:10px}
+.plaza-grid-name{font-size:13px;font-weight:600;display:flex;align-items:center;gap:4px}.plaza-grid-meta{font-size:10px;color:#94a3b8;margin-top:2px}
+.plaza-grid-skills{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px}.plaza-grid-skill{font-size:9px;padding:1px 5px;border-radius:4px;background:#f3f0ff;color:#6d28d9}
+.plaza-grid-price{font-size:13px;font-weight:700;color:#6d28d9;margin-top:6px}
+.plaza-grid-hire{padding:6px 14px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;font-size:11px;cursor:pointer;font-weight:500}
+.earn-chart{display:flex;align-items:flex-end;gap:6px;height:100px;padding:8px 0}
+.earn-bar{flex:1;border-radius:6px 6px 0 0;background:linear-gradient(180deg,#8b5cf6,#6366f1);min-width:20px;position:relative;transition:height .5s ease}
+.earn-bar-label{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:#94a3b8;white-space:nowrap}
+.earn-bar-val{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:9px;color:#6d28d9;font-weight:600;white-space:nowrap}
+.toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 24px;border-radius:20px;font-size:13px;z-index:500;animation:toastIn .3s ease;pointer-events:none}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+.edit-panel{background:#fff;border-radius:20px;padding:24px 20px}
+.edit-title{font-size:17px;font-weight:700;margin-bottom:16px;text-align:center}
+.result-card{background:#fff;border-radius:16px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:10px;cursor:pointer}
+.result-type{font-size:11px;padding:2px 8px;border-radius:6px;font-weight:600;display:inline-block;margin-bottom:6px}
+.rt-done{background:#dcfce7;color:#16a34a}.rt-gen{background:#dbeafe;color:#2563eb}.rt-fail{background:#fef2f2;color:#ef4444}
+.withdraw-method{display:flex;align-items:center;gap:12px;padding:14px;border:1.5px solid #e2e8f0;border-radius:12px;margin-bottom:10px;cursor:pointer;transition:.15s}
+.withdraw-method.selected{border-color:#8b5cf6;background:#faf5ff}
+.withdraw-method .icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.withdraw-method .name{font-size:14px;font-weight:500}.withdraw-method .desc{font-size:11px;color:#94a3b8}
+.profile-header{text-align:center;padding:48px 20px 20px;background:linear-gradient(135deg,#6366f1,#8b5cf6,#a855f7);color:#fff;border-radius:0 0 24px 24px}
+.profile-avatar{width:72px;height:72px;border-radius:50%;border:3px solid rgba(255,255,255,.5);margin:0 auto 10px;object-fit:cover}
+.profile-name{font-size:18px;font-weight:700}.profile-id{font-size:12px;opacity:.7;margin-top:2px}
+.profile-stats{display:flex;justify-content:center;gap:24px;margin-top:14px}
+.profile-stat{text-align:center}.profile-stat .val{font-size:18px;font-weight:700}.profile-stat .label{font-size:11px;opacity:.8}
+.del-confirm{background:#fef2f2;border-radius:12px;padding:16px;margin-top:12px}
+.del-confirm h4{color:#ef4444;font-size:14px;margin-bottom:4px}.del-confirm p{font-size:12px;color:#64748b}
+.step-flow{display:flex;align-items:center;gap:0;margin:16px 0;overflow-x:auto;padding-bottom:4px}
+.step-node{display:flex;flex-direction:column;align-items:center;min-width:70px;flex-shrink:0}
+.step-circle{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;background:#f1f5f9;color:#94a3b8;border:2px solid #e2e8f0}
+.step-circle.done{background:#8b5cf6;color:#fff;border-color:#8b5cf6}.step-circle.active{background:#ede9fe;color:#6d28d9;border-color:#8b5cf6}
+.step-text{font-size:9px;color:#94a3b8;margin-top:4px;text-align:center;max-width:70px}
+.step-line{width:30px;height:2px;background:#e2e8f0;flex-shrink:0}.step-line.done{background:#8b5cf6}
+.review-item{display:flex;gap:10px;padding:12px 0;border-bottom:1px solid #f8fafc}
+.review-item:last-child{border:none}
+.review-avatar{width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.review-content{flex:1}.review-name{font-size:12px;font-weight:500}.review-text{font-size:13px;color:#475569;margin-top:2px;line-height:1.5}
+.review-meta{font-size:10px;color:#94a3b8;margin-top:2px}
+.faq-item{border-bottom:1px solid #f1f5f9;padding:14px 0;cursor:pointer}
+.faq-q{font-size:14px;font-weight:500;display:flex;align-items:center;gap:6px}
+.faq-a{font-size:13px;color:#64748b;line-height:1.6;margin-top:8px;padding-left:20px;display:none}
+.faq-item.open .faq-a{display:block}
+.faq-item .faq-arrow{transition:.2s;font-size:10px;color:#94a3b8}.faq-item.open .faq-arrow{transform:rotate(90deg)}
+.price-slider{width:100%;height:6px;border-radius:3px;background:#f1f5f9;position:relative;cursor:pointer}
+.price-slider-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,#6366f1,#8b5cf6)}
+.price-slider-thumb{width:20px;height:20px;border-radius:50%;background:#fff;border:3px solid #8b5cf6;position:absolute;top:50%;transform:translate(-50%,-50%);box-shadow:0 2px 6px rgba(0,0,0,.15)}
+.content-preview{background:#f8fafc;border-radius:12px;padding:14px;margin-top:10px;font-size:13px;line-height:1.7;color:#475569}
+.content-preview img{width:100%;border-radius:8px;margin:8px 0}
+.tag-input-row{display:flex;gap:6px;flex-wrap:wrap;padding:8px;border:1.5px solid #e2e8f0;border-radius:12px;min-height:44px;align-items:center}
+.tag-input-tag{display:flex;align-items:center;gap:2px;padding:4px 8px;border-radius:6px;background:#ede9fe;color:#5b21b6;font-size:11px}
+.tag-input-tag .remove{cursor:pointer;font-size:10px;opacity:.6}
+.tag-input-field{border:none;outline:none;font-size:13px;flex:1;min-width:60px}
+.empty-state{text-align:center;padding:40px 20px;color:#94a3b8}
+.empty-state .icon{font-size:48px;margin-bottom:12px}
+.empty-state .title{font-size:15px;font-weight:600;color:#64748b;margin-bottom:4px}
+.empty-state .desc{font-size:12px;line-height:1.6}
+.radar-chart{width:160px;height:160px;margin:0 auto;position:relative}
+.radar-bg{fill:none;stroke:#e2e8f0;stroke-width:1}
+.radar-fill{fill:rgba(139,92,246,.2);stroke:#8b5cf6;stroke-width:2}
+.radar-label{font-size:10px;fill:#64748b;text-anchor:middle}
+.badge-card{display:flex;align-items:center;gap:10px;padding:12px;background:#fff;border-radius:12px;border:1.5px solid #f1f5f9;margin-bottom:8px}
+.badge-card.earned{border-color:#ede9fe;background:#faf5ff}
+.badge-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.badge-info{flex:1}.badge-name{font-size:13px;font-weight:600}.badge-desc{font-size:11px;color:#94a3b8;margin-top:1px}
+.confirm-sheet{background:#fff;border-radius:20px 20px 0 0;padding:24px 20px 32px}
+.confirm-title{font-size:17px;font-weight:700;text-align:center;margin-bottom:16px}
+.countdown{font-size:12px;color:#ef4444;font-weight:600;display:flex;align-items:center;gap:4px}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script>
+// ============== 数据模型 ==============
+const LEVEL_RIGHTS = {
+  1:{name:'新手分身',color:'#64748b',bg:'lv1',perks:['基础对话能力','1种内容类型','仅限自己使用']},
+  2:{name:'学徒分身',color:'#3b82f6',bg:'lv2',perks:['多轮对话','3种内容类型','可被广场发现']},
+  3:{name:'熟练分身',color:'#059669',bg:'lv3',perks:['高级对话','5种内容类型','可挂广场接单','自定义出场费']},
+  4:{name:'专业分身',color:'#d97706',bg:'lv4',perks:['深度对话','全部内容类型','自定义出场费','技能上架市场']},
+  5:{name:'精英分身',color:'#7c3aed',bg:'lv5',perks:['创意生成','平台推荐','优先匹配','技能市场加成']},
+  6:{name:'大师分身',color:'#db2777',bg:'lv6',perks:['独立创作','出场费+30%','专属标识','优先展示']},
+  7:{name:'传奇分身',color:'#dc2626',bg:'lv7',perks:['传奇标识','出场费+50%','平台签约','全技能解锁','专属客服']}
+};
+const PRICING = {
+  '图文笔记':{minFee:3,maxFee:15,unit:'篇'},
+  '短视频':{minFee:5,maxFee:30,unit:'条'},
+  '短视频脚本':{minFee:2,maxFee:10,unit:'条'},
+  '纯文案':{minFee:1,maxFee:8,unit:'篇'},
+  '简单任务':{minFee:0.5,maxFee:3,unit:'个'}
+};
+const CONTENT_TYPES = ['图文笔记','短视频','短视频脚本','纯文案','简单任务'];
+const DOMAINS = ['美妆','穿搭','健身','美食','家装','旅行','母婴','数码','教育','宠物'];
+const STYLES = ['温柔知性','活泼俏皮','专业严谨','文艺清新','搞笑幽默','酷帅中性'];
+const PHOTO_POOL = [
+  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=200&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=200&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=200&h=200&fit=crop'
+];
+const COVER_POOL = [
+  'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=400&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1445205170230-053b83016050?w=400&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=400&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=400&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=400&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=200&fit=crop'
+];
+
+let nextId = 8;
+
+const SKILL_DETAILS = {
+  '爆款种草文':{desc:'写出高转化种草笔记',steps:['学习种草文结构','掌握痛点切入','练习3种开头','学会种草话术'],exam:'写一篇小红书种草文'},
+  '成分党测评':{desc:'专业分析产品成分',steps:['了解常见成分','学习成分搭配','掌握测评框架','练习对比分析'],exam:'写一篇成分测评'},
+  '小红书运营':{desc:'掌握小红书涨粉技巧',steps:['了解平台规则','学习选题方法','掌握发布时间','学会互动技巧'],exam:'制定运营方案'},
+  '美妆种草':{desc:'美妆产品种草推荐',steps:['了解热门品类','学习种草角度','掌握对比方法','练习图文搭配'],exam:'写一篇美妆种草'},
+  '穿搭推荐':{desc:'日常穿搭方案推荐',steps:['学习穿搭理论','掌握风格分类','练习搭配推荐','学会看图推荐'],exam:'推荐3套穿搭'},
+  'OOTD日常':{desc:'每日穿搭记录分享',steps:['学习拍照技巧','掌握文案写法','练习话题运营','学会系列策划'],exam:'写一组OOTD文案'},
+  '衣品改造':{desc:'帮用户改造穿搭风格',steps:['学习风格诊断','掌握改造方案','练习对比分析','学会避坑指南'],exam:'制定改造方案'},
+  '健身计划':{desc:'制定个性化健身方案',steps:['了解运动基础','学习训练计划','掌握营养搭配','练习方案制定'],exam:'制定4周健身计划'},
+  '短视频脚本':{desc:'创作高播放短视频脚本',steps:['学习脚本结构','掌握开头技巧','练习分镜设计','学会口播词'],exam:'写一条短视频脚本'},
+  '视频剪辑':{desc:'视频后期制作与剪辑',steps:['学习剪辑软件','掌握转场技巧','练习节奏把控','学会特效运用'],exam:'完成一段30秒剪辑'},
+  '分镜设计':{desc:'设计专业分镜脚本',steps:['学习分镜语法','掌握镜头语言','练习场景设计','学会节奏编排'],exam:'设计一组分镜'},
+  '美食种草':{desc:'美食推荐与种草',steps:['了解美食分类','学习种草角度','掌握拍摄技巧','练习文案写作'],exam:'写一篇美食种草'},
+  '探店攻略':{desc:'城市探店攻略撰写',steps:['学习探店流程','掌握评分体系','练习拍照技巧','学会路线规划'],exam:'写一篇探店攻略'},
+  '餐厅评测':{desc:'专业餐厅评测分析',steps:['学习评测维度','掌握评分标准','练习对比分析','学会避坑提示'],exam:'评测一家餐厅'},
+  '家装方案':{desc:'全屋家装方案设计',steps:['学习风格分类','掌握空间规划','练习材料搭配','学会预算控制'],exam:'设计一套家装方案'},
+  '软装搭配':{desc:'软装配色与搭配',steps:['学习色彩理论','掌握风格搭配','练习场景搭配','学会避坑指南'],exam:'搭配一个客厅'},
+  '避坑指南':{desc:'家装常见坑点分析',steps:['了解常见问题','掌握避坑方法','练习案例剖析','学会合同审查'],exam:'写一篇避坑指南'},
+  '旅行攻略':{desc:'旅行目的地攻略',steps:['学习行程规划','掌握交通攻略','练习住宿选择','学会预算控制'],exam:'制定5天旅行攻略'},
+  '酒店评测':{desc:'酒店入住体验评测',steps:['学习评测维度','掌握评分标准','练习拍照技巧','学会性价比分析'],exam:'评测一家酒店'},
+  '行程规划':{desc:'个性化行程定制',steps:['学习目的地分析','掌握时间规划','练习路线设计','学会应急方案'],exam:'制定3天行程'}
+};
+
+const ABILITY_LABELS = {writing:'文笔',creativity:'创意',professionalism:'专业度',engagement:'互动感',accuracy:'准确度'};
+
+function lvClass(lv){return 'lv'+Math.min(lv,7)}
+const STATE = {
+  checkedIn: false, checkinDays: 3,
+  currentTab: 'home',
+  orderFilter: 'all',
+  plazaFilter: '推荐',
+  plazaSearch: '',
+  notifyFilter: 'all',
+  hiredAvatars: {},
+  user: {name:'小雨',id:'xiaoyu_2024',avatar:PHOTO_POOL[0],balance:486.50,totalEarn:2846.80,avatarCount:3,orderCount:45,skillCount:5,vip:false},
+  avatars: {
+    1:{name:'美妆小助手',photo:PHOTO_POOL[1],cover:COVER_POOL[0],lv:5,xp:1280,xpMax:1500,earning:328,weekEarning:89,totalEarning:1280,orders:127,weekOrders:12,stars:4.9,status:'working',
+      skills:['爆款种草文','成分党测评','小红书运营','美妆种草'],learning:['短视频脚本'],
+      abilities:{writing:85,creativity:78,professionalism:80,engagement:82,accuracy:75},
+      hangPlaza:true,plazaPrice:5,desc:'5年美妆博主经验，擅长小红书种草和成分分析',style:'温柔知性',domains:['美妆'],created:'2024-01-15'},
+    2:{name:'穿搭博主',photo:PHOTO_POOL[3],cover:COVER_POOL[1],lv:3,xp:680,xpMax:900,earning:156,weekEarning:42,totalEarning:586,orders:58,weekOrders:6,stars:4.7,status:'idle',
+      skills:['穿搭推荐','OOTD日常'],learning:['衣品改造'],
+      abilities:{writing:65,creativity:72,professionalism:55,engagement:68,accuracy:60},
+      hangPlaza:true,plazaPrice:3,desc:'每日穿搭推荐，衣品改造达人，分享最in的搭配灵感',style:'活泼俏皮',domains:['穿搭'],created:'2024-03-20'},
+    3:{name:'健身教练',photo:PHOTO_POOL[6],cover:COVER_POOL[2],lv:1,xp:120,xpMax:300,earning:18,weekEarning:0,totalEarning:18,orders:3,weekOrders:0,stars:4.5,status:'learning',
+      skills:[],learning:['健身计划'],
+      abilities:{writing:20,creativity:15,professionalism:25,engagement:10,accuracy:30},
+      hangPlaza:false,plazaPrice:0,desc:'健身新手，正在学习健身计划制定',style:'专业严谨',domains:['健身'],created:'2024-06-10'}
+  },
+  plazaAvatars: {
+    4:{name:'视频达人',photo:PHOTO_POOL[4],cover:COVER_POOL[3],lv:4,stars:4.8,orders:89,follows:567,price:8,
+       skills:['短视频脚本','视频剪辑','分镜设计'],desc:'5年短视频导演，擅长种草和剧情类',style:'搞笑幽默',domains:['数码','美妆'],followed:false,
+       reviews:[{user:'小美',photo:PHOTO_POOL[2],stars:5,text:'脚本写得超好，完播率直接翻倍！',time:'2天前'},{user:'阿凯',photo:PHOTO_POOL[5],stars:4,text:'不错，但分镜可以更细一些',time:'1周前'},{user:'花花',photo:PHOTO_POOL[7],stars:5,text:'第三次雇了，每次都很满意！',time:'2周前'}]},
+    5:{name:'美食探店王',photo:PHOTO_POOL[5],cover:COVER_POOL[4],lv:6,stars:4.9,orders:234,follows:1289,price:6,
+       skills:['美食种草','探店攻略','餐厅评测'],desc:'美食博主，吃遍全城，写过的店都排队',style:'活泼俏皮',domains:['美食'],followed:false,
+       reviews:[{user:'吃货小王',photo:PHOTO_POOL[1],stars:5,text:'探店文案绝了，发出去就爆了',time:'3天前'},{user:'奶茶妹',photo:PHOTO_POOL[3],stars:5,text:'超专业！数据比我预期好很多',time:'5天前'}]},
+    6:{name:'家装设计师',photo:PHOTO_POOL[2],cover:COVER_POOL[5],lv:4,stars:4.7,orders:45,follows:312,price:10,
+       skills:['家装方案','软装搭配','避坑指南'],desc:'10年家装经验，帮你省钱又好看',style:'专业严谨',domains:['家装'],followed:false,
+       reviews:[{user:'新房业主',photo:PHOTO_POOL[0],stars:5,text:'避坑指南太实用了，省了好几千',time:'1周前'}]},
+    7:{name:'旅行种草官',photo:PHOTO_POOL[7],cover:COVER_POOL[6],lv:5,stars:4.8,orders:156,follows:892,price:7,
+       skills:['旅行攻略','酒店评测','行程规划'],desc:'走遍30+国家，帮你不踩坑又省钱',style:'文艺清新',domains:['旅行'],followed:false,
+       reviews:[{user:'背包客',photo:PHOTO_POOL[4],stars:5,text:'行程规划超详细，省了很多时间',time:'4天前'},{user:'度蜜月',photo:PHOTO_POOL[6],stars:4,text:'攻略不错，但酒店推荐偏贵',time:'1周前'}]}
+  },
+  notifications: [
+    {icon:'💰',bg:'#dcfce7',title:'收益到账',desc:'美妆小助手完成订单，+¥5.00',time:'10分钟前',read:false,type:'earn'},
+    {icon:'⭐',bg:'#fef3c7',title:'好评通知',desc:'美妆小助手收到⭐5.0好评',time:'30分钟前',read:false,type:'review'},
+    {icon:'📢',bg:'#ede9fe',title:'广场通知',desc:'穿搭博主被2人关注了',time:'1小时前',read:false,type:'plaza'},
+    {icon:'💪',bg:'#ede9fe',title:'技能学习',desc:'穿搭博主学会了「衣品改造」',time:'2小时前',read:true,type:'skill'},
+    {icon:'🎯',bg:'#dbeafe',title:'新订单',desc:'有1个新订单匹配你的分身',time:'3小时前',read:true,type:'order'},
+    {icon:'🏆',bg:'#fef3c7',title:'等级提升',desc:'美妆小助手升级到Lv.5！',time:'昨天',read:true,type:'level'},
+    {icon:'📢',bg:'#ede9fe',title:'被雇佣',desc:'美妆小助手被广场用户雇佣1次',time:'昨天',read:true,type:'plaza'},
+    {icon:'⚠️',bg:'#fef2f2',title:'订单超时',desc:'1个订单即将超时，请尽快处理',time:'2天前',read:true,type:'order'}
+  ],
+  orders: {
+    1:{type:'urgent',label:'🔥 急单',title:'小红书种草文×5篇',contentType:'图文笔记',
+       avatars:2,price:10.00,earning:7.00,deadline:'2小时内',status:'open',timeLeft:7200,
+       desc:'美妆品牌推广，需要5篇种草文，含配图和话题',
+       materials:{provided:{配图:2,文案:1,话题:1},total:{配图:5,文案:5,话题:5}},
+       exclusive:false,aiSupplement:true,
+       steps:['匹配分身','分身接单','内容生成','质量审核','交付完成'],currentStep:0,
+       publisher:{name:'花西子旗舰店',avatar:PHOTO_POOL[7]}},
+    2:{type:'new',label:'🆕 新单',title:'抖音短视频脚本×3条',contentType:'短视频脚本',
+       avatars:1,price:5.00,earning:3.50,deadline:'24小时',status:'open',timeLeft:86400,
+       desc:'零食品牌短视频脚本，含分镜和文案',
+       materials:{provided:{参考脚本:1},total:{参考脚本:3,话题:3}},
+       exclusive:false,aiSupplement:true,
+       steps:['匹配分身','分身接单','内容生成','交付完成'],currentStep:0,
+       publisher:{name:'三只松鼠',avatar:PHOTO_POOL[5]}},
+    3:{type:'normal',label:'✅ 常规',title:'产品客服话术×1套',contentType:'纯文案',
+       avatars:1,price:1.50,earning:1.05,deadline:'3天',status:'open',timeLeft:259200,
+       desc:'电商客服标准话术，含常见问题回复',
+       materials:{provided:{参考文案:1},total:{参考文案:1,话题:1}},
+       exclusive:false,aiSupplement:false,
+       steps:['匹配分身','分身接单','内容生成','交付完成'],currentStep:0,
+       publisher:{name:'京东自营',avatar:PHOTO_POOL[0]}}
+  },
+  results: [
+    {id:1,type:'done',label:'✅ 已交付',title:'小红书种草文×3篇',contentType:'图文笔记',stars:5.0,earning:4.20,avatar:'美妆小助手',time:'2小时前',avatarId:1,
+     content:'小红书种草文示例：\n\n姐妹们！！这款面膜真的绝了😭\n\n作为一个干皮星人，换季的时候脸真的会起皮到怀疑人生...但用了这个之后！\n\n✨ 质地：啫喱状，上脸冰冰凉凉超舒服\n✨ 效果：敷完第二天底妆服帖到哭\n✨ 成分：烟酰胺+玻尿酸，安全不刺激\n\n💰价格才XX元/盒，一片不到XX元，学生党也能冲！\n\n#护肤好物 #干皮救星 #平价面膜推荐'},
+    {id:2,type:'done',label:'✅ 已交付',title:'穿搭OOTD图文×2组',contentType:'图文笔记',stars:4.8,earning:2.80,avatar:'穿搭博主',time:'昨天',avatarId:2,
+     content:'OOTD Day 1：\n上装：白色短款针织衫\n下装：高腰牛仔阔腿裤\n配饰：珍珠项链 + 小方包\n风格：温柔知性风\n\nOOTD Day 2：\n上装：格纹西装外套\n内搭：黑色高领打底\n下装：皮裙\n配饰：金属耳环 + 链条包\n风格：酷帅中性风'},
+    {id:3,type:'gen',label:'⏳ 生成中',title:'美妆成分测评×1篇',contentType:'纯文案',stars:null,earning:1.50,avatar:'美妆小助手',time:'进行中',avatarId:1,content:null},
+    {id:4,type:'fail',label:'❌ 未通过',title:'抖音脚本×1条',contentType:'短视频脚本',stars:null,earning:0,avatar:'健身教练',time:'3天前',avatarId:3,
+     content:'脚本内容未通过审核，原因：内容与健身领域无关，需要重新生成。',failReason:'内容与分身领域不匹配'}
+  ],
+  earnings: {week:[42,68,35,89,56,0,0],weekLabels:['一','二','三','四','五','六','日'],monthTotal:1280,monthLabels:['1月','2月','3月','4月','5月','6月'],monthData:[180,320,280,450,520,1280]},
+  withdrawRecords: [
+    {id:1,amount:200,method:'微信',status:'已到账',time:'2024-06-01',arrival:'2024-06-03'},
+    {id:2,amount:500,method:'支付宝',status:'处理中',time:'2024-06-10',arrival:'预计6-12'}
+  ],
+  editAvatar: null,
+  selectedPhoto: null,
+  selectedCover: null,
+  teachData: {
+    chatHistory: {},
+    chatMode: {},
+    materials: {},
+    corrections: {},
+    skillProgress: {}
+  }
+};
+
+// ============== 工具函数 ==============
+function showToast(msg) {
+  const t = document.createElement('div'); t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t); setTimeout(()=>t.remove(),2000);
+}
+function lvClass(lv){return 'lv'+Math.min(lv,7)}
+function statusText(s){return s==='working'?'⚡工作中':s==='idle'?'✅空闲':s==='learning'?'📖学习中':'⏸️休息'}
+function statusClass(s){return s==='working'?'st-work':s==='idle'?'st-idle':s==='learning'?'st-learn':'st-off'}
+
+function calcCoverage(contentType, materials) {
+  const p = PRICING[contentType]; if(!p) return 0;
+  const prov = Object.values(materials.provided).reduce((s,v)=>s+v,0);
+  const tot = Object.values(materials.total).reduce((s,v)=>s+v,0);
+  return tot>0?Math.round(prov/tot*100):0;
+}
+function calcPrice(contentType, avatarCount, materials, exclusive, aiSup, coupon) {
+  const p = PRICING[contentType]; if(!p) return {base:0,exclusive:0,ai:0,coupon:0,total:0};
+  const base = p.minFee * avatarCount;
+  const ex = exclusive?base*0.3:0;
+  const ai = aiSup?p.minFee*0.5:0;
+  const disc = coupon?5:0;
+  return {base,exclusive:ex,ai,coupon:disc,total:Math.max(0,base+ex+ai-disc)};
+}
+function calcAvatarEarning(contentType, avatarCount, materials, exclusive, aiSup, coupon) {
+  const priceInfo = calcPrice(contentType, avatarCount, materials, exclusive, aiSup, coupon);
+  return priceInfo.total * 0.7;
+}
+function formatTime(s){const h=Math.floor(s/3600);const m=Math.floor((s%3600)/60);return h>0?h+'时'+m+'分':m+'分'}
+function formatMoney(n){return '¥'+n.toFixed(2)}
+
+// ============== 页面切换 ==============
+function switchTab(name) {
+  STATE.currentTab = name;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  const tabs = document.querySelectorAll('.tabbar-item,.tabbar-center');
+  tabs.forEach(t=>t.classList.remove('active'));
+  const idx = {home:0,avatars:1,orders:2,plaza:3,profile:4}[name];
+  if(idx>=0 && tabs[idx]) tabs[idx].classList.add('active');
+  renderPage(name);
+}
+
+function renderPage(name) {
+  const el = document.getElementById('page-'+name+'-content');
+  if(!el) return;
+  switch(name) {
+    case 'home': el.innerHTML = renderHome(); break;
+    case 'avatars': el.innerHTML = renderAvatars(); break;
+    case 'orders': el.innerHTML = renderOrders(); break;
+    case 'plaza': el.innerHTML = renderPlaza(); break;
+    case 'profile': el.innerHTML = renderProfile(); break;
+  }
+}
+
+// ============== 首页 ==============
+function renderHome() {
+  const workingAvatars = Object.entries(STATE.avatars).filter(([,a])=>a.status==='working');
+  const idleAvatars = Object.entries(STATE.avatars).filter(([,a])=>a.status==='idle');
+  const recentResults = STATE.results.filter(r=>r.type==='done').slice(0,2);
+  return `
+  <div class="gradient-header">
+    <div class="header-row"><div><h1>🏠 首页</h1><p>分身替你干活，轻松又高效</p></div>
+      <div class="header-actions">
+        <button class="header-btn" onclick="openSub('notify')">🔔${STATE.notifications.filter(n=>!n.read).length>0?'<span style="position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;background:#ef4444"></span>':''}</button>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-val">${Object.keys(STATE.avatars).length}</div><div class="stat-label">分身</div></div>
+      <div class="stat-card"><div class="stat-val">${workingAvatars.length}</div><div class="stat-label">工作中</div></div>
+      <div class="stat-card"><div class="stat-val">¥${STATE.user.totalEarn.toFixed(0)}</div><div class="stat-label">总收益</div></div>
+      <div class="stat-card"><div class="stat-val">${STATE.results.filter(r=>r.type==='done').length}</div><div class="stat-label">成果</div></div>
+    </div>
+    <div class="quick-grid">
+      <div class="quick-item" onclick="openSub('chat-pick')"><div class="icon">💬</div><div class="text">对话干活</div></div>
+      <div class="quick-item" onclick="switchTab('orders')"><div class="icon">📋</div><div class="text">接单赚钱</div></div>
+      <div class="quick-item" onclick="switchTab('plaza')"><div class="icon">🔥</div><div class="text">发现分身</div></div>
+      <div class="quick-item" onclick="openSub('create')"><div class="icon">➕</div><div class="text">创建分身</div></div>
+    </div>
+  </div>
+  <div class="section" style="margin-top:16px">
+    <div class="section-head"><div class="section-title">⚡ 分身干活</div><div class="section-more" onclick="switchTab('avatars')">全部 →</div></div>
+    ${workingAvatars.length>0 ? workingAvatars.map(([id,a])=>`
+    <div class="avatar-card" onclick="openSub('chat-work',{id:${id}})">
+      <div class="avatar-top">
+        <img src="${a.photo}" class="avatar-photo ring-purple" />
+        <div class="avatar-info">
+          <div class="avatar-name">${a.name} <span class="lv ${lvClass(a.lv)}">Lv.${a.lv}</span></div>
+          <div class="avatar-meta"><span class="avatar-status st-work">⚡工作中</span><span>今日¥${a.weekEarning>0?(a.weekEarning/7).toFixed(1):'0'}</span></div>
+          <div class="avatar-skills">${a.skills.slice(0,3).map(s=>'<span class="skill-tag mastered">'+s+'</span>').join('')}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0"><div style="font-size:16px;font-weight:700;color:#6d28d9">¥${a.earning}</div><div style="font-size:10px;color:#94a3b8">今日收益</div></div>
+      </div>
+    </div>`).join('') : ''}
+    ${idleAvatars.length>0 ? idleAvatars.map(([id,a])=>`
+    <div class="avatar-card" onclick="openSub('chat-work',{id:${id}})">
+      <div class="avatar-top">
+        <img src="${a.photo}" class="avatar-photo" />
+        <div class="avatar-info">
+          <div class="avatar-name">${a.name} <span class="lv ${lvClass(a.lv)}">Lv.${a.lv}</span></div>
+          <div class="avatar-meta"><span class="avatar-status st-idle">✅空闲</span><span>等活中</span></div>
+          <div class="avatar-skills">${a.skills.slice(0,3).map(s=>'<span class="skill-tag mastered">'+s+'</span>').join('')}</div>
+        </div>
+        <div style="font-size:12px;color:#22c55a;font-weight:500">去干活 →</div>
+      </div>
+    </div>`).join('') : ''}
+    ${Object.keys(STATE.avatars).length===0?`<div class="empty-state"><div class="icon">👤</div><div class="title">还没有分身</div><div class="desc">创建一个分身，让它替你干活吧</div><button class="act-btn act-primary" style="margin-top:12px;padding:10px 24px;display:inline-block" onclick="openSub('create')">创建分身</button></div>`:''}
+  </div>
+  <div class="talk-bar" onclick="openSub('chat-pick')">
+    <div style="font-size:13px;color:#6d28d9;font-weight:600;margin-bottom:6px">💬 让分身帮你干活</div>
+    <div class="talk-input-row">
+      <input class="talk-input" placeholder="告诉分身你需要什么..." readonly style="cursor:pointer" />
+      <button class="talk-send">➤</button>
+    </div>
+    <div class="quick-tags">
+      <span class="quick-tag" onclick="event.stopPropagation();openSub('chat-pick',{task:'写一篇小红书种草文'})">写种草文</span>
+      <span class="quick-tag" onclick="event.stopPropagation();openSub('chat-pick',{task:'帮我做个图文笔记'})">做图文</span>
+      <span class="quick-tag" onclick="event.stopPropagation();openSub('chat-pick',{task:'写个短视频脚本'})">视频脚本</span>
+      <span class="quick-tag" onclick="event.stopPropagation();openSub('chat-pick',{task:'帮我分析竞品'})">竞品分析</span>
+      <span class="quick-tag" onclick="event.stopPropagation();openSub('chat-pick',{task:'制定穿搭方案'})">穿搭方案</span>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-head"><div class="section-title">📋 近期成果</div><div class="section-more" onclick="openSub('my-results')">全部 →</div></div>
+    ${recentResults.length>0 ? recentResults.map(r=>`
+    <div class="result-card" onclick="openSub('result-detail',{id:${r.id}})">
+      <span class="result-type rt-done">${r.label}</span>
+      <div style="font-size:14px;font-weight:600;margin-bottom:2px">${r.title}</div>
+      <div style="font-size:12px;color:#94a3b8">${r.avatar} · ${r.time}</div>
+    </div>`).join('') : '<div class="empty-state"><div class="icon">📋</div><div class="title">暂无成果</div><div class="desc">让分身去干活吧</div></div>'}
+  </div>`;
+}
+
+// ============== 分身页 ==============
+function renderAvatars() {
+  const totalEarning = Object.values(STATE.avatars).reduce((s,a)=>s+a.weekEarning,0);
+  return `
+  <div class="gradient-header">
+    <div class="header-row"><div><h1>👤 我的分身</h1><p>培养分身，让它越来越强</p></div>
+      <div class="header-actions"><button class="header-btn" onclick="openSub('notify')">🔔</button></div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-val">${Object.keys(STATE.avatars).length}</div><div class="stat-label">分身总数</div></div>
+      <div class="stat-card"><div class="stat-val">¥${totalEarning.toFixed(0)}</div><div class="stat-label">本周收益</div></div>
+    </div>
+  </div>
+  <div style="padding:0 16px;margin-top:16px">
+    <div class="checkin-card">
+      <div class="checkin-info">
+        <h3>${STATE.checkedIn?'✅ 已签到':'🎯 每日签到'}</h3>
+        <p>连续签到${STATE.checkinDays}天，今日+50经验</p>
+        <div class="checkin-days">
+          ${['一','二','三','四','五','六','日'].map((d,i)=>
+            `<div class="checkin-day ${i<STATE.checkinDays?'done':i===STATE.checkinDays?(STATE.checkedIn?'done':'current'):'future'}">${d}</div>`
+          ).join('')}
+        </div>
+      </div>
+      <button class="checkin-btn ${STATE.checkedIn?'done':'available'}" onclick="doCheckin()">${STATE.checkedIn?'已签到':'签到'}</button>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-head"><div class="section-title">我的分身</div><button class="act-btn act-primary" style="padding:6px 14px;font-size:12px;flex:none" onclick="openSub('create')">+ 创建分身</button></div>
+    ${Object.entries(STATE.avatars).map(([id,a])=>`
+    <div class="avatar-big" onclick="openSub('avatar-detail',{id:${id}})">
+      <div class="avatar-cover">
+        <img class="cov" src="${a.cover}" />
+        <div class="avatar-cover-overlay"></div>
+        <button class="avatar-cover-edit" onclick="event.stopPropagation();closeSub();openSub('edit-avatar',{id:${id}})">✏️</button>
+        <div class="avatar-cover-photo"><img src="${a.photo}" class="${a.lv>=5?'ring-gold':a.lv>=3?'ring-purple':''}" style="width:56px;height:56px;border-radius:50%;border:3px solid #fff;object-fit:cover;box-shadow:0 2px 8px rgba(0,0,0,.2)" /></div>
+        <div class="avatar-cover-info"><div class="avatar-cover-name">${a.name}</div><div class="avatar-cover-meta"><span class="avatar-status ${statusClass(a.status)}">${statusText(a.status)}</span></div></div>
+      </div>
+      <div class="avatar-big-body">
+        <div class="avatar-big-stats">
+          <div class="avatar-big-stat"><div class="val">¥${a.totalEarning}</div><div class="label">总收益</div></div>
+          <div class="avatar-big-stat"><div class="val">${a.orders}</div><div class="label">完成</div></div>
+          <div class="avatar-big-stat"><div class="val">⭐${a.stars}</div><div class="label">评分</div></div>
+          <div class="avatar-big-stat"><div class="val">${a.skills.length}</div><div class="label">技能</div></div>
+        </div>
+        <div style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span>Lv.${a.lv} ${LEVEL_RIGHTS[a.lv].name}</span><span>${a.xp}/${a.xpMax}XP</span></div>
+          <div class="progress-bar"><div class="progress-fill pf-purple" style="width:${a.xp/a.xpMax*100}%"></div></div>
+        </div>
+        <div class="avatar-skills">${a.skills.map(s=>'<span class="skill-tag mastered">'+s+'</span>').join('')}${a.learning.map(s=>'<span class="skill-tag learning">'+s+' 📖</span>').join('')}</div>
+        <div class="avatar-acts">
+          <button class="act-btn act-primary" onclick="event.stopPropagation();openSub('chat-work',{id:${id}})">💬 对话</button>
+          <button class="act-btn act-secondary" onclick="event.stopPropagation();openSub('teach',{id:${id}})">📚 教学</button>
+          ${a.hangPlaza?`<button class="act-btn act-success" onclick="event.stopPropagation();showToast('已在广场')">📢 挂单中</button>`:''}
+        </div>
+      </div>
+    </div>`).join('')}
+  </div>
+  <div class="section">
+    <div class="section-head"><div class="section-title">📖 养分身攻略</div></div>
+    <div class="card" style="cursor:pointer" onclick="openSub('help',{section:'guide'})">
+      <div style="display:flex;gap:10px;align-items:center">
+        <div style="font-size:28px">🎯</div>
+        <div><div style="font-weight:600;font-size:14px">新手必读：如何养好你的分身</div><div style="font-size:12px;color:#64748b;margin-top:2px">从创建到赚钱的完整指南</div></div>
+      </div>
+    </div>
+    <div class="card" style="cursor:pointer" onclick="openSub('help',{section:'skill'})">
+      <div style="display:flex;gap:10px;align-items:center">
+        <div style="font-size:28px">⚡</div>
+        <div><div style="font-weight:600;font-size:14px">技能教学指南</div><div style="font-size:12px;color:#64748b;margin-top:2px">对话教学+喂资料+技能学习全攻略</div></div>
+      </div>
+    </div>
+    <div class="card" style="cursor:pointer" onclick="openSub('help',{section:'earn'})">
+      <div style="display:flex;gap:10px;align-items:center">
+        <div style="font-size:28px">💰</div>
+        <div><div style="font-weight:600;font-size:14px">赚钱攻略</div><div style="font-size:12px;color:#64748b;margin-top:2px">接单+挂广场+技能市场3种赚钱方式</div></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ============== 接单页 ==============
+function renderOrders() {
+  const filteredOrders = STATE.orderFilter === 'all' ? STATE.orders :
+    Object.fromEntries(Object.entries(STATE.orders).filter(([,o])=>o.type===STATE.orderFilter));
+  const totalEarning = Object.values(filteredOrders).reduce((s,o)=>s+calcAvatarEarning(o.contentType,o.avatars,o.materials,o.exclusive,o.aiSupplement,null),0);
+  return `
+  <div class="gradient-header">
+    <div class="header-row"><div><h1>📋 接单广场</h1><p>用分身帮你赚钱</p></div>
+      <div class="header-actions"><button class="header-btn" onclick="openSub('notify')">🔔</button></div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-val">${Object.keys(filteredOrders).length}</div><div class="stat-label">可接订单</div></div>
+      <div class="stat-card"><div class="stat-val">¥${totalEarning.toFixed(2)}</div><div class="stat-label">可赚</div></div>
+    </div>
+  </div>
+  <div class="search-bar">
+    <span class="search-ico">🔍</span>
+    <input class="search-input" placeholder="搜索订单..." oninput="STATE.orderSearch=this.value;renderPage('orders')" />
+  </div>
+  <div class="filter-row">
+    ${[{key:'all',label:'全部'},{key:'urgent',label:'🔥 急单'},{key:'new',label:'🆕 新单'},{key:'normal',label:'✅ 常规'}].map(f=>
+      `<span class="filter-chip ${STATE.orderFilter===f.key?'active':''}" onclick="STATE.orderFilter='${f.key}';renderPage('orders')">${f.label}</span>`
+    ).join('')}
+  </div>
+  <div class="section">
+    ${Object.keys(filteredOrders).length>0 ? Object.entries(filteredOrders).map(([id,o])=>{
+      const cov = calcCoverage(o.contentType, o.materials);
+      const priceInfo = calcPrice(o.contentType, o.avatars, o.materials, o.exclusive, o.aiSupplement, null);
+      const earning = calcAvatarEarning(o.contentType, o.avatars, o.materials, o.exclusive, o.aiSupplement, null);
+      return `
+    <div class="card" onclick="openSub('order-detail',{id:${id}})">
+      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">
+        <span class="order-type ot-${o.type}">${o.label}</span>
+        ${o.type==='urgent'?`<div class="countdown">⏰ ${formatTime(o.timeLeft)}</div>`:''}
+      </div>
+      <div class="order-title">${o.title}</div>
+      <div class="order-desc">${o.desc}</div>
+      <div class="order-tags">
+        <span class="order-tag">${o.contentType}</span>
+        <span class="order-tag">${o.exclusive?'🔒独享':'🔓共享'}</span>
+        <span class="order-tag">AI${o.aiSupplement?'✅补足':'❌不补'}</span>
+        <span class="order-tag">素材${cov}%</span>
+        <span class="order-tag">⏰${o.deadline}</span>
+      </div>
+      <div class="coverage-bar"><div class="coverage-filled" style="width:${cov}%"></div><div class="coverage-empty"></div></div>
+      <div class="order-footer">
+        <div class="order-price">¥${priceInfo.total.toFixed(2)}</div>
+        <div class="order-earning">你能赚 ¥${earning.toFixed(2)}/分身</div>
+      </div>
+    </div>`;
+    }).join('') : '<div class="empty-state"><div class="icon">📋</div><div class="title">暂无可接订单</div><div class="desc">稍后再来看看</div></div>'}
+  </div>`;
+}
+
+// ============== 广场页 ==============
+function renderPlaza() {
+  const pa = STATE.plazaAvatars;
+  const filtered = STATE.plazaFilter==='推荐' ? pa :
+    Object.fromEntries(Object.entries(pa).filter(([,v])=>v.domains.some(d=>STATE.plazaFilter.includes(d)||d===STATE.plazaFilter.replace(/[💄👗🏋🍳🏠✈️]/g,''))));
+  const searchFiltered = STATE.plazaSearch ?
+    Object.fromEntries(Object.entries(filtered).filter(([,v])=>v.name.includes(STATE.plazaSearch)||v.skills.some(s=>s.includes(STATE.plazaSearch))||v.style.includes(STATE.plazaSearch))) : filtered;
+  return `
+  <div class="gradient-header">
+    <div class="header-row"><div><h1>🔥 分身广场</h1><p>发现好分身，雇佣来干活</p></div>
+      <div class="header-actions">
+        <button class="header-btn" onclick="openSub('my-plaza')" style="font-size:12px;width:auto;padding:0 10px;border-radius:12px">📢 我的挂单</button>
+      </div>
+    </div>
+  </div>
+  <div class="search-bar">
+    <span class="search-ico">🔍</span>
+    <input class="search-input" placeholder="搜索分身、技能、风格..." value="${STATE.plazaSearch}" oninput="STATE.plazaSearch=this.value;renderPage('plaza')" />
+  </div>
+  <div class="filter-row">
+    ${['推荐','💄美妆','👗穿搭','🏋️健身','🍳美食','🏠家装','✈️旅行'].map((f,i)=>
+      `<span class="filter-chip ${STATE.plazaFilter===f?'active':''}" onclick="STATE.plazaFilter='${f}';renderPage('plaza')">${f}</span>`
+    ).join('')}
+  </div>
+  <div class="section">
+    <div class="section-head"><div class="section-title">🌟 热门推荐</div></div>
+    <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch">
+    ${Object.entries(pa).slice(0,3).map(([id,v])=>`
+      <div style="min-width:150px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.06);cursor:pointer;flex-shrink:0" onclick="openSub('plaza-detail',{id:${id}})">
+        <img src="${v.cover}" style="width:100%;height:80px;object-fit:cover" />
+        <div style="padding:10px">
+          <div style="display:flex;align-items:center;gap:6px"><img src="${v.photo}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:1.5px solid #e9e5ff" /><div><div style="font-size:13px;font-weight:600">${v.name} <span class="lv ${lvClass(v.lv)}">Lv.${v.lv}</span></div><div style="font-size:10px;color:#94a3b8">⭐${v.stars} · ${v.orders}单</div></div></div>
+          <div style="margin-top:6px;font-weight:700;color:#6d28d9">¥${v.price}/次</div>
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-head"><div class="section-title">📋 发现分身</div><div style="font-size:12px;color:#94a3b8">共${Object.keys(searchFiltered).length}个</div></div>
+    <div class="grid-2">
+    ${Object.entries(searchFiltered).map(([id,v])=>`
+      <div class="plaza-grid-item" onclick="openSub('plaza-detail',{id:${id}})">
+        <img class="plaza-grid-photo" src="${v.photo}" />
+        <div class="plaza-grid-body">
+          <div class="plaza-grid-name">${v.name} <span class="lv ${lvClass(v.lv)}">Lv.${v.lv}</span></div>
+          <div class="plaza-grid-meta">⭐${v.stars} · ${v.orders}单 · ❤️${v.follows}</div>
+          <div class="plaza-grid-skills">${v.skills.slice(0,2).map(s=>'<span class="plaza-grid-skill">'+s+'</span>').join('')}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+            <div class="plaza-grid-price">¥${v.price}/次</div>
+            <button class="plaza-grid-hire" onclick="event.stopPropagation();hireAvatar(${id})">雇佣</button>
+          </div>
+        </div>
+      </div>`).join('')}
+    </div>
+    ${Object.keys(searchFiltered).length===0?'<div class="empty-state"><div class="icon">🔍</div><div class="title">没有找到匹配的分身</div><div class="desc">换个关键词试试</div></div>':''}
+  </div>`;
+}
+
+// ============== 我的页 ==============
+function renderProfile() {
+  return `
+  <div class="profile-header">
+    <img class="profile-avatar" src="${STATE.user.avatar}" />
+    <div class="profile-name">${STATE.user.name}</div>
+    <div class="profile-id">@${STATE.user.id}</div>
+    <div class="profile-stats">
+      <div class="profile-stat"><div class="val">¥${STATE.user.balance.toFixed(0)}</div><div class="label">余额</div></div>
+      <div class="profile-stat"><div class="val">${STATE.user.avatarCount}</div><div class="label">分身</div></div>
+      <div class="profile-stat"><div class="val">${STATE.user.orderCount}</div><div class="label">订单</div></div>
+      <div class="profile-stat"><div class="val">${STATE.user.skillCount}</div><div class="label">技能</div></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="menu-list">
+      <div class="menu-item" onclick="openSub('earn')"><div class="menu-icon" style="background:#dcfce7">💰</div><div class="menu-text">收益中心</div><div class="menu-badge" style="background:#dcfce7;color:#16a34a;font-weight:600">¥${STATE.user.totalEarn.toFixed(0)}</div><div class="menu-arrow">›</div></div>
+      <div class="menu-item" onclick="switchTab('avatars')"><div class="menu-icon" style="background:#ede9fe">👤</div><div class="menu-text">我的分身</div><div class="menu-badge" style="background:#ede9fe;color:#7c3aed;font-weight:600">${Object.keys(STATE.avatars).length}</div><div class="menu-arrow">›</div></div>
+      <div class="menu-item" onclick="openSub('my-results')"><div class="menu-icon" style="background:#dbeafe">📋</div><div class="menu-text">我的成果</div><div class="menu-arrow">›</div></div>
+      <div class="menu-item" onclick="openSub('skill-market')"><div class="menu-icon" style="background:#fef3c7">📚</div><div class="menu-text">技能市场</div><div class="menu-arrow">›</div></div>
+      <div class="menu-item" onclick="openSub('privileges')"><div class="menu-icon" style="background:#fce7f3">👑</div><div class="menu-text">权益等级</div><div class="menu-arrow">›</div></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="menu-list">
+      <div class="menu-item" onclick="openSub('settings')"><div class="menu-icon" style="background:#f1f5f9">⚙️</div><div class="menu-text">设置</div><div class="menu-arrow">›</div></div>
+      <div class="menu-item" onclick="openSub('help')"><div class="menu-icon" style="background:#eff6ff">❓</div><div class="menu-text">帮助中心</div><div class="menu-arrow">›</div></div>
+    </div>
+  </div>`;
+}
+
+// ============== 子页面 ==============
+function openSub(name, data) {
+  const el = document.getElementById('sub-dynamic');
+  el.className = 'subpage'; el.style.display = 'block';
+  renderSubContent(el, name, data);
+  el.scrollTop = 0;
+}
+function closeSub() {
+  const el = document.getElementById('sub-dynamic');
+  el.classList.add('closing');
+  setTimeout(()=>{ el.style.display='none'; el.className='subpage'; }, 200);
+}
+function renderSubContent(el, name, data) {
+  switch(name) {
+    case 'notify': renderNotify(el); break;
+    case 'chat-pick': renderChatPick(el, data); break;
+    case 'chat-work': renderChatWork(el, data); break;
+    case 'avatar-detail': renderAvatarDetail(el, data); break;
+    case 'edit-avatar': renderEditAvatar(el, data); break;
+    case 'plaza-detail': renderPlazaDetail(el, data); break;
+    case 'teach': renderTeach(el, data); break;
+    case 'create': renderCreate(el); break;
+    case 'earn': renderEarn(el); break;
+    case 'withdraw': renderWithdraw(el); break;
+    case 'order-detail': renderOrderDetail(el, data); break;
+    case 'my-results': renderMyResults(el); break;
+    case 'result-detail': renderResultDetail(el, data); break;
+    case 'my-plaza': renderMyPlaza(el); break;
+    case 'hired-chat': renderHiredChat(el, data); break;
+    case 'skill-market': renderSkillMarket(el); break;
+    case 'privileges': renderPrivileges(el); break;
+    case 'settings': renderSettings(el); break;
+    case 'help': renderHelp(el, data); break;
+    default: el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">${name}</div><div></div></div><div class="sub-body"><p>页面开发中</p></div>`;
+  }
+}
+
+// ---- 消息中心 ----
+function renderNotify(el) {
+  const filtered = STATE.notifyFilter==='all' ? STATE.notifications : STATE.notifications.filter(n=>n.type===STATE.notifyFilter);
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">消息中心</div><button class="sub-header-btn" style="background:#f3f0ff;color:#6d28d9" onclick="markAllRead()">全部已读</button></div>
+  <div class="filter-row" style="margin-top:8px">
+    ${[{k:'all',l:'全部'},{k:'earn',l:'💰收益'},{k:'order',l:'📋订单'},{k:'skill',l:'📚技能'},{k:'plaza',l:'📢广场'},{k:'review',l:'⭐评价'}].map(f=>
+      `<span class="filter-chip ${STATE.notifyFilter===f.k?'active':''}" onclick="STATE.notifyFilter='${f.k}';renderNotify(document.getElementById('sub-dynamic'))">${f.l}</span>`
+    ).join('')}
+  </div>
+  <div class="sub-body">
+  ${filtered.length>0 ? filtered.map((n,i)=>{
+    const idx = STATE.notifications.indexOf(n);
+    return `<div class="notify-item" onclick="readNotify(${idx})"><div class="notify-icon" style="background:${n.bg}">${n.icon}</div><div class="notify-content"><div class="notify-title">${n.title}</div><div class="notify-desc">${n.desc}</div><div class="notify-time">${n.time}</div></div><div class="notify-dot ${n.read?'read':''}"></div></div>`;
+  }).join('') : '<div class="empty-state"><div class="icon">📭</div><div class="title">暂无消息</div></div>'}
+  </div>`;
+}
+function markAllRead(){STATE.notifications.forEach(n=>n.read=true);renderNotify(document.getElementById('sub-dynamic'));showToast('已全部已读')}
+function readNotify(i){STATE.notifications[i].read=true;renderNotify(document.getElementById('sub-dynamic'))}
+
+// ---- 选择分身 ----
+function renderChatPick(el, data) {
+  const task = data?.task||'';
+  const available = Object.entries(STATE.avatars).filter(([,a])=>a.status!=='off');
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">选择分身</div><div></div></div><div class="sub-body">
+  ${task?`<div style="background:#f3f0ff;border-radius:12px;padding:12px;margin-bottom:16px;font-size:13px;color:#6d28d9">🎯 任务：${task}</div>`:''}
+  ${available.length>0 ? available.map(([id,a])=>`
+  <div class="avatar-card" onclick="closeSub();openSub('chat-work',{id:${id},task:'${task}'})" style="margin-bottom:10px;cursor:pointer">
+    <div class="avatar-top">
+      <img src="${a.photo}" class="avatar-photo ${a.lv>=5?'ring-gold':a.lv>=3?'ring-purple':''}" />
+      <div class="avatar-info">
+        <div class="avatar-name">${a.name} <span class="lv ${lvClass(a.lv)}">Lv.${a.lv}</span></div>
+        <div class="avatar-meta"><span class="avatar-status ${statusClass(a.status)}">${statusText(a.status)}</span><span>${a.skills.length}技能</span></div>
+        <div class="avatar-skills">${a.skills.map(s=>'<span class="skill-tag mastered">'+s+'</span>').join('')}</div>
+      </div>
+    </div>
+  </div>`).join('') : '<div class="empty-state"><div class="icon">👤</div><div class="title">没有可用分身</div><div class="desc">先创建一个分身吧</div></div>'}
+  <div style="text-align:center;padding:20px"><button class="act-btn act-secondary" style="display:inline-block;padding:10px 24px" onclick="closeSub();switchTab('plaza')">去广场雇一个 →</button></div>
+  </div>`;
+}
+
+// ---- 对话干活 ----
+function renderChatWork(el, data) {
+  const id = data?.id || 1;
+  const a = STATE.avatars[id]; if(!a) return;
+  const task = data?.task||'';
+  const chatKey = 'avatar_'+id;
+  if(!STATE.teachData.chatHistory[chatKey]) STATE.teachData.chatHistory[chatKey] = [];
+  const history = STATE.teachData.chatHistory[chatKey];
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">💬 和${a.name}对话</div>
+    <button class="sub-header-btn" style="background:#f3f0ff;color:#6d28d9" onclick="openSub('avatar-detail',{id:${id}})">详情</button></div>
+  <div style="padding:12px 16px;display:flex;align-items:center;gap:10px;background:#fff;border-bottom:1px solid #f1f5f9">
+    <img src="${a.photo}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid #e9e5ff" />
+    <div><div style="font-weight:600;font-size:14px">${a.name} <span class="lv ${lvClass(a.lv)}" style="font-size:10px">Lv.${a.lv}</span></div><div style="font-size:11px;color:#94a3b8">${statusText(a.status)} · ${a.skills.join('·')}</div></div>
+  </div>
+  <div class="chat-messages" id="chatMsgs" style="min-height:300px;max-height:calc(100vh - 240px);overflow-y:auto">
+    <div class="chat-msg system">👋 ${a.name}已就位，告诉我你需要什么</div>
+    ${task?`<div class="chat-msg user">${task}</div><div class="chat-msg bot">好的，我来帮你${task}！让我分析一下需求...</div>`:''}
+    ${history.map(m=>`<div class="chat-msg ${m.role}">${m.text}</div>`).join('')}
+  </div>
+  <div style="position:sticky;bottom:0;background:#fff;padding:12px 16px;border-top:1px solid #f1f5f9">
+    <div class="talk-input-row">
+      <input class="talk-input" id="chatInput" placeholder="对${a.name}说..." onkeydown="if(event.key==='Enter')sendChat(${id},'work')" />
+      <button class="talk-send" onclick="sendChat(${id},'work')">➤</button>
+    </div>
+    <div class="quick-tags" style="margin-top:8px">
+      <span class="quick-tag" onclick="fillChat(${id},'work','写一篇小红书种草文')">写种草文</span>
+      <span class="quick-tag" onclick="fillChat(${id},'work','帮我做个图文笔记')">做图文</span>
+      <span class="quick-tag" onclick="fillChat(${id},'work','写个短视频脚本')">视频脚本</span>
+      <span class="quick-tag" onclick="fillChat(${id},'work','帮我分析竞品')">竞品分析</span>
+      <span class="quick-tag" onclick="fillChat(${id},'work','制定穿搭方案')">穿搭方案</span>
+    </div>
+  </div>`;
+}
+const CHAT_REPLIES = {
+  '种草文':['好的，帮你写种草文！先确认下品牌和产品...','收到！我来分析竞品的种草文风格...','种草文框架已搭好，正在填充内容...','✅ 种草文已完成！包含标题、正文和话题标签，请查看'],
+  '图文':['图文笔记开始制作！先选配图风格...','文案部分已完成，正在匹配图片...','✅ 图文笔记生成完毕！'],
+  '脚本':['短视频脚本开始创作！确认下时长要求...','分镜已设计完成，正在写口播词...','✅ 脚本生成好了，包含分镜和口播词！'],
+  '分析':['竞品分析开始！我先收集数据...','已分析3个竞品，整理出差异点...','✅ 竞品分析报告生成完毕！'],
+  '穿搭':['穿搭方案制定中！先了解下你的风格偏好...','已选出3套方案，正在匹配单品链接...','✅ 穿搭方案已准备好！'],
+  'default':['收到！我来帮你处理...','正在思考最佳方案...','已完成初步方案，请查看！','好的，让我来搞定这件事！']
+};
+function sendChat(avatarId, mode) {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim(); if(!msg) return;
+  input.value = '';
+  const msgs = document.getElementById('chatMsgs');
+  msgs.innerHTML += `<div class="chat-msg user">${msg}</div>`;
+  const chatKey = mode==='work'?'avatar_'+avatarId:'hired_'+avatarId;
+  if(!STATE.teachData.chatHistory[chatKey]) STATE.teachData.chatHistory[chatKey]=[];
+  STATE.teachData.chatHistory[chatKey].push({role:'user',text:msg});
+  // typing indicator
+  const typingId = 'typing_'+Date.now();
+  msgs.innerHTML += `<div class="chat-typing" id="${typingId}">正在输入...</div>`;
+  msgs.scrollTop = msgs.scrollHeight;
+  const key = Object.keys(CHAT_REPLIES).find(k=>msg.includes(k))||'default';
+  const replies = CHAT_REPLIES[key];
+  const reply = replies[Math.floor(Math.random()*replies.length)];
+  setTimeout(()=>{
+    const t = document.getElementById(typingId);
+    if(t) t.remove();
+    msgs.innerHTML += `<div class="chat-msg bot">${reply}</div>`;
+    STATE.teachData.chatHistory[chatKey].push({role:'bot',text:reply});
+    msgs.scrollTop = msgs.scrollHeight;
+  }, 800);
+}
+function fillChat(id, mode, text) {
+  const input = document.getElementById('chatInput');
+  if(input) { input.value = text; sendChat(id, mode); }
+}
+
+// ---- 分身详情 ----
+function renderAvatarDetail(el, data) {
+  const id = data?.id||1;
+  const a = STATE.avatars[id]; if(!a) return;
+  const rights = LEVEL_RIGHTS[a.lv];
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">${a.name}</div><button class="sub-header-btn" style="background:#f3f0ff;color:#6d28d9" onclick="closeSub();openSub('edit-avatar',{id:${id}})">✏️ 编辑</button></div>
+  <div style="position:relative">
+    <img src="${a.cover}" style="width:100%;height:140px;object-fit:cover" />
+    <div style="position:absolute;bottom:-28px;left:16px"><img src="${a.photo}" style="width:64px;height:64px;border-radius:50%;border:3px solid #fff;object-fit:cover;box-shadow:0 2px 8px rgba(0,0,0,.2)" /></div>
+  </div>
+  <div style="padding:40px 16px 16px">
+    <div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px;font-weight:700">${a.name}</span><span class="lv ${lvClass(a.lv)}" style="font-size:12px;padding:2px 10px">Lv.${a.lv} ${rights.name}</span></div>
+    <div style="font-size:13px;color:#64748b;margin-top:4px">${a.desc}</div>
+    <div style="font-size:12px;color:#94a3b8;margin-top:2px">风格：${a.style} · 领域：${a.domains.join('、')}</div>
+  </div>
+  <div class="tab-row" id="detailTabs">
+    <div class="tab-item active" onclick="switchDetailTab(0,${id})">📊 概览</div>
+    <div class="tab-item" onclick="switchDetailTab(1,${id})">🛡️ 权益</div>
+    <div class="tab-item" onclick="switchDetailTab(2,${id})">💰 收益</div>
+    <div class="tab-item" onclick="switchDetailTab(3,${id})">⭐ 评价</div>
+  </div>
+  <div id="detailTabContent">${renderDetailTabContent(0,id)}</div>`;
+}
+function switchDetailTab(idx,id) {
+  document.querySelectorAll('#detailTabs .tab-item').forEach((t,i)=>{t.classList.toggle('active',i===idx)});
+  document.getElementById('detailTabContent').innerHTML = renderDetailTabContent(idx,id);
+}
+function renderDetailTabContent(idx,id) {
+  const a = STATE.avatars[id];
+  if(idx===0) { // 概览
+    const abilityKeys = Object.keys(a.abilities);
+    const maxVal = 100;
+    return `<div class="sub-body">
+    <div class="avatar-big-stats" style="margin-bottom:16px">
+      <div class="avatar-big-stat"><div class="val">¥${a.totalEarning}</div><div class="label">总收益</div></div>
+      <div class="avatar-big-stat"><div class="val">${a.orders}</div><div class="label">完成</div></div>
+      <div class="avatar-big-stat"><div class="val">⭐${a.stars}</div><div class="label">评分</div></div>
+      <div class="avatar-big-stat"><div class="val">${a.skills.length}</div><div class="label">技能</div></div>
+    </div>
+    <div style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>Lv.${a.lv} ${LEVEL_RIGHTS[a.lv].name}</span><span>${a.xp}/${a.xpMax}XP</span></div>
+      <div class="progress-bar"><div class="progress-fill pf-purple" style="width:${a.xp/a.xpMax*100}%"></div></div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:4px">距离Lv.${a.lv+1}还需${a.xpMax-a.xp}XP</div>
+    </div>
+    <div class="section-title" style="margin-bottom:10px">📊 能力值</div>
+    ${abilityKeys.map(k=>`<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px"><span>${ABILITY_LABELS[k]||k}</span><span>${a.abilities[k]}%</span></div><div class="progress-bar"><div class="progress-fill pf-purple" style="width:${a.abilities[k]}%"></div></div></div>`).join('')}
+    <div style="margin-top:16px"><div class="section-title" style="margin-bottom:8px">🎒 技能列表</div>${a.skills.map(s=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f8fafc"><div><span style="font-size:13px;font-weight:500">${s}</span><span style="font-size:10px;color:#22c55a;margin-left:4px">✅ 已掌握</span></div><button class="act-btn act-secondary" style="padding:4px 10px;font-size:11px;flex:none" onclick="showToast('查看技能详情')">详情</button></div>`).join('')}
+    ${a.learning.length>0?`<div style="margin-top:8px">${a.learning.map(s=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f8fafc"><div><span style="font-size:13px;font-weight:500">${s}</span><span style="font-size:10px;color:#d97706;margin-left:4px">📖 学习中</span></div><button class="act-btn act-secondary" style="padding:4px 10px;font-size:11px;flex:none" onclick="closeSub();openSub('teach',{id:${id}})">继续学习</button></div>`).join('')}</div>`:''}</div>
+    <div style="margin-top:16px"><div class="section-title" style="margin-bottom:8px">📢 广场设置</div>
+      <div class="switch-row"><div><div class="switch-label">挂广场接单</div><div class="switch-desc">其他用户可以发现并雇佣你的分身</div></div><div class="sw ${a.hangPlaza?'on':''}" onclick="togglePlazaHang(${id})"><div class="knob"></div></div></div>
+      ${a.hangPlaza?`<div style="padding:12px 0"><div style="font-size:13px;margin-bottom:6px">出场费</div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px;font-weight:700;color:#6d28d9">¥${a.plazaPrice}</span><span style="font-size:12px;color:#94a3b8">/次</span><button class="act-btn act-secondary" style="padding:4px 12px;font-size:11px;flex:none" onclick="editPlazaPrice(${id})">修改</button></div></div>`:''}</div>
+    <div style="margin-top:16px;display:flex;gap:8px">
+      <button class="act-btn act-primary" style="padding:12px" onclick="closeSub();openSub('chat-work',{id:${id}})">💬 对话干活</button>
+      <button class="act-btn act-secondary" style="padding:12px" onclick="closeSub();openSub('teach',{id:${id}})">📚 教学</button>
+    </div></div>`;
+  }
+  if(idx===1) { // 权益
+    return `<div class="sub-body">
+    <div style="background:#f3f0ff;border-radius:12px;padding:14px;margin-bottom:16px"><div style="font-size:15px;font-weight:600;color:#5b21b6">当前等级：Lv.${a.lv} ${LEVEL_RIGHTS[a.lv].name}</div><div style="font-size:12px;color:#6d28d9;margin-top:4px">享有${LEVEL_RIGHTS[a.lv].perks.length}项权益</div></div>
+    <div class="section-title" style="margin-bottom:10px">当前权益</div>
+    ${LEVEL_RIGHTS[a.lv].perks.map(p=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f8fafc"><span style="color:#22c55a">✅</span><span style="font-size:13px">${p}</span></div>`).join('')}
+    ${LEVEL_RIGHTS[a.lv+1]?`<div style="margin-top:16px"><div class="section-title" style="margin-bottom:10px">下一等级：Lv.${a.lv+1} ${LEVEL_RIGHTS[a.lv+1].name}</div><div style="font-size:12px;color:#94a3b8;margin-bottom:8px">还需${a.xpMax-a.xp}XP升级</div>${LEVEL_RIGHTS[a.lv+1].perks.map(p=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f8fafc"><span style="color:#94a3b8">🔒</span><span style="font-size:13px;color:#94a3b8">${p}</span></div>`).join('')}</div>`:''}</div>`;
+  }
+  if(idx===2) { // 收益
+    return `<div class="sub-body">
+    <div style="display:flex;gap:10px;margin-bottom:16px">
+      <div style="flex:1;background:#f3f0ff;border-radius:12px;padding:14px;text-align:center"><div style="font-size:20px;font-weight:700;color:#5b21b6">¥${a.totalEarning}</div><div style="font-size:11px;color:#6d28d9">总收益</div></div>
+      <div style="flex:1;background:#dcfce7;border-radius:12px;padding:14px;text-align:center"><div style="font-size:20px;font-weight:700;color:#16a34a">¥${a.weekEarning}</div><div style="font-size:11px;color:#22c55e">本周</div></div>
+    </div>
+    <div class="section-title" style="margin-bottom:10px">📈 近7天收益</div>
+    <div class="earn-chart">${[12,28,15,42,35,8,a.weekEarning>0?a.weekEarning/7:0].map((v,i)=>`<div class="earn-bar" style="height:${Math.max(8,v/50*100)}%"><div class="earn-bar-val">¥${v.toFixed(0)}</div><div class="earn-bar-label">${['一','二','三','四','五','六','日'][i]}</div></div>`).join('')}</div>
+    <div style="margin-top:20px"><div class="section-title" style="margin-bottom:10px">📋 近期订单收益</div>
+    ${[{name:'小红书种草文',earning:5.00,time:'今天'},{name:'穿搭OOTD',earning:3.50,time:'昨天'},{name:'产品测评',earning:4.20,time:'3天前'}].map(o=>`<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f8fafc"><div><div style="font-size:13px;font-weight:500">${o.name}</div><div style="font-size:11px;color:#94a3b8">${o.time}</div></div><div style="font-size:14px;font-weight:600;color:#16a34a">+¥${o.earning.toFixed(2)}</div></div>`).join('')}</div></div>`;
+  }
+  if(idx===3) { // 评价
+    return `<div class="sub-body">
+    <div style="text-align:center;margin-bottom:16px"><div style="font-size:36px;font-weight:700">⭐${a.stars}</div><div style="font-size:12px;color:#94a3b8">${a.orders}条评价</div></div>
+    <div class="section-title" style="margin-bottom:10px">最新评价</div>
+    ${[{user:'小美',photo:PHOTO_POOL[2],stars:5,text:'种草文写得超好，互动率很高！',time:'2天前'},{user:'阿凯',photo:PHOTO_POOL[5],stars:4,text:'文案质量不错，下次还会雇',time:'5天前'},{user:'花花',photo:PHOTO_POOL[7],stars:5,text:'第三次雇佣了，每次都很满意',time:'1周前'},{user:'新客户',photo:PHOTO_POOL[4],stars:5,text:'朋友推荐的，确实专业！',time:'2周前'}].map(r=>`
+    <div class="review-item"><img class="review-avatar" src="${r.photo}" /><div class="review-content"><div class="review-name">${r.user} <span style="color:#f59e0b">${'⭐'.repeat(r.stars)}</span></div><div class="review-text">${r.text}</div><div class="review-meta">${r.time}</div></div></div>`).join('')}</div>`;
+  }
+  return '';
+}
+
+// ---- 编辑分身 ----
+function renderEditAvatar(el, data) {
+  const id = data?.id||1;
+  const a = STATE.avatars[id]; if(!a) return;
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">编辑分身</div><button class="sub-header-btn" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff" onclick="saveAvatar(${id})">保存</button></div>
+  <div class="sub-body">
+  <div style="display:flex;gap:16px;margin-bottom:20px;align-items:flex-end">
+    <div class="form-photo-upload" onclick="showToast('选择头像（模拟）')">${a.photo?`<img src="${a.photo}" />`:'<div class="ph">📷</div><div class="pt">换头像</div>'}</div>
+    <div class="form-cover-upload" onclick="showToast('选择封面（模拟）')">${a.cover?`<img src="${a.cover}" />`:'<div class="ph">🖼️</div><div class="pt">换封面</div>'}</div>
+  </div>
+  <div class="form-group"><label class="form-label">分身名称 <span class="req">*</span></label><input class="form-input" id="editName" value="${a.name}" placeholder="给你的分身起个名字" /></div>
+  <div class="form-group"><label class="form-label">简介</label><textarea class="form-textarea" id="editDesc" placeholder="描述你的分身擅长什么...">${a.desc}</textarea></div>
+  <div class="form-group"><label class="form-label">风格</label>
+    <div class="form-chips">${STYLES.map(s=>`<span class="form-chip ${a.style===s?'selected':''}" onclick="this.parentElement.querySelectorAll('.form-chip').forEach(c=>c.classList.remove('selected'));this.classList.add('selected')">${s}</span>`).join('')}</div>
+  </div>
+  <div class="form-group"><label class="form-label">领域 <span class="req">*</span></label>
+    <div class="form-chips">${DOMAINS.map(d=>`<span class="form-chip ${a.domains.includes(d)?'selected':''}" onclick="this.classList.toggle('selected')">${d}</span>`).join('')}</div>
+  </div>
+  <div class="form-group"><label class="form-label">输出格式偏好</label>
+    <div class="form-chips">${['小红书体','正式文案','轻松口语','专业报告','创意剧本'].map(f=>`<span class="form-chip" onclick="this.classList.toggle('selected')">${f}</span>`).join('')}</div>
+    <div class="form-hint">选择分身默认的输出风格</div>
+  </div>
+  <div class="form-group"><label class="form-label">出场费（挂广场时）</label>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:14px">¥</span><input class="form-input" id="editPrice" type="number" value="${a.plazaPrice}" style="width:80px" min="0" step="0.5" />
+      <span style="font-size:13px;color:#94a3b8">/次</span>
+    </div>
+    <div class="form-hint">建议范围：¥${PRICING[a.skills.length>0&&PRICING[a.skills[0]]?a.skills[0]:'图文笔记']?.minFee||1}~${PRICING[a.skills.length>0&&PRICING[a.skills[0]]?a.skills[0]:'图文笔记']?.maxFee||15}/次</div>
+  </div>
+  <div style="margin-top:24px;padding-top:16px;border-top:1px solid #f1f5f9">
+    <div class="del-confirm"><h4>⚠️ 危险操作</h4><p>删除分身后，所有关联数据和技能将无法恢复</p><button class="act-btn act-danger" style="margin-top:10px;padding:10px" onclick="deleteAvatar(${id})">删除分身</button></div>
+  </div></div>`;
+}
+
+// ---- 创建分身 ----
+function renderCreate(el) {
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">创建分身</div><button class="sub-header-btn" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff" onclick="createAvatar()">创建</button></div>
+  <div class="sub-body">
+  <div style="text-align:center;margin-bottom:20px"><div style="font-size:40px">🤖</div><div style="font-size:12px;color:#94a3b8;margin-top:4px">创建你的AI分身</div></div>
+  <div style="display:flex;gap:16px;margin-bottom:20px;align-items:flex-end">
+    <div class="form-photo-upload" onclick="showToast('选择头像（模拟）')"><div class="ph">📷</div><div class="pt">上传头像</div></div>
+    <div class="form-cover-upload" onclick="showToast('选择封面（模拟）')"><div class="ph">🖼️</div><div class="pt">上传封面</div></div>
+  </div>
+  <div class="form-group"><label class="form-label">分身名称 <span class="req">*</span></label><input class="form-input" id="createName" placeholder="给你的分身起个名字" /></div>
+  <div class="form-group"><label class="form-label">简介</label><textarea class="form-textarea" id="createDesc" placeholder="描述你的分身擅长什么..."></textarea></div>
+  <div class="form-group"><label class="form-label">风格 <span class="req">*</span></label>
+    <div class="form-chips">${STYLES.map(s=>`<span class="form-chip" onclick="this.parentElement.querySelectorAll('.form-chip').forEach(c=>c.classList.remove('selected'));this.classList.add('selected')">${s}</span>`).join('')}</div>
+  </div>
+  <div class="form-group"><label class="form-label">领域 <span class="req">*</span></label>
+    <div class="form-chips">${DOMAINS.map(d=>`<span class="form-chip" onclick="this.classList.toggle('selected')">${d}</span>`).join('')}</div>
+  </div>
+  <div class="form-group"><label class="form-label">初始技能选择（可选1个）</label>
+    <div class="form-chips">${Object.keys(SKILL_DETAILS).slice(0,8).map(s=>`<span class="form-chip" onclick="this.parentElement.querySelectorAll('.form-chip').forEach(c=>c.classList.remove('selected'));this.classList.add('selected')">${s}</span>`).join('')}</div>
+    <div class="form-hint">初始技能Lv.1，可通过教学提升</div>
+  </div></div>`;
+}
+
+// ---- 教学页 ----
+function renderTeach(el, data) {
+  const id = data?.id||1;
+  const a = STATE.avatars[id]; if(!a) return;
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">📚 教学 ${a.name}</div><div></div></div>
+  <div class="tab-row" id="teachTabs">
+    <div class="tab-item active" onclick="switchTeachTab(0,${id})">💬 对话教学</div>
+    <div class="tab-item" onclick="switchTeachTab(1,${id})">📁 喂资料</div>
+    <div class="tab-item" onclick="switchTeachTab(2,${id})">📖 技能学习</div>
+  </div>
+  <div id="teachTabContent">${renderTeachTabContent(0,id)}</div>`;
+}
+function switchTeachTab(idx,id) {
+  document.querySelectorAll('#teachTabs .tab-item').forEach((t,i)=>{t.classList.toggle('active',i===idx)});
+  document.getElementById('teachTabContent').innerHTML = renderTeachTabContent(idx,id);
+}
+function renderTeachTabContent(idx,id) {
+  const a = STATE.avatars[id];
+  if(idx===0) { // 对话教学
+    const chatKey = 'teach_'+id;
+    if(!STATE.teachData.chatHistory[chatKey]) STATE.teachData.chatHistory[chatKey]=[];
+    const history = STATE.teachData.chatHistory[chatKey];
+    return `<div class="sub-body" style="padding-bottom:0">
+    <div style="background:#fef3c7;border-radius:12px;padding:12px;margin-bottom:12px;font-size:12px;color:#92400e">💡 对话教学中，你可以纠正分身的回复、教它新的表达方式，它会在对话中逐渐学习</div>
+    <div class="chat-messages" id="teachMsgs" style="min-height:300px;max-height:calc(100vh - 300px);overflow-y:auto">
+      <div class="chat-msg system">📝 教学模式已开启，${a.name}会认真学习的</div>
+      ${history.map((m,mi)=>`<div class="chat-msg ${m.role}">${m.text}${m.role==='bot'?`<div style="margin-top:6px;display:flex;gap:6px"><button class="quick-tag" style="background:#dcfce7;color:#16a34a" onclick="correctTeach(${id},${mi},'好')">👍 好</button><button class="quick-tag" style="background:#fef2f2;color:#ef4444" onclick="correctTeach(${id},${mi},'不好')">👎 不好</button></div>`:''}`).join('')}
+    </div>
+    <div style="padding:12px 0;background:#fff;border-top:1px solid #f1f5f9">
+      <div class="talk-input-row"><input class="talk-input" id="teachInput" placeholder="教${a.name}说什么..." onkeydown="if(event.key==='Enter')sendTeachChat(${id})" /><button class="talk-send" onclick="sendTeachChat(${id})">➤</button></div>
+    </div></div>`;
+  }
+  if(idx===1) { // 喂资料
+    const matKey = 'mat_'+id;
+    if(!STATE.teachData.materials[matKey]) STATE.teachData.materials[matKey]=[];
+    const mats = STATE.teachData.materials[matKey];
+    return `<div class="sub-body">
+    <div style="background:#dbeafe;border-radius:12px;padding:12px;margin-bottom:16px;font-size:12px;color:#1e40af">📁 上传参考资料，帮助分身学习特定领域的知识和风格</div>
+    <div style="border:2px dashed #d4d4d8;border-radius:12px;padding:24px;text-align:center;margin-bottom:16px;cursor:pointer" onclick="addMaterial(${id})">
+      <div style="font-size:28px;margin-bottom:6px">📎</div>
+      <div style="font-size:13px;color:#64748b">点击上传资料</div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:4px">支持文本、图片、PDF、文档</div>
+    </div>
+    ${mats.length>0?`<div class="section-title" style="margin-bottom:10px">已上传资料 (${mats.length})</div>${mats.map((m,i)=>`<div class="card" style="display:flex;align-items:center;gap:10px"><div style="font-size:20px">${m.icon}</div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">${m.name}</div><div style="font-size:11px;color:#94a3b8">${m.status}</div></div><button style="border:none;background:none;font-size:12px;color:#ef4444;cursor:pointer" onclick="removeMaterial(${id},${i})">删除</button></div>`).join('')}`:'<div class="empty-state"><div class="icon">📁</div><div class="title">还没有上传资料</div><div class="desc">上传参考资料，帮助分身学习</div></div>'}
+    </div>`;
+  }
+  if(idx===2) { // 技能学习
+    const allSkills = Object.keys(SKILL_DETAILS);
+    const available = allSkills.filter(s=>!a.skills.includes(s)&&!a.learning.includes(s));
+    return `<div class="sub-body">
+    ${a.skills.length>0?`<div class="section-title" style="margin-bottom:10px">已掌握技能</div>${a.skills.map(s=>`<div class="card" style="display:flex;align-items:center;gap:10px"><div style="width:36px;height:36px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center">✅</div><div style="flex:1"><div style="font-size:13px;font-weight:600">${s}</div><div style="font-size:11px;color:#94a3b8">${SKILL_DETAILS[s]?.desc||''}</div></div></div>`).join('')}`:''}
+    ${a.learning.length>0?`<div style="margin-top:8px"><div class="section-title" style="margin-bottom:10px">学习中</div>${a.learning.map(s=>renderSkillPanel(s,id)).join('')}</div>`:''}
+    ${available.length>0?`<div style="margin-top:8px"><div class="section-title" style="margin-bottom:10px">可学习技能</div>${available.slice(0,6).map(s=>`<div class="card" style="display:flex;align-items:center;gap:10px"><div style="width:36px;height:36px;border-radius:50%;background:#f3f0ff;display:flex;align-items:center;justify-content:center">📖</div><div style="flex:1"><div style="font-size:13px;font-weight:600">${s}</div><div style="font-size:11px;color:#94a3b8">${SKILL_DETAILS[s]?.desc||''}</div></div><button class="act-btn act-secondary" style="padding:6px 12px;font-size:11px;flex:none" onclick="startLearn('${s}',${id})">学习</button></div>`).join('')}</div>`:''}
+    </div>`;
+  }
+  return '';
+}
+function renderSkillPanel(skillName, avatarId) {
+  const detail = SKILL_DETAILS[skillName];
+  if(!detail) return '';
+  const prog = STATE.teachData.skillProgress[avatarId+'_'+skillName] || {step:0,examDone:false};
+  return `<div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="font-size:14px;font-weight:600">${skillName}</div><span style="font-size:11px;color:#d97706">📖 学习中</span></div>
+    <div style="font-size:12px;color:#64748b;margin-bottom:10px">${detail.desc}</div>
+    <div style="margin-bottom:10px">
+      ${detail.steps.map((s,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;${i<detail.steps.length-1?'border-bottom:1px solid #f8fafc':''}">
+        <div style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;${i<prog.step?'background:#8b5cf6;color:#fff':i===prog.step?'background:#ede9fe;color:#6d28d9;border:1.5px solid #8b5cf6':'background:#f1f5f9;color:#94a3b8'}">${i<prog.step?'✓':i+1}</div>
+        <span style="font-size:12px;${i<prog.step?'text-decoration:line-through;color:#94a3b8':''}">${s}</span>
+        ${i===prog.step?`<button class="act-btn act-secondary" style="padding:3px 8px;font-size:10px;flex:none;margin-left:auto" onclick="completeLearnStep('${skillName}',${avatarId})">完成</button>`:''}
+      </div>`).join('')}
+    </div>
+    ${prog.step>=detail.steps.length&&!prog.examDone?`<button class="act-btn act-primary" style="padding:10px;width:100%" onclick="takeExam('${skillName}',${avatarId})">📝 参加考试</button>`:''}
+    ${prog.examDone?`<div style="text-align:center;padding:8px;background:#dcfce7;border-radius:8px;color:#16a34a;font-size:13px">🎉 考试通过，技能已掌握！</div>`:''}
+  </div>`;
+}
+
+// ---- 广场详情 ----
+function renderPlazaDetail(el, data) {
+  const id = data?.id||4;
+  const v = STATE.plazaAvatars[id] || STATE.avatars[id];
+  if(!v) return;
+  const reviews = v.reviews || [];
+  return `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">分身详情</div>
+    <button class="sub-header-btn" style="background:${v.followed?'#f1f5f9':'#f3f0ff'};color:${v.followed?'#94a3b8':'#6d28d9'}" onclick="toggleFollow(${id})">${v.followed?'❤️ 已关注':'+ 关注'}</button></div>
+  <div style="position:relative"><img src="${v.cover}" style="width:100%;height:160px;object-fit:cover" /><div style="position:absolute;bottom:-28px;left:16px"><img src="${v.photo}" style="width:64px;height:64px;border-radius:50%;border:3px solid #fff;object-fit:cover;box-shadow:0 2px 8px rgba(0,0,0,.2)" /></div></div>
+  <div style="padding:40px 16px 16px">
+    <div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px;font-weight:700">${v.name}</span><span class="lv ${lvClass(v.lv)}">Lv.${v.lv}</span></div>
+    <div style="font-size:13px;color:#64748b;margin-top:4px">${v.desc||''}</div>
+    <div style="font-size:12px;color:#94a3b8;margin-top:2px">风格：${v.style||''} · 领域：${(v.domains||[]).join('、')}</div>
+  </div>
+  <div style="display:flex;gap:0;padding:0 16px;margin-bottom:12px">
+    <div style="flex:1;text-align:center"><div style="font-size:18px;font-weight:700">⭐${v.stars}</div><div style="font-size:10px;color:#94a3b8">评分</div></div>
+    <div style="flex:1;text-align:center;border-left:1px solid #f1f5f9;border-right:1px solid #f1f5f9"><div style="font-size:18px;font-weight:700">${v.orders}</div><div style="font-size:10px;color:#94a3b8">完成</div></div>
+    <div style="flex:1;text-align:center"><div style="font-size:18px;font-weight:700">❤️${v.follows}</div><div style="font-size:10px;color:#94a3b8">关注</div></div>
+  </div>
+  <div style="padding:0 16px;margin-bottom:12px"><div style="font-size:13px;font-weight:600;margin-bottom:6px">技能</div><div class="avatar-skills">${(v.skills||[]).map(s=>'<span class="skill-tag mastered">'+s+'</span>').join('')}</div></div>
+  <div style="padding:0 16px;margin-bottom:12px">
+    <div style="background:#f3f0ff;border-radius:12px;padding:14px;display:flex;align-items:center;justify-content:space-between">
+      <div><div style="font-size:13px;color:#6d28d9">雇佣此分身</div><div style="font-size:11px;color:#94a3b8;margin-top:2px">按次付费，质量保障</div></div>
+      <div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px;font-weight:700;color:#6d28d9">¥${v.price}</span><span style="font-size:12px;color:#94a3b8">/次</span></div>
+    </div>
+    <button class="act-btn act-primary" style="padding:14px;margin-top:10px;font-size:15px;font-weight:600" onclick="hireAvatar(${id})">💬 立即雇佣</button>
+  </div>
+  ${reviews.length>0?`<div style="padding:0 16px"><div class="section-title" style="margin-bottom:10px">用户评价 (${reviews.length})</div>${reviews.map(r=>`<div class="review-item"><img class="review-avatar" src="${r.photo}" /><div class="review-content"><div class="review-name">${r.user} <span style="color:#f59e0b">${'⭐'.repeat(r.stars)}</span></div><div class="review-text">${r.text}</div><div class="review-meta">${r.time}</div></div></div>`).join('')}</div>`:''}`;
+}
+
+// ---- 收益中心 ----
+function renderEarn(el) {
+  const e = STATE.earnings;
+  return `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">💰 收益中心</div><button class="sub-header-btn" style="background:#dcfce7;color:#16a34a" onclick="openSub('withdraw')">提现</button></div>
+  <div class="sub-body">
+  <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:16px;padding:20px;color:#fff;margin-bottom:16px">
+    <div style="font-size:12px;opacity:.8">可提现余额</div>
+    <div style="font-size:32px;font-weight:700;margin-top:4px">¥${STATE.user.balance.toFixed(2)}</div>
+    <div style="display:flex;gap:16px;margin-top:12px"><div><div style="font-size:12px;opacity:.7">累计收益</div><div style="font-size:16px;font-weight:600">¥${STATE.user.totalEarn.toFixed(2)}</div></div><div><div style="font-size:12px;opacity:.7">本月</div><div style="font-size:16px;font-weight:600">¥${e.monthData[e.monthData.length-1].toFixed(2)}</div></div></div>
+  </div>
+  <div class="section-title" style="margin-bottom:10px">📈 近7天收益</div>
+  <div class="earn-chart" style="margin-bottom:24px">${e.week.map((v,i)=>`<div class="earn-bar" style="height:${Math.max(8,v/Math.max(...e.week)*100)}%"><div class="earn-bar-val">¥${v}</div><div class="earn-bar-label">${e.weekLabels[i]}</div></div>`).join('')}</div>
+  <div class="section-title" style="margin-bottom:10px">📊 月度趋势</div>
+  <div class="earn-chart" style="height:120px;margin-bottom:24px">${e.monthData.map((v,i)=>`<div class="earn-bar" style="height:${Math.max(8,v/Math.max(...e.monthData)*100)}%"><div class="earn-bar-val">¥${v}</div><div class="earn-bar-label">${e.monthLabels[i]}</div></div>`).join('')}</div>
+  <div class="section-title" style="margin-bottom:10px">💰 分身收益明细</div>
+  ${Object.entries(STATE.avatars).map(([id,a])=>`<div class="card" style="display:flex;align-items:center;gap:10px"><img src="${a.photo}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid #e9e5ff" /><div style="flex:1"><div style="font-size:13px;font-weight:600">${a.name}</div><div style="font-size:11px;color:#94a3b8">本周¥${a.weekEarning} · 总计¥${a.totalEarning}</div></div><div style="text-align:right"><div style="font-size:14px;font-weight:600;color:#16a34a">+¥${a.weekEarning.toFixed(2)}</div><div style="font-size:10px;color:#94a3b8">本周</div></div></div>`).join('')}
+  ${STATE.withdrawRecords.length>0?`<div style="margin-top:16px"><div class="section-title" style="margin-bottom:10px">📋 提现记录</div>${STATE.withdrawRecords.map(r=>`<div class="card" style="display:flex;align-items:center;justify-content:space-between"><div><div style="font-size:13px;font-weight:600">¥${r.amount.toFixed(2)}</div><div style="font-size:11px;color:#94a3b8">${r.method} · ${r.time}</div></div><div><div style="font-size:12px;color:${r.status==='已到账'?'#16a34a':'#d97706'};font-weight:500">${r.status}</div><div style="font-size:10px;color:#94a3b8">${r.arrival}</div></div></div>`).join('')}</div>`:''}</div>`;
+}
+
+// ---- 提现 ----
+function renderWithdraw(el) {
+  return `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">提现</div><div></div></div>
+  <div class="sub-body">
+  <div style="background:#f3f0ff;border-radius:12px;padding:14px;margin-bottom:16px;text-align:center"><div style="font-size:12px;color:#6d28d9">可提现余额</div><div style="font-size:28px;font-weight:700;color:#5b21b6">¥${STATE.user.balance.toFixed(2)}</div></div>
+  <div class="form-group"><label class="form-label">提现方式</label>
+    <div class="withdraw-method selected" onclick="this.parentElement.querySelectorAll('.withdraw-method').forEach(m=>m.classList.remove('selected'));this.classList.add('selected')"><div class="icon" style="background:#dcfce7">💚</div><div><div class="name">微信零钱</div><div class="desc">1-3个工作日到账</div></div></div>
+    <div class="withdraw-method" onclick="this.parentElement.querySelectorAll('.withdraw-method').forEach(m=>m.classList.remove('selected'));this.classList.add('selected')"><div class="icon" style="background:#dbeafe">💙</div><div><div class="name">支付宝</div><div class="desc">1-2个工作日到账</div></div></div>
+  </div>
+  <div class="form-group"><label class="form-label">提现金额</label><input class="form-input" type="number" placeholder="请输入提现金额" value="${STATE.user.balance.toFixed(2)}" /><div class="form-hint">最低提现10元，手续费0.6%</div></div>
+  <button class="act-btn act-primary" style="padding:14px;font-size:15px;font-weight:600;margin-top:8px" onclick="showToast('提现申请已提交')">确认提现</button>
+  ${STATE.withdrawRecords.length>0?`<div style="margin-top:20px"><div class="section-title" style="margin-bottom:10px">提现记录</div>${STATE.withdrawRecords.map(r=>`<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f8fafc"><div><div style="font-size:13px">¥${r.amount.toFixed(2)} · ${r.method}</div><div style="font-size:11px;color:#94a3b8">${r.time}</div></div><div style="font-size:12px;color:${r.status==='已到账'?'#16a34a':'#d97706'}">${r.status}</div></div>`).join('')}</div>`:''}</div>`;
+}
+
+// ---- 订单详情 ----
+function renderOrderDetail(el, data) {
+  const id = data?.id||1;
+  const o = STATE.orders[id]; if(!o) return;
+  const cov = calcCoverage(o.contentType, o.materials);
+  const priceInfo = calcPrice(o.contentType, o.avatars, o.materials, o.exclusive, o.aiSupplement, null);
+  const earning = calcAvatarEarning(o.contentType, o.avatars, o.materials, o.exclusive, o.aiSupplement, null);
+  return `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">订单详情</div><div></div></div>
+  <div class="sub-body">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+    <span class="order-type ot-${o.type}">${o.label}</span>
+    ${o.type==='urgent'?`<div class="countdown">⏰ ${formatTime(o.timeLeft)}</div>`:''}
+  </div>
+  <div style="font-size:18px;font-weight:700;margin-bottom:6px">${o.title}</div>
+  <div style="font-size:13px;color:#64748b;line-height:1.6;margin-bottom:16px">${o.desc}</div>
+  <div class="step-flow">${o.steps.map((s,i)=>`${i>0?'<div class="step-line '+((i<=o.currentStep)?'done':'')+'"></div>':''}<div class="step-node"><div class="step-circle ${i<o.currentStep?'done':i===o.currentStep?'active':''}">${i<o.currentStep?'✓':i+1}</div><div class="step-text">${s}</div></div>`).join('')}</div>
+  <div class="card" style="margin-top:16px">
+    <div style="font-size:14px;font-weight:600;margin-bottom:10px">订单信息</div>
+    <div class="price-row"><div class="label">内容类型</div><div class="val">${o.contentType}</div></div>
+    <div class="price-row"><div class="label">需要分身</div><div class="val">${o.avatars}个</div></div>
+    <div class="price-row"><div class="label">独享模式</div><div class="val">${o.exclusive?'是':'否'}</div></div>
+    <div class="price-row"><div class="label">AI补足</div><div class="val">${o.aiSupplement?'是':'否'}</div></div>
+    <div class="price-row"><div class="label">截止时间</div><div class="val" style="${o.type==='urgent'?'color:#ef4444':''}">${o.deadline}</div></div>
+  </div>
+  <div class="card">
+    <div style="font-size:14px;font-weight:600;margin-bottom:10px">素材情况</div>
+    <div style="font-size:12px;color:#64748b;margin-bottom:8px">素材覆盖率 ${cov}%</div>
+    <div class="coverage-bar" style="margin-bottom:10px"><div class="coverage-filled" style="width:${cov}%"></div><div class="coverage-empty"></div></div>
+    ${Object.entries(o.materials.provided).map(([k,v])=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0"><span>${k}</span><span style="color:#22c55a">✅ 已提供 ${v}/${o.materials.total[k]}</span></div>`).join('')}
+    ${Object.entries(o.materials.total).filter(([k])=>!o.materials.provided[k]).map(([k,v])=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0"><span>${k}</span><span style="color:#94a3b8">❌ 未提供 0/${v}</span></div>`).join('')}
+  </div>
+  <div class="card">
+    <div style="font-size:14px;font-weight:600;margin-bottom:10px">费用明细</div>
+    <div class="price-row"><div class="label">基础费用</div><div class="val">¥${priceInfo.base.toFixed(2)}</div></div>
+    ${priceInfo.exclusive>0?`<div class="price-row"><div class="label">独享加价</div><div class="val">¥${priceInfo.exclusive.toFixed(2)}</div></div>`:''}
+    ${priceInfo.ai>0?`<div class="price-row"><div class="label">AI补足费</div><div class="val">¥${priceInfo.ai.toFixed(2)}</div></div>`:''}
+    <div class="price-row total"><div class="label">总计</div><div class="val">¥${priceInfo.total.toFixed(2)}</div></div>
+    <div style="margin-top:8px;background:#dcfce7;border-radius:8px;padding:10px;text-align:center"><div style="font-size:12px;color:#16a34a">你能赚</div><div style="font-size:20px;font-weight:700;color:#16a34a">¥${earning.toFixed(2)}/分身</div></div>
+  </div>
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:10px"><img src="${o.publisher.avatar}" style="width:36px;height:36px;border-radius:50%;object-fit:cover" /><div><div style="font-size:13px;font-weight:600">${o.publisher.name}</div><div style="font-size:11px;color:#94a3b8">发布者</div></div></div>
+  </div>
+  <button class="act-btn act-primary" style="padding:14px;font-size:15px;font-weight:600;margin-top:8px" onclick="acceptOrder(${id})">✅ 接单</button>
+  </div>`;
+}
+
+// ---- 我的成果 ----
+function renderMyResults(el) {
+  return `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">我的成果</div><div></div></div>
+  <div class="sub-body">
+  <div style="display:flex;gap:10px;margin-bottom:16px">
+    <div style="flex:1;background:#dcfce7;border-radius:12px;padding:12px;text-align:center"><div style="font-size:18px;font-weight:700;color:#16a34a">${STATE.results.filter(r=>r.type==='done').length}</div><div style="font-size:11px;color:#22c55e">已交付</div></div>
+    <div style="flex:1;background:#dbeafe;border-radius:12px;padding:12px;text-align:center"><div style="font-size:18px;font-weight:700;color:#2563eb">${STATE.results.filter(r=>r.type==='gen').length}</div><div style="font-size:11px;color:#3b82f6">生成中</div></div>
+    <div style="flex:1;background:#fef2f2;border-radius:12px;padding:12px;text-align:center"><div style="font-size:18px;font-weight:700;color:#ef4444">${STATE.results.filter(r=>r.type==='fail').length}</div><div style="font-size:11px;color:#ef4444">未通过</div></div>
+  </div>
+  ${STATE.results.map(r=>`<div class="result-card" onclick="openSub('result-detail',{id:${r.id}})">
+    <span class="result-type rt-${r.type}">${r.label}</span>
+    <div style="font-size:14px;font-weight:600;margin-bottom:4px">${r.title}</div>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:12px;color:#94a3b8">${r.avatar} · ${r.time}</div>
+      ${r.earning>0?`<div style="font-size:13px;font-weight:600;color:#16a34a">+¥${r.earning.toFixed(2)}</div>`:''}
+    </div>
+  </div>`).join('')}</div>`;
+}
+
+// ---- 成果详情 ----
+function renderResultDetail(el, data) {
+  const r = STATE.results.find(r=>r.id===(data?.id||1));
+  if(!r) return;
+  return `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">成果详情</div><div></div></div>
+  <div class="sub-body">
+  <span class="result-type rt-${r.type}">${r.label}</span>
+  <div style="font-size:18px;font-weight:700;margin:8px 0">${r.title}</div>
+  <div style="font-size:12px;color:#94a3b8;margin-bottom:16px">${r.avatar} · ${r.contentType} · ${r.time}</div>
+  ${r.content?`<div class="content-preview" style="white-space:pre-wrap">${r.content}</div>`:'<div style="text-align:center;padding:40px;color:#94a3b8">⏳ 内容生成中...</div>'}
+  ${r.failReason?`<div style="background:#fef2f2;border-radius:12px;padding:14px;margin-top:12px"><div style="font-size:13px;font-weight:600;color:#ef4444">❌ 未通过原因</div><div style="font-size:12px;color:#64748b;margin-top:4px">${r.failReason}</div></div>`:''}
+  ${r.type==='done'?`<div style="margin-top:16px;background:#f3f0ff;border-radius:12px;padding:14px">
+    <div style="font-size:13px;font-weight:600;margin-bottom:8px">⭐ 评价此成果</div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">${[1,2,3,4,5].map(s=>`<span style="font-size:24px;cursor:pointer" onclick="rateResult(${r.id},${s})">${s<=Math.floor(r.stars||0)?'⭐':'☆'}</span>`).join('')}</div>
+    <div class="price-row"><div class="label">收益</div><div class="val" style="color:#16a34a">+¥${r.earning.toFixed(2)}</div></div>
+  </div>`:''}
+  ${r.type==='gen'?`<div style="margin-top:16px;text-align:center"><div class="progress-bar" style="height:6px;margin-bottom:8px"><div class="progress-fill pf-purple" style="width:65%"></div></div><div style="font-size:12px;color:#94a3b8">生成进度 65%，预计还需3分钟</div></div>`:''}
+  ${r.type==='fail'?`<button class="act-btn act-primary" style="padding:12px;margin-top:12px;width:100%" onclick="showToast('已重新提交')">🔄 重新生成</button>`:''}</div>`;
+}
+
+// ---- 我的挂单 ----
+function renderMyPlaza(el) {
+  const hangings = Object.entries(STATE.avatars).filter(([,a])=>a.hangPlaza);
+  return `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">📢 我的挂单</div><div></div></div>
+  <div class="sub-body">
+  ${hangings.length>0?`
+  <div style="display:flex;gap:10px;margin-bottom:16px">
+    <div style="flex:1;background:#ede9fe;border-radius:12px;padding:12px;text-align:center"><div style="font-size:18px;font-weight:700;color:#5b21b6">${hangings.length}</div><div style="font-size:11px;color:#7c3aed">挂单中</div></div>
+    <div style="flex:1;background:#dcfce7;border-radius:12px;padding:12px;text-align:center"><div style="font-size:18px;font-weight:700;color:#16a34a">¥${hangings.reduce((s,[,a])=>s+a.plazaPrice*3,0).toFixed(0)}</div><div style="font-size:11px;color:#22c55e">预估月收</div></div>
+  </div>
+  ${hangings.map(([id,a])=>`<div class="card">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <img src="${a.photo}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid #e9e5ff" />
+      <div style="flex:1"><div style="font-size:14px;font-weight:600">${a.name} <span class="lv ${lvClass(a.lv)}">Lv.${a.lv}</span></div><div style="font-size:11px;color:#94a3b8">⭐${a.stars} · ${a.orders}单 · ${statusText(a.status)}</div></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#f8fafc;border-radius:8px;margin-bottom:10px">
+      <div><div style="font-size:12px;color:#64748b">出场费</div><div style="font-size:18px;font-weight:700;color:#6d28d9">¥${a.plazaPrice}/次</div></div>
+      <div><div style="font-size:12px;color:#64748b">本周被雇</div><div style="font-size:18px;font-weight:700">${Math.floor(a.orders*0.1)}次</div></div>
+    </div>
+    <div class="avatar-skills" style="margin-bottom:10px">${a.skills.map(s=>'<span class="skill-tag mastered">'+s+'</span>').join('')}</div>
+    <div style="display:flex;gap:8px">
+      <button class="act-btn act-secondary" style="flex:1" onclick="editPlazaPrice(${id})">修改价格</button>
+      <button class="act-btn act-danger" style="flex:1" onclick="togglePlazaHang(${id});renderMyPlaza(document.getElementById('sub-dynamic'))">下架</button>
+    </div>
+  </div>`).join('')}`:'<div class="empty-state"><div class="icon">📢</div><div class="title">暂无挂单</div><div class="desc">让分身去广场接单赚钱吧</div><button class="act-btn act-primary" style="margin-top:12px;padding:10px 24px;display:inline-block" onclick="closeSub();switchTab(\'avatars\')">去设置</button></div>'}</div>`;
+}
+
+// ---- 雇佣对话 ----
+function renderHiredChat(el, data) {
+  const id = data?.id||4;
+  const v = STATE.plazaAvatars[id]; if(!v) return;
+  const chatKey = 'hired_'+id;
+  if(!STATE.teachData.chatHistory[chatKey]) STATE.teachData.chatHistory[chatKey]=[];
+  const history = STATE.teachData.chatHistory[chatKey];
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">💬 雇佣对话</div>
+    <button class="sub-header-btn" style="background:#f3f0ff;color:#6d28d9" onclick="openSub('plaza-detail',{id:${id}})">详情</button></div>
+  <div style="padding:10px 16px;display:flex;align-items:center;gap:10px;background:#fff;border-bottom:1px solid #f1f5f9">
+    <img src="${v.photo}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid #e9e5ff" />
+    <div style="flex:1"><div style="font-weight:600;font-size:14px">${v.name} <span class="lv ${lvClass(v.lv)}" style="font-size:10px">Lv.${v.lv}</span></div><div style="font-size:11px;color:#94a3b8">⭐${v.stars} · ${v.skills.join('·')}</div></div>
+    <div style="text-align:right"><div style="font-size:12px;color:#6d28d9;font-weight:600">¥${v.price}/次</div></div>
+  </div>
+  <div class="chat-messages" id="chatMsgs" style="min-height:300px;max-height:calc(100vh - 280px);overflow-y:auto">
+    <div class="chat-msg system">👋 你已雇佣${v.name}，告诉它你需要什么</div>
+    ${history.map(m=>`<div class="chat-msg ${m.role}">${m.text}</div>`).join('')}
+  </div>
+  <div style="position:sticky;bottom:0;background:#fff;padding:12px 16px;border-top:1px solid #f1f5f9">
+    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+      <span class="quick-tag" onclick="fillHiredChat(${id},'写一篇种草文')">写种草文</span>
+      <span class="quick-tag" onclick="fillHiredChat(${id},'做个图文笔记')">做图文</span>
+      <span class="quick-tag" onclick="fillHiredChat(${id},'写个视频脚本')">视频脚本</span>
+      <span class="quick-tag" onclick="fillHiredChat(${id},'查看生成的内容')">查看内容</span>
+    </div>
+    <div class="talk-input-row">
+      <input class="talk-input" id="chatInput" placeholder="对${v.name}说..." onkeydown="if(event.key==='Enter')sendChat(${id},'hired')" />
+      <button class="talk-send" onclick="sendChat(${id},'hired')">➤</button>
+    </div>
+  </div>`;
+}
+function fillHiredChat(id, text) { const input = document.getElementById('chatInput'); if(input){input.value=text; sendChat(id,'hired');} }
+
+// ---- 技能市场 ----
+function renderSkillMarket(el) {
+  const allSkills = Object.entries(SKILL_DETAILS);
+  return `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">📚 技能市场</div><div></div></div>
+  <div class="search-bar"><span class="search-ico">🔍</span><input class="search-input" placeholder="搜索技能..." /></div>
+  <div class="filter-row">${['全部','✍️写作','🎬视频','🎨设计','📊分析','🏋️生活'].map((f,i)=>`<span class="filter-chip ${i===0?'active':''}" onclick="this.parentElement.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));this.classList.add('active')">${f}</span>`).join('')}</div>
+  <div class="sub-body">
+  ${allSkills.slice(0,12).map(([name,detail])=>`<div class="card" style="display:flex;align-items:center;gap:10px">
+    <div style="width:40px;height:40px;border-radius:10px;background:#f3f0ff;display:flex;align-items:center;justify-content:center;font-size:18px">📖</div>
+    <div style="flex:1"><div style="font-size:13px;font-weight:600">${name}</div><div style="font-size:11px;color:#94a3b8">${detail.desc}</div><div style="font-size:10px;color:#6d28d9;margin-top:2px">${detail.steps.length}步学习 · 含考试</div></div>
+    <button class="act-btn act-secondary" style="padding:6px 12px;font-size:11px;flex:none" onclick="showToast('已加入学习计划')">学习</button>
+  </div>`).join('')}</div>`;
+}
+
+// ---- 权益等级 ----
+function renderPrivileges(el) {
+  return `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">👑 权益等级</div><div></div></div>
+  <div class="sub-body">
+  <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:16px;padding:20px;color:#fff;margin-bottom:16px;text-align:center">
+    <div style="font-size:36px;font-weight:700">Lv.3</div>
+    <div style="font-size:14px;opacity:.9;margin-top:4px">熟练分身</div>
+    <div style="margin-top:10px"><div class="progress-bar" style="height:6px"><div class="progress-fill" style="background:#fff;width:45%"></div></div><div style="font-size:11px;opacity:.7;margin-top:4px">680/900 XP · 距Lv.4还需220XP</div></div>
+  </div>
+  ${Object.entries(LEVEL_RIGHTS).map(([lv,r])=>`<div class="level-node ${parseInt(lv)<=3?'level-current':''}" style="${parseInt(lv)>4?'opacity:.5':''}">
+    <div class="level-badge" style="background:${r.color}">${lv}</div>
+    <div class="level-info"><div class="level-name">Lv.${lv} ${r.name}</div><div class="level-perks">${r.perks.join(' · ')}</div></div>
+  </div>`).join('')}</div>`;
+}
+
+// ---- 设置 ----
+function renderSettings(el) {
+  return `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">设置</div><div></div></div>
+  <div class="sub-body">
+  <div class="section-title" style="margin-bottom:10px">账号安全</div>
+  <div class="menu-list">
+    <div class="menu-item" onclick="showToast('修改手机号')"><div class="menu-icon" style="background:#dbeafe">📱</div><div class="menu-text">手机号</div><div style="font-size:12px;color:#94a3b8;margin-right:8px">138****8888</div><div class="menu-arrow">›</div></div>
+    <div class="menu-item" onclick="showToast('修改密码')"><div class="menu-icon" style="background:#fef3c7">🔒</div><div class="menu-text">修改密码</div><div class="menu-arrow">›</div></div>
+    <div class="menu-item" onclick="showToast('实名认证')"><div class="menu-icon" style="background:#dcfce7">🪪</div><div class="menu-text">实名认证</div><div style="font-size:12px;color:#22c55a;margin-right:8px">已认证</div><div class="menu-arrow">›</div></div>
+  </div>
+  <div class="section-title" style="margin-top:16px;margin-bottom:10px">通知设置</div>
+  <div class="menu-list" style="padding:4px 16px">
+    <div class="switch-row"><div><div class="switch-label">订单通知</div></div><div class="sw on" onclick="this.classList.toggle('on')"><div class="knob"></div></div></div>
+    <div class="switch-row"><div><div class="switch-label">收益通知</div></div><div class="sw on" onclick="this.classList.toggle('on')"><div class="knob"></div></div></div>
+    <div class="switch-row"><div><div class="switch-label">广场消息</div></div><div class="sw on" onclick="this.classList.toggle('on')"><div class="knob"></div></div></div>
+    <div class="switch-row"><div><div class="switch-label">系统通知</div></div><div class="sw" onclick="this.classList.toggle('on')"><div class="knob"></div></div></div>
+  </div>
+  <div class="section-title" style="margin-top:16px;margin-bottom:10px">隐私设置</div>
+  <div class="menu-list" style="padding:4px 16px">
+    <div class="switch-row"><div><div class="switch-label">允许被搜索</div><div class="switch-desc">其他用户可以通过搜索找到你</div></div><div class="sw on" onclick="this.classList.toggle('on')"><div class="knob"></div></div></div>
+    <div class="switch-row"><div><div class="switch-label">展示在线状态</div></div><div class="sw" onclick="this.classList.toggle('on')"><div class="knob"></div></div></div>
+  </div>
+  <div class="section-title" style="margin-top:16px;margin-bottom:10px">其他</div>
+  <div class="menu-list">
+    <div class="menu-item" onclick="showToast('清除缓存成功')"><div class="menu-icon" style="background:#f1f5f9">🗑️</div><div class="menu-text">清除缓存</div><div style="font-size:12px;color:#94a3b8;margin-right:8px">23.5MB</div><div class="menu-arrow">›</div></div>
+    <div class="menu-item" onclick="showToast('当前已是最新版本')"><div class="menu-icon" style="background:#f1f5f9">ℹ️</div><div class="menu-text">关于</div><div style="font-size:12px;color:#94a3b8;margin-right:8px">v1.0.0</div><div class="menu-arrow">›</div></div>
+  </div>
+  <button class="act-btn act-danger" style="padding:14px;margin-top:24px;width:100%" onclick="showToast('已退出登录')">退出登录</button></div>`;
+}
+
+// ---- 帮助中心 ----
+function renderHelp(el, data) {
+  const section = data?.section;
+  return `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">❓ 帮助中心</div><div></div></div>
+  <div class="sub-body">
+  <div class="search-bar" style="margin:0 0 16px;position:static"><span class="search-ico" style="left:12px;top:10px">🔍</span><input class="search-input" style="padding-left:32px" placeholder="搜索问题..." /></div>
+  ${!section?`
+  <div class="card" style="cursor:pointer" onclick="showToast('查看新手指南')"><div style="display:flex;gap:10px;align-items:center"><div style="font-size:28px">🎯</div><div><div style="font-weight:600">新手指南</div><div style="font-size:12px;color:#94a3b8;margin-top:2px">5分钟了解平台</div></div></div></div>
+  <div class="card" style="cursor:pointer" onclick="showToast('联系客服')"><div style="display:flex;gap:10px;align-items:center"><div style="font-size:28px">💬</div><div><div style="font-weight:600">在线客服</div><div style="font-size:12px;color:#94a3b8;margin-top:2px">工作日9:00-18:00</div></div></div></div>
+  <div class="card" style="cursor:pointer" onclick="showToast('查看反馈')"><div style="display:flex;gap:10px;align-items:center"><div style="font-size:28px">📝</div><div><div style="font-weight:600">意见反馈</div><div style="font-size:12px;color:#94a3b8;margin-top:2px">帮助我们做得更好</div></div></div></div>
+  `:''}
+  <div class="section-title" style="margin-bottom:10px;margin-top:8px">常见问题</div>
+  ${[
+    {q:'如何创建分身？',a:'点击首页「创建分身」按钮，填写名称、风格、领域等信息即可创建。每个用户最多可创建5个分身。'},
+    {q:'分身如何赚钱？',a:'分身有3种赚钱方式：1）接单广场接单，按订单价格获得70%收益；2）挂广场被雇佣，按出场费获得收益；3）技能市场上架技能，其他用户购买时获得收益。'},
+    {q:'如何提升分身等级？',a:'分身通过获取经验值(XP)来升级。获取XP的方式：每日签到+50、完成订单+20~100、技能学习+30~80、被好评+10。等级越高，可用的权益越多。'},
+    {q:'提现多久到账？',a:'微信零钱1-3个工作日到账，支付宝1-2个工作日到账。最低提现金额10元，手续费0.6%。'},
+    {q:'如何教学分身？',a:'教学有3种方式：1）对话教学——和分身对话，纠正它的回复；2）喂资料——上传参考文本、图片等；3）技能学习——选择技能按步骤学习并考试。'},
+    {q:'广场雇佣是怎么收费的？',a:'雇佣广场分身按次付费，费用由分身主人设定。雇佣后可与分身对话，分身会根据你的需求生成内容。每次雇佣有效期为24小时。'},
+    {q:'订单超时怎么办？',a:'如果订单即将超时，系统会发送通知提醒。超时未完成会影响分身评分，请合理安排接单数量。'},
+    {q:'如何删除分身？',a:'在分身详情页 → 编辑 → 底部有「删除分身」按钮。注意：删除后所有关联数据和技能将无法恢复。'}
+  ].map(faq=>`<div class="faq-item" onclick="this.classList.toggle('open')"><div class="faq-q"><span class="faq-arrow">▶</span> ${faq.q}</div><div class="faq-a">${faq.a}</div></div>`).join('')}</div>`;
+}
+
+// ============== 弹窗 ==============
+function openModal(title, content) {
+  document.getElementById('modal-box').innerHTML = `<div class="modal-header"><div class="modal-title">${title}</div><button class="modal-close" onclick="closeModal()">✕</button></div><div class="modal-body">${content}</div>`;
+  document.getElementById('modal-overlay').classList.add('active');
+}
+function closeModal() { document.getElementById('modal-overlay').classList.remove('active'); }
+
+// ============== 交互处理 ==============
+function switchTab(name) {
+  STATE.currentTab = name;
+  document.querySelectorAll('.tabbar-item,.tabbar-center').forEach(t=>t.classList.remove('active'));
+  const tabMap = {home:0,avatars:1,orders:2,plaza:3,profile:4};
+  const tabs = document.querySelectorAll('.tabbar-item,.tabbar-center');
+  if(tabs[tabMap[name]]) tabs[tabMap[name]].classList.add('active');
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const page = document.getElementById('page-'+name);
+  if(page) { page.classList.add('active'); renderPage(name); }
+  closeSub();
+  window.scrollTo(0,0);
+}
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 2000);
+}
+function lvClass(lv) { return lv>=5?'gold':lv>=3?'purple':'silver'; }
+function statusClass(s) { return s==='working'?'st-work':s==='idle'?'st-idle':'st-off'; }
+function statusText(s) { return s==='working'?'⚡工作中':s==='idle'?'✅空闲':'💤休息'; }
+function doCheckin() {
+  if(STATE.checkedIn) return showToast('今日已签到');
+  STATE.checkedIn = true; STATE.checkinDays = Math.min(STATE.checkinDays+1,7);
+  if(STATE.avatars[1]) STATE.avatars[1].xp = Math.min(STATE.avatars[1].xp+50, STATE.avatars[1].xpMax);
+  renderPage('avatars'); showToast('签到成功！+50XP');
+}
+function togglePlazaHang(id) {
+  STATE.avatars[id].hangPlaza = !STATE.avatars[id].hangPlaza;
+  showToast(STATE.avatars[id].hangPlaza?'已挂广场':'已下架');
+}
+function editPlazaPrice(id) {
+  const a = STATE.avatars[id];
+  const newPrice = prompt('设置出场费（元/次）', a.plazaPrice);
+  if(newPrice && !isNaN(parseFloat(newPrice))) {
+    a.plazaPrice = parseFloat(newPrice);
+    showToast('出场费已更新为¥'+a.plazaPrice);
+  }
+}
+function saveAvatar(id) {
+  const nameInput = document.getElementById('editName');
+  const descInput = document.getElementById('editDesc');
+  if(nameInput) STATE.avatars[id].name = nameInput.value;
+  if(descInput) STATE.avatars[id].desc = descInput.value;
+  showToast('保存成功'); closeSub();
+}
+function deleteAvatar(id) {
+  if(!confirm('确定要删除分身吗？此操作不可恢复')) return;
+  delete STATE.avatars[id]; closeSub(); renderPage('avatars'); showToast('分身已删除');
+}
+function createAvatar() {
+  const name = document.getElementById('createName')?.value;
+  if(!name) return showToast('请输入分身名称');
+  const style = document.querySelector('#sub-dynamic .form-chips .form-chip.selected')?.textContent || '活泼亲切';
+  STATE.avatars[nextId] = {
+    name, desc: document.getElementById('createDesc')?.value||'', style, domains:['美妆'],
+    skills:[], learning:[], photo:PHOTO_POOL[Math.floor(Math.random()*PHOTO_POOL.length)],
+    cover:COVER_POOL[Math.floor(Math.random()*COVER_POOL.length)],
+    lv:1, xp:0, xpMax:100, status:'idle', earning:0, totalEarning:0, weekEarning:0,
+    orders:0, stars:4.5, hangPlaza:false, plazaPrice:5,
+    abilities:{writing:30,creativity:30,professionalism:20,speed:40,accuracy:30}
+  };
+  nextId++; closeSub(); renderPage('avatars'); showToast('分身创建成功！');
+}
+function hireAvatar(id) {
+  const v = STATE.plazaAvatars[id] || STATE.avatars[id];
+  if(!v) return;
+  closeSub();
+  setTimeout(()=>openSub('hired-chat',{id}),300);
+}
+function toggleFollow(id) {
+  const v = STATE.plazaAvatars[id];
+  if(v) { v.followed = !v.followed; renderPlazaDetail(document.getElementById('sub-dynamic'),{id}); }
+}
+function acceptOrder(id) {
+  showToast('接单成功！分身已开始工作');
+  if(STATE.orders[id]) STATE.orders[id].currentStep = 1;
+}
+function rateResult(id, stars) {
+  const r = STATE.results.find(r=>r.id===id);
+  if(r) { r.stars = stars; showToast(`已评${stars}星`); renderResultDetail(document.getElementById('sub-dynamic'),{id}); }
+}
+function addMaterial(id) {
+  const icons = ['📄','📊','🖼️','📑','📝','📷'];
+  const names = ['产品介绍.pdf','竞品分析.docx','参考图片.jpg','数据报告.xlsx','种草文模板.txt','产品图库'];
+  const statuses = ['已解析 ✓','已解析 ✓','已识别 ✓','已解析 ✓','已解析 ✓','已识别 ✓'];
+  const matKey = 'mat_'+id;
+  if(!STATE.teachData.materials[matKey]) STATE.teachData.materials[matKey]=[];
+  const idx = STATE.teachData.materials[matKey].length;
+  STATE.teachData.materials[matKey].push({icon:icons[idx%icons.length],name:names[idx%names.length],status:statuses[idx%statuses.length]});
+  document.getElementById('teachTabContent').innerHTML = renderTeachTabContent(1,id);
+  showToast('资料上传成功');
+}
+function removeMaterial(id,idx) {
+  const matKey = 'mat_'+id;
+  STATE.teachData.materials[matKey]?.splice(idx,1);
+  document.getElementById('teachTabContent').innerHTML = renderTeachTabContent(1,id);
+}
+function sendTeachChat(id) {
+  const input = document.getElementById('teachInput');
+  const msg = input.value.trim(); if(!msg) return;
+  input.value = '';
+  const chatKey = 'teach_'+id;
+  if(!STATE.teachData.chatHistory[chatKey]) STATE.teachData.chatHistory[chatKey]=[];
+  STATE.teachData.chatHistory[chatKey].push({role:'user',text:msg});
+  const msgs = document.getElementById('teachMsgs');
+  msgs.innerHTML += `<div class="chat-msg user">${msg}</div>`;
+  const typingId = 'tt_'+Date.now();
+  msgs.innerHTML += `<div class="chat-typing" id="${typingId}">正在输入...</div>`;
+  msgs.scrollTop = msgs.scrollHeight;
+  const teachReplies = ['好的，我记住了！下次会注意','明白了，这个风格我学会了','收到！我调整一下表达方式','了解，这个知识点我学会了','好的！我会按照你的要求来','这个说法更好，我学会了','记住啦！以后就按这样写','嗯嗯，我明白了，谢谢纠正！'];
+  setTimeout(()=>{
+    const t = document.getElementById(typingId); if(t) t.remove();
+    const reply = teachReplies[Math.floor(Math.random()*teachReplies.length)];
+    STATE.teachData.chatHistory[chatKey].push({role:'bot',text:reply});
+    const hLen = STATE.teachData.chatHistory[chatKey].length - 1;
+    msgs.innerHTML += `<div class="chat-msg bot">${reply}<div style="margin-top:6px;display:flex;gap:6px"><button class="quick-tag" style="background:#dcfce7;color:#16a34a" onclick="correctTeach(${id},${hLen},'好')">👍 好</button><button class="quick-tag" style="background:#fef2f2;color:#ef4444" onclick="correctTeach(${id},${hLen},'不好')">👎 不好</button></div></div>`;
+    msgs.scrollTop = msgs.scrollHeight;
+  }, 800);
+}
+function correctTeach(avatarId, msgIdx, feedback) {
+  const chatKey = avatarId;
+  const msg = STATE.teachData.chatHistory[chatKey]?.[msgIdx]?.text || '';
+  if(feedback==='好') showToast('👍 分身会继续保持这种风格');
+  else showToast('👎 分身会避免「' + msg.substring(0,10) + '...」这种表达');
+}
+function startLearn(skillName, avatarId) {
+  STATE.avatars[avatarId].learning.push(skillName);
+  STATE.teachData.skillProgress[avatarId+'_'+skillName] = {step:0,examDone:false};
+  document.getElementById('teachTabContent').innerHTML = renderTeachTabContent(2,avatarId);
+  showToast(`已开始学习「${skillName}」`);
+}
+function completeLearnStep(skillName, avatarId) {
+  const key = avatarId+'_'+skillName;
+  if(!STATE.teachData.skillProgress[key]) STATE.teachData.skillProgress[key]={step:0,examDone:false};
+  STATE.teachData.skillProgress[key].step++;
+  document.getElementById('teachTabContent').innerHTML = renderTeachTabContent(2,avatarId);
+  showToast('步骤完成！+15XP');
+}
+function takeExam(skillName, avatarId) {
+  const key = avatarId+'_'+skillName;
+  if(!STATE.teachData.skillProgress[key]) return;
+  STATE.teachData.skillProgress[key].examDone = true;
+  const a = STATE.avatars[avatarId];
+  a.learning = a.learning.filter(s=>s!==skillName);
+  a.skills.push(skillName);
+  a.xp = Math.min(a.xp+50, a.xpMax);
+  document.getElementById('teachTabContent').innerHTML = renderTeachTabContent(2,avatarId);
+  showToast(`🎉 考试通过！「${skillName}」已掌握`);
+}
+
+// ============== 价格计算引擎 ==============
+function calcCoverage(contentType, materials) {
+  if(!materials||!materials.total) return 80;
+  const totalItems = Object.keys(materials.total).length;
+  const providedItems = Object.keys(materials.provided||{}).length;
+  return Math.round(providedItems/totalItems*100);
+}
+function calcPrice(contentType, avatarCount, materials, exclusive, aiSupplement, aiTotal) {
+  const p = PRICING[contentType]||PRICING['图文笔记'];
+  let base = p.basePrice * avatarCount;
+  let exc = exclusive ? base * p.exclusiveRate : 0;
+  let ai = 0;
+  if(aiSupplement && materials && materials.total) {
+    const total = Object.values(materials.total).reduce((s,v)=>s+v,0);
+    const provided = Object.values(materials.provided||{}).reduce((s,v)=>s+v,0);
+    const missing = Math.max(0, total - provided);
+    ai = missing * p.aiUnitPrice;
+  }
+  return {base, exclusive:exc, ai, total:base+exc+ai};
+}
+function calcAvatarEarning(contentType, avatarCount, materials, exclusive, aiSupplement, aiTotal) {
+  const priceInfo = calcPrice(contentType, avatarCount, materials, exclusive, aiSupplement, aiTotal);
+  return priceInfo.base * 0.7;
+}
+function formatTime(seconds) {
+  const h = Math.floor(seconds/3600);
+  const m = Math.floor((seconds%3600)/60);
+  return h>0?`${h}时${m}分`:`${m}分`;
+}
+
+// ============== 倒计时 ==============
+setInterval(()=>{
+  Object.values(STATE.orders).forEach(o=>{
+    if(o.type==='urgent'&&o.timeLeft>0) o.timeLeft--;
+  });
+}, 1000);
+
+// ============== 初始化 ==============
+function init() {
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="page active" id="page-home"><div id="page-home-content"></div></div>
+    <div class="page" id="page-avatars"><div id="page-avatars-content"></div></div>
+    <div class="page" id="page-orders"><div id="page-orders-content"></div></div>
+    <div class="page" id="page-plaza"><div id="page-plaza-content"></div></div>
+    <div class="page" id="page-profile"><div id="page-profile-content"></div></div>
+    <div class="subpage" id="sub-dynamic"></div>
+    <div class="modal-overlay" id="modal-overlay" onclick="event.target===this&&closeModal()"><div class="modal-box" id="modal-box"></div></div>
+    <div class="tabbar">
+      <div class="tabbar-item active" onclick="switchTab('home')"><div class="tab-icon">🏠</div><div>首页</div></div>
+      <div class="tabbar-item" onclick="switchTab('avatars')"><div class="tab-icon">👤</div><div>分身</div></div>
+      <div class="tabbar-center" onclick="switchTab('orders')"><div class="tabbar-center-btn">📋</div><div class="tabbar-center-text">接单</div></div>
+      <div class="tabbar-item" onclick="switchTab('plaza')"><div class="tab-icon">🔥</div><div>广场</div></div>
+      <div class="tabbar-item" onclick="switchTab('profile')"><div class="tab-icon">⚙️</div><div>我的</div></div>
+    </div>`;
+  renderPage('home');
+}
+init();
+</script>
+</body>
+</html>

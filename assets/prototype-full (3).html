@@ -1,0 +1,2222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>分身平台 - 完整业务原型</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;background:#f8fafc;color:#1e293b;font-size:14px;max-width:430px;margin:0 auto;min-height:100vh;overflow-x:hidden}
+.app{min-height:100vh;padding-bottom:68px}
+.page{display:none;padding-bottom:20px}.page.active{display:block}
+.subpage{display:none;position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;height:100%;background:#f8fafc;z-index:200;overflow-y:auto;-webkit-overflow-scrolling:touch;animation:slideIn .25s ease}
+.subpage.closing{animation:slideOut .2s ease forwards}
+@keyframes slideIn{from{transform:translateX(-50%) translateY(100%)}to{transform:translateX(-50%) translateY(0)}}
+@keyframes slideOut{from{transform:translateX(-50%) translateY(0)}to{transform:translateX(-50%) translateY(100%)}}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;align-items:flex-end;justify-content:center}.modal-overlay.show{display:flex;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal-box{background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:430px;padding:24px 20px 32px;animation:modalUp .25s ease}
+@keyframes modalUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:#fff;display:flex;align-items:center;justify-content:space-around;height:60px;border-top:1px solid #f1f5f9;z-index:100;padding-bottom:env(safe-area-inset-bottom)}
+.tabbar-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;color:#94a3b8;cursor:pointer;transition:.15s}.tabbar-item.active{color:#7B3FE4}
+.tabbar-item .tab-icon{font-size:20px;height:24px;line-height:24px}
+.tabbar-center{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer}
+.tabbar-center-btn{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6,#a855f7);display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;box-shadow:0 4px 12px rgba(99,102,241,.4);margin-top:-18px}
+.tabbar-center-text{font-size:10px;color:#94a3b8}.tabbar-center.active .tabbar-center-text{color:#7B3FE4}
+.gradient-header{background:linear-gradient(135deg,#6366f1,#8b5cf6,#a855f7);padding:48px 20px 20px;color:#fff;border-radius:0 0 24px 24px;position:relative}
+.gradient-header h1{font-size:22px;font-weight:700;margin-bottom:4px}.gradient-header p{font-size:13px;opacity:.85}
+.header-row{display:flex;align-items:center;justify-content:space-between}
+.header-actions{display:flex;gap:12px;align-items:center}
+.header-btn{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;border:none}
+.stats-row{display:flex;gap:10px;margin-top:14px}
+.stat-card{flex:1;background:rgba(255,255,255,.18);border-radius:12px;padding:10px 8px;text-align:center;backdrop-filter:blur(8px)}
+.stat-val{font-size:20px;font-weight:700}.stat-label{font-size:10px;opacity:.8;margin-top:2px}
+.section{padding:0 16px;margin-top:16px}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.section-title{font-size:16px;font-weight:700}.section-more{font-size:12px;color:#6366f1;cursor:pointer}
+.avatar-card{background:#fff;border-radius:16px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:10px}
+.avatar-top{display:flex;align-items:center;gap:12px}
+.avatar-photo{width:52px;height:52px;border-radius:50%;object-fit:cover;border:2.5px solid #e9e5ff;flex-shrink:0;background:#f3f0ff}
+.avatar-photo.lg{width:64px;height:64px;border-width:3px}.avatar-photo.sm{width:40px;height:40px;border-width:2px}
+.avatar-photo.ring-gold{border-color:#fbbf24}.avatar-photo.ring-purple{border-color:#8b5cf6}
+.avatar-info{flex:1;min-width:0}
+.avatar-name{font-size:15px;font-weight:600;display:flex;align-items:center;gap:6px}
+.lv{font-size:10px;padding:1px 6px;border-radius:8px;font-weight:500}
+.lv1{background:#f1f5f9;color:#64748b}.lv2{background:#dbeafe;color:#3b82f6}.lv3{background:#d1fae5;color:#059669}.lv4{background:#fef3c7;color:#d97706}.lv5{background:#ede9fe;color:#7c3aed}.lv6{background:#fce7f3;color:#db2777}.lv7{background:#fef2f2;color:#dc2626}
+.avatar-meta{font-size:12px;color:#94a3b8;margin-top:2px;display:flex;gap:8px;flex-wrap:wrap}
+.avatar-status{font-size:11px;padding:2px 8px;border-radius:8px;display:inline-flex;align-items:center;gap:3px}
+.st-work{background:#fef3c7;color:#d97706}.st-idle{background:#dcfce7;color:#16a34a}.st-learn{background:#dbeafe;color:#2563eb}.st-off{background:#f1f5f9;color:#94a3b8}
+.avatar-skills{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.skill-tag{font-size:11px;padding:3px 8px;border-radius:6px;background:#f3f0ff;color:#6d28d9}
+.skill-tag.mastered{background:#ede9fe;color:#5b21b6}
+.skill-tag.learning{background:#fef3c7;color:#92400e;border:1px dashed #fbbf24}
+.avatar-acts{display:flex;gap:8px;margin-top:10px}
+.act-btn{flex:1;padding:8px 0;border-radius:10px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;border:none;transition:.15s}.act-btn:active{transform:scale(.96)}
+.act-primary{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff}
+.act-secondary{background:#f3f0ff;color:#6d28d9}
+.act-disabled{background:#f1f5f9;color:#cbd5e1;cursor:not-allowed}
+.act-danger{background:#fef2f2;color:#ef4444}
+.act-success{background:#dcfce7;color:#16a34a}
+.avatar-big{background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:14px}
+.avatar-cover{height:120px;position:relative;overflow:hidden}
+.avatar-cover img.cov{width:100%;height:100%;object-fit:cover}
+.avatar-cover-overlay{position:absolute;bottom:0;left:0;right:0;height:70px;background:linear-gradient(transparent,rgba(0,0,0,.65))}
+.avatar-cover-photo{position:absolute;bottom:-24px;left:16px;z-index:2}
+.avatar-cover-photo img{width:56px;height:56px;border-radius:50%;border:3px solid #fff;object-fit:cover;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.avatar-cover-info{position:absolute;bottom:10px;left:84px;right:14px}
+.avatar-cover-name{color:#fff;font-size:17px;font-weight:700;text-shadow:0 1px 4px rgba(0,0,0,.3)}
+.avatar-cover-meta{color:rgba(255,255,255,.9);font-size:11px;text-shadow:0 1px 2px rgba(0,0,0,.3)}
+.avatar-cover-edit{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.3);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;border:none;z-index:2}
+.avatar-big-body{padding:16px 14px 14px}
+.avatar-big-stats{display:flex;gap:0;margin-bottom:10px}
+.avatar-big-stat{flex:1;text-align:center;border-right:1px solid #f1f5f9}.avatar-big-stat:last-child{border:none}
+.avatar-big-stat .val{font-size:16px;font-weight:700;color:#1e293b}.avatar-big-stat .label{font-size:10px;color:#94a3b8;margin-top:1px}
+.quick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+.quick-item{background:rgba(255,255,255,.18);border-radius:12px;padding:12px 6px;text-align:center;cursor:pointer;backdrop-filter:blur(8px);transition:.15s}.quick-item:active{transform:scale(.94)}
+.quick-item .icon{font-size:22px;margin-bottom:4px}.quick-item .text{font-size:11px;color:#fff}
+.talk-bar{background:#fff;border-radius:16px;padding:12px;margin:0 16px;box-shadow:0 2px 8px rgba(0,0,0,.06);margin-top:14px}
+.talk-input-row{display:flex;gap:8px;align-items:center}
+.talk-input{flex:1;border:none;outline:none;font-size:14px;padding:10px 14px;background:#f3f0ff;border-radius:20px;color:#1e293b}.talk-input::placeholder{color:#a78bfa}
+.talk-send{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}.talk-send:active{transform:scale(.92)}
+.quick-tags{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.quick-tag{font-size:11px;padding:4px 10px;border-radius:12px;background:#f3f0ff;color:#6d28d9;cursor:pointer;white-space:nowrap}.quick-tag:active{background:#ede9fe}
+.chat-messages{padding:16px;display:flex;flex-direction:column;gap:12px;min-height:200px}
+.chat-msg{max-width:80%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.5;animation:msgIn .3s ease}
+@keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.chat-msg.user{align-self:flex-end;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border-bottom-right-radius:4px}
+.chat-msg.bot{align-self:flex-start;background:#f3f0ff;color:#1e293b;border-bottom-left-radius:4px}
+.sub-header{display:flex;align-items:center;padding:48px 16px 14px;background:#fff;border-bottom:1px solid #f1f5f9;position:sticky;top:0;z-index:10}
+.sub-back{width:32px;height:32px;border-radius:50%;background:#f3f0ff;border:none;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6d28d9}
+.sub-title{flex:1;text-align:center;font-size:16px;font-weight:600;margin:0 8px}
+.sub-header-btn{padding:6px 14px;border-radius:8px;font-size:12px;border:none;cursor:pointer;font-weight:500}
+.sub-body{padding:16px}
+.form-group{margin-bottom:16px}
+.form-label{font-size:13px;font-weight:600;color:#475569;margin-bottom:6px;display:block}
+.form-label .req{color:#ef4444}
+.form-input{width:100%;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:12px;font-size:14px;outline:none;transition:.2s;background:#fff}.form-input:focus{border-color:#8b5cf6;box-shadow:0 0 0 3px rgba(139,92,246,.1)}
+.form-textarea{width:100%;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:12px;font-size:14px;outline:none;resize:vertical;min-height:80px}.form-textarea:focus{border-color:#8b5cf6;box-shadow:0 0 0 3px rgba(139,92,246,.1)}
+.form-hint{font-size:11px;color:#94a3b8;margin-top:4px}
+.form-chips{display:flex;flex-wrap:wrap;gap:8px}
+.form-chip{padding:6px 14px;border-radius:20px;font-size:12px;border:1.5px solid #e2e8f0;cursor:pointer;transition:.15s;background:#fff}.form-chip.selected{border-color:#8b5cf6;background:#ede9fe;color:#5b21b6}
+.form-photo-upload{width:80px;height:80px;border-radius:50%;border:2px dashed #d4d4d8;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;background:#fafafa;flex-shrink:0}
+.form-photo-upload img{width:100%;height:100%;object-fit:cover}
+.form-photo-upload .ph{font-size:28px;color:#d4d4d8}.form-photo-upload .pt{font-size:9px;color:#94a3b8;margin-top:2px}
+.form-cover-upload{flex:1;height:80px;border-radius:12px;border:2px dashed #d4d4d8;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;background:#fafafa;flex-shrink:0}
+.form-cover-upload img{width:100%;height:100%;object-fit:cover}
+.form-cover-upload .ph{font-size:24px;color:#d4d4d8}.form-cover-upload .pt{font-size:9px;color:#94a3b8;margin-top:2px}
+.tab-row{display:flex;gap:0;background:#fff;border-bottom:1px solid #f1f5f9;padding:0 16px}
+.tab-item{flex:1;padding:10px 0;font-size:13px;color:#94a3b8;text-align:center;cursor:pointer;border-bottom:2px solid transparent;font-weight:500}.tab-item.active{color:#6d28d9;border-bottom-color:#6d28d9}
+.tab-content{display:none;padding:16px}.tab-content.active{display:block}
+.progress-bar{height:8px;background:#f1f5f9;border-radius:8px;overflow:hidden}.progress-fill{height:100%;border-radius:8px;transition:width .6s ease}
+.pf-purple{background:linear-gradient(90deg,#6366f1,#a855f7)}.pf-green{background:linear-gradient(90deg,#22c55e,#16a34a)}.pf-gold{background:linear-gradient(90deg,#fbbf24,#f59e0b)}
+.price-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13px}.price-row .label{color:#64748b}.price-row .val{font-weight:600}
+.price-row.total{border-top:1px solid #f1f5f9;padding-top:10px;margin-top:6px;font-size:16px}.price-row.total .val{color:#6d28d9}
+.level-node{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid #f8fafc}.level-node:last-child{border:none}
+.level-badge{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;color:#fff}
+.level-info{flex:1}.level-name{font-size:14px;font-weight:600}.level-perks{font-size:12px;color:#64748b;margin-top:2px;line-height:1.6}
+.level-locked{opacity:.4}.level-current .level-badge{box-shadow:0 0 0 3px #fff,0 0 0 5px #8b5cf6}
+.search-bar{display:flex;gap:8px;padding:0 16px;margin-bottom:12px;position:relative}
+.search-input{flex:1;padding:10px 14px 10px 36px;background:#fff;border-radius:20px;border:1.5px solid #e2e8f0;font-size:13px;outline:none}.search-input:focus{border-color:#8b5cf6}
+.search-ico{position:absolute;left:28px;top:10px;font-size:14px;color:#94a3b8}
+.filter-row{display:flex;gap:6px;padding:0 16px;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch}.filter-row::-webkit-scrollbar{display:none}
+.filter-chip{white-space:nowrap;padding:6px 14px;border-radius:16px;font-size:12px;background:#fff;border:1px solid #e2e8f0;cursor:pointer;flex-shrink:0}.filter-chip.active{background:#6d28d9;color:#fff;border-color:#6d28d9}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.notify-item{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid #f8fafc;cursor:pointer}
+.notify-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.notify-content{flex:1;min-width:0}.notify-title{font-size:14px;font-weight:500}.notify-desc{font-size:12px;color:#64748b;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.notify-time{font-size:10px;color:#cbd5e1;margin-top:2px}
+.notify-dot{width:8px;height:8px;border-radius:50%;background:#ef4444;flex-shrink:0;margin-top:6px}.notify-dot.read{background:transparent}
+.checkin-card{background:linear-gradient(135deg,#fef3c7,#fde68a);border-radius:16px;padding:16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.checkin-info h3{font-size:15px;font-weight:700;color:#92400e}.checkin-info p{font-size:12px;color:#b45309;margin-top:2px}
+.checkin-days{display:flex;gap:4px;margin-top:6px}
+.checkin-day{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600}
+.checkin-day.done{background:#f59e0b;color:#fff}.checkin-day.current{background:#fff;color:#f59e0b;border:2px solid #f59e0b}.checkin-day.future{background:#fef3c7;color:#d97706}
+.checkin-btn{padding:10px 20px;border-radius:12px;border:none;font-size:14px;font-weight:600;cursor:pointer}.checkin-btn:active{transform:scale(.95)}
+.checkin-btn.available{background:#f59e0b;color:#fff;box-shadow:0 4px 12px rgba(245,158,11,.3)}.checkin-btn.done{background:#fff;color:#d97706}
+.menu-list{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.menu-item{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid #f8fafc;cursor:pointer}.menu-item:last-child{border:none}.menu-item:active{background:#f8fafc}
+.menu-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;margin-right:12px;flex-shrink:0}
+.menu-text{flex:1;font-size:14px}.menu-arrow{color:#cbd5e1;font-size:12px}
+.menu-badge{background:#ef4444;color:#fff;font-size:10px;padding:1px 6px;border-radius:8px;margin-right:8px}
+.order-type{font-size:11px;padding:2px 8px;border-radius:6px;font-weight:600;display:inline-block;margin-bottom:6px}
+.ot-urgent{background:#fef2f2;color:#ef4444}.ot-new{background:#eff6ff;color:#3b82f6}.ot-normal{background:#f0fdf4;color:#22c55e}
+.order-title{font-size:15px;font-weight:600;margin-bottom:4px}.order-desc{font-size:12px;color:#64748b;line-height:1.5;margin-bottom:8px}
+.order-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}.order-tag{font-size:10px;padding:2px 6px;border-radius:4px;background:#f1f5f9;color:#64748b}
+.order-footer{display:flex;align-items:center;justify-content:space-between;padding-top:8px;border-top:1px solid #f8fafc}
+.order-price{font-size:18px;font-weight:700;color:#6d28d9}.order-earning{font-size:12px;color:#22c55e}
+.switch-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #f8fafc}.switch-row:last-child{border:none}
+.switch-label{font-size:14px}.switch-desc{font-size:11px;color:#94a3b8;margin-top:2px}
+.sw{width:44px;height:24px;border-radius:12px;background:#e2e8f0;position:relative;cursor:pointer;transition:.2s;flex-shrink:0}.sw.on{background:#8b5cf6}
+.sw .knob{width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.15)}.sw.on .knob{left:22px}
+.coverage-bar{display:flex;height:20px;border-radius:10px;overflow:hidden;margin:4px 0}.coverage-filled{background:linear-gradient(90deg,#22c55e,#16a34a);transition:width .4s}.coverage-empty{background:#f1f5f9;flex:1}
+.plaza-grid-item{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04);cursor:pointer;transition:.15s}.plaza-grid-item:active{transform:scale(.97)}
+.plaza-grid-photo{width:100%;aspect-ratio:1;object-fit:cover}.plaza-grid-body{padding:10px}
+.plaza-grid-name{font-size:13px;font-weight:600;display:flex;align-items:center;gap:4px}.plaza-grid-meta{font-size:10px;color:#94a3b8;margin-top:2px}
+.plaza-grid-skills{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px}.plaza-grid-skill{font-size:9px;padding:1px 5px;border-radius:4px;background:#f3f0ff;color:#6d28d9}
+.plaza-grid-price{font-size:13px;font-weight:700;color:#6d28d9;margin-top:6px}
+.plaza-grid-hire{padding:6px 14px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;font-size:11px;cursor:pointer;font-weight:500}
+.earn-chart{display:flex;align-items:flex-end;gap:6px;height:100px;padding:8px 0}
+.earn-bar{flex:1;border-radius:6px 6px 0 0;background:linear-gradient(180deg,#8b5cf6,#6366f1);min-width:20px;position:relative;transition:height .5s ease}
+.earn-bar-label{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:#94a3b8;white-space:nowrap}
+.toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 24px;border-radius:20px;font-size:13px;z-index:500;animation:toastIn .3s ease;pointer-events:none}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+.edit-panel{background:#fff;border-radius:20px;padding:24px 20px}
+.edit-title{font-size:17px;font-weight:700;margin-bottom:16px;text-align:center}
+.result-card{background:#fff;border-radius:16px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:10px}
+.result-type{font-size:11px;padding:2px 8px;border-radius:6px;font-weight:600;display:inline-block;margin-bottom:6px}
+.rt-done{background:#dcfce7;color:#16a34a}.rt-gen{background:#dbeafe;color:#2563eb}
+.withdraw-method{display:flex;align-items:center;gap:12px;padding:14px;border:1.5px solid #e2e8f0;border-radius:12px;margin-bottom:10px;cursor:pointer;transition:.15s}
+.withdraw-method.selected{border-color:#8b5cf6;background:#faf5ff}
+.withdraw-method .icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.withdraw-method .name{font-size:14px;font-weight:500}.withdraw-method .desc{font-size:11px;color:#94a3b8}
+.profile-header{text-align:center;padding:48px 20px 20px;background:linear-gradient(135deg,#6366f1,#8b5cf6,#a855f7);color:#fff;border-radius:0 0 24px 24px}
+.profile-avatar{width:72px;height:72px;border-radius:50%;border:3px solid rgba(255,255,255,.5);margin:0 auto 10px;object-fit:cover}
+.profile-name{font-size:18px;font-weight:700}.profile-id{font-size:12px;opacity:.7;margin-top:2px}
+.profile-stats{display:flex;justify-content:center;gap:24px;margin-top:14px}
+.profile-stat{text-align:center}.profile-stat .val{font-size:18px;font-weight:700}.profile-stat .label{font-size:11px;opacity:.8}
+.del-confirm{background:#fef2f2;border-radius:12px;padding:16px;margin-top:12px}
+.del-confirm h4{color:#ef4444;font-size:14px;margin-bottom:4px}.del-confirm p{font-size:12px;color:#64748b}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script>
+// ============== 数据模型 ==============
+const LEVEL_RIGHTS = {
+  1:{name:'新手分身',color:'#64748b',bg:'lv1',perks:['基础对话能力','1种内容类型','仅限自己使用']},
+  2:{name:'见习分身',color:'#3b82f6',bg:'lv2',perks:['+2种内容类型','可学习平台技能','可接简单订单']},
+  3:{name:'专业分身',color:'#059669',bg:'lv3',perks:['+可挂广场接单','+可被关注','+自定义标签']},
+  4:{name:'资深分身',color:'#d97706',bg:'lv4',perks:['+独享模式','+自定义出场费','+优先匹配']},
+  5:{name:'精英分身',color:'#7c3aed',bg:'lv5',perks:['+技能上架市场','+优先推荐','+批量接单']},
+  6:{name:'大师分身',color:'#db2777',bg:'lv6',perks:['+多内容类型并行','+出场费+30%','+专属标识']},
+  7:{name:'传奇分身',color:'#dc2626',bg:'lv7',perks:['+平台推广','+最高分成比例','+VIP客服','+限量皮肤']}
+};
+const PRICING = {
+  '图文笔记':{minFee:2.0,genPrice:8.0,dims:[{name:'配图',need:5,weight:.5},{name:'文案',need:1,weight:.3},{name:'话题',need:1,weight:.2}]},
+  '短视频':{minFee:5.0,genPrice:25.0,dims:[{name:'视频片段',need:1,weight:.4},{name:'配图',need:3,weight:.3},{name:'脚本',need:1,weight:.2},{name:'话题',need:1,weight:.1}]},
+  '短视频脚本':{minFee:1.5,genPrice:6.5,dims:[{name:'参考脚本',need:1,weight:.6},{name:'话题',need:1,weight:.4}]},
+  '纯文案':{minFee:1.5,genPrice:3.5,dims:[{name:'参考文案',need:1,weight:.6},{name:'话题',need:1,weight:.4}]},
+  '简单任务':{minFee:0.3,genPrice:0.7,dims:[{name:'目标说明',need:1,weight:.7},{name:'参考示例',need:1,weight:.3}]}
+};
+const CONTENT_TYPES = ['图文笔记','短视频','短视频脚本','纯文案','简单任务'];
+const DOMAINS = ['美妆','穿搭','健身','美食','家装','旅行','母婴','数码','教育','宠物'];
+const STYLES = ['温柔知性','活泼俏皮','专业严谨','文艺清新','搞笑幽默','酷帅中性'];
+const PHOTO_POOL = [
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200&h=200&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&h=200&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=200&h=200&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=200&h=200&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1524250502761-1ac6f2e30d43?w=200&h=200&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=200&h=200&fit=crop&crop=face'
+];
+const COVER_POOL = [
+  'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=600&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=600&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=600&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=600&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=600&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=600&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1505932794465-f558b073f5cb?w=600&h=200&fit=crop'
+];
+
+// ============== 技能详情数据 ==============
+const SKILL_DETAILS = {
+  '小红书运营': {
+    icon: '📕', desc: '掌握小红书平台的运营策略和内容技巧',
+    category: '平台运营', reqLv: 2, xp: 120,
+    gain: { writing: 10, creativity: 15, engagement: 25 },
+    unlockPerk: '分身可以独立写小红书种草文，无需你逐条指导',
+    steps: [
+      { title: '平台规则入门', time: '3分钟', brief: '了解小红书流量分发机制和内容审核规则',
+        content: '小红书采用「双列信息流」+「搜索推荐」双引擎分发：\n1. 流量池机制：笔记发布后进入初始流量池（约200曝光），根据互动率决定是否推入更大流量池\n2. CES评分=点赞×1+收藏×1+评论×4+转发×4+关注×8\n3. 违规红线：虚假种草、硬广植入、导流私域、敏感词\n4. 最佳发布时间：7-9点、12-14点、18-21点',
+        example: '❌ 错误：加微信了解更多\n✅ 正确：评论区告诉我你最想试哪个，下期出详细测评',
+        tips: '注意不要使用「最」「第一」等绝对化用词，会触发审核',
+        practice: '请写一条符合平台规则的小红书笔记开头（3行以内）' },
+      { title: '爆款标题技巧', time: '4分钟', brief: '掌握5种高点击标题公式',
+        content: '5种高点击标题公式：\n1. 数字型：「5个方法让你白到发光」— 具体数字降低决策成本\n2. 悬念型：「我试了7天才知道的真相」— 制造信息差\n3. 对比型：「油皮vs干皮护肤对比」— 冲突感吸引点击\n4. 痛点型：「熬夜党必看的急救方案」— 直击用户需求\n5. 场景型：「约会前10分钟速成妆容」— 植入使用场景',
+        example: '❌ 普通标题：护肤分享\n✅ 爆款标题：30岁才知道的5个抗老真相，第3个绝了',
+        tips: '标题前20字最关键，决定用户是否点击。不要用标题党但要有吸引力。',
+        practice: '为一款面膜写3个不同类型的爆款标题' },
+      { title: '种草文写作框架', time: '5分钟', brief: '学习AIDA框架写出高转化种草文',
+        content: 'AIDA框架：\n• Attention（吸引注意）：用痛点/场景/数据开头\n• Interest（激发兴趣）：展示产品亮点+使用前后对比\n• Desire（创造欲望）：真实体验感受+具体效果描述\n• Action（促进行动）：引导互动或尝试\n\n种草文必备要素：\n1. 真实体验感（第一人称叙述）\n2. 使用场景（什么情况下需要）\n3. 效果对比（有图有真相）\n4. 购买建议（值不值、适合谁）',
+        example: '【Attention】最近加班到凌晨，皮肤直接崩溃...\n【Interest】闺蜜安利了这款面膜，说急救绝了\n【Desire】用了7天，暗沉真的改善了！精华超多但不会黏腻\n【Action】熬夜姐妹真的可以冲，评论区来聊效果',
+        tips: '种草文必须真实感优先，过度包装会被识别为广告',
+        practice: '用AIDA框架为一款咖啡写一篇种草文（150字内）' },
+      { title: '话题与标签策略', time: '3分钟', brief: '学会选择正确的话题和标签组合',
+        content: '话题选择3原则：\n1. 热度适中：太冷没流量，太热被淹没\n2. 垂直相关：必须和内容强关联\n3. 长尾覆盖：用1个大话题+2-3个精准话题\n\n标签组合技巧：\n• 每篇笔记3-5个话题标签\n• 1个流量话题 + 2个精准话题 + 1个品牌话题\n• 热门话题要蹭，但不能硬蹭',
+        example: '✅ 好的话题组合：#护肤分享（大话题）+ #熬夜急救面膜（精准）+ #平价好物（精准）+ #某某品牌（品牌）\n❌ 差的话题组合：#美妆 #护肤 #好物 #推荐（太泛）',
+        tips: '关注话题页的热门笔记，学习同赛道博主的话题策略',
+        practice: '为一篇平价面霜测评选择话题标签组合' },
+      { title: '实操考核', time: '5分钟', brief: '综合运用所学完成一篇种草文创作',
+        content: '考核要求：运用前面4步学到的所有知识，独立完成一篇小红书种草文。必须包含：\n1. 爆款标题（使用某种公式）\n2. AIDA框架结构\n3. 合适的话题标签\n4. 符合平台规则的表述',
+        practice: '请为一款防晒霜写一篇完整的小红书种草文（含标题+正文+话题）' }
+    ],
+    exam: {
+      question: '请结合你学到的知识，阐述一篇优质小红书种草文应该具备哪些关键要素？请具体说明AIDA框架在种草文中的应用，以及话题标签的选择策略。',
+      criteria: '需要包含：AIDA框架理解、话题标签策略、平台规则认知、真实感营造',
+      keywords: ['AIDA','互动率','话题','标签','流量池','真实','完播','CES','点赞','收藏']
+    }
+  },
+  '抖音脚本': {
+    icon: '🎬', desc: '学会写高完播率的短视频脚本',
+    category: '内容创作', reqLv: 2, xp: 130,
+    gain: { writing: 15, creativity: 20, engagement: 15 },
+    unlockPerk: '分身可以独立撰写短视频脚本，包含分镜和口播词',
+    steps: [
+      { title: '短视频算法基础', time: '3分钟', brief: '理解抖音推荐算法和完播率逻辑',
+        content: '抖音推荐算法核心指标排序：\n1. 完播率（最核心）> 互动率 > 转发率\n2. 前3秒决定生死——用户划走就一切白费\n3. 黄金7秒法则——7秒内必须给出价值\n4. 流量池晋级：200→500→1000→5000→1w→10w\n\n提升完播率技巧：\n• 控制时长：15-30秒最佳\n• 埋钩子：开头设悬念，中间给价值，结尾引导互动\n• 节奏快：每个镜头3-5秒',
+        example: '❌ 慢热开场：大家好，今天给大家分享...\n✅ 钩子开场：你绝对不知道，这个方法3天瘦了5斤',
+        tips: '完播率低于30%的视频基本不会被推荐',
+        practice: '写一个3秒钩子开头（1句话）' },
+      { title: '5种黄金钩子', time: '4分钟', brief: '掌握让用户停留的5种开头技巧',
+        content: '5种黄金钩子：\n1. 反常识钩子：「别再用洗面奶了，90%的人都洗错了」— 打破认知\n2. 痛点钩子：「脸越洗越油？你可能犯了这3个错」— 直击痛点\n3. 悬念钩子：「试了100种方法，只有这个有用」— 制造好奇\n4. 数据钩子：「7天从0到1万粉，我只做对了一件事」— 数字吸引\n5. 场景钩子：「约会前5分钟，急救妆容速成」— 植入场景',
+        example: '反常识：「你以为喝酸奶能减肥？其实越喝越胖」\n痛点：「熬夜后皮肤暗沉发黄？3步急救回血」\n悬念：「用了3年才发现，这个功能太绝了」',
+        tips: '钩子不要超过3秒，否则用户已经划走了',
+        practice: '为一款美白产品写2种不同类型的钩子' },
+      { title: '脚本结构模板', time: '4分钟', brief: '掌握3段式和5段式脚本结构',
+        content: '3段式结构（15-30秒短视频）：\n• 钩子（3秒）：吸引注意，抛出问题/悬念\n• 内容（15-25秒）：给出价值，解决问题\n• CTA（3秒）：引导互动（点赞/评论/关注）\n\n5段式结构（60秒+长视频）：\n• 钩子→背景→方案→演示→CTA\n\n脚本写作要点：\n1. 口播词要口语化，不要书面语\n2. 每句话不超过15个字\n3. 关键信息要重复2次',
+        example: '【3段式示例】\n钩子：你还在用手洗脸？难怪毛孔越来越大\n内容：试试这个洁面仪，1分钟深层清洁，毛孔 visibly变小\nCTA：点个赞，下期教你怎么选洁面仪',
+        practice: '用3段式结构写一个30秒护肤脚本' },
+      { title: '分镜与节奏', time: '3分钟', brief: '学会设计分镜和把控视频节奏',
+        content: '分镜设计原则：\n• 每个镜头3-5秒，避免单调\n• B-roll穿插：口播+特写+全景交替\n• 文字强化：关键信息加字幕贴纸\n• 音效配合：转场音效+重点音效\n\n节奏把控：\n• 快节奏：2-3秒一个画面切换\n• 慢节奏：5-8秒一个画面（适合教学）\n• 黄金3秒：开头必须是动态画面\n\n分镜表格式：\n| 画面 | 口播 | 时长 | 备注 |',
+        example: '分镜示例：\n1. 产品特写（1s）+ "这个面膜绝了"\n2. 上脸演示（3s）+ "精华超多不黏腻"\n3. 效果对比（2s）+ "7天暗沉全没了"\n4. CTA（2s）+ "点赞收藏慢慢看"',
+        tips: '每个镜头必须有信息增量，删掉所有无效画面',
+        practice: '为一款口红设计5个镜头的分镜表' },
+      { title: '实操考核', time: '5分钟', brief: '完成一条完整的短视频脚本',
+        content: '考核要求：综合运用所学知识，完成一条30秒种草短视频的完整脚本。必须包含：\n1. 钩子设计（3秒）\n2. 3段式结构\n3. 分镜设计（至少4个镜头）\n4. 口播词（口语化，每句≤15字）',
+        practice: '为一款洗面奶写一条完整的30秒短视频脚本' }
+    ],
+    exam: {
+      question: '请详细说明如何写一个高完播率的短视频脚本，包括：钩子设计原则、3段式脚本结构、分镜与节奏把控要点。',
+      criteria: '需要包含：完播率重要性、钩子类型、3段式结构、分镜节奏、口语化表达',
+      keywords: ['完播率','钩子','3段式','分镜','节奏','口播','3秒','5秒','CTA','互动']
+    }
+  },
+  'SEO优化': {
+    icon: '🔍', desc: '掌握搜索引擎优化的核心方法',
+    category: '技术能力', reqLv: 3, xp: 100,
+    gain: { writing: 15, professionalism: 25, accuracy: 10 },
+    unlockPerk: '分身写的内容自动优化关键词，提升搜索排名',
+    steps: [
+      { title: '关键词研究', time: '4分钟', brief: '学会挖掘和分析目标关键词',
+        content: '关键词研究3步法：\n1. 种子词提取：从产品/服务出发，列出核心词\n2. 长尾词扩展：用工具/下拉框/相关搜索找长尾词\n3. 搜索意图分类：\n   - 信息型：「如何...」「什么是...」\n   - 导航型：「XX官网」「XX下载」\n   - 交易型：「XX价格」「XX推荐」\n\n工具推荐：5118、站长工具、百度指数',
+        example: '种子词：面膜\n→ 长尾词：补水面膜推荐、敏感肌面膜排行、平价面膜测评\n→ 意图：补水面膜推荐=交易型、面膜使用方法=信息型',
+        tips: '长尾词虽然搜索量小，但转化率高，优先布局',
+        practice: '为「咖啡机」这个种子词扩展5个长尾关键词' },
+      { title: '内容优化', time: '4分钟', brief: '学会在内容中合理布局关键词',
+        content: '关键词布局4个位置：\n1. 标题：核心关键词放标题前半段\n2. 首段：前100字自然出现关键词\n3. 正文：密度2-5%，均匀分布\n4. 尾段：总结时再次出现\n\nLSI语义词汇：\n不要只重复核心词，要使用语义相关词\n例：核心词「咖啡机」→ LSI词「磨豆、萃取、意式、美式、咖啡豆」',
+        example: '❌ 关键词堆砌：咖啡机哪个好？咖啡机推荐，咖啡机评测，咖啡机价格\n✅ 自然布局：2024年值得入手的咖啡机推荐，从入门到专业级全覆盖',
+        tips: '关键词密度不是越高越好，2-5%是最优区间',
+        practice: '为一段关于咖啡机的开头段落布局关键词' },
+      { title: '结构化数据', time: '3分钟', brief: '理解HTML标签层次和Schema标记',
+        content: 'HTML标签层次：\n• H1：页面主标题（仅1个）\n• H2：大章节标题\n• H3：小节标题\n• 段落内容自然分布\n\n内链建设：\n• 相关内容互链\n• 锚文本含关键词\n• 每篇文章3-5个内链\n\nSchema标记：\n• Article、Product、FAQ等结构化数据\n• 帮助搜索引擎理解内容',
+        example: 'H1: 2024年咖啡机选购指南\nH2: 入门级咖啡机推荐\nH3: 500元以下高性价比款\nH2: 专业级咖啡机对比',
+        tips: 'H1每页只能有1个，H2/H3可以有多个但要层次分明',
+        practice: '为一篇咖啡机测评文章设计H1-H3的标题结构' },
+      { title: '外链与权重', time: '3分钟', brief: '了解外链建设和域名权重',
+        content: '外链类型：\n• dofollow：传递权重，对SEO有价值\n• nofollow：不传递权重，但能引流\n\n高质量外链获取方法：\n1. 原创内容被自然引用\n2. 行业媒体投稿\n3. 友情链接交换（同行业优先）\n4. 社交媒体分享\n\n权重评估：DA（域名权重）PA（页面权重）\n• DA>30：中等权重\n• DA>50：高权重\n• DA>70：权威站点',
+        example: '✅ 好外链：行业媒体dofollow链接\n❌ 差外链：垃圾站群大量链接',
+        tips: '外链质量>数量，1个高质量外链胜过100个低质量',
+        practice: '列举3种获取高质量外链的方法' },
+      { title: '实操考核', time: '5分钟', brief: '对内容进行SEO诊断和优化',
+        content: '考核要求：综合运用关键词研究、内容优化、结构化数据和外链知识，对一篇内容制定完整的SEO优化方案。',
+        practice: '为一篇护肤品的测评文章制定SEO优化方案（含关键词、标题、内链策略）' }
+    ],
+    exam: {
+      question: '请阐述SEO内容优化的完整流程，包括关键词研究方法、内容中的关键词布局策略、HTML标签层次设计、以及外链建设要点。',
+      criteria: '需要包含：关键词研究、布局策略、标签层次、外链建设、LSI语义词',
+      keywords: ['关键词','长尾','密度','H1','H2','LSI','外链','dofollow','权重','内链']
+    }
+  },
+  '客服话术': {
+    icon: '💬', desc: '学会专业的客户沟通和问题处理技巧',
+    category: '沟通能力', reqLv: 1, xp: 80,
+    gain: { engagement: 10, professionalism: 20, writing: 10 },
+    unlockPerk: '分身可以独立处理客户咨询，保持专业和亲和力',
+    steps: [
+      { title: '客服基础素养', time: '3分钟', brief: '了解优秀客服的核心素质和原则',
+        content: '客服3原则：\n1. 共情优先：先理解感受，再解决问题\n2. 快速响应：30秒内首次回复，5分钟内给出方案\n3. 专业可靠：产品知识扎实，口径统一\n\n5种常见客户类型：\n• 咨询型：耐心解答，引导下单\n• 投诉型：先安抚情绪，再处理问题\n• 犹豫型：提供对比和建议\n• 售后型：快速处理退换货\n• 复购型：维护关系，推荐新品',
+        example: '❌ 冷冰冰：您的问题已收到，我们会处理\n✅ 有温度：非常抱歉给您带来了不便！我马上帮您处理，请稍等~',
+        practice: '写一句对投诉客户的共情回复' },
+      { title: '投诉处理技巧', time: '4分钟', brief: '掌握投诉处理的4步法',
+        content: '投诉处理4步法（LEARN）：\n• Listen（倾听）：让客户说完，不打断\n• Empathize（共情）："理解您的感受"\n• Apologize（道歉）：真诚道歉，不推诿\n• Resolve（解决）：给出具体方案和时间\n• Notify（跟进）：主动回访确认\n\n话术模板：\n"非常抱歉给您带来这样的体验，我完全理解您的心情。让我马上为您处理，预计XX分钟内给您回复。"',
+        example: '客户：你们的东西质量太差了！\n❌ 回复：我们质量没问题，是您使用不当\n✅ 回复：非常抱歉给您带来不好的体验！我理解您的心情，能具体说说是什么问题吗？我马上帮您处理',
+        tips: '绝对不要和客户争辩对错，先处理情绪再处理问题',
+        practice: '客户说"等了3天还没发货，差评！"请用LEARN法回复' },
+      { title: '促单转化话术', time: '3分钟', brief: '学会在咨询中自然促单',
+        content: '促单3种方式：\n1. 稀缺感：「这款只剩最后3件了」\n2. 从众心理：「这是我们的爆款，本月已售2000+」\n3. 利益驱动：「现在下单还能享受XX优惠」\n\n场景话术：\n• 犹豫不决：「很多和您情况相似的客户都选了这款，反馈很好」\n• 比价阶段：「这个价位能做到这个品质的，真的不多」\n• 拖延下单：「现在下单今天就能发货，明天就能收到」',
+        example: '客户：我再看看吧\n✅ 回复：好的呢~这款是热销款库存不太多了，如果喜欢建议尽早下手哦，现在下单还享9折~',
+        practice: '客户说"太贵了"，写一句促单话术' },
+      { title: '话术库搭建', time: '3分钟', brief: '学会建立和维护标准化话术库',
+        content: '话术库结构：\n1. 问候语（5套以上变体）\n2. 产品咨询（按品类分）\n3. 价格相关（议价/比价/优惠）\n4. 物流相关（发货/快递/签收）\n5. 售后相关（退换货/质量问题）\n6. 促单话术（紧迫感/利益点）\n7. 结束语（感谢/期待复购）\n\n维护原则：\n• 每周更新1次\n• 新问题24小时内补充话术\n• 常用话术设为快捷回复',
+        example: '问候语变体：\n1. 亲，有什么可以帮您~\n2. 您好呀，欢迎来到XX旗舰店\n3. 嗨~我是您的专属顾问，有任何问题都可以问我哦',
+        practice: '为退换货场景写3条标准话术' },
+      { title: '实操考核', time: '5分钟', brief: '综合运用所学处理客户场景',
+        content: '考核要求：运用客服4步法、促单技巧和话术库知识，处理3个客户场景。',
+        practice: '场景1：客户投诉收到的商品有瑕疵\n场景2：客户犹豫要不要买\n场景3：客户要求超出政策的退换货\n请分别写出你的回复。' }
+    ],
+    exam: {
+      question: '请阐述你的客服沟通理念，包括：如何处理投诉客户、促单转化的方法、以及如何建立和维护标准化话术库。',
+      criteria: '需要包含：共情原则、LEARN处理法、促单技巧、话术库结构',
+      keywords: ['共情','投诉','LEARN','促单','话术','稀缺','从众','快速响应','安抚','道歉']
+    }
+  },
+  '数据分析': {
+    icon: '📊', desc: '学会用数据驱动内容决策和优化',
+    category: '技术能力', reqLv: 3, xp: 110,
+    gain: { accuracy: 25, professionalism: 15, engagement: 10 },
+    unlockPerk: '分身能自主分析数据表现，调整内容策略',
+    steps: [
+      { title: '核心指标认知', time: '3分钟', brief: '理解内容运营的核心数据指标',
+        content: '内容运营5大核心指标：\n1. 曝光量：内容被展示的次数\n2. 点击率CTR=点击/曝光（>5%算优秀）\n3. 互动率=（点赞+评论+收藏+转发）/曝光\n4. 转化率=下单/点击（>3%算优秀）\n5. 粉丝增长=新粉-取关\n\n指标看板搭建：\n• 每日：曝光量、互动率\n• 每周：CTR趋势、转化率\n• 每月：粉丝增长、ROI',
+        example: '笔记A：曝光1万，互动500 → 互动率5%\n笔记B：曝光5千，互动400 → 互动率8%\n→ B虽然曝光少但互动率高，值得复制',
+        practice: '计算一篇笔记的CTR和互动率' },
+      { title: '数据采集工具', time: '3分钟', brief: '掌握各平台的数据后台和第三方工具',
+        content: '平台数据后台：\n• 小红书：创作者中心→笔记数据\n• 抖音：创作者服务中心→数据看板\n• 公众号：后台→图文分析\n\n第三方工具：\n• 新榜：全平台数据排名\n• 蝉妈妈：抖音数据分析\n• 灰豚：小红书数据\n\n数据采集频率：\n• 发布后1小时：看初始数据\n• 发布后24小时：看完整数据\n• 每周汇总：趋势分析',
+        example: '使用蝉妈妈分析竞品视频：\n1. 找到竞品账号\n2. 按点赞排序看爆款\n3. 分析爆款共性（时长/话题/标题）',
+        tips: '不要只看自己的数据，竞品分析同样重要',
+        practice: '列出你会在哪个工具看什么数据' },
+      { title: 'A/B测试方法', time: '4分钟', brief: '学会用对比实验优化内容',
+        content: 'A/B测试4步法：\n1. 提出假设：「换标题能提升CTR」\n2. 控制变量：只改标题，其他不变\n3. 同时发布：排除时间因素干扰\n4. 对比结果：看哪个CTR更高\n\n常见测试维度：\n• 标题：数字型 vs 悬念型\n• 封面：人物 vs 产品\n• 发布时间：早 vs 晚\n• 话题：热门 vs 精准\n\n注意事项：\n• 每次只测1个变量\n• 样本量至少500曝光\n• 统计显著性差异>5%',
+        example: '测试1：标题「5个美白方法」vs「7天白了一个度」\n测试2：封面「产品图」vs「使用前后对比图」\n→ 结果：悬念标题CTR高30%，对比图CTR高50%',
+        practice: '设计一个标题A/B测试方案' },
+      { title: '数据驱动决策', time: '4分钟', brief: '学会从数据中发现问题和机会',
+        content: '数据分析3步法：\n1. 发现异常：对比历史数据，找出突增/突降\n2. 定位原因：拆分维度（时间/内容/渠道）\n3. 制定策略：基于原因给出优化方案\n\n常见问题诊断：\n• 曝光下降→标题/封面/发布时间问题\n• 互动率低→内容质量/话题不匹配\n• 转化率低→产品价格/购买路径问题\n• 掉粉→内容方向偏移/质量下降',
+        example: '案例：上周互动率从5%降到2%\n→ 拆分：周一到周五数据正常，周末骤降\n→ 原因：周末发了2条硬广，粉丝不买账\n→ 策略：周末发软性内容，硬广放工作日',
+        practice: '曝光量突然下降30%，你的分析思路是什么？' },
+      { title: '实操考核', time: '5分钟', brief: '对一组运营数据进行分析并给出优化方案',
+        content: '考核要求：对给定的运营数据进行分析，找出问题并给出优化建议。',
+        practice: '假设你负责一个账号，最近一周数据：\n周一：曝光5000，互动率4%\n周二：曝光4800，互动率3.5%\n周三：曝光3000，互动率2%\n周四：曝光2000，互动率1.5%\n周五：曝光1500，互动率1%\n请分析原因并给出优化方案。' }
+    ],
+    exam: {
+      question: '请阐述数据驱动内容运营的完整方法论，包括：核心指标定义、A/B测试方法、从数据中发现问题的思路、以及优化策略制定流程。',
+      criteria: '需要包含：核心指标、A/B测试、异常分析、优化策略',
+      keywords: ['CTR','互动率','转化率','A/B','曝光','对比','变量','异常','优化','趋势']
+    }
+  },
+  '视频剪辑': {
+    icon: '✂️', desc: '掌握短视频剪辑的核心技巧和工具',
+    category: '技术能力', reqLv: 2, xp: 120,
+    gain: { creativity: 20, professionalism: 20, accuracy: 5 },
+    unlockPerk: '分身可以独立完成短视频的剪辑和后期制作',
+    steps: [
+      { title: '剪辑工具入门', time: '3分钟', brief: '了解主流剪辑工具和基础操作',
+        content: '主流剪辑工具对比：\n• 剪映：免费、模板多、适合新手\n• CapCut：剪映海外版、素材更丰富\n• Premiere：专业级、功能强大\n• Final Cut：Mac专属、流畅高效\n\n剪映核心功能：\n1. 时间线：拖拽排列素材\n2. 转场：画面之间的过渡效果\n3. 特效：滤镜、贴纸、文字\n4. 音频：配乐、音效、配音\n5. 导出：选择分辨率和帧率',
+        example: '剪映工作流：\n导入素材 → 粗剪去废片 → 加转场 → 加字幕 → 加配乐 → 调色 → 导出',
+        practice: '用剪映导入一段素材并进行粗剪' },
+      { title: '转场与节奏', time: '4分钟', brief: '掌握转场技巧和视频节奏把控',
+        content: '常用转场类型：\n1. 硬切：直接切换，节奏感强\n2. 淡入淡出：场景过渡，情绪柔和\n3. 推拉：画面推进/拉远，空间感\n4. 遮罩：用物体遮挡过渡，创意感\n5. 变速：快慢交替，制造张力\n\n节奏把控原则：\n• 快节奏：2-3秒一个切换\n• 慢节奏：5-8秒一个画面\n• 关键节点：产品露出要慢，过程可以快\n• 音乐踩点：切换跟着节拍走',
+        example: '节奏示例：\n[快]开场3秒3个画面 → [慢]产品特写5秒 → [中]使用过程3秒 → [慢]效果展示4秒 → [快]CTA 2秒',
+        tips: '转场不要用太多花哨效果，简洁有力更好',
+        practice: '为一个30秒产品视频设计转场节奏' },
+      { title: '字幕与配音', time: '3分钟', brief: '学会添加专业字幕和配音',
+        content: '字幕技巧：\n1. 位置：中下1/3处，不遮挡画面重点\n2. 字体：粗体无衬线，字号适中\n3. 颜色：白色+黑色描边/阴影\n4. 动效：逐字出现更有节奏感\n5. 强调：关键词变色/放大\n\n配音类型：\n• 真人配音：最真实，感染力强\n• AI配音：效率高，剪映内置多种音色\n• 音乐+字幕：无声环境也能看\n\n注意：字幕和口播同步误差<0.3秒',
+        example: '✅ 好字幕：关键词放大变色\n"这个面膜**7天**就让暗沉**消失**了"\n❌ 差字幕：一整段文字堆在画面上',
+        practice: '为一条口播视频设计字幕样式' },
+      { title: '调色与包装', time: '4分钟', brief: '学会调色和整体视觉包装',
+        content: '调色3步法：\n1. 基础校正：亮度/对比度/饱和度\n2. 风格化：套用LUT/滤镜\n3. 精细调整：肤色保护/高光控制\n\n不同风格调色：\n• 清新风：高亮度+低对比+偏冷\n• 温暖风：暖色调+柔光+低饱和\n• 高级感：低饱和+高对比+冷色调\n\n视觉包装要素：\n• 片头：品牌Logo+3秒动画\n• 角标：固定位置的Logo\n• 信息条：底部产品信息条\n• 片尾：关注引导',
+        example: '美妆产品：温暖风调色\n→ 亮度+10，对比度-5，饱和度-10，色温+15\n→ 肤色保护+柔焦效果',
+        practice: '为一组护肤品素材选择调色风格并说明参数' },
+      { title: '实操考核', time: '5分钟', brief: '完成一条短视频的完整剪辑方案',
+        content: '考核要求：综合运用剪辑技巧，完成一条15秒产品短视频的剪辑方案。包括：转场设计、节奏把控、字幕风格、调色方案。',
+        practice: '为一款口红设计一条15秒短视频的完整剪辑方案' }
+    ],
+    exam: {
+      question: '请详细说明短视频剪辑的完整流程和关键技巧，包括：工具选择、转场与节奏把控、字幕配音方法、调色与视觉包装。',
+      criteria: '需要包含：工具对比、转场节奏、字幕技巧、调色方法',
+      keywords: ['转场','节奏','字幕','调色','剪映','踩点','配音','对比度','饱和度','LUT']
+    }
+  },
+  '品牌策划': {
+    icon: '🎯', desc: '掌握品牌定位和营销策划的核心方法',
+    category: '营销策划', reqLv: 4, xp: 150,
+    gain: { creativity: 15, professionalism: 20, engagement: 15, accuracy: 10 },
+    unlockPerk: '分身可以独立完成品牌策划案和营销方案',
+    steps: [
+      { title: '品牌定位方法', time: '4分钟', brief: '学会找到品牌的核心差异化定位',
+        content: '品牌定位3要素：\n1. 目标人群：WHO——卖给谁？\n2. 核心价值：WHAT——解决什么问题？\n3. 差异化：WHY——为什么选你？\n\n定位工具：\n• 人群画像：年龄/性别/收入/场景/痛点\n• 竞品矩阵：X轴价格，Y轴品质，找到空白区\n• 品牌三角形：功能价值+情感价值+社交价值\n\n定位陈述公式：\n"对于[目标人群]，[品牌名]是[品类]中，最能[核心利益]的选择，因为它[差异化理由]"',
+        example: '定位示例：\n"对于25-35岁职场女性，花西子是彩妆品牌中，最能将东方美学融入日常妆容的选择，因为它独创了微雕工艺和以花养妆理念"',
+        practice: '为一个新品牌写定位陈述' },
+      { title: '品牌故事构建', time: '4分钟', brief: '学会讲一个打动人心的品牌故事',
+        content: '品牌故事5要素：\n1. 创始人初心：为什么做这件事？\n2. 问题洞察：发现了什么未被满足的需求？\n3. 解决过程：经历了什么挑战和突破？\n4. 价值主张：现在能带来什么？\n5. 未来愿景：要去向哪里？\n\n故事结构（英雄之旅）：\n平凡世界→冒险召唤→遭遇挑战→获得突破→回归蜕变\n\n注意：\n• 真实感>完美感\n• 具体细节>抽象概念\n• 情感共鸣>理性说教',
+        example: '品牌故事示例：\n"创始人小林曾是广告公司的文案，每天加班写别人的故事，却没时间照顾自己的皮肤。一次出差，她在日本发现了一款极简护肤理念——只保留最必要的步骤。她辞职回国，用2年时间研发出了这款3步护肤套装..."',
+        practice: '为一个咖啡品牌写一段品牌故事（100字内）' },
+      { title: '营销活动策划', time: '4分钟', brief: '掌握营销活动的策划流程和方法',
+        content: '活动策划5步法：\n1. 目标设定：销售额/曝光量/新增用户\n2. 人群分析：目标用户画像+触达渠道\n3. 创意主题：与品牌调性一致的创意概念\n4. 执行方案：时间线+资源分配+风险预案\n5. 效果评估：KPI+复盘总结\n\n常见活动类型：\n• 限时折扣：制造紧迫感\n• 内容挑战：UGC+品牌曝光\n• KOL合作：借力传播\n• 跨界联名：1+1>2\n• 会员专属：提升复购',
+        example: '活动案例：\n目标：1个月新增5000用户\n主题：「7天蜕变挑战」\n形式：用户打卡分享使用效果\n激励：连续7天打卡送正装\n渠道：小红书+抖音双平台',
+        practice: '为一个面膜品牌设计一个营销活动方案' },
+      { title: '预算与ROI', time: '3分钟', brief: '学会营销预算分配和ROI计算',
+        content: '预算分配3种模型：\n1. 销售百分比法：营销费=销售额×15-25%\n2. 目标倒推法：目标500单×CPA50元=25000元\n3. 竞争对等法：与竞品保持相近投入\n\nROI计算：\nROI=产出金额/投入金额\n• ROI>1：盈利\n• ROI>3：优质投放\n• ROI<1：亏损，需优化\n\n渠道ROI对比：\n• KOL种草：ROI 2-5\n• 信息流广告：ROI 1.5-3\n• 私域运营：ROI 5-10\n• 直播带货：ROI 1-3',
+        example: '案例：投入1万元KOL投放\n→ 带来3万元销售额\n→ ROI=3，属于优质投放\n→ 可加大此渠道投入',
+        tips: '前期测试小预算，找到ROI最高的渠道再放大',
+        practice: '计算一个营销活动的ROI' },
+      { title: '实操考核', time: '5分钟', brief: '完成一份品牌策划案',
+        content: '考核要求：综合运用品牌定位、故事构建、活动策划和预算分配知识，完成一份完整的品牌策划案。',
+        practice: '为一个新锐护肤品牌制定品牌策划案（含定位+故事+活动+预算）' }
+    ],
+    exam: {
+      question: '请阐述品牌策划的完整方法论，包括：品牌定位3要素、品牌故事构建方法、营销活动策划5步法、以及预算分配和ROI计算。',
+      criteria: '需要包含：定位方法、故事5要素、活动策划、ROI计算',
+      keywords: ['定位','人群','差异化','品牌故事','活动','ROI','预算','KOL','转化','目标']
+    }
+  },
+  '社群运营': {
+    icon: '👥', desc: '掌握社群搭建和活跃运营的核心方法',
+    category: '运营能力', reqLv: 2, xp: 90,
+    gain: { engagement: 25, professionalism: 10, writing: 10, creativity: 5 },
+    unlockPerk: '分身可以独立运营社群，维护用户活跃和转化',
+    steps: [
+      { title: '社群定位与搭建', time: '3分钟', brief: '学会定位社群目的和搭建基础架构',
+        content: '社群4种类型：\n1. 服务型：售后群、答疑群\n2. 内容型：学习群、分享群\n3. 社交型：兴趣群、同城群\n4. 销售型：团购群、分销群\n\n搭建5要素：\n1. 群名：品牌+价值点（XX护肤研究所）\n2. 群规：3-5条核心规则\n3. 入群欢迎：自动+人工双重欢迎\n4. 内容日历：周一到周日内容规划\n5. 角色分工：群主+管理员+KOC',
+        example: '入群欢迎模板：\n"欢迎加入XX护肤研究所！🎉\n这里是分享护肤心得的地方\n群规：1️⃣不刷屏 2️⃣不广告 3️⃣友好交流\n今日话题：你最大的护肤困扰是什么？"',
+        practice: '为一个护肤品牌设计入群欢迎语和群规' },
+      { title: '活跃度提升', time: '4分钟', brief: '掌握提升社群活跃度的方法',
+        content: '提升活跃6种方式：\n1. 话题讨论：每天1个固定话题\n2. 打卡活动：每日/每周打卡送积分\n3. 福利抽奖：每周固定时间抽奖\n4. 内容分享：鼓励用户分享使用心得\n5. 专属特权：群内专属优惠/新品试用\n6. 线下活动：定期组织见面会\n\n内容日历示例：\n• 周一：护肤小知识\n• 周二：产品测评分享\n• 周三：问题答疑日\n• 周四：福利日\n• 周五：话题讨论\n• 周末：自由交流',
+        example: '话题讨论示例：\n"今日话题：你的梳妆台上最不能少的一件护肤品是什么？我先来：精华液！没有它我真的活不了😭"',
+        tips: '活跃度=发言人数÷总人数，健康值>10%',
+        practice: '为一周设计社群内容日历' },
+      { title: '用户分层运营', time: '3分钟', brief: '学会对社群用户进行分层管理',
+        content: '用户4层金字塔：\n1. 潜水层（60%）：只看不发→用@和话题激活\n2. 活跃层（25%）：偶尔发言→用福利和认可激励\n3. 核心层（10%）：高频互动→培养为KOC\n4. 领袖层（5%）：带动话题→给予专属权益\n\nKOC培养3步法：\n1. 识别：看互动频率和内容质量\n2. 激励：免费试用+专属折扣+公开表扬\n3. 赋能：给话题引导权+新品优先体验\n\n分层触达策略：\n• 全群：每日话题/福利\n• 活跃层：专属任务/积分加倍\n• 核心层：KOC专属活动\n• 领袖层：1对1维护',
+        example: '识别KOC信号：\n• 每周发言>5次\n• 发言常被他人引用\n• 主动回答他人问题\n→ 邀请加入KOC计划',
+        practice: '设计一个KOC招募和培养计划' },
+      { title: '转化与变现', time: '4分钟', brief: '学会在社群中实现商业转化',
+        content: '社群转化3种模式：\n1. 团购转化：限时+限量+专属价\n2. 内容转化：种草→测评→购买引导\n3. 服务转化：免费试用→付费续订\n\n转化话术技巧：\n• 稀缺感：「仅限群内，30份售完即止」\n• 社会认同：「已有XX位姐妹下单了」\n• 限时感：「今天下单额外送XX」\n\n转化SOP：\n1. 预热：提前1天预告\n2. 种草：分享使用效果\n3. 开团：发布团购链接\n4. 跟进：晒单+倒计时\n5. 复盘：分析转化数据',
+        example: '团购话术：\n"姐妹们！品牌方给了我们专属福利🤩\n原价299的面膜套装，群内价只要199！\n还送5片体验装！限量30套！\n[购买链接]"',
+        practice: '设计一个社群团购的完整话术和节奏' },
+      { title: '实操考核', time: '5分钟', brief: '制定一份社群运营方案',
+        content: '考核要求：综合运用社群搭建、活跃提升、用户分层和转化变现知识，制定一份完整的社群运营方案。',
+        practice: '为一个新品牌从0到1制定社群运营方案（含定位+搭建+活跃+转化）' }
+    ],
+    exam: {
+      question: '请阐述社群运营的完整方法论，包括：社群搭建要素、活跃度提升方法、用户分层策略、以及社群转化变现模式。',
+      criteria: '需要包含：社群类型、活跃方法、用户分层、转化SOP',
+      keywords: ['社群','活跃','KOC','分层','团购','话题','打卡','福利','转化','内容日历']
+    }
+  }
+};
+
+;
+
+const ABILITY_LABELS = {
+  creativity: { name: '创意能力', icon: '🎨', color: '#8b5cf6' },
+  platform: { name: '平台运营', icon: '📱', color: '#3b82f6' },
+  writing: { name: '写作能力', icon: '✍️', color: '#059669' },
+  technical: { name: '技术能力', icon: '⚙️', color: '#64748b' },
+  communication: { name: '沟通能力', icon: '💬', color: '#f59e0b' },
+  analysis: { name: '分析能力', icon: '📊', color: '#6366f1' },
+  strategy: { name: '策略能力', icon: '🎯', color: '#ef4444' },
+  empathy: { name: '共情能力', icon: '❤️', color: '#ec4899' }
+};
+
+let nextId = 8;
+const STATE = {
+  checkedIn: false, checkinDays: 3,
+  currentTab: 'home',
+  hiredAvatars: {}, // 雇佣的广场分身 {id: {avatar, tasks: [], remainingUses}}
+  user: {name:'小雨',id:'xiaoyu_2024',avatar:PHOTO_POOL[0],balance:486.50,totalEarn:2846.80,avatarCount:3,orderCount:45,skillCount:5,vip:false},
+  avatars: {
+    1:{name:'美妆小助手',photo:PHOTO_POOL[1],cover:COVER_POOL[0],lv:5,xp:1280,xpMax:1500,earning:328,weekEarning:89,totalEarning:1280,orders:127,weekOrders:12,stars:4.9,status:'working',
+      skills:['爆款种草文','成分党测评','小红书运营','美妆种草'],learning:['短视频脚本'],
+      abilities:{writing:85,creativity:78,professionalism:80,engagement:82,accuracy:75},
+      hangPlaza:true,plazaPrice:5,desc:'5年美妆博主经验，擅长小红书种草和成分分析',style:'温柔知性',domains:['美妆'],created:'2024-01-15'},
+    2:{name:'穿搭博主',photo:PHOTO_POOL[3],cover:COVER_POOL[1],lv:3,xp:680,xpMax:900,earning:156,weekEarning:42,totalEarning:586,orders:58,weekOrders:6,stars:4.7,status:'idle',
+      skills:['穿搭推荐','OOTD日常'],learning:['衣品改造'],
+      abilities:{writing:65,creativity:72,professionalism:55,engagement:68,accuracy:60},
+      hangPlaza:true,plazaPrice:3,desc:'每日穿搭推荐，衣品改造达人，分享最in的搭配灵感',style:'活泼俏皮',domains:['穿搭'],created:'2024-03-20'},
+    3:{name:'健身教练',photo:PHOTO_POOL[6],cover:COVER_POOL[2],lv:1,xp:120,xpMax:300,earning:18,weekEarning:0,totalEarning:18,orders:3,weekOrders:0,stars:4.5,status:'learning',
+      skills:[],learning:['健身计划'],
+      abilities:{writing:20,creativity:15,professionalism:25,engagement:10,accuracy:30},
+      hangPlaza:false,plazaPrice:0,desc:'健身新手，正在学习健身计划制定',style:'专业严谨',domains:['健身'],created:'2024-06-10'}
+  },
+  plazaAvatars: {
+    4:{name:'视频达人',photo:PHOTO_POOL[4],cover:COVER_POOL[3],lv:4,stars:4.8,orders:89,follows:567,price:8,
+       skills:['短视频脚本','视频剪辑','分镜设计'],desc:'5年短视频导演，擅长种草和剧情类',style:'搞笑幽默',domains:['数码','美妆'],followed:false},
+    5:{name:'美食探店王',photo:PHOTO_POOL[5],cover:COVER_POOL[4],lv:6,stars:4.9,orders:234,follows:1289,price:6,
+       skills:['美食种草','探店攻略','餐厅评测'],desc:'美食博主，吃遍全城，写过的店都排队',style:'活泼俏皮',domains:['美食'],followed:false},
+    6:{name:'家装设计师',photo:PHOTO_POOL[2],cover:COVER_POOL[5],lv:4,stars:4.7,orders:45,follows:312,price:10,
+       skills:['家装方案','软装搭配','避坑指南'],desc:'10年家装经验，帮你省钱又好看',style:'专业严谨',domains:['家装'],followed:false},
+    7:{name:'旅行种草官',photo:PHOTO_POOL[7],cover:COVER_POOL[6],lv:5,stars:4.8,orders:156,follows:892,price:7,
+       skills:['旅行攻略','酒店评测','行程规划'],desc:'走遍30+国家，帮你不踩坑又省钱',style:'文艺清新',domains:['旅行'],followed:false}
+  },
+  notifications: [
+    {icon:'💰',bg:'#dcfce7',title:'收益到账',desc:'美妆小助手完成订单，+¥5.00',time:'10分钟前',read:false},
+    {icon:'⭐',bg:'#fef3c7',title:'好评通知',desc:'美妆小助手收到⭐5.0好评',time:'30分钟前',read:false},
+    {icon:'📢',bg:'#ede9fe',title:'广场通知',desc:'穿搭博主被2人关注了',time:'1小时前',read:false},
+    {icon:'💪',bg:'#ede9fe',title:'技能学习',desc:'穿搭博主学会了「衣品改造」',time:'2小时前',read:true},
+    {icon:'🎯',bg:'#dbeafe',title:'新订单',desc:'有1个新订单匹配你的分身',time:'3小时前',read:true},
+    {icon:'🏆',bg:'#fef3c7',title:'等级提升',desc:'美妆小助手升级到Lv.5！',time:'昨天',read:true}
+  ],
+  orders: {
+    1:{type:'urgent',label:'🔥 急单',title:'小红书种草文×5篇',contentType:'图文笔记',
+       avatars:2,price:10.00,earning:7.00,deadline:'2小时内',status:'open',
+       desc:'美妆品牌推广，需要5篇种草文，含配图和话题',
+       materials:{provided:{配图:2,文案:1,话题:1},total:{配图:5,文案:5,话题:5}},
+       exclusive:false,aiSupplement:true},
+    2:{type:'new',label:'🆕 新单',title:'抖音短视频脚本×3条',contentType:'短视频脚本',
+       avatars:1,price:5.00,earning:3.50,deadline:'24小时',status:'open',
+       desc:'零食品牌短视频脚本，含分镜和文案',
+       materials:{provided:{参考脚本:1},total:{参考脚本:3,话题:3}},
+       exclusive:false,aiSupplement:true},
+    3:{type:'normal',label:'✅ 常规',title:'产品客服话术×1套',contentType:'纯文案',
+       avatars:1,price:1.50,earning:1.05,deadline:'3天',status:'open',
+       desc:'电商客服标准话术，含常见问题回复',
+       materials:{provided:{参考文案:1},total:{参考文案:1,话题:1}},
+       exclusive:false,aiSupplement:false}
+  },
+  results: [
+    {type:'done',label:'✅ 已交付',title:'小红书种草文×3篇',contentType:'图文笔记',stars:5.0,earning:4.20,avatar:'美妆小助手',time:'2小时前'},
+    {type:'done',label:'✅ 已交付',title:'穿搭OOTD图文×2组',contentType:'图文笔记',stars:4.8,earning:2.80,avatar:'穿搭博主',time:'昨天'},
+    {type:'gen',label:'⏳ 生成中',title:'美妆成分测评×1篇',contentType:'纯文案',stars:null,earning:1.50,avatar:'美妆小助手',time:'进行中'}
+  ],
+  earnings: {week:[42,68,35,89,56,0,0],weekLabels:['一','二','三','四','五','六','日']},
+  editAvatar: null,
+  selectedPhoto: null,
+  selectedCover: null,
+  // 教学数据
+  teachData: {
+    // 对话教学记录 { avatarId: [{role,text,time}] }
+    chatHistory: {},
+    // 教学模式: style(风格) / knowledge(知识) / example(示例)
+    chatMode: {},
+    // 喂资料记录 { avatarId: [{name,type,status,progress,addedXP,time}] }
+    materials: {},
+    // 纠正记录 { avatarId: [{original,correction,category,time,applied}] }
+    corrections: {},
+    // 技能学习进度 { avatarId: { skillName: {progress,maxStep,currentStep,status} } }
+    skillProgress: {}
+  }
+};
+
+// ============== 工具函数 ==============
+function showToast(msg) {
+  const t = document.createElement('div'); t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t); setTimeout(()=>t.remove(),2000);
+}
+function lvClass(lv){return 'lv'+Math.min(lv,7)}
+function statusText(s){return s==='working'?'⚡工作中':s==='idle'?'✅空闲':s==='learning'?'📖学习中':'⏸️休息'}
+function statusClass(s){return s==='working'?'st-work':s==='idle'?'st-idle':s==='learning'?'st-learn':'st-off'}
+
+function calcCoverage(contentType, materials) {
+  const p = PRICING[contentType]; if(!p) return 0;
+  let totalW=0, gotW=0;
+  p.dims.forEach(d=>{
+    totalW+=d.weight;
+    const have = (materials.provided[d.name]||0);
+    const need = (materials.total[d.name]||0) * (contentType==='短视频脚本'?1:1);
+    gotW += d.weight * Math.min(1, have/need);
+  });
+  return totalW>0 ? Math.round(gotW/totalW*100) : 0;
+}
+function calcPrice(contentType, avatars, materials, exclusive, aiSupplement, customFee) {
+  const p = PRICING[contentType]; if(!p) return {total:0,fee:0,gen:0};
+  const coverage = calcCoverage(contentType, materials);
+  const fee = customFee && customFee >= p.minFee ? customFee : p.minFee;
+  const totalFee = fee * avatars;
+  const genSets = exclusive ? avatars : 1;
+  const genCost = aiSupplement ? p.genPrice * (1-coverage/100) * genSets : 0;
+  return {total: Math.round((totalFee+genCost)*100)/100, fee:totalFee, genCost, coverage, feePerAvatar:fee, genSets, minFee:p.minFee, genUnitPrice:p.genPrice};
+}
+function calcPlatformIncome(contentType, avatars, materials, exclusive, aiSupplement, customFee) {
+  const p = PRICING[contentType]; if(!p) return 0;
+  const fee = customFee && customFee >= p.minFee ? customFee : p.minFee;
+  const coverage = calcCoverage(contentType, materials);
+  const genSets = exclusive ? avatars : 1;
+  const basePlatform = p.minFee * avatars * 0.3;
+  const extraPlatform = Math.max(0, fee - p.minFee) * avatars * 0.2;
+  const genPlatform = aiSupplement ? p.genPrice * (1-coverage/100) * genSets : 0;
+  return Math.round((basePlatform+extraPlatform+genPlatform)*100)/100;
+}
+function calcAvatarEarning(contentType, avatars, materials, exclusive, aiSupplement, customFee) {
+  const p = PRICING[contentType]; if(!p) return 0;
+  const fee = customFee && customFee >= p.minFee ? customFee : p.minFee;
+  const baseAvatar = p.minFee * 0.7;
+  const extraAvatar = Math.max(0, fee - p.minFee) * 0.8;
+  return Math.round((baseAvatar+extraAvatar)*100)/100;
+}
+
+// ============== Tab切换 ==============
+function switchTab(name) {
+  STATE.currentTab = name;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  const tabs = document.querySelectorAll('.tabbar-item,.tabbar-center');
+  tabs.forEach(t=>t.classList.remove('active'));
+  const idx = {home:0,avatars:1,orders:2,plaza:3,profile:4}[name];
+  if(idx>=0 && tabs[idx]) tabs[idx].classList.add('active');
+  renderPage(name);
+}
+
+// ============== 渲染主页面 ==============
+function renderPage(name) {
+  const el = document.getElementById('page-'+name+'-content');
+  if(!el) return;
+  switch(name) {
+    case 'home': el.innerHTML = renderHome(); break;
+    case 'avatars': el.innerHTML = renderAvatars(); break;
+    case 'orders': el.innerHTML = renderOrders(); break;
+    case 'plaza': el.innerHTML = renderPlaza(); break;
+    case 'profile': el.innerHTML = renderProfile(); break;
+  }
+}
+
+function renderHome() {
+  const a = STATE.avatars;
+  const workCount = Object.values(a).filter(x=>x.status==='working').length;
+  const idleCount = Object.values(a).filter(x=>x.status==='idle').length;
+  const unread = STATE.notifications.filter(n=>!n.read).length;
+  return `
+  <div class="gradient-header">
+    <div class="header-row">
+      <div><h1>👋 Hi，${STATE.user.name}</h1><p>${Object.keys(a).length}个分身已就位 · ${workCount>0?workCount+'个工作中':'全部空闲'}</p></div>
+      <div class="header-actions">
+        <button class="header-btn" onclick="openSub('notify')">🔔${unread>0?'<span style="position:absolute;top:-2px;right:-2px;width:16px;height:16px;background:#ef4444;border-radius:50%;font-size:9px;color:#fff;display:flex;align-items:center;justify-content:center">'+unread+'</span>':''}</button>
+      </div>
+    </div>
+    <div class="quick-grid">
+      <div class="quick-item" onclick="openSub('chat-pick')"><div class="icon">💬</div><div class="text">对话干活</div></div>
+      <div class="quick-item" onclick="switchTab('orders')"><div class="icon">📋</div><div class="text">接单赚钱</div></div>
+      <div class="quick-item" onclick="openSub('skill-market')"><div class="icon">📚</div><div class="text">学技能</div></div>
+      <div class="quick-item" onclick="switchTab('plaza')"><div class="icon">🔥</div><div class="text">逛广场</div></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-head"><div class="section-title">⏳ 正在进行</div></div>
+    ${workCount>0?Object.entries(a).filter(([k,v])=>v.status==='working').map(([id,v])=>`
+    <div class="card" onclick="openSub('chat-work${id>1?id:''}')">
+      <div style="display:flex;align-items:center;gap:10px">
+        <img src="${v.photo}" class="avatar-photo sm" />
+        <div style="flex:1"><div style="font-weight:600;font-size:14px">${v.name}</div><div style="font-size:12px;color:#94a3b8">正在生成内容...</div></div>
+        <span class="avatar-status st-work">⚡工作中</span>
+      </div>
+    </div>`).join(''):'<div style="text-align:center;padding:20px;color:#94a3b8;font-size:13px">暂无进行中的任务</div>'}
+  </div>
+  <div class="section">
+    <div class="section-head"><div class="section-title">🎯 选分身干活</div><div class="section-more" onclick="switchTab('avatars')">管理分身 →</div></div>
+    ${Object.entries(a).map(([id,v])=>`
+    <div class="avatar-card">
+      <div class="avatar-top">
+        <img src="${v.photo}" class="avatar-photo" />
+        <div class="avatar-info">
+          <div class="avatar-name">${v.name} <span class="lv ${lvClass(v.lv)}">Lv.${v.lv}</span></div>
+          <div class="avatar-meta"><span>${v.skills.length}技能</span><span>本周¥${v.weekEarning}</span><span class="avatar-status ${statusClass(v.status)}">${statusText(v.status)}</span></div>
+          <div class="avatar-skills">${v.skills.map(s=>'<span class="skill-tag mastered">'+s+'</span>').join('')}${v.learning.map(s=>'<span class="skill-tag learning">'+s+'</span>').join('')}</div>
+        </div>
+      </div>
+      <div class="avatar-acts">
+        <button class="act-btn act-primary" onclick="event.stopPropagation();openSub('chat-work${id>1?id:''}')">💬 干活</button>
+        <button class="act-btn act-secondary" onclick="event.stopPropagation();openSub('avatar-detail',{id:${id}})">📊 详情</button>
+        <button class="act-btn act-secondary" onclick="event.stopPropagation();openSub('teach',{id:${id}})">📚 教学</button>
+      </div>
+    </div>`).join('')}
+  </div>
+  ${Object.keys(STATE.hiredAvatars).length>0?`<div class="section">
+    <div class="section-head"><div class="section-title">👥 雇佣的分身</div><div class="section-more" onclick="switchTab('plaza')">去广场 →</div></div>
+    ${Object.entries(STATE.hiredAvatars).map(([id,v])=>`
+    <div class="avatar-card" style="border-left:3px solid #a855f7">
+      <div class="avatar-top">
+        <img src="${v.photo}" class="avatar-photo ring-purple" />
+        <div class="avatar-info">
+          <div class="avatar-name">${v.name} <span class="lv ${lvClass(v.lv)}">Lv.${v.lv}</span> <span style="font-size:10px;background:#ede9fe;color:#7c3aed;padding:1px 6px;border-radius:6px;margin-left:2px">已雇佣</span></div>
+          <div class="avatar-meta"><span>¥${v.price}/次</span><span>⭐${v.stars}</span><span>${v.skills.length}技能</span></div>
+          <div class="avatar-skills">${v.skills.map(s=>'<span class="skill-tag mastered">'+s+'</span>').join('')}</div>
+        </div>
+      </div>
+      <div class="avatar-acts">
+        <button class="act-btn act-primary" onclick="event.stopPropagation();openSub('hired-chat',{id:${id}})">💬 开始干活</button>
+        <button class="act-btn act-secondary" onclick="event.stopPropagation();showToast('查看历史成果')">📋 成果</button>
+        <button class="act-btn act-danger" onclick="event.stopPropagation();dismissHired(${id})">解除</button>
+      </div>
+    </div>`).join('')}
+  </div>`:''}
+  <div class="talk-bar">
+    <div style="font-size:13px;font-weight:600;color:#6d28d9;margin-bottom:8px">🎯 说说你要做什么</div>
+    <div class="talk-input-row">
+      <input class="talk-input" id="homeTalkInput" placeholder="帮我写一篇小红书种草文..." />
+      <button class="talk-send" onclick="sendHomeTalk()">➤</button>
+    </div>
+    <div class="quick-tags">
+      <span class="quick-tag" onclick="fillHomeTalk('写种草文')">写种草文</span>
+      <span class="quick-tag" onclick="fillHomeTalk('做图文笔记')">做图文</span>
+      <span class="quick-tag" onclick="fillHomeTalk('视频脚本')">视频脚本</span>
+      <span class="quick-tag" onclick="fillHomeTalk('竞品分析')">竞品分析</span>
+      <span class="quick-tag" onclick="fillHomeTalk('客服话术')">客服话术</span>
+    </div>
+  </div>
+  <div class="section" style="margin-top:16px">
+    <div class="section-head"><div class="section-title">✨ 近期成果</div><div class="section-more" onclick="openSub('my-results')">查看全部 →</div></div>
+    ${STATE.results.map(r=>`
+    <div class="result-card" onclick="openSub('result-detail')">
+      <span class="result-type ${r.type==='done'?'rt-done':'rt-gen'}">${r.label}</span>
+      <div style="font-weight:600;font-size:14px;margin-top:4px">${r.title}</div>
+      <div style="font-size:12px;color:#94a3b8;margin-top:2px">${r.avatar} · ${r.time} · ${r.earning?'¥'+r.earning.toFixed(2):''}</div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function renderAvatars() {
+  const a = STATE.avatars;
+  const totalEarning = Object.values(a).reduce((s,v)=>s+v.totalEarning,0);
+  const totalOrders = Object.values(a).reduce((s,v)=>s+v.orders,0);
+  const totalSkills = Object.values(a).reduce((s,v)=>s+v.skills.length,0);
+  return `
+  <div class="gradient-header">
+    <div class="header-row">
+      <div><h1>🧑‍💼 我的分身</h1><p>养得越好，赚得越多</p></div>
+      <div class="header-actions">
+        <button class="header-btn" onclick="openSub('create')" style="font-size:18px">＋</button>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-val">${Object.keys(a).length}</div><div class="stat-label">分身</div></div>
+      <div class="stat-card"><div class="stat-val">¥${totalEarning}</div><div class="stat-label">总收益</div></div>
+      <div class="stat-card"><div class="stat-val">${totalOrders}</div><div class="stat-label">完成</div></div>
+      <div class="stat-card"><div class="stat-val">${totalSkills}</div><div class="stat-label">技能</div></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="checkin-card">
+      <div class="checkin-info">
+        <h3>🎁 每日签到</h3>
+        <p>连续签到经验翻倍</p>
+        <div class="checkin-days">
+          ${[1,2,3,4,5,6,7].map(d=>`<div class="checkin-day ${d<=STATE.checkinDays?(d<STATE.checkinDays?'done':'current'):'future'}">${d<=STATE.checkinDays?'✓':d}</div>`).join('')}
+        </div>
+      </div>
+      <button class="checkin-btn ${STATE.checkedIn?'done':'available'}" onclick="doCheckin()">${STATE.checkedIn?'✓ 已签到':'+50 XP'}</button>
+    </div>
+  </div>
+  <div class="section">
+    ${Object.entries(a).map(([id,v])=>`
+    <div class="avatar-big">
+      <div class="avatar-cover">
+        <img class="cov" src="${v.cover}" />
+        <div class="avatar-cover-overlay"></div>
+        <div class="avatar-cover-photo"><img src="${v.photo}" /></div>
+        <div class="avatar-cover-info">
+          <div class="avatar-cover-name">${v.name} <span class="lv ${lvClass(v.lv)}">Lv.${v.lv}</span></div>
+          <div class="avatar-cover-meta">${statusText(v.status)} · ⭐${v.stars}</div>
+        </div>
+        <button class="avatar-cover-edit" onclick="event.stopPropagation();openSub('edit-avatar',{id:${id}})">✏️</button>
+      </div>
+      <div class="avatar-big-body">
+        <div class="avatar-big-stats">
+          <div class="avatar-big-stat"><div class="val">¥${v.weekEarning}</div><div class="label">本周收益</div></div>
+          <div class="avatar-big-stat"><div class="val">${v.weekOrders}</div><div class="label">本周订单</div></div>
+          <div class="avatar-big-stat"><div class="val">${v.skills.length}</div><div class="label">技能</div></div>
+          <div class="avatar-big-stat"><div class="val">¥${v.totalEarning}</div><div class="label">总收益</div></div>
+        </div>
+        <div class="avatar-skills">${v.skills.map(s=>'<span class="skill-tag mastered">'+s+'</span>').join('')}${v.learning.map(s=>'<span class="skill-tag learning">📖 '+s+'</span>').join('')}</div>
+        <div class="avatar-xp-bar" style="margin-top:8px"><div class="avatar-xp-fill" style="width:${v.xp/v.xpMax*100}%"></div></div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px"><span style="font-size:10px;color:#94a3b8">Lv.${v.lv} ${LEVEL_RIGHTS[v.lv].name}</span><span style="font-size:10px;color:#94a3b8">${v.xp}/${v.xpMax} XP</span></div>
+        <div class="avatar-acts" style="margin-top:10px">
+          <button class="act-btn act-primary" onclick="event.stopPropagation();openSub('chat-work${id>1?id:''}')">💬 干活</button>
+          <button class="act-btn act-secondary" onclick="event.stopPropagation();openSub('teach',{id:${id}})">📚 教学</button>
+          <button class="act-btn ${v.lv>=3?'act-secondary':'act-disabled'}" onclick="event.stopPropagation();${v.lv>=3?`togglePlaza(${id})`:`showToast(\"Lv3才能挂广场\")`}">${v.hangPlaza?'📢 已挂广场':'📢 挂广场'}</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="act-btn act-secondary" style="flex:1" onclick="event.stopPropagation();openSub('avatar-detail',{id:${id}})">📊 详情</button>
+          <button class="act-btn act-danger" style="flex:0 0 auto;padding:8px 14px" onclick="event.stopPropagation();confirmDelete(${id})">🗑️</button>
+        </div>
+      </div>
+    </div>`).join('')}
+  </div>
+  <div class="section">
+    <div class="section-head"><div class="section-title">💡 养分身攻略</div></div>
+    <div class="card" style="font-size:12px;color:#64748b;line-height:1.8">
+      <div>📌 Lv.3 → 可挂广场接单赚钱</div>
+      <div>📌 Lv.4 → 可自定义出场费</div>
+      <div>📌 Lv.5 → 技能可上架市场</div>
+      <div>📌 Lv.6 → 出场费+30%</div>
+      <div>📌 Lv.7 → 平台推荐+传奇标识</div>
+    </div>
+  </div>`;
+}
+
+function renderOrders() {
+  return `
+  <div class="gradient-header">
+    <div class="header-row"><div><h1>📋 接单广场</h1><p>用分身帮你赚钱</p></div></div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-val">${Object.keys(STATE.orders).length}</div><div class="stat-label">可接订单</div></div>
+      <div class="stat-card"><div class="stat-val">¥${Object.values(STATE.orders).reduce((s,o)=>s+o.earning,0).toFixed(2)}</div><div class="stat-label">可赚</div></div>
+    </div>
+  </div>
+  <div class="section">
+    ${Object.entries(STATE.orders).map(([id,o])=>{
+      const cov = calcCoverage(o.contentType, o.materials);
+      const priceInfo = calcPrice(o.contentType, o.avatars, o.materials, o.exclusive, o.aiSupplement, null);
+      return `
+    <div class="card" onclick="openSub('order-detail',{id:${id}})">
+      <span class="order-type ot-${o.type}">${o.label}</span>
+      <div class="order-title">${o.title}</div>
+      <div class="order-desc">${o.desc}</div>
+      <div class="order-tags">
+        <span class="order-tag">${o.contentType}</span>
+        <span class="order-tag">${o.exclusive?'独享':'共享'}</span>
+        <span class="order-tag">AI${o.aiSupplement?'补足':'不补'}</span>
+        <span class="order-tag">素材${cov}%</span>
+        <span class="order-tag">${o.deadline}</span>
+      </div>
+      <div class="coverage-bar"><div class="coverage-filled" style="width:${cov}%"></div><div class="coverage-empty"></div></div>
+      <div class="order-footer">
+        <div class="order-price">¥${priceInfo.total.toFixed(2)}</div>
+        <div class="order-earning">你能赚 ¥${calcAvatarEarning(o.contentType,o.avatars,o.materials,o.exclusive,o.aiSupplement,null).toFixed(2)}/分身</div>
+      </div>
+    </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function renderPlaza() {
+  const pa = STATE.plazaAvatars;
+  return `
+  <div class="gradient-header">
+    <div class="header-row"><div><h1>🔥 分身广场</h1><p>发现好分身，雇佣来干活</p></div>
+      <div class="header-actions"><button class="header-btn" onclick="openSub('my-plaza')">📢 我的挂单</button></div>
+    </div>
+  </div>
+  <div class="search-bar">
+    <span class="search-ico">🔍</span>
+    <input class="search-input" placeholder="搜索分身、技能、风格..." />
+  </div>
+  <div class="filter-row">
+    ${['推荐','💄美妆','👗穿搭','🏋️健身','🍳美食','🏠家装','✈️旅行'].map((f,i)=>`<span class="filter-chip ${i===0?'active':''}" onclick="filterPlaza(this)">${f}</span>`).join('')}
+  </div>
+  <div class="section">
+    <div class="section-head"><div class="section-title">🌟 热门推荐</div></div>
+    <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch">
+    ${Object.entries(pa).slice(0,3).map(([id,v])=>`
+      <div style="min-width:150px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.06);cursor:pointer;flex-shrink:0" onclick="openSub('plaza-detail',{id:${id}})">
+        <img src="${v.cover}" style="width:100%;height:80px;object-fit:cover" />
+        <div style="padding:10px">
+          <div style="display:flex;align-items:center;gap:6px"><img src="${v.photo}" class="avatar-photo sm" /><div><div style="font-size:13px;font-weight:600">${v.name} <span class="lv ${lvClass(v.lv)}">Lv.${v.lv}</span></div><div style="font-size:10px;color:#94a3b8">⭐${v.stars} · ${v.orders}单</div></div></div>
+          <div style="margin-top:6px;font-weight:700;color:#6d28d9">¥${v.price}/次</div>
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-head"><div class="section-title">📋 发现分身</div></div>
+    <div class="grid-2">
+    ${Object.entries(pa).map(([id,v])=>`
+      <div class="plaza-grid-item" onclick="openSub('plaza-detail',{id:${id}})">
+        <img class="plaza-grid-photo" src="${v.photo}" />
+        <div class="plaza-grid-body">
+          <div class="plaza-grid-name">${v.name} <span class="lv ${lvClass(v.lv)}">${v.lv}</span></div>
+          <div class="plaza-grid-meta">⭐${v.stars} · ${v.orders}单 · ❤️${v.follows}</div>
+          <div class="plaza-grid-skills">${v.skills.slice(0,2).map(s=>'<span class="plaza-grid-skill">'+s+'</span>').join('')}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+            <div class="plaza-grid-price">¥${v.price}/次</div>
+            <button class="plaza-grid-hire" onclick="event.stopPropagation();hireAvatar(${id})">雇佣</button>
+          </div>
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function renderProfile() {
+  return `
+  <div class="profile-header">
+    <img class="profile-avatar" src="${STATE.user.avatar}" />
+    <div class="profile-name">${STATE.user.name}</div>
+    <div class="profile-id">@${STATE.user.id}</div>
+    <div class="profile-stats">
+      <div class="profile-stat"><div class="val">¥${STATE.user.balance.toFixed(0)}</div><div class="label">余额</div></div>
+      <div class="profile-stat"><div class="val">${STATE.user.avatarCount}</div><div class="label">分身</div></div>
+      <div class="profile-stat"><div class="val">${STATE.user.orderCount}</div><div class="label">订单</div></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="menu-list">
+      <div class="menu-item" onclick="openSub('earn')"><div class="menu-icon" style="background:#dcfce7">💰</div><div class="menu-text">收益中心</div><div class="menu-arrow">›</div></div>
+      <div class="menu-item" onclick="switchTab('avatars')"><div class="menu-icon" style="background:#ede9fe">👤</div><div class="menu-text">我的分身</div><div class="menu-arrow">›</div></div>
+      <div class="menu-item" onclick="openSub('my-results')"><div class="menu-icon" style="background:#dbeafe">📋</div><div class="menu-text">我的成果</div><div class="menu-arrow">›</div></div>
+      <div class="menu-item" onclick="openSub('skill-market')"><div class="menu-icon" style="background:#fef3c7">📚</div><div class="menu-text">技能市场</div><div class="menu-arrow">›</div></div>
+      <div class="menu-item" onclick="openSub('privileges')"><div class="menu-icon" style="background:#fce7f3">👑</div><div class="menu-text">权益等级</div><div class="menu-arrow">›</div></div>
+      <div class="menu-item" onclick="openSub('settings')"><div class="menu-icon" style="background:#f1f5f9">⚙️</div><div class="menu-text">设置</div><div class="menu-arrow">›</div></div>
+      <div class="menu-item" onclick="openSub('help')"><div class="menu-icon" style="background:#eff6ff">❓</div><div class="menu-text">帮助中心</div><div class="menu-arrow">›</div></div>
+    </div>
+  </div>`;
+}
+
+
+// ============== 子页面 ==============
+function openSub(name, data) {
+  const el = document.getElementById('sub-dynamic');
+  el.className = 'subpage';
+  el.style.display = 'block';
+  renderSubContent(el, name, data);
+}
+function closeSub() {
+  const el = document.getElementById('sub-dynamic');
+  el.classList.add('closing');
+  setTimeout(()=>{ el.style.display='none'; el.className='subpage'; }, 200);
+}
+
+function renderSubContent(el, name, data) {
+  switch(name) {
+    case 'notify': renderNotify(el); break;
+    case 'chat-pick': renderChatPick(el, data); break;
+    case 'chat-work': renderChatWork(el, 1, data); break;
+    case 'chat-work2': renderChatWork(el, 2, data); break;
+    case 'chat-work3': renderChatWork(el, 3, data); break;
+    case 'avatar-detail': renderAvatarDetail(el, data); break;
+    case 'edit-avatar': renderEditAvatar(el, data); break;
+    case 'plaza-detail': renderPlazaDetail(el, data); break;
+    case 'teach': renderTeach(el, data); break;
+    case 'create': renderCreate(el); break;
+    case 'earn': renderEarn(el); break;
+    case 'withdraw': renderWithdraw(el); break;
+    case 'order-detail': renderOrderDetail(el, data); break;
+    case 'my-results': renderMyResults(el); break;
+    case 'result-detail': renderResultDetail(el); break;
+    case 'my-plaza': renderMyPlaza(el); break;
+    case 'hired-chat': renderHiredChat(el, data); break;
+    case 'skill-market': renderSkillMarket(el); break;
+    case 'privileges': renderPrivileges(el); break;
+    case 'settings': renderSettings(el); break;
+    case 'help': renderHelp(el); break;
+    default: el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">${name}</div><div></div></div><div class="sub-body"><p>页面开发中</p></div>`;
+  }
+}
+
+function renderNotify(el) {
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">消息中心</div><button class="sub-header-btn" style="background:#f3f0ff;color:#6d28d9" onclick="markAllRead()">全部已读</button></div><div class="sub-body">
+  ${STATE.notifications.map((n,i)=>`<div class="notify-item" onclick="readNotify(${i})"><div class="notify-icon" style="background:${n.bg}">${n.icon}</div><div class="notify-content"><div class="notify-title">${n.title}</div><div class="notify-desc">${n.desc}</div><div class="notify-time">${n.time}</div></div><div class="notify-dot ${n.read?'read':''}"></div></div>`).join('')}
+  </div>`;
+}
+function markAllRead(){STATE.notifications.forEach(n=>n.read=true);renderNotify(document.getElementById('sub-dynamic'));showToast('已全部已读')}
+function readNotify(i){STATE.notifications[i].read=true;renderNotify(document.getElementById('sub-dynamic'))}
+
+function renderChatPick(el, data) {
+  const task = data?.task||'';
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">选择分身</div><div></div></div><div class="sub-body">
+  ${task?`<div style="background:#f3f0ff;border-radius:12px;padding:12px;margin-bottom:16px;font-size:13px;color:#6d28d9">🎯 任务：${task}</div>`:''}
+  ${Object.entries(STATE.avatars).map(([id,a])=>`
+  <div class="avatar-card" onclick="closeSub();openSub('chat-work${id>1?id:''}',{task:'${task}'})" style="margin-bottom:10px">
+    <div class="avatar-top">
+      <img src="${a.photo}" class="avatar-photo" />
+      <div class="avatar-info">
+        <div class="avatar-name">${a.name} <span class="lv ${lvClass(a.lv)}">Lv.${a.lv}</span></div>
+        <div class="avatar-meta"><span class="avatar-status ${statusClass(a.status)}">${statusText(a.status)}</span><span>${a.skills.length}技能</span></div>
+        <div class="avatar-skills">${a.skills.map(s=>'<span class="skill-tag mastered">'+s+'</span>').join('')}</div>
+      </div>
+    </div>
+  </div>`).join('')}
+  <div style="text-align:center;padding:20px"><button class="act-btn act-secondary" style="display:inline-block;padding:10px 24px" onclick="closeSub();switchTab('plaza')">去广场雇一个 →</button></div>
+  </div>`;
+}
+
+function renderChatWork(el, id, data) {
+  const a = STATE.avatars[id]; if(!a) return;
+  const task = data?.task||'';
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">💬 和${a.name}对话</div><div></div></div>
+  <div style="padding:12px 16px;display:flex;align-items:center;gap:10px;background:#fff;border-bottom:1px solid #f1f5f9">
+    <img src="${a.photo}" class="avatar-photo sm" /><div><div style="font-weight:600;font-size:14px">${a.name}</div><div style="font-size:11px;color:#94a3b8">${statusText(a.status)} · ${a.skills.join('·')}</div></div>
+  </div>
+  <div class="chat-messages" id="chatMsgs">
+    <div class="chat-msg system">${a.name}已就位，告诉我你需要什么</div>
+    ${task?`<div class="chat-msg user">${task}</div><div class="chat-msg bot">好的，我来帮你${task}！让我分析一下需求...</div>`:''}
+  </div>
+  <div style="position:sticky;bottom:0;background:#fff;padding:12px 16px;border-top:1px solid #f1f5f9">
+    <div class="talk-input-row">
+      <input class="talk-input" id="chatInput" placeholder="对${a.name}说..." onkeydown="if(event.key==='Enter')sendChat(${id})" />
+      <button class="talk-send" onclick="sendChat(${id})">➤</button>
+    </div>
+    <div class="quick-tags" style="margin-top:8px">
+      <span class="quick-tag" onclick="fillChat(${id},'写一篇小红书种草文')">写种草文</span>
+      <span class="quick-tag" onclick="fillChat(${id},'帮我做个图文笔记')">做图文</span>
+      <span class="quick-tag" onclick="fillChat(${id},'写个短视频脚本')">视频脚本</span>
+    </div>
+  </div>`;
+}
+const CHAT_REPLIES = {
+  '种草文':['好的，帮你写种草文！先确认下品牌和产品...','收到！我来分析竞品的种草文风格...','种草文框架已搭好，正在填充内容...'],
+  '图文':['图文笔记开始制作！先选配图风格...','文案部分已完成，正在匹配图片...','图文笔记生成完毕！'],
+  '脚本':['短视频脚本开始创作！确认下时长要求...','分镜已设计完成，正在写口播词...','脚本生成好了，包含分镜和口播词！'],
+  '分析':['竞品分析开始！我先收集数据...','已分析3个竞品，整理出差异点...','竞品分析报告生成完毕！'],
+  'default':['收到！我来帮你处理...','正在思考最佳方案...','已完成初步方案，请查看！','好的，让我来搞定这件事！']
+};
+function sendChat(avatarId) {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim(); if(!msg) return;
+  input.value = '';
+  const msgs = document.getElementById('chatMsgs');
+  msgs.innerHTML += `<div class="chat-msg user">${msg}</div>`;
+  const key = Object.keys(CHAT_REPLIES).find(k=>msg.includes(k))||'default';
+  const replies = CHAT_REPLIES[key];
+  const reply = replies[Math.floor(Math.random()*replies.length)];
+  setTimeout(()=>{msgs.innerHTML+=`<div class="chat-msg bot">${reply}</div>`;msgs.scrollTop=msgs.scrollHeight;}, 600);
+}
+function fillChat(id, text) {
+  document.getElementById('chatInput').value = text;
+  sendChat(id);
+}
+
+function renderAvatarDetail(el, data) {
+  const id = data?.id||1;
+  const a = STATE.avatars[id]; if(!a) return;
+  const rights = LEVEL_RIGHTS[a.lv];
+  const nextRights = LEVEL_RIGHTS[a.lv+1];
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">${a.name}</div><button class="sub-header-btn" style="background:#f3f0ff;color:#6d28d9" onclick="closeSub();openSub('edit-avatar',{id:${id}})">✏️ 编辑</button></div>
+  <div style="position:relative">
+    <img src="${a.cover}" style="width:100%;height:140px;object-fit:cover" />
+    <div style="position:absolute;bottom:-28px;left:16px"><img src="${a.photo}" style="width:64px;height:64px;border-radius:50%;border:3px solid #fff;object-fit:cover;box-shadow:0 2px 8px rgba(0,0,0,.2)" /></div>
+  </div>
+  <div style="padding:40px 16px 16px">
+    <div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px;font-weight:700">${a.name}</span><span class="lv ${lvClass(a.lv)}" style="font-size:12px;padding:2px 10px">Lv.${a.lv} ${rights.name}</span></div>
+    <div style="font-size:13px;color:#64748b;margin-top:4px">${a.desc}</div>
+    <div style="font-size:12px;color:#94a3b8;margin-top:2px">风格：${a.style} · 领域：${a.domains.join('、')}</div>
+  </div>
+  <div class="tab-row" id="detailTabs">
+    <div class="tab-item active" onclick="switchDetailTab(0,${id})">📊 概览</div>
+    <div class="tab-item" onclick="switchDetailTab(1,${id})">🛡️ 权益</div>
+    <div class="tab-item" onclick="switchDetailTab(2,${id})">💰 收益</div>
+    <div class="tab-item" onclick="switchDetailTab(3,${id})">⭐ 评价</div>
+  </div>
+  <div id="detailTabContent">
+    <div class="tab-content active" id="dtc0">
+      <div class="avatar-big-stats" style="margin-bottom:16px">
+        <div class="avatar-big-stat"><div class="val">¥${a.totalEarning}</div><div class="label">总收益</div></div>
+        <div class="avatar-big-stat"><div class="val">${a.orders}</div><div class="label">完成</div></div>
+        <div class="avatar-big-stat"><div class="val">⭐${a.stars}</div><div class="label">评分</div></div>
+        <div class="avatar-big-stat"><div class="val">${a.skills.length}</div><div class="label">技能</div></div>
+      </div>
+      <div style="margin-bottom:16px"><div style="font-size:13px;font-weight:600;margin-bottom:8px">成长进度</div>
+        <div class="progress-bar"><div class="progress-fill purple" style="width:${a.xp/a.xpMax*100}%"></div></div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:#94a3b8"><span>Lv.${a.lv}</span><span>${a.xp}/${a.xpMax} XP</span><span>Lv.${a.lv+1}</span></div>
+      </div>
+      <div style="margin-bottom:16px"><div style="margin-bottom:16px"><div style="font-size:13px;font-weight:600;margin-bottom:8px">🎯 能力面板</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${
+          Object.entries({writing:'✍️ 写作力',creativity:'🎨 创意力',professionalism:'💼 专业度',engagement:'📱 互动力',accuracy:'📊 精准度'}).map(([k,label])=>{
+            const val=(a.abilities&&a.abilities[k])||0;
+            const color=val>=80?'#16a34a':val>=50?'#d97706':val>=20?'#3b82f6':'#94a3b8';
+            return `<div style="background:#f8fafc;border-radius:8px;padding:6px 8px"><div style="display:flex;justify-content:space-between;font-size:11px"><span>${label}</span><span style="color:${color};font-weight:600">${val}</span></div><div class="progress-bar" style="height:4px;margin-top:3px"><div class="progress-fill" style="width:${val}%;background:${color}"></div></div></div>`;
+          }).join('')
+        }</div>
+      </div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px">已掌握技能</div>
+        <div class="avatar-skills">${a.skills.map(s=>'<span class="skill-tag mastered">'+s+'</span>').join('')}${a.learning.map(s=>'<span class="skill-tag learning">📖 '+s+'</span>').join('')}</div>
+      </div>
+      ${a.hangPlaza?`<div style="background:#f3f0ff;border-radius:12px;padding:12px;margin-bottom:12px"><div style="font-size:13px;font-weight:600;color:#6d28d9">📢 已挂广场</div><div style="font-size:12px;color:#6d28d9">出场费 ¥${a.plazaPrice}/次 · ${a.orders}人雇佣</div></div>`:''}
+      <div style="font-size:12px;color:#94a3b8">创建于 ${a.created}</div>
+    </div>
+    <div class="tab-content" id="dtc1">
+      <div style="margin-bottom:16px"><div style="font-size:14px;font-weight:600;margin-bottom:8px">当前权益 · Lv.${a.lv} ${rights.name}</div>
+        ${rights.perks.map(p=>`<div style="font-size:13px;color:#475569;padding:4px 0">✅ ${p}</div>`).join('')}
+      </div>
+      ${nextRights?`<div style="margin-bottom:16px"><div style="font-size:14px;font-weight:600;margin-bottom:8px">下一级 · Lv.${a.lv+1} ${nextRights.name}</div>
+        ${nextRights.perks.filter(p=>!rights.perks.includes(p)).map(p=>`<div style="font-size:13px;color:#94a3b8;padding:4px 0">🔒 ${p}</div>`).join('')}
+        <div style="margin-top:8px;font-size:12px;color:#94a3b8">还需 ${a.xpMax-a.xp} XP 升级</div></div>`:''}
+      <div style="font-size:14px;font-weight:600;margin-bottom:8px">全部等级</div>
+      ${Object.entries(LEVEL_RIGHTS).map(([lv,info])=>`
+      <div class="level-node ${parseInt(lv)<=a.lv?'':'level-locked'} ${parseInt(lv)===a.lv?'level-current':''}">
+        <div class="level-badge" style="background:${info.color}">${lv}</div>
+        <div class="level-info"><div class="level-name">${info.name}</div><div class="level-perks">${info.perks.join(' · ')}</div></div>
+      </div>`).join('')}
+    </div>
+    <div class="tab-content" id="dtc2">
+      <div style="text-align:center;padding:16px 0"><div style="font-size:28px;font-weight:700;color:#6d28d9">¥${a.totalEarning}</div><div style="font-size:12px;color:#94a3b8">累计收益</div></div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px">近7天收益</div>
+      <div class="earn-chart">${STATE.earnings.week.map((v,i)=>`<div class="earn-bar" style="height:${Math.max(v/89*100,4)}%"><div class="earn-bar-val">¥${v}</div><div class="earn-bar-label">${STATE.earnings.weekLabels[i]}</div></div>`).join('')}</div>
+      <div style="height:24px"></div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px">分成规则</div>
+      <div style="background:#f8fafc;border-radius:12px;padding:12px;font-size:12px;color:#64748b;line-height:1.8">
+        <div>💰 最低出场费：平台 30% / 分身 70%</div>
+        <div>💰 加价部分：平台 20% / 分身 80%</div>
+        <div>💰 生成费：平台 100%</div>
+      </div>
+    </div>
+    <div class="tab-content" id="dtc3">
+      <div style="text-align:center;padding:16px 0"><div style="font-size:32px">⭐ ${a.stars}</div><div style="font-size:12px;color:#94a3b8">${a.orders}条评价</div></div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px">最新评价</div>
+      <div style="background:#f8fafc;border-radius:12px;padding:12px;margin-bottom:8px"><div style="font-size:12px;color:#94a3b8;margin-bottom:4px">用户A · ⭐5.0 · 2小时前</div><div style="font-size:13px">种草文写得很好，风格很贴近我的需求！</div></div>
+      <div style="background:#f8fafc;border-radius:12px;padding:12px;margin-bottom:8px"><div style="font-size:12px;color:#94a3b8;margin-bottom:4px">用户B · ⭐4.8 · 昨天</div><div style="font-size:13px">响应快，质量稳定，会继续雇佣</div></div>
+      <div style="background:#f8fafc;border-radius:12px;padding:12px"><div style="font-size:12px;color:#94a3b8;margin-bottom:4px">用户C · ⭐5.0 · 3天前</div><div style="font-size:13px">完美！比我自己写的强多了</div></div>
+    </div>
+  </div>`;
+}
+function switchDetailTab(idx, avatarId) {
+  document.querySelectorAll('#detailTabs .tab-item').forEach((t,i)=>{t.classList.toggle('active',i===idx)});
+  document.querySelectorAll('#detailTabContent .tab-content').forEach((t,i)=>{t.classList.toggle('active',i===idx)});
+}
+
+function renderEditAvatar(el, data) {
+  const id = data?.id;
+  const a = id ? STATE.avatars[id] : null;
+  const isNew = !a;
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">${isNew?'创建分身':'编辑分身'}</div><div></div></div><div class="sub-body">
+  <div class="form-group">
+    <div class="form-label">分身照片 <span class="req">*</span></div>
+    <div class="form-photo-row">
+      <div class="form-photo-upload" onclick="pickPhoto(${id||0})">
+        ${a?`<img src="${a.photo}" />`:'<div class="ph">📷</div><div class="pt">上传照片</div>'}
+      </div>
+      <div class="form-cover-upload" onclick="pickCover(${id||0})">
+        ${a?`<img src="${a.cover}" />`:'<div class="ph">🖼️</div><div class="pt">上传封面</div>'}
+      </div>
+    </div>
+    <div class="form-hint">建议使用清晰的人像照片，这样更吸引人哦</div>
+  </div>
+  <div class="form-group">
+    <label class="form-label">分身名称 <span class="req">*</span></label>
+    <input class="form-input" id="editName" value="${a?a.name:''}" placeholder="给你的分身起个名字" maxlength="12" />
+  </div>
+  <div class="form-group">
+    <label class="form-label">简介</label>
+    <textarea class="form-textarea" id="editDesc" placeholder="描述你的分身擅长什么...">${a?a.desc:''}</textarea>
+  </div>
+  <div class="form-group">
+    <label class="form-label">擅长领域 <span class="req">*</span></label>
+    <div class="form-chips" id="editDomains">
+      ${DOMAINS.map(d=>`<span class="form-chip ${(a&&a.domains.includes(d))||(!a&&d==='美妆')?'selected':''}" onclick="toggleChip(this)">${d}</span>`).join('')}
+    </div>
+  </div>
+  <div class="form-group">
+    <label class="form-label">说话风格</label>
+    <div class="form-chips" id="editStyle">
+      ${STYLES.map(s=>`<span class="form-chip ${a&&a.style===s?'selected':(!a&&s==='温柔知性')?'selected':''}" onclick="selectSingleChip(this,'editStyle')">${s}</span>`).join('')}
+    </div>
+  </div>
+  ${a&&a.lv>=3?`<div class="form-group">
+    <label class="form-label">广场出场费（元/次）</label>
+    <input class="form-input" id="editPrice" type="number" value="${a.plazaPrice}" min="${PRICING['纯文案'].minFee}" step="0.5" />
+    <div class="form-hint">最低 ¥${PRICING['纯文案'].minFee}/次（Lv.${a.lv}可自定义，但不能低于最低出场费）</div>
+  </div>`:''}
+  ${a?`<div class="form-group">
+    <label class="form-label">广场状态</label>
+    <div class="switch-row">
+      <div><div class="switch-label">挂到广场</div><div class="switch-desc">让别人雇佣你的分身</div></div>
+      <div class="sw ${a.hangPlaza?'on':''}" onclick="toggleSwitch(this)"><div class="knob"></div></div>
+    </div>
+  </div>`:''}
+  <button class="act-btn act-primary" style="margin-top:16px" onclick="saveAvatar(${id||0})">${isNew?'创建分身':'保存修改'}</button>
+  ${a?`<button class="act-btn act-danger" style="margin-top:8px" onclick="confirmDelete(${id})">🗑️ 删除分身</button>`:''}
+  </div>`;
+}
+function toggleChip(el){el.classList.toggle('selected')}
+function selectSingleChip(el,parentId){document.getElementById(parentId).querySelectorAll('.form-chip').forEach(c=>c.classList.remove('selected'));el.classList.add('selected')}
+function toggleSwitch(el){el.classList.toggle('on')}
+function pickPhoto(id){
+  const url = PHOTO_POOL[Math.floor(Math.random()*PHOTO_POOL.length)];
+  const container = event.currentTarget;
+  container.innerHTML = `<img src="${url}" />`;
+  STATE.selectedPhoto = url;
+  showToast('照片已选择');
+}
+function pickCover(){
+  const url = COVER_POOL[Math.floor(Math.random()*COVER_POOL.length)];
+  const container = event.currentTarget;
+  container.innerHTML = `<img src="${url}" />`;
+  STATE.selectedCover = url;
+  showToast('封面已选择');
+}
+function saveAvatar(id) {
+  const name = document.getElementById('editName').value.trim();
+  if(!name){showToast('请输入分身名称');return}
+  const desc = document.getElementById('editDesc')?.value||'';
+  const domains = Array.from(document.getElementById('editDomains').querySelectorAll('.form-chip.selected')).map(c=>c.textContent);
+  if(domains.length===0){showToast('请选择至少一个领域');return}
+  const styleEl = document.getElementById('editStyle').querySelector('.form-chip.selected');
+  const style = styleEl?styleEl.textContent:'温柔知性';
+  if(id && STATE.avatars[id]) {
+    const a = STATE.avatars[id];
+    a.name = name; a.desc = desc; a.domains = domains; a.style = style;
+    if(STATE.selectedPhoto) a.photo = STATE.selectedPhoto;
+    if(STATE.selectedCover) a.cover = STATE.selectedCover;
+    const priceInput = document.getElementById('editPrice');
+    if(priceInput) { const p = parseFloat(priceInput.value); if(p >= PRICING['纯文案'].minFee) a.plazaPrice = p; }
+    const sw = document.querySelector('.sw');
+    if(sw) a.hangPlaza = sw.classList.contains('on');
+    showToast('分身已更新');
+  } else {
+    const newId = nextId++;
+    STATE.avatars[newId] = {name,photo:STATE.selectedPhoto||PHOTO_POOL[newId%PHOTO_POOL.length],cover:STATE.selectedCover||COVER_POOL[newId%COVER_POOL.length],
+      lv:1,xp:0,xpMax:300,earning:0,weekEarning:0,totalEarning:0,orders:0,weekOrders:0,stars:0,status:'idle',
+      skills:[],learning:[],hangPlaza:false,plazaPrice:0,desc,style,domains,created:new Date().toISOString().split('T')[0]};
+    STATE.user.avatarCount = Object.keys(STATE.avatars).length;
+    showToast('分身创建成功！');
+  }
+  STATE.selectedPhoto = null; STATE.selectedCover = null;
+  closeSub(); renderPage(STATE.currentTab);
+}
+function confirmDelete(id) {
+  const a = STATE.avatars[id]; if(!a) return;
+  if(a.status==='working'){showToast('工作中的分身不能删除');return}
+  openModal('delete',{id,name:a.name});
+}
+
+function renderPlazaDetail(el, data) {
+  const id = data?.id||4;
+  const a = STATE.plazaAvatars[id]; if(!a) return;
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">分身详情</div><div></div></div>
+  <div style="position:relative"><img src="${a.cover}" style="width:100%;height:140px;object-fit:cover" /><div style="position:absolute;bottom:-28px;left:16px"><img src="${a.photo}" style="width:64px;height:64px;border-radius:50%;border:3px solid #fff;object-fit:cover;box-shadow:0 2px 8px rgba(0,0,0,.2)" /></div></div>
+  <div style="padding:40px 16px 16px">
+    <div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px;font-weight:700">${a.name}</span><span class="lv ${lvClass(a.lv)}" style="font-size:12px;padding:2px 10px">Lv.${a.lv}</span></div>
+    <div style="font-size:13px;color:#64748b;margin-top:4px">${a.desc}</div>
+    <div style="font-size:12px;color:#94a3b8;margin-top:2px">风格：${a.style} · ⭐${a.stars} · ${a.orders}单 · ❤️${a.follows}关注</div>
+  </div>
+  <div style="padding:0 16px;display:flex;gap:8px;margin-bottom:16px">
+    <button class="act-btn ${a.followed?'act-secondary':'act-primary'}" style="flex:1" onclick="toggleFollow(${id})">${a.followed?'❤️ 已关注':'+ 关注'}</button>
+    ${STATE.hiredAvatars[id]?`<button class="act-btn act-success" style="flex:2" onclick="closeSub();openSub('hired-chat',{id:${id}})">💬 开始干活</button>`:`<button class="act-btn act-primary" style="flex:2" onclick="hireAvatar(${id})">💰 雇佣 ¥${a.price}/次</button>`}
+  </div>
+  <div class="section">
+    <div style="font-size:14px;font-weight:600;margin-bottom:8px">擅长技能</div>
+    <div class="avatar-skills">${a.skills.map(s=>'<span class="skill-tag mastered">'+s+'</span>').join('')}</div>
+  </div>
+  <div class="section">
+    <div style="font-size:14px;font-weight:600;margin-bottom:8px">用户评价</div>
+    <div style="background:#f8fafc;border-radius:12px;padding:12px;margin-bottom:8px"><div style="font-size:12px;color:#94a3b8;margin-bottom:4px">用户D · ⭐5.0</div><div style="font-size:13px">非常专业，内容质量很高</div></div>
+    <div style="background:#f8fafc;border-radius:12px;padding:12px"><div style="font-size:12px;color:#94a3b8;margin-bottom:4px">用户E · ⭐4.9</div><div style="font-size:13px">速度快，风格独特，强烈推荐！</div></div>
+  </div>
+  <div style="padding:16px"><button class="act-btn act-secondary" style="width:100%" onclick="tryChat(${id})">💬 试聊一下</button></div>`;
+}
+function toggleFollow(id) {
+  const a = STATE.plazaAvatars[id]; if(!a) return;
+  a.followed = !a.followed;
+  showToast(a.followed?'已关注':'已取消关注');
+  renderPlazaDetail(document.getElementById('sub-dynamic'),{id});
+}
+function hireAvatar(id) { openModal('hire',{id}); }
+function tryChat(id) { showToast('试聊功能：和分身简单对话了解风格'); }
+function dismissHired(id) {
+  delete STATE.hiredAvatars[id];
+  showToast('已解除雇佣');
+  renderPage(STATE.currentTab);
+}
+
+function renderHiredChat(el, data) {
+  const id = data?.id;
+  const ha = STATE.hiredAvatars[id];
+  const pa = STATE.plazaAvatars[id];
+  const a = ha || pa;
+  if(!a) { el.innerHTML='<div class="sub-body"><p>分身不存在</p></div>'; return; }
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">💬 让${a.name}干活</div><div></div></div>
+  <div style="padding:14px 16px;display:flex;align-items:center;gap:12px;background:#fff;border-bottom:1px solid #f1f5f9">
+    <img src="${a.photo}" class="avatar-photo lg ring-purple" />
+    <div style="flex:1">
+      <div style="font-size:16px;font-weight:700">${a.name} <span class="lv ${lvClass(a.lv)}">Lv.${a.lv}</span></div>
+      <div style="font-size:12px;color:#94a3b8;margin-top:2px">${a.style} · ⭐${a.stars} · ${a.skills.join('·')}</div>
+      <div style="font-size:11px;color:#16a34a;margin-top:2px">✅ 已雇佣 · 可以开始干活了</div>
+    </div>
+  </div>
+  <div style="background:linear-gradient(135deg,#f3f0ff,#ede9fe);padding:14px 16px;margin:12px;border-radius:14px">
+    <div style="font-size:14px;font-weight:600;color:#5b21b6;margin-bottom:8px">🎯 告诉${a.name}你要做什么</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+      ${a.skills.map(s=>`<span class="quick-tag" onclick="fillHiredChat(${id},'帮我用${s}技能，')">🎯 ${s}</span>`).join('')}
+    </div>
+    <div class="talk-input-row">
+      <input class="talk-input" id="hiredChatInput" placeholder="描述你的需求，比如：帮我写一篇小红书种草文..." onkeydown="if(event.key==='Enter')sendHiredChat(${id})" />
+      <button class="talk-send" onclick="sendHiredChat(${id})">➤</button>
+    </div>
+  </div>
+  <div class="chat-messages" id="hiredChatMsgs">
+    <div class="chat-msg system">🎉 ${a.name}已就位！告诉我你需要什么，我马上开始干活</div>
+  </div>
+  <div style="padding:0 16px 16px">
+    <div style="font-size:13px;font-weight:600;margin-bottom:8px">⚡ 快速任务</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      ${CONTENT_TYPES.map(ct=>`<div style="background:#fff;border-radius:12px;padding:10px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.04);text-align:center" onclick="quickTask(${id},'${ct}')">
+        <div style="font-size:20px;margin-bottom:2px">${ct==='图文笔记'?'📝':ct==='短视频'?'🎬':ct==='短视频脚本'?'📋':ct==='纯文案'?'✍️':'🎯'}</div>
+        <div style="font-size:12px;font-weight:500">${ct}</div>
+        <div style="font-size:10px;color:#94a3b8">¥${PRICING[ct].minFee}起</div>
+      </div>`).join('')}
+    </div>
+  </div>
+  <div style="padding:0 16px 16px">
+    <div style="background:#f8fafc;border-radius:12px;padding:12px">
+      <div style="font-size:12px;color:#64748b;line-height:1.6">
+        <div>💡 <b>怎么让分身帮你干活？</b></div>
+        <div>1️⃣ 描述你的需求，越具体越好</div>
+        <div>2️⃣ 或者点上面的快速任务/技能标签</div>
+        <div>3️⃣ 分身会生成内容，你可以修改和确认</div>
+        <div>4️⃣ 不满意可以让它重做</div>
+      </div>
+    </div>
+  </div>`;
+}
+function fillHiredChat(id, text) {
+  document.getElementById('hiredChatInput').value = text;
+  sendHiredChat(id);
+}
+function sendHiredChat(id) {
+  const input = document.getElementById('hiredChatInput');
+  const msg = input.value.trim(); if(!msg) return;
+  input.value = '';
+  const msgs = document.getElementById('hiredChatMsgs');
+  msgs.innerHTML += `<div class="chat-msg user">${msg}</div>`;
+  const key = Object.keys(CHAT_REPLIES).find(k=>msg.includes(k))||'default';
+  const replies = CHAT_REPLIES[key];
+  const reply = replies[Math.floor(Math.random()*replies.length)];
+  setTimeout(()=>{
+    msgs.innerHTML += `<div class="chat-msg bot">${reply}</div>`;
+    msgs.scrollTop = msgs.scrollHeight;
+    // 第二轮回复 - 生成内容
+    setTimeout(()=>{
+      msgs.innerHTML += `<div class="chat-msg bot">📝 内容已生成！<br><br><span style="background:#f3f0ff;padding:8px 12px;border-radius:8px;display:inline-block;margin-top:4px;font-size:13px">这是根据你的需求生成的初稿，你可以让我修改或重新生成 ✨</span></div>`;
+      msgs.scrollTop = msgs.scrollHeight;
+      // 显示操作按钮
+      setTimeout(()=>{
+        msgs.innerHTML += `<div style="display:flex;gap:6px;margin-top:4px;align-self:flex-start">
+          <button class="act-btn act-success" style="padding:6px 12px;font-size:11px" onclick="showToast('✅ 已确认采用')">✅ 采用</button>
+          <button class="act-btn act-secondary" style="padding:6px 12px;font-size:11px" onclick="sendHiredChat(${id})">🔄 重做</button>
+          <button class="act-btn act-secondary" style="padding:6px 12px;font-size:11px" onclick="showToast('已复制到剪贴板')">📋 复制</button>
+        </div>`;
+        msgs.scrollTop = msgs.scrollHeight;
+      }, 500);
+    }, 1500);
+  }, 600);
+}
+function quickTask(id, contentType) {
+  const input = document.getElementById('hiredChatInput');
+  if(!input) return;
+  const taskMap = {
+    '图文笔记':'帮我做一组图文笔记，包含配图和文案',
+    '短视频':'帮我做一个短视频，包含脚本和分镜',
+    '短视频脚本':'帮我写一个短视频脚本，含分镜和口播词',
+    '纯文案':'帮我写一篇文案',
+    '简单任务':'帮我完成一个简单任务'
+  };
+  input.value = taskMap[contentType]||'帮我完成一个任务';
+  sendHiredChat(id);
+}
+
+// ===== TEACH SYSTEM v2: Full Business Logic =====
+function renderTeach(el, data) {
+  const id = data?.id||1;
+  const a = STATE.avatars[id]; if(!a) return;
+  const td = STATE.teachData[id] || {lessons:[], materials:[], corrections:[], skillProgress:{}};
+  STATE.teachData[id] = td;
+  // Learning stats
+  const totalLessons = td.lessons.length;
+  const totalCorrections = td.corrections.length;
+  const totalMaterials = td.materials.length;
+  const skillsLearning = a.learning.length;
+  const skillsMastered = a.skills.length;
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">📚 教${a.name}学习</div><div style="font-size:11px;color:#94a3b8">Lv.${a.lv} · ${a.xp}/${a.xpMax}XP</div></div>
+  <div style="display:flex;gap:8px;padding:10px 16px;background:#fff;border-bottom:1px solid #f1f5f9">
+    <div style="flex:1;text-align:center;font-size:11px"><div style="font-weight:700;font-size:16px;color:#6d28d9">${totalLessons}</div>教学轮</div>
+    <div style="flex:1;text-align:center;font-size:11px"><div style="font-weight:700;font-size:16px;color:#2563eb">${totalMaterials}</div>资料</div>
+    <div style="flex:1;text-align:center;font-size:11px"><div style="font-weight:700;font-size:16px;color:#d97706">${totalCorrections}</div>纠正</div>
+    <div style="flex:1;text-align:center;font-size:11px"><div style="font-weight:700;font-size:16px;color:#16a34a">${skillsMastered}</div>已掌握</div>
+  </div>
+  <div class="tab-row" id="teachTabs">
+    <div class="tab-item active" onclick="switchTeachTab(0,${id})">💬 对话教学</div>
+    <div class="tab-item" onclick="switchTeachTab(1,${id})">📄 喂资料</div>
+    <div class="tab-item" onclick="switchTeachTab(2,${id})">✏️ 纠正</div>
+    <div class="tab-item" onclick="switchTeachTab(3,${id})">📚 学技能</div>
+  </div>
+  <div id="teachContent">
+    <!-- Tab 0: 对话教学 -->
+    <div class="tab-content active" id="tc0">
+      <div style="padding:10px 16px;background:#faf5ff;font-size:12px;color:#6d28d9;border-bottom:1px solid #f3f0ff">
+        💡 教学提示：选择教学分类，让分身更有针对性地学习。每轮教学 +20 XP
+      </div>
+      <div style="display:flex;gap:6px;padding:8px 16px;flex-wrap:wrap;background:#fff;border-bottom:1px solid #f8fafc">
+        ${['✍️ 写作风格','🎯 受众偏好','🏷️ 品牌调性','📌 行业知识','💬 对话语感','🎨 审美偏好'].map(c=>`<span class="quick-tag" style="font-size:11px" onclick="setTeachCategory(${id},'${c.replace(/'/g,"\\'")}')">${c}</span>`).join('')}
+      </div>
+      <div class="chat-messages" id="teachMsgs" style="min-height:180px">
+        <div class="chat-msg system">🎓 ${a.name}已进入学习模式，选择一个教学分类开始吧！</div>
+        ${td.lessons.slice(-8).map(l=>`<div class="chat-msg user">[${l.category}] ${l.input}</div><div class="chat-msg bot">${l.response}</div>`).join('')}
+      </div>
+      <div style="position:sticky;bottom:0;background:#fff;padding:12px 16px;border-top:1px solid #f1f5f9">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+          <span style="font-size:11px;color:#94a3b8">当前分类：</span>
+          <span id="teachCategory" style="font-size:11px;padding:2px 8px;border-radius:6px;background:#f3f0ff;color:#6d28d9">✍️ 写作风格</span>
+        </div>
+        <div class="talk-input-row">
+          <input class="talk-input" id="teachInput" placeholder="教它：比如'写种草文时语气要亲切自然...'" onkeydown="if(event.key==='Enter')sendTeach(${id})" />
+          <button class="talk-send" onclick="sendTeach(${id})">➤</button>
+        </div>
+        <div class="quick-tags" style="margin-top:6px">
+          ${['语气要亲切自然','多用emoji和感叹号','注意避免绝对化用语','结尾要有行动号召','标题要吸引眼球'].map(t=>`<span class="quick-tag" style="font-size:10px" onclick="fillTeachInput(${id},'${t}')">${t}</span>`).join('')}
+        </div>
+      </div>
+    </div>
+    <!-- Tab 1: 喂资料 -->
+    <div class="tab-content" id="tc1">
+      <div style="padding:10px 16px;background:#eff6ff;font-size:12px;color:#2563eb;border-bottom:1px solid #dbeafe">
+        💡 上传参考资料，分身会提取关键信息学习。每份资料 +30 XP
+      </div>
+      <div style="padding:16px">
+        <div style="display:flex;gap:10px;margin-bottom:16px">
+          <button class="act-btn act-secondary" style="flex:1;font-size:12px" onclick="uploadMaterial(${id},'doc')">📄 文档</button>
+          <button class="act-btn act-secondary" style="flex:1;font-size:12px" onclick="uploadMaterial(${id},'image')">🖼️ 图片</button>
+          <button class="act-btn act-secondary" style="flex:1;font-size:12px" onclick="uploadMaterial(${id},'link')">🔗 链接</button>
+          <button class="act-btn act-secondary" style="flex:1;font-size:12px" onclick="uploadMaterial(${id},'text')">📝 文本</button>
+        </div>
+        <div id="materialUploadArea" style="display:none;margin-bottom:16px">
+          <div class="form-group" id="materialForm"></div>
+        </div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">已上传资料 (${totalMaterials})</div>
+        ${td.materials.length===0?'<div style="text-align:center;padding:24px;color:#94a3b8;font-size:13px">还没有上传资料<br>上传文档、图片或链接，分身会从中学习</div>':''}
+        ${td.materials.map((m,i)=>`
+        <div class="card" style="margin-bottom:8px;padding:10px 12px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:18px">${m.type==='doc'?'📄':m.type==='image'?'🖼️':m.type==='link'?'🔗':'📝'}</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.name}</div>
+              <div style="font-size:11px;color:#94a3b8">${m.time} · ${m.status==='processing'?'⏳ 处理中':m.status==='done'?'✅ 已学习':'❌ 失败'}${m.status==='done'?' · 提取'+m.keyPoints+'个知识点':''}</div>
+            </div>
+            <button style="border:none;background:none;font-size:14px;color:#ef4444;cursor:pointer;padding:4px" onclick="deleteMaterial(${id},${i})">🗑️</button>
+          </div>
+          ${m.status==='done'&&m.summary?`<div style="margin-top:6px;font-size:11px;color:#64748b;background:#f8fafc;border-radius:6px;padding:6px 8px;line-height:1.5">💡 ${m.summary}</div>`:''}
+        </div>`).join('')}
+      </div>
+    </div>
+    <!-- Tab 2: 纠正 -->
+    <div class="tab-content" id="tc2">
+      <div style="padding:10px 16px;background:#fef2f2;font-size:12px;color:#ef4444;border-bottom:1px solid #fecaca">
+        💡 纠正分身的不准确回复，帮助它做得更好。每次纠正 +15 XP
+      </div>
+      <div style="padding:16px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">提交纠正</div>
+        <div class="form-group">
+          <label class="form-label">分身的输出 <span class="req">*</span></label>
+          <textarea class="form-textarea" id="correctionOriginal" placeholder="粘贴分身说的不准确的内容..." rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">正确的应该是什么 <span class="req">*</span></label>
+          <textarea class="form-textarea" id="correctionFixed" placeholder="告诉分身正确的说法..." rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">纠正类型</label>
+          <div class="form-chips">
+            ${['❌ 事实错误','🎨 风格不对','🎯 受众不对','📢 品牌调性','💡 遗漏信息'].map(c=>`<span class="form-chip" onclick="toggleChip(this)">${c}</span>`).join('')}
+          </div>
+        </div>
+        <button class="act-btn act-primary" onclick="submitCorrection(${id})">提交纠正</button>
+        <div style="font-size:13px;font-weight:600;margin:20px 0 8px">纠正历史 (${totalCorrections})</div>
+        ${td.corrections.length===0?'<div style="text-align:center;padding:24px;color:#94a3b8;font-size:13px">暂无纠正记录<br>发现分身说得不对？纠正它！</div>':''}
+        ${td.corrections.map((c,i)=>`
+        <div class="card" style="margin-bottom:8px;padding:10px 12px">
+          <div style="display:flex;gap:8px">
+            <div style="flex-shrink:0;font-size:12px;margin-top:2px">❌</div>
+            <div style="flex:1">
+              <div style="font-size:12px;color:#ef4444;margin-bottom:4px">${c.original}</div>
+              <div style="font-size:12px;color:#16a34a">✅ ${c.fixed}</div>
+              <div style="font-size:10px;color:#94a3b8;margin-top:4px">${c.time}${c.types?' · '+c.types:''}</div>
+            </div>
+            <button style="border:none;background:none;font-size:12px;color:#ef4444;cursor:pointer;padding:4px" onclick="deleteCorrection(${id},${i})">🗑️</button>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>
+    <!-- Tab 3: 学技能 -->
+    <div class="tab-content" id="tc3">
+      <div style="padding:10px 16px;background:#f0fdf4;font-size:12px;color:#16a34a;border-bottom:1px solid #dcfce7">
+        💡 学技能是提升分身能力的核心方式。每步有真实学习内容，完成后考核验证，通过才算掌握。
+      </div>
+      ${renderSkillPanel(a)}
+    </div>
+  </div>`;
+}
+
+function renderSkillPanel(a) {
+  const sk = SKILL_DETAILS;
+  const sp = STATE.skillProgress || {};
+  const ab = a.abilities || {writing:0,creativity:0,professionalism:0,engagement:0,accuracy:0};
+  let html = `<div style="padding:16px">`;
+  html += `<div style="font-size:14px;font-weight:700;margin-bottom:10px">🎯 ${a.name}的能力面板</div>`;
+  html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:14px">`;
+  const abNames = {writing:'✍️ 写作力',creativity:'🎨 创意力',professionalism:'💼 专业度',engagement:'📱 互动力',accuracy:'📊 精准度'};
+  for (const [k,label] of Object.entries(abNames)) {
+    const val = ab[k]||0;
+    const color = val>=80?'#16a34a':val>=50?'#d97706':val>=20?'#3b82f6':'#94a3b8';
+    html += `<div style="background:#f8fafc;border-radius:10px;padding:8px 10px"><div style="display:flex;justify-content:space-between;font-size:12px"><span>${label}</span><span style="color:${color};font-weight:600">${val}</span></div><div class="progress-bar" style="height:6px;margin-top:4px"><div class="progress-fill" style="width:${val}%;background:${color}"></div></div></div>`;
+  }
+  html += `</div>`;
+  html += `<div style="display:flex;gap:8px;margin-bottom:14px"><div style="flex:1;background:#ede9fe;border-radius:10px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:700;color:#6d28d9">${a.skills.length}</div><div style="font-size:10px;color:#6d28d9">已掌握</div></div><div style="flex:1;background:#fef3c7;border-radius:10px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:700;color:#d97706">${a.learning.length}</div><div style="font-size:10px;color:#d97706">学习中</div></div><div style="flex:1;background:#f1f5f9;border-radius:10px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:700;color:#64748b">${Object.keys(sk).length - a.skills.length - a.learning.length}</div><div style="font-size:10px;color:#64748b">待学习</div></div></div>`;
+  if (a.learning.length > 0) {
+    html += `<div style="font-size:13px;font-weight:700;margin-bottom:8px">📖 正在学习</div>`;
+    a.learning.forEach(skillName => {
+      const detail = sk[skillName];
+      if (!detail) return;
+      const prog = sp[skillName] || {step:0,total:detail.steps.length,examPassed:false,examAttempts:0};
+      const pct = Math.round(prog.step / prog.total * 100);
+      const currentStep = detail.steps[Math.min(prog.step, prog.total-1)];
+      const canLearn = a.lv >= detail.reqLv;
+      const aid = a===STATE.avatars[1]?1:a===STATE.avatars[2]?2:3;
+      html += `<div style="background:#fff;border-radius:14px;padding:12px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.04)">`;
+      html += `<div style="display:flex;justify-content:space-between;align-items:center"><div style="font-weight:600;font-size:14px">${detail.icon} ${skillName}</div><span class="lv lv${Math.min(detail.reqLv,7)}">需Lv.${detail.reqLv}</span></div>`;
+      html += `<div style="font-size:12px;color:#64748b;margin-top:2px">${detail.desc}</div>`;
+      html += `<div class="progress-bar" style="margin-top:8px"><div class="progress-fill pf-purple" style="width:${pct}%"></div></div>`;
+      html += `<div style="display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;margin-top:2px"><span>进度 ${prog.step}/${prog.total}</span><span>${pct}%</span></div>`;
+      if (prog.step < prog.total) {
+        html += `<div style="background:#f3f0ff;border-radius:8px;padding:8px 10px;margin-top:8px;font-size:12px">`;
+        html += `<div style="font-weight:600;color:#6d28d9">📍 当前：第${prog.step+1}步 · ${currentStep.title}</div>`;
+        html += `<div style="color:#64748b;margin-top:2px">${currentStep.brief||currentStep.title}</div>`;
+        html += `</div>`;
+      }
+      html += `<div style="font-size:11px;color:#94a3b8;margin-top:6px">完成效果：${Object.entries(detail.gain).map(([k,v])=>abNames[k]+'+'+v).join(' · ')} · +${detail.xp}XP</div>`;
+      if (prog.step >= prog.total && !prog.examPassed) {
+        html += `<div style="display:flex;gap:8px;margin-top:8px"><button class="act-btn act-primary" style="flex:1" onclick="takeExam('${skillName}',${aid})">📝 参加考核</button><button class="act-btn act-danger" style="flex:0;padding:8px 12px" onclick="abandonSkill('${skillName}',${aid})">放弃</button></div>`;
+      } else if (prog.step < prog.total) {
+        html += `<div style="display:flex;gap:8px;margin-top:8px"><button class="act-btn act-primary" style="flex:1" onclick="startLearnStep('${skillName}',${aid})">📖 继续学习</button><button class="act-btn act-danger" style="flex:0;padding:8px 12px" onclick="abandonSkill('${skillName}',${aid})">放弃</button></div>`;
+      }
+      html += `</div>`;
+    });
+  }
+  const availableSkills = Object.entries(sk).filter(([name]) => !a.skills.includes(name) && !a.learning.includes(name));
+  if (availableSkills.length > 0) {
+    html += `<div style="font-size:13px;font-weight:700;margin:8px 0">🔓 可学习技能</div>`;
+    availableSkills.forEach(([name, detail]) => {
+      const canLearn = a.lv >= detail.reqLv;
+      const aid = a===STATE.avatars[1]?1:a===STATE.avatars[2]?2:3;
+      html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f8fafc;${canLearn?'':'opacity:0.5'}">`;
+      html += `<div><div style="font-weight:600;font-size:13px">${detail.icon} ${name} ${!canLearn?'<span style="font-size:10px;color:#ef4444">🔒Lv.'+detail.reqLv+'</span>':''}</div><div style="font-size:11px;color:#64748b">${detail.desc}</div><div style="font-size:10px;color:#94a3b8;margin-top:1px">${detail.steps.length}步 · +${detail.xp}XP · ${Object.entries(detail.gain).map(([k,v])=>abNames[k]+'+'+v).join(' ')}</div></div>`;
+      html += `<button class="act-btn ${canLearn?'act-primary':'act-disabled'}" style="flex:0;padding:6px 12px;font-size:11px" onclick="${canLearn?"startLearnSkill('"+name+"',"+aid+")":"showToast('需要Lv."+detail.reqLv+"')"}">学习</button>`;
+      html += `</div>`;
+    });
+  }
+  if (a.skills.length > 0) {
+    html += `<div style="font-size:13px;font-weight:700;margin:8px 0">✅ 已掌握技能</div>`;
+    a.skills.forEach(name => {
+      const detail = sk[name];
+      if (!detail) return;
+      html += `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f8fafc"><span style="font-size:16px">${detail.icon}</span><div style="flex:1"><div style="font-weight:500;font-size:13px">${name}</div><div style="font-size:10px;color:#94a3b8">${Object.entries(detail.gain).map(([k,v])=>abNames[k]+'+'+v).join(' · ')}</div></div><span style="font-size:10px;color:#16a34a;font-weight:600">✓ 已掌握</span></div>`;
+    });
+  }
+  html += `</div>`;
+  return html;
+}
+
+function switchTeachTab(idx,id){document.querySelectorAll('#teachTabs .tab-item').forEach((t,i)=>{t.classList.toggle('active',i===idx)});document.querySelectorAll('#teachContent .tab-content').forEach((t,i)=>{t.classList.toggle('active',i===idx)})}
+function setTeachCategory(cat,id){
+  const a=STATE.avatars[id];if(!a)return;
+  const input=document.getElementById('teachInput');
+  const tips={writing_style:'例如：写文案时用轻松活泼的语气，多用emoji和感叹号',content_rule:'例如：种草文必须包含产品名、使用感受、推荐理由3个要素',brand_tone:'例如：保持温暖亲切的品牌调性，像闺蜜聊天一样',audience:'例如：目标读者是25-35岁都市女性，关注性价比',topic:'例如：重点关注平价好物和成分分析类话题',expression:'例如：常用表达：绝绝子、无限回购、闭眼入'};
+  if(input)input.placeholder=tips[cat]||'告诉它应该怎么做...';
+  showToast('教学方向：'+{writing_style:'写作风格',content_rule:'内容规范',brand_tone:'品牌调性',audience:'受众偏好',topic:'话题偏好',expression:'常用表达'}[cat]);
+}
+function fillTeachInput(text,id){
+  const input=document.getElementById('teachInput');
+  if(input){input.value=text;sendTeach(id||Object.keys(STATE.avatars)[0])}
+}
+function sendTeach(id){
+  const input=document.getElementById('teachInput');const msg=input.value.trim();if(!msg)return;input.value='';
+  const msgs=document.getElementById('teachMsgs');
+  msgs.innerHTML+=`<div class="chat-msg user">${msg}</div>`;
+  const a=STATE.avatars[id];
+  // Analyze what user is teaching and give specific response
+  let reply='好的，我记住了！以后会按这个方式来 ✅';
+  if(msg.includes('语气')||msg.includes('风格'))reply='收到！我以后写内容时会注意调整语气和风格，会更贴合你的要求 ✅';
+  else if(msg.includes('必须')||msg.includes('一定')||msg.includes('规范'))reply='明白了！这是硬性规则，我会严格遵守，不会遗漏 ✅';
+  else if(msg.includes('不要')||msg.includes('避免')||msg.includes('禁止'))reply='记下了！这些是我要避免的雷区，绝不触碰 ✅';
+  else if(msg.includes('读者')||msg.includes('受众')||msg.includes('用户'))reply='了解！我会针对这个人群的特点来调整内容和表达 ✅';
+  else if(msg.includes('品牌')||msg.includes('调性'))reply='收到！我会保持品牌的一致调性，让内容更有辨识度 ✅';
+  else if(msg.includes('常用')||msg.includes('口头禅')||msg.includes('表达'))reply='记住了！这些表达方式我会融入日常输出中 ✅';
+  setTimeout(()=>{
+    msgs.innerHTML+=`<div class="chat-msg bot">${reply}</div>`;
+    // Award XP
+    if(a){a.xp=Math.min(a.xpMax,a.xp+30);showToast('+30 XP')}
+    msgs.scrollTop=msgs.scrollHeight;
+  },500);
+}
+function uploadMaterial(type,id){
+  const a=STATE.avatars[id];if(!a)return;
+  if(!a.materials)a.materials=[];
+  const typeNames={doc:'📄 文档',image:'🖼️ 图片',link:'🔗 链接',text:'📝 文本'};
+  const names={doc:'品牌资料手册.pdf',image:'产品实拍图.jpg',link:'竞品分析报告',text:'品牌介绍文本'};
+  const mat={id:Date.now(),type,name:names[type]||'新资料',status:'uploading',time:'刚刚',size:type==='doc'?'2.3MB':type==='image'?'1.1MB':type==='link'?'外部链接':'0.5KB'};
+  a.materials.unshift(mat);
+  renderTeachMaterials(id);
+  simulateUpload(mat.id,id);
+}
+function simulateUpload(matId,id){
+  const a=STATE.avatars[id];if(!a)return;
+  const mat=a.materials.find(m=>m.id===matId);if(!mat)return;
+  setTimeout(()=>{
+    mat.status='processing';
+    renderTeachMaterials(id);
+  },1000);
+  setTimeout(()=>{
+    mat.status='parsed';
+    // Extract knowledge points
+    mat.extracted=['品牌定位','核心卖点','用户画像','竞品差异'];
+    renderTeachMaterials(id);
+    a.xp=Math.min(a.xpMax,a.xp+20);
+    showToast('资料解析完成！+20 XP');
+  },3000);
+}
+function renderTeachMaterials(id){
+  const a=STATE.avatars[id];if(!a)return;
+  const list=document.getElementById('materialList');
+  if(!list)return;
+  if(a.materials.length===0){list.innerHTML='<div style="text-align:center;padding:30px;color:#94a3b8;font-size:13px">还没有上传资料<br>上传文档/图片/链接让分身学习</div>';return}
+  list.innerHTML=a.materials.map(m=>{
+    const statusMap={uploading:'⏳ 上传中',processing:'🔄 解析中',parsed:'✅ 已解析'};
+    const statusColor={uploading:'#3b82f6',processing:'#d97706',parsed:'#16a34a'};
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid #f8fafc">
+      <div style="flex:1;min-width:0"><div style="font-weight:500;font-size:13px">${m.name}</div><div style="font-size:11px;color:#94a3b8">${m.size} · ${m.time}</div>
+      ${m.extracted?`<div style="font-size:10px;color:#6d28d9;margin-top:2px">提取：${m.extracted.join('、')}</div>`:''}</div>
+      <span style="font-size:11px;color:${statusColor[m.status]};white-space:nowrap">${statusMap[m.status]}</span>
+      <button style="border:none;background:none;font-size:14px;cursor:pointer;color:#ef4444;padding:4px" onclick="deleteMaterial(${m.id},${id})">×</button>
+    </div>`;
+  }).join('');
+}
+function deleteMaterial(matId,id){
+  const a=STATE.avatars[id];if(!a)return;
+  a.materials=a.materials.filter(m=>m.id!==matId);
+  renderTeachMaterials(id);showToast('资料已删除');
+}
+function submitCorrection(id){
+  const a=STATE.avatars[id];if(!a)return;
+  if(!a.corrections)a.corrections=[];
+  const outputEl=document.getElementById('corrOutput');
+  const correctEl=document.getElementById('corrCorrect');
+  const output=outputEl?outputEl.value.trim():'';
+  const correct=correctEl?correctEl.value.trim():'';
+  if(!output||!correct){showToast('请填写分身输出和正确内容');return}
+  a.corrections.unshift({id:Date.now(),output,correct,time:'刚刚'});
+  if(outputEl)outputEl.value='';if(correctEl)correctEl.value='';
+  renderCorrections(id);
+  a.xp=Math.min(a.xpMax,a.xp+15);
+  showToast('纠正已保存！分身会记住的 +15 XP');
+}
+function renderCorrections(id){
+  const a=STATE.avatars[id];if(!a)return;
+  const list=document.getElementById('correctionList');
+  if(!list)return;
+  if(a.corrections.length===0){list.innerHTML='<div style="text-align:center;padding:20px;color:#94a3b8;font-size:12px">暂无纠正记录</div>';return}
+  list.innerHTML=a.corrections.map(c=>`<div style="background:#fff;border-radius:10px;padding:10px;margin-bottom:6px;border:1px solid #f1f5f9">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-size:11px;color:#94a3b8">${c.time}</span><button style="border:none;background:none;font-size:12px;color:#ef4444;cursor:pointer" onclick="deleteCorrection(${c.id},${id})">删除</button></div>
+    <div style="font-size:12px;background:#fef2f2;padding:6px 8px;border-radius:6px;margin-bottom:4px;color:#991b1b">❌ 分身说：${c.output}</div>
+    <div style="font-size:12px;background:#f0fdf4;padding:6px 8px;border-radius:6px;color:#166534">✅ 应该说：${c.correct}</div>
+  </div>`).join('');
+}
+function deleteCorrection(cId,id){
+  const a=STATE.avatars[id];if(!a)return;
+  a.corrections=a.corrections.filter(c=>c.id!==cId);
+  renderCorrections(id);showToast('纠正已删除');
+}
+function startLearnSkill(skillName,id){
+  const a=STATE.avatars[id];if(!a)return;
+  const detail=SKILL_DETAILS[skillName];if(!detail)return;
+  if(a.lv<detail.reqLv){showToast('需要Lv.'+detail.reqLv+'才能学习');return}
+  if(a.skills.includes(skillName)){showToast('已掌握此技能');return}
+  if(a.learning.includes(skillName)){showToast('正在学习中');return}
+  a.learning.push(skillName);
+  if(!STATE.skillProgress)STATE.skillProgress={};
+  STATE.skillProgress[skillName]={step:0,total:detail.steps.length,examPassed:false,examAttempts:0};
+  showToast(`开始学习「${skillName}」！`);
+  // Auto open first step
+  startLearnStep(skillName,id);
+}
+function startLearnStep(skillName,id){
+  const a=STATE.avatars[id];if(!a)return;
+  const detail=SKILL_DETAILS[skillName];if(!detail)return;
+  const prog=STATE.skillProgress?.[skillName];if(!prog)return;
+  if(prog.step>=prog.total){
+    // All steps done, need exam
+    takeExam(skillName,id);return;
+  }
+  const step=detail.steps[prog.step];
+  // Show learning content in a sub-like overlay
+  const el=document.getElementById('sub-dynamic');
+  el.className='subpage';el.style.display='block';
+  el.innerHTML=`<div class="sub-header"><button class="sub-back" onclick="closeLearnStep('${skillName}',${id})">←</button><div class="sub-title">${detail.icon} ${skillName}</div><div style="font-size:12px;color:#94a3b8">${prog.step+1}/${prog.total}</div></div>
+  <div class="sub-body">
+    <div style="background:#f3f0ff;border-radius:14px;padding:16px;margin-bottom:14px">
+      <div style="font-size:15px;font-weight:700;color:#6d28d9;margin-bottom:6px">📍 第${prog.step+1}步：${step.title}</div>
+      <div style="font-size:12px;color:#6d28d9;margin-bottom:10px">预计学习时间：${step.time||'2分钟'}</div>
+    </div>
+    <div style="font-size:14px;font-weight:600;margin-bottom:8px">📖 学习内容</div>
+    <div style="background:#f8fafc;border-radius:12px;padding:14px;margin-bottom:14px;font-size:13px;line-height:1.8;color:#475569">
+      ${step.content.split('\\n').map(line=>line.trim()?`<div style="margin-bottom:4px">${line}</div>`:'').join('')}
+    </div>
+    ${step.example?`<div style="font-size:14px;font-weight:600;margin-bottom:8px">💡 示例</div>
+    <div style="background:#fef3c7;border-radius:12px;padding:14px;margin-bottom:14px;font-size:13px;line-height:1.6;color:#92400e">
+      ${step.example.split('\\n').map(line=>line.trim()?`<div style="margin-bottom:2px">${line}</div>`:'').join('')}
+    </div>`:''}
+    ${step.tips?`<div style="font-size:14px;font-weight:600;margin-bottom:8px">⚠️ 注意事项</div>
+    <div style="background:#fef2f2;border-radius:12px;padding:14px;margin-bottom:14px;font-size:13px;line-height:1.6;color:#991b1b">
+      ${step.tips.split('\\n').map(line=>line.trim()?`<div style="margin-bottom:2px">${line}</div>`:'').join('')}
+    </div>`:''}
+    ${step.practice?`<div style="font-size:14px;font-weight:600;margin-bottom:8px">✍️ 练一练</div>
+    <div style="background:#eff6ff;border-radius:12px;padding:14px;margin-bottom:14px;font-size:13px;line-height:1.6;color:#1e40af">
+      ${step.practice}
+    </div>
+    <textarea class="form-textarea" id="practiceInput" placeholder="在这里写下你的练习..." style="margin-bottom:10px"></textarea>`:''}
+    <div class="progress-bar" style="margin-bottom:6px"><div class="progress-fill pf-purple" style="width:${(prog.step+1)/prog.total*100}%"></div></div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:#94a3b8;margin-bottom:14px"><span>进度 ${prog.step+1}/${prog.total}</span><span>${Math.round((prog.step+1)/prog.total*100)}%</span></div>
+    <button class="act-btn act-primary" style="width:100%" onclick="completeLearnStep('${skillName}',${id})">✅ 我学会了，进入下一步</button>
+  </div>`;
+}
+function completeLearnStep(skillName,id){
+  const a=STATE.avatars[id];if(!a)return;
+  const prog=STATE.skillProgress?.[skillName];if(!prog)return;
+  prog.step++;
+  a.xp=Math.min(a.xpMax,a.xp+10);
+  if(prog.step>=prog.total){
+    showToast('所有步骤完成！请参加考核');
+    closeLearnStep(skillName,id);
+    // Re-render to show exam button
+    const el=document.getElementById('sub-dynamic');
+    renderSubContent(el,'teach',{id});
+    setTimeout(()=>switchTeachTab(3,id),100);
+  } else {
+    showToast('+10 XP！进入下一步');
+    startLearnStep(skillName,id);
+  }
+}
+function closeLearnStep(skillName,id){
+  const el=document.getElementById('sub-dynamic');
+  el.style.display='none';el.className='subpage';
+  renderSubContent(el,'teach',{id});
+  setTimeout(()=>switchTeachTab(3,id),50);
+}
+function takeExam(skillName,id){
+  const a=STATE.avatars[id];if(!a)return;
+  const detail=SKILL_DETAILS[skillName];if(!detail)return;
+  const prog=STATE.skillProgress?.[skillName];if(!prog)return;
+  const exam=detail.exam;if(!exam)return;
+  const el=document.getElementById('sub-dynamic');
+  el.className='subpage';el.style.display='block';
+  el.innerHTML=`<div class="sub-header"><button class="sub-back" onclick="closeLearnStep('${skillName}',${id})">←</button><div class="sub-title">📝 技能考核</div><div></div></div>
+  <div class="sub-body">
+    <div style="text-align:center;padding:16px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:16px;color:#fff;margin-bottom:16px">
+      <div style="font-size:36px;margin-bottom:4px">${detail.icon}</div>
+      <div style="font-size:17px;font-weight:700">${skillName}</div>
+      <div style="font-size:12px;opacity:.8;margin-top:2px">考核通过即可掌握此技能</div>
+    </div>
+    <div style="font-size:14px;font-weight:600;margin-bottom:8px">❓ 考核题目</div>
+    <div style="background:#f8fafc;border-radius:12px;padding:14px;margin-bottom:14px;font-size:14px;line-height:1.6">${exam.question}</div>
+    <div style="font-size:14px;font-weight:600;margin-bottom:8px">你的答案</div>
+    <textarea class="form-textarea" id="examAnswer" placeholder="请认真作答，展示你学到的知识..." style="min-height:120px;margin-bottom:14px"></textarea>
+    <div style="font-size:12px;color:#94a3b8;margin-bottom:14px">💡 评分标准：${exam.criteria}</div>
+    <button class="act-btn act-primary" style="width:100%" onclick="submitExam('${skillName}',${id})">📤 提交考核</button>
+    ${prog.examAttempts>0?`<div style="font-size:12px;color:#94a3b8;text-align:center;margin-top:8px">已尝试${prog.examAttempts}次</div>`:''}
+  </div>`;
+}
+function submitExam(skillName,id){
+  const a=STATE.avatars[id];if(!a)return;
+  const detail=SKILL_DETAILS[skillName];if(!detail)return;
+  const prog=STATE.skillProgress?.[skillName];if(!prog)return;
+  const answer=document.getElementById('examAnswer');
+  const ans=answer?answer.value.trim():'';
+  if(ans.length<10){showToast('请认真作答，至少写10个字');return}
+  prog.examAttempts=(prog.examAttempts||0)+1;
+  // Check answer quality based on keywords
+  const exam=detail.exam;
+  const keywords=exam.keywords||[];
+  const matched=keywords.filter(k=>ans.includes(k));
+  const score=matched.length/keywords.length;
+  if(score>=0.4||ans.length>=50){
+    // PASS
+    prog.examPassed=true;
+    // Remove from learning, add to skills
+    a.learning=a.learning.filter(s=>s!==skillName);
+    if(!a.skills.includes(skillName))a.skills.push(skillName);
+    // Update abilities
+    if(!a.abilities)a.abilities={writing:0,creativity:0,professional:0,social:0,data:0};
+    for(const[k,v] of Object.entries(detail.gain)){
+      a.abilities[k]=Math.min(100,(a.abilities[k]||0)+v);
+    }
+    // Award XP
+    a.xp=Math.min(a.xpMax,a.xp+detail.xp);
+    checkLevelUp(id);
+    // Show success
+    const el=document.getElementById('sub-dynamic');
+    el.innerHTML=`<div class="sub-header"><button class="sub-back" onclick="closeLearnStep('${skillName}',${id})">←</button><div class="sub-title">🎉 考核通过</div><div></div></div>
+    <div class="sub-body" style="text-align:center;padding:40px 20px">
+      <div style="font-size:64px;margin-bottom:12px">${detail.icon}</div>
+      <div style="font-size:20px;font-weight:700;margin-bottom:4px">恭喜掌握「${skillName}」</div>
+      <div style="font-size:14px;color:#6d28d9;margin-bottom:16px">+${detail.xp} XP</div>
+      <div style="background:#f0fdf4;border-radius:12px;padding:14px;margin-bottom:16px;text-align:left">
+        <div style="font-size:13px;font-weight:600;color:#16a34a;margin-bottom:8px">能力提升</div>
+        ${Object.entries(detail.gain).map(([k,v])=>{
+          const names={writing:'✍️ 写作力',creativity:'🎨 创意力',professionalism:'💼 专业度',engagement:'📱 互动力',accuracy:'📊 精准度'};
+          return `<div style="font-size:12px;color:#475569;padding:2px 0">${names[k]||k} +${v} → ${(a.abilities[k]||0)}</div>`;
+        }).join('')}
+      </div>
+      <div style="background:#f8fafc;border-radius:12px;padding:14px;margin-bottom:16px;text-align:left">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px">📊 ${a.name}当前能力</div>
+        ${Object.entries({writing:'✍️ 写作力',creativity:'🎨 创意力',professionalism:'💼 专业度',engagement:'📱 互动力',accuracy:'📊 精准度'}).map(([k,label])=>{
+          const val=a.abilities[k]||0;
+          const color=val>=80?'#16a34a':val>=50?'#d97706':'#3b82f6';
+          return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="font-size:11px;width:60px">${label}</span><div class="progress-bar" style="flex:1;height:8px"><div class="progress-fill" style="width:${val}%;background:${color}"></div></div><span style="font-size:11px;color:${color}">${val}</span></div>`;
+        }).join('')}
+      </div>
+      <button class="act-btn act-primary" style="width:100%" onclick="closeLearnStep('${skillName}',${id})">完成</button>
+    </div>`;
+  } else {
+    // FAIL
+    showToast('考核未通过，请更详细地作答');
+    answer.value='';
+    answer.placeholder=`提示：试着包含这些关键词：${keywords.slice(0,3).join('、')}...`;
+  }
+}
+function abandonSkill(skillName,id){
+  const a=STATE.avatars[id];if(!a)return;
+  a.learning=a.learning.filter(s=>s!==skillName);
+  if(STATE.skillProgress)delete STATE.skillProgress[skillName];
+  showToast(`已放弃「${skillName}」`);
+  const el=document.getElementById('sub-dynamic');
+  renderSubContent(el,'teach',{id});
+  setTimeout(()=>switchTeachTab(3,id),50);
+}
+function checkLevelUp(id){
+  const a=STATE.avatars[id];if(!a)return;
+  while(a.xp>=a.xpMax&&a.lv<7){
+    a.xp-=a.xpMax;a.lv++;
+    const newMax={1:300,2:500,3:900,4:1500,5:2500,6:4000,7:9999};
+    a.xpMax=newMax[a.lv]||9999;
+    const rights=LEVEL_RIGHTS[a.lv];
+    showToast(`🎉 ${a.name}升级到Lv.${a.lv} ${rights.name}！`);
+  }
+}
+
+
+
+function renderCreate(el){renderEditAvatar(el,{id:null})}
+
+function renderEarn(el) {
+  const totalE = Object.values(STATE.avatars).reduce((s,a)=>s+a.totalEarning,0);
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">💰 收益中心</div><div></div></div><div class="sub-body">
+  <div style="text-align:center;padding:20px 0;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:16px;color:#fff;margin-bottom:16px">
+    <div style="font-size:32px;font-weight:700">¥${STATE.user.balance.toFixed(2)}</div><div style="font-size:12px;opacity:.8;margin-top:4px">可用余额</div>
+    <button class="act-btn" style="display:inline-block;margin-top:12px;padding:8px 24px;background:#fff;color:#6d28d9;border-radius:20px;font-weight:600" onclick="openSub('withdraw')">提现</button>
+  </div>
+  <div style="font-size:14px;font-weight:600;margin-bottom:8px">累计收益 ¥${totalE}</div>
+  <div style="font-size:13px;font-weight:600;margin-bottom:8px">近7天</div>
+  <div class="earn-chart">${STATE.earnings.week.map((v,i)=>`<div class="earn-bar" style="height:${Math.max(v/89*100,4)}%"><div class="earn-bar-val">¥${v}</div><div class="earn-bar-label">${STATE.earnings.weekLabels[i]}</div></div>`).join('')}</div>
+  <div style="height:24px"></div>
+  <div style="font-size:14px;font-weight:600;margin-bottom:8px">分身收益</div>
+  ${Object.entries(STATE.avatars).map(([id,a])=>`
+  <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f8fafc">
+    <img src="${a.photo}" class="avatar-photo sm" /><div style="flex:1"><div style="font-weight:600;font-size:13px">${a.name}</div><div style="font-size:11px;color:#94a3b8">${a.orders}单 · ⭐${a.stars}</div></div><div style="font-weight:700;color:#6d28d9">¥${a.totalEarning}</div>
+  </div>`).join('')}
+  </div>`;
+}
+function renderWithdraw(el) {
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">提现</div><div></div></div><div class="sub-body">
+  <div style="text-align:center;padding:16px 0"><div style="font-size:24px;font-weight:700;color:#6d28d9">¥${STATE.user.balance.toFixed(2)}</div><div style="font-size:12px;color:#94a3b8">可提现金额</div></div>
+  <div class="form-group"><label class="form-label">提现金额</label><input class="form-input" type="number" placeholder="输入金额" min="1" max="${STATE.user.balance}" /><div class="form-hint">最低提现¥1.00，1-3个工作日到账</div></div>
+  <div class="form-group"><label class="form-label">提现方式</label>
+    <div class="withdraw-method selected" onclick="selectWithdraw(this)"><div class="icon" style="background:#dcfce7">💚</div><div><div class="name">微信</div><div class="desc">1-2天到账</div></div></div>
+    <div class="withdraw-method" onclick="selectWithdraw(this)"><div class="icon" style="background:#dbeafe">💙</div><div><div class="name">支付宝</div><div class="desc">1-3天到账</div></div></div>
+    <div class="withdraw-method" onclick="selectWithdraw(this)"><div class="icon" style="background:#fef3c7">💛</div><div><div class="name">银行卡</div><div class="desc">2-3天到账</div></div></div>
+  </div>
+  <button class="act-btn act-primary" onclick="showToast('提现申请已提交')">确认提现</button>
+  </div>`;
+}
+function selectWithdraw(el){el.parentElement.querySelectorAll('.withdraw-method').forEach(m=>m.classList.remove('selected'));el.classList.add('selected')}
+
+function renderOrderDetail(el, data) {
+  const id = data?.id||1;
+  const o = STATE.orders[id]; if(!o) return;
+  const cov = calcCoverage(o.contentType, o.materials);
+  const priceInfo = calcPrice(o.contentType, o.avatars, o.materials, o.exclusive, o.aiSupplement, null);
+  const avatarEarn = calcAvatarEarning(o.contentType, o.avatars, o.materials, o.exclusive, o.aiSupplement, null);
+  const platIncome = calcPlatformIncome(o.contentType, o.avatars, o.materials, o.exclusive, o.aiSupplement, null);
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">订单详情</div><div></div></div><div class="sub-body">
+  <span class="order-type ot-${o.type}">${o.label}</span>
+  <div class="order-title" style="font-size:18px">${o.title}</div>
+  <div class="order-desc">${o.desc}</div>
+  <div class="order-tags" style="margin-bottom:12px">
+    <span class="order-tag">${o.contentType}</span><span class="order-tag">${o.exclusive?'独享':'共享'}</span>
+    <span class="order-tag">AI${o.aiSupplement?'补足':'不补'}</span><span class="order-tag">截止：${o.deadline}</span>
+  </div>
+  <div style="font-size:14px;font-weight:600;margin-bottom:8px">📐 素材覆盖率</div>
+  ${PRICING[o.contentType].dims.map(d=>{
+    const have = o.materials.provided[d.name]||0;
+    const need = (o.materials.total[d.name]||0);
+    const pct = need>0?Math.round(have/need*100):0;
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="font-size:12px;width:60px">${d.name}</span><div class="coverage-bar" style="flex:1"><div class="coverage-filled" style="width:${pct}%"></div><div class="coverage-empty"></div></div><span style="font-size:11px;color:#94a3b8">${have}/${need}</span></div>`;
+  }).join('')}
+  <div style="text-align:right;font-size:13px;font-weight:600;margin-top:6px">综合覆盖率：${cov}%</div>
+  <div style="font-size:14px;font-weight:600;margin:16px 0 8px">💰 价格明细</div>
+  <div style="background:#f8fafc;border-radius:12px;padding:12px">
+    <div class="price-row"><span class="label">内容类型</span><span class="val">${o.contentType}</span></div>
+    <div class="price-row"><span class="label">最低出场费</span><span class="val">¥${PRICING[o.contentType].minFee}/分身</span></div>
+    <div class="price-row"><span class="label">分身数量</span><span class="val">${o.avatars}个</span></div>
+    <div class="price-row"><span class="label">出场费小计</span><span class="val">¥${priceInfo.fee.toFixed(2)}</span></div>
+    <div class="price-row"><span class="label">AI补足</span><span class="val">${o.aiSupplement?'开启':'关闭'}</span></div>
+    ${o.aiSupplement?`<div class="price-row"><span class="label">生成单价</span><span class="val">¥${PRICING[o.contentType].genPrice}/套</span></div>
+    <div class="price-row"><span class="label">需补足</span><span class="val">${(100-cov)}%</span></div>
+    <div class="price-row"><span class="label">生成套数(${o.exclusive?'独享':'共享'})</span><span class="val">${priceInfo.genSets}套</span></div>
+    <div class="price-row"><span class="label">生成费小计</span><span class="val">¥${priceInfo.genCost.toFixed(2)}</span></div>`:''}
+    <div class="price-row total"><span class="label">订单总价</span><span class="val">¥${priceInfo.total.toFixed(2)}</span></div>
+  </div>
+  <div style="font-size:14px;font-weight:600;margin:16px 0 8px">💎 你能赚多少</div>
+  <div style="background:#f0fdf4;border-radius:12px;padding:12px">
+    <div class="price-row"><span class="label">最低出场费·分身分成(70%)</span><span class="val">¥${(PRICING[o.contentType].minFee*0.7).toFixed(2)}/分身</span></div>
+    <div class="price-row"><span class="label">你的收益（${o.avatars}分身）</span><span class="val" style="color:#16a34a">¥${avatarEarn.toFixed(2)}</span></div>
+  </div>
+  <div style="font-size:11px;color:#94a3b8;margin-top:4px">平台收入：¥${platIncome.toFixed(2)}（出场费30% + 生成费100%）</div>
+  <button class="act-btn act-success" style="margin-top:16px" onclick="acceptOrder(${id})">✅ 接单（赚 ¥${avatarEarn.toFixed(2)}）</button>
+  </div>`;
+}
+function acceptOrder(id){
+  const o=STATE.orders[id];if(!o)return;
+  delete STATE.orders[id];
+  showToast('🎉 接单成功！分身开始工作');
+  closeSub(); renderPage(STATE.currentTab);
+}
+
+function renderMyResults(el) {
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">我的成果</div><div></div></div><div class="sub-body">
+  ${STATE.results.map(r=>`
+  <div class="result-card" onclick="openSub('result-detail')">
+    <span class="result-type ${r.type==='done'?'rt-done':'rt-gen'}">${r.label}</span>
+    <div style="font-weight:600;font-size:14px;margin-top:4px">${r.title}</div>
+    <div style="font-size:12px;color:#94a3b8;margin-top:2px">${r.avatar} · ${r.time}${r.stars?' · ⭐'+r.stars:''}</div>
+    ${r.earning?`<div style="font-size:13px;font-weight:600;color:#16a34a;margin-top:4px">+¥${r.earning.toFixed(2)}</div>`:''}
+  </div>`).join('')}
+  </div>`;
+}
+function renderResultDetail(el) {
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">成果详情</div><div></div></div><div class="sub-body">
+  <div style="font-size:16px;font-weight:700;margin-bottom:8px">小红书种草文×3篇</div>
+  <div style="font-size:12px;color:#94a3b8;margin-bottom:12px">美妆小助手 · 2小时前 · ⭐5.0</div>
+  <div style="background:#f8fafc;border-radius:12px;padding:14px;margin-bottom:12px;font-size:13px;line-height:1.8;color:#475569">
+    ✨ 这款面霜真的是干皮救星！用了两周皮肤明显变嫩了...<br><br>💧 质地很水润，上脸不黏腻，吸收超快...<br><br>🌟 成分党看这里：含神经酰胺+透明质酸...
+  </div>
+  <div style="display:flex;gap:8px">
+    <button class="act-btn act-secondary" style="flex:1" onclick="showToast('已复制到剪贴板')">📋 复制</button>
+    <button class="act-btn act-secondary" style="flex:1" onclick="showToast('分享链接已生成')">🔗 分享</button>
+    <button class="act-btn act-secondary" style="flex:1" onclick="showToast('已加入重做队列')">🔄 重做</button>
+  </div>
+  </div>`;
+}
+
+function renderMyPlaza(el) {
+  const hanging = Object.entries(STATE.avatars).filter(([k,v])=>v.hangPlaza);
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">📢 我的广场挂单</div><div></div></div><div class="sub-body">
+  ${hanging.length===0?'<div style="text-align:center;padding:40px;color:#94a3b8">还没有分身挂在广场<br>Lv.3以上分身可挂广场接单</div>':''}
+  ${hanging.map(([id,a])=>`
+  <div class="card" style="margin-bottom:12px">
+    <div class="avatar-top">
+      <img src="${a.photo}" class="avatar-photo" />
+      <div class="avatar-info">
+        <div class="avatar-name">${a.name} <span class="lv ${lvClass(a.lv)}">Lv.${a.lv}</span></div>
+        <div style="font-size:12px;color:#94a3b8;margin-top:2px">出场费 ¥${a.plazaPrice}/次 · ${a.orders}次雇佣 · ⭐${a.stars}</div>
+        <div class="avatar-skills">${a.skills.map(s=>'<span class="skill-tag mastered">'+s+'</span>').join('')}</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="act-btn act-secondary" style="flex:1" onclick="openSub('edit-avatar',{id:${id}})">✏️ 修改定价</button>
+      <button class="act-btn act-danger" style="flex:1" onclick="togglePlaza(${id})">⏸️ 下架</button>
+    </div>
+  </div>`).join('')}
+  </div>`;
+}
+
+function renderSkillMarket(el) {
+  const platformSkills = [{name:'小红书运营',price:0,desc:'学习小红书种草文写作和运营',xp:100},{name:'抖音脚本',price:0,desc:'学习短视频脚本创作',xp:100},{name:'SEO优化',price:0,desc:'学习搜索引擎优化技巧',xp:80},{name:'数据分析',price:0,desc:'学习数据分析和报告',xp:80}];
+  const avatarSkills = [{name:'爆款种草文',price:2.0,author:'美妆小助手',authorLv:5,desc:'写出高转化种草文的秘诀'},{name:'成分测评',price:1.5,author:'美妆小助手',authorLv:5,desc:'专业成分分析+推荐写法'}];
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">📚 技能市场</div><div></div></div>
+  <div class="tab-row" id="skillTabs"><div class="tab-item active" onclick="switchSkillTab(0)">🎁 平台技能</div><div class="tab-item" onclick="switchSkillTab(1)">👤 分身技能</div></div>
+  <div id="skillContent">
+    <div class="tab-content active" id="sc0"><div class="sub-body">
+      <div style="font-size:12px;color:#94a3b8;margin-bottom:12px">平台技能免费学习，帮你的分身成长</div>
+      ${platformSkills.map(s=>`
+      <div class="card" style="margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-weight:600">${s.name}</div><div style="font-size:12px;color:#94a3b8">${s.desc} · +${s.xp}XP</div></div>
+          <button class="act-btn act-primary" style="flex:0;padding:6px 14px;font-size:12px" onclick="showToast('开始学习「${s.name}」')">免费学习</button>
+        </div>
+      </div>`).join('')}
+    </div></div>
+    <div class="tab-content" id="sc1"><div class="sub-body">
+      <div style="font-size:12px;color:#94a3b8;margin-bottom:12px">购买其他分身的技能，让你的分身更强大</div>
+      ${avatarSkills.map(s=>`
+      <div class="card" style="margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-weight:600">${s.name}</div><div style="font-size:12px;color:#94a3b8">${s.author}(Lv.${s.authorLv}) · ${s.desc}</div></div>
+          <button class="act-btn act-secondary" style="flex:0;padding:6px 14px;font-size:12px" onclick="showToast('购买成功！')">¥${s.price}</button>
+        </div>
+      </div>`).join('')}
+    </div></div>
+  </div>`;
+}
+function switchSkillTab(idx){document.querySelectorAll('#skillTabs .tab-item').forEach((t,i)=>{t.classList.toggle('active',i===idx)});document.querySelectorAll('#skillContent .tab-content').forEach((t,i)=>{t.classList.toggle('active',i===idx)})}
+
+function renderPrivileges(el) {
+  const maxLv = Math.max(...Object.values(STATE.avatars).map(a=>a.lv));
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">👑 权益等级</div><div></div></div><div class="sub-body">
+  <div style="text-align:center;padding:16px;background:linear-gradient(135deg,#fef3c7,#fde68a);border-radius:16px;margin-bottom:16px">
+    <div style="font-size:18px;font-weight:700;color:#92400e">你最高的分身等级</div>
+    <div style="font-size:36px;font-weight:700;color:#d97706;margin:8px 0">Lv.${maxLv} ${LEVEL_RIGHTS[maxLv].name}</div>
+    <div style="font-size:12px;color:#b45309">${LEVEL_RIGHTS[maxLv].perks.join(' · ')}</div>
+  </div>
+  ${Object.entries(LEVEL_RIGHTS).map(([lv,info])=>`
+  <div class="level-node ${parseInt(lv)<=maxLv?'':'level-locked'} ${parseInt(lv)===maxLv?'level-current':''}">
+    <div class="level-badge" style="background:${info.color}">${lv}</div>
+    <div class="level-info"><div class="level-name">Lv.${lv} ${info.name}</div><div class="level-perks">${info.perks.join(' · ')}</div></div>
+  </div>`).join('')}
+  </div>`;
+}
+
+function renderSettings(el) {
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">设置</div><div></div></div><div class="sub-body">
+  <div class="menu-list" style="margin-bottom:16px">
+    <div class="menu-item" onclick="showToast('账号信息')"><div class="menu-icon" style="background:#ede9fe">👤</div><div class="menu-text">账号信息</div><div class="menu-arrow">›</div></div>
+    <div class="menu-item" onclick="showToast('通知设置')"><div class="menu-icon" style="background:#dbeafe">🔔</div><div class="menu-text">通知设置</div><div class="menu-arrow">›</div></div>
+    <div class="menu-item" onclick="showToast('隐私设置')"><div class="menu-icon" style="background:#dcfce7">🔒</div><div class="menu-text">隐私设置</div><div class="menu-arrow">›</div></div>
+  </div>
+  <div class="menu-list">
+    <div class="menu-item" onclick="showToast('关于我们')"><div class="menu-icon" style="background:#fef3c7">ℹ️</div><div class="menu-text">关于我们</div><div class="menu-arrow">›</div></div>
+    <div class="menu-item" onclick="showToast('用户协议')"><div class="menu-icon" style="background:#f1f5f9">📄</div><div class="menu-text">用户协议</div><div class="menu-arrow">›</div></div>
+    <div class="menu-item" style="color:#ef4444" onclick="showToast('已退出登录')"><div class="menu-icon" style="background:#fef2f2">🚪</div><div class="menu-text" style="color:#ef4444">退出登录</div><div class="menu-arrow">›</div></div>
+  </div>
+  </div>`;
+}
+
+function renderHelp(el) {
+  el.innerHTML = `<div class="sub-header"><button class="sub-back" onclick="closeSub()">←</button><div class="sub-title">帮助中心</div><div></div></div><div class="sub-body">
+  <div style="font-size:14px;font-weight:600;margin-bottom:12px">常见问题</div>
+  ${['什么是分身？|分身是你的AI数字分身，可以代替你完成内容创作任务','怎么让分身帮我干活？|在首页选分身，告诉它你要做什么，它就会开始工作','分身怎么升级？|通过接单、学习技能、签到获取经验值升级','Lv.3有什么特权？|Lv.3可以挂到广场，让别人雇佣你的分身赚钱','出场费怎么计算？|出场费=MAX(最低出场费,自定义出场费)×分身数','生成费是什么？|AI补足缺失素材的费用，=生成单价×(1-覆盖率)×生成套数','分成怎么算？|最低出场费70%归分身，加价80%归分身，生成费100%归平台','怎么提现？|在收益中心申请提现，1-3天到账'].map(q=>{
+    const [title,desc]=q.split('|');
+    return `<div class="card" style="margin-bottom:8px"><div style="font-weight:600;font-size:13px;margin-bottom:4px">${title}</div><div style="font-size:12px;color:#64748b;line-height:1.5">${desc}</div></div>`;
+  }).join('')}
+  </div>`;
+}
+
+// ============== 弹窗 ==============
+function openModal(type, data) {
+  const overlay = document.getElementById('modal-overlay');
+  const box = document.getElementById('modal-box');
+  overlay.classList.add('show');
+  switch(type) {
+    case 'hire': {
+      const a = STATE.plazaAvatars[data.id];
+      box.innerHTML = `
+      <div style="font-size:17px;font-weight:700;margin-bottom:16px;text-align:center">雇佣确认</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px"><img src="${a.photo}" class="avatar-photo" /><div><div style="font-weight:600">${a.name} <span class="lv ${lvClass(a.lv)}">Lv.${a.lv}</span></div><div style="font-size:12px;color:#94a3b8">⭐${a.stars} · ${a.orders}单</div></div></div>
+      <div style="background:#f8fafc;border-radius:12px;padding:12px;margin-bottom:16px">
+        <div class="price-row"><span class="label">出场费</span><span class="val">¥${a.price}/次</span></div>
+        <div class="price-row total"><span class="label">合计</span><span class="val">¥${a.price.toFixed(2)}</span></div>
+      </div>
+      <div style="font-size:12px;color:#94a3b8;margin-bottom:16px">雇佣后分身将按你的需求生成内容，费用从余额扣除</div>
+      <div style="display:flex;gap:10px"><button class="act-btn act-secondary" style="flex:1" onclick="closeModal()">取消</button><button class="act-btn act-primary" style="flex:1" onclick="doHire(${data.id})">确认雇佣</button></div>`;
+      break;
+    }
+    case 'delete': {
+      box.innerHTML = `
+      <div style="font-size:17px;font-weight:700;margin-bottom:16px;text-align:center;color:#ef4444">确认删除</div>
+      <div class="del-confirm"><h4>⚠️ 删除「${data.name}」</h4><p>删除后该分身的所有数据将无法恢复，包括已学习的技能和收益记录。</p></div>
+      <div style="margin-top:12px;font-size:12px;color:#94a3b8">请输入分身名称「${data.name}」确认删除：</div>
+      <input class="form-input" id="delConfirmInput" placeholder="输入分身名称" style="margin-top:8px" />
+      <div style="display:flex;gap:10px;margin-top:16px"><button class="act-btn act-secondary" style="flex:1" onclick="closeModal()">取消</button><button class="act-btn act-danger" style="flex:1" onclick="doDelete(${data.id})">确认删除</button></div>`;
+      break;
+    }
+    case 'checkin': {
+      box.innerHTML = `
+      <div style="text-align:center;padding:20px">
+        <div style="font-size:48px;margin-bottom:8px">🎉</div>
+        <div style="font-size:18px;font-weight:700;margin-bottom:4px">签到成功！</div>
+        <div style="font-size:14px;color:#6d28d9;font-weight:600">+50 XP</div>
+        <div style="font-size:12px;color:#94a3b8;margin-top:4px">已连续签到${STATE.checkinDays}天</div>
+        <div style="font-size:12px;color:#f59e0b;margin-top:8px">🔥 再签${7-STATE.checkinDays}天经验翻倍！</div>
+        <button class="act-btn act-primary" style="margin-top:16px;display:inline-block;padding:8px 24px" onclick="closeModal()">好的</button>
+      </div>`;
+      break;
+    }
+    case 'plaza-toggle': {
+      const a = STATE.avatars[data.id];
+      box.innerHTML = `
+      <div style="font-size:17px;font-weight:700;margin-bottom:16px;text-align:center">${data.action==='on'?'📢 挂到广场':'⏸️ 下架分身'}</div>
+      ${data.action==='on'?`
+      <div style="margin-bottom:12px"><div style="font-weight:600">${a.name}将出现在广场，其他人可以雇佣它</div></div>
+      <div style="background:#f8fafc;border-radius:12px;padding:12px;margin-bottom:12px">
+        <div class="price-row"><span class="label">当前出场费</span><span class="val">¥${a.plazaPrice||PRICING['纯文案'].minFee}/次</span></div>
+        <div class="price-row"><span class="label">分成规则</span><span class="val">你70% / 平台30%</span></div>
+      </div>
+      <div style="display:flex;gap:10px"><button class="act-btn act-secondary" style="flex:1" onclick="closeModal()">取消</button><button class="act-btn act-primary" style="flex:1" onclick="doTogglePlaza(${data.id},'on')">确认挂出</button></div>
+      `:`
+      <div style="margin-bottom:12px">下架后${a.name}将不再出现在广场，已进行的订单不受影响</div>
+      <div style="display:flex;gap:10px"><button class="act-btn act-secondary" style="flex:1" onclick="closeModal()">取消</button><button class="act-btn act-danger" style="flex:1" onclick="doTogglePlaza(${data.id},'off')">确认下架</button></div>
+      `}
+      `;
+      break;
+    }
+  }
+}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('show')}
+
+function doHire(id){
+  const a=STATE.plazaAvatars[id];if(!a)return;
+  STATE.user.balance-=a.price;
+  // 加入已雇佣列表
+  STATE.hiredAvatars[id] = {
+    id, name:a.name, photo:a.photo, cover:a.cover, lv:a.lv, stars:a.stars,
+    skills:a.skills, desc:a.desc, style:a.style, domains:a.domains,
+    price:a.price, remainingUses:1, tasks:[], followed:a.followed
+  };
+  closeModal();
+  showToast('🎉 雇佣成功！');
+  // 直接打开和雇佣分身的对话
+  setTimeout(()=>openSub('hired-chat',{id}),300);
+}
+function doDelete(id){
+  const input=document.getElementById('delConfirmInput');
+  const a=STATE.avatars[id];
+  if(!a){closeModal();return}
+  if(input&&input.value!==a.name){showToast('请输入正确的分身名称');return}
+  delete STATE.avatars[id];
+  STATE.user.avatarCount=Object.keys(STATE.avatars).length;
+  showToast('分身已删除');
+  closeModal();closeSub();renderPage(STATE.currentTab);
+}
+function togglePlaza(id){
+  const a=STATE.avatars[id];if(!a)return;
+  if(a.lv<3){showToast('Lv.3才能挂广场');return}
+  if(a.hangPlaza){openModal('plaza-toggle',{id,action:'off'})}
+  else{a.plazaPrice=a.plazaPrice||PRICING['纯文案'].minFee;openModal('plaza-toggle',{id,action:'on'})}
+}
+function doTogglePlaza(id,action){
+  const a=STATE.avatars[id];if(!a)return;
+  a.hangPlaza=action==='on';
+  if(a.hangPlaza&&a.plazaPrice===0)a.plazaPrice=PRICING['纯文案'].minFee;
+  showToast(a.hangPlaza?'已挂到广场':'已从广场下架');
+  closeModal();renderPage(STATE.currentTab);
+}
+
+// ============== 其他操作 ==============
+function doCheckin(){
+  if(STATE.checkedIn)return;
+  STATE.checkedIn=true;STATE.checkinDays++;
+  // Give XP to all avatars
+  Object.keys(STATE.avatars).forEach(id=>{
+    const a=STATE.avatars[id];
+    a.xp=Math.min(a.xpMax,a.xp+50);
+    checkLevelUp(id);
+  });
+  openModal('checkin');
+}
+function fillHomeTalk(text){document.getElementById('homeTalkInput').value=text;sendHomeTalk()}
+function sendHomeTalk(){
+  const input=document.getElementById('homeTalkInput');const msg=input.value.trim();if(!msg)return;
+  input.value='';openSub('chat-pick',{task:msg});
+}
+function filterPlaza(el){el.parentElement.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');showToast('筛选：'+el.textContent)}
+
+// ============== 初始化 ==============
+function init() {
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="page active" id="page-home"><div id="page-home-content"></div></div>
+    <div class="page" id="page-avatars"><div id="page-avatars-content"></div></div>
+    <div class="page" id="page-orders"><div id="page-orders-content"></div></div>
+    <div class="page" id="page-plaza"><div id="page-plaza-content"></div></div>
+    <div class="page" id="page-profile"><div id="page-profile-content"></div></div>
+    <div class="subpage" id="sub-dynamic"></div>
+    <div class="modal-overlay" id="modal-overlay" onclick="event.target===this&&closeModal()"><div class="modal-box" id="modal-box"></div></div>
+    <div class="tabbar">
+      <div class="tabbar-item active" onclick="switchTab('home')"><div class="tab-icon">🏠</div><div>首页</div></div>
+      <div class="tabbar-item" onclick="switchTab('avatars')"><div class="tab-icon">👤</div><div>分身</div></div>
+      <div class="tabbar-center" onclick="switchTab('orders')"><div class="tabbar-center-btn">📋</div><div class="tabbar-center-text">接单</div></div>
+      <div class="tabbar-item" onclick="switchTab('plaza')"><div class="tab-icon">🔥</div><div>广场</div></div>
+      <div class="tabbar-item" onclick="switchTab('profile')"><div class="tab-icon">⚙️</div><div>我的</div></div>
+    </div>`;
+  renderPage('home');
+}
+init();
+</script>
+</body>
+</html>
