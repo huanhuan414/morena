@@ -524,29 +524,8 @@ export class OrderProcessingService {
       if (record) {
         this.logger.log(`从数据库找到记录: id=${record.id}, status=${record.status}`)
 
-        // 卡住检测：processing/generating_* 状态超时 → 标记 failed
-        // 注意：generating_video 状态下如果有 seedance_task_id，说明视频在后台生成中，不视为卡住
-        if (this.STUCK_STATUSES.includes(record.status)) {
-          const updatedAt = new Date(record.updated_at || record.created_at)
-          const elapsed = Date.now() - updatedAt.getTime()
-          const isVideoGenerating = record.status === 'generating_video' && record.seedance_task_id
-          // 视频异步生成最多等 30 分钟，其他状态 10 分钟
-          const timeout = isVideoGenerating ? 30 * 60 * 1000 : this.STUCK_TIMEOUT_MS
-          if (elapsed > timeout) {
-            const timeoutMin = Math.round(timeout / 60000)
-            this.logger.warn(`检测到卡住记录: id=${record.id}, status=${record.status}, 已耗时${Math.round(elapsed / 60000)}分钟，标记为 failed`)
-            try {
-              const db = getMySQLClient()
-              await db.query(
-                'UPDATE content_generation_requests SET status = ?, error = ?, updated_at = NOW() WHERE id = ?',
-                ['failed', `生成超时(卡在${record.status}状态超过${timeoutMin}分钟)`, record.id]
-              )
-              record.status = 'failed'
-            } catch (updateErr: any) {
-              this.logger.warn(`更新卡住记录失败: ${updateErr.message}`)
-            }
-          }
-        }
+        // 卡住检测：已禁用 — 不再自动标记超时记录为 failed
+        // if (this.STUCK_STATUSES.includes(record.status)) { ... }
 
         const normalized = this.normalizeRecord(record)
         // 合并队列信息（来自 content-generation 服务的限流队列）
@@ -893,8 +872,10 @@ export class OrderProcessingService {
     mergedFeedback.revisionHistory = revisionHistory
     mergedFeedback.rejectReason = feedback.rejectReason || ''
 
+    const isFinalRejection = revisionCount >= 2
+
     const record = await this.updateRecordByIdentifier(identifier, {
-      status: 'rejected',
+      status: isFinalRejection ? 'rejected' : 'revision_requested',
       revision_count: revisionCount,
       revision_requested_at: new Date(),
       publish_feedback: JSON.stringify(mergedFeedback)
@@ -907,27 +888,24 @@ export class OrderProcessingService {
 
     const db = getMySQLClient()
     if (normalized.orderId && normalized.avatarId) {
+      // 首次驳回：dispatch保持accepted（分身仍可重新生成，ENUM无revision_requested值）
+      // 最终驳回：dispatch改为rejected（释放名额）
+      const dispatchStatus = isFinalRejection ? 'rejected' : 'accepted'
       await db.query(
-        `UPDATE order_dispatch_requests SET status = 'rejected', reject_reason = ?, updated_at = NOW() WHERE order_id = ? AND avatar_id = ?`,
-        [feedback.rejectReason || '', normalized.orderId, normalized.avatarId]
+        `UPDATE order_dispatch_requests SET status = ?, reject_reason = ?, updated_at = NOW() WHERE order_id = ? AND avatar_id = ?`,
+        [dispatchStatus, feedback.rejectReason || '', normalized.orderId, normalized.avatarId]
       )
-      this.logger.log(`[驳回] 已更新派单记录状态: orderId=${normalized.orderId}, avatarId=${normalized.avatarId}`)
+      this.logger.log(`[驳回] 已更新派单记录状态: orderId=${normalized.orderId}, avatarId=${normalized.avatarId}, dispatchStatus=${dispatchStatus}`)
 
-      // 第二次驳回后立即释放名额
-      if (revisionCount >= 2) {
+      // 最终驳回：释放Redis名额（用DECR，不用SET）
+      if (isFinalRejection) {
         try {
-          const redisKeyAccepted = `order:${normalized.orderId}:accepted`
-          const currentAcceptedRows = await db.query(
-            `SELECT COUNT(DISTINCT avatar_id) as count
-             FROM order_dispatch_requests
-             WHERE order_id = ? AND status IN ('accepted', 'completed')`,
-            [normalized.orderId]
-          )
-          const currentAccepted = Number((currentAcceptedRows as any[])?.[0]?.count || 0)
-          await this.redisService.getClient().set(redisKeyAccepted, String(currentAccepted), 'EX', 3600)
-          this.logger.log(`[驳回] 已释放名额: orderId=${normalized.orderId}, 当前接单数=${currentAccepted}`)
+          const redisKey = `order:accept:count:${normalized.orderId}`
+          await this.redisService.getClient().decr(redisKey)
+          this.logger.log(`[驳回] Redis DECR: key=${redisKey}, orderId=${normalized.orderId}`)
+          // 注意：不做DB同步补偿。并发时DB事务延迟会导致补偿覆盖DECR的正确结果
         } catch (err: any) {
-          this.logger.warn(`[驳回] 释放名额失败: ${err.message}`)
+          this.logger.warn(`[驳回] 释放名额Redis操作失败: ${err.message}`)
         }
       }
 

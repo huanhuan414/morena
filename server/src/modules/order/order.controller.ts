@@ -1,26 +1,14 @@
 // @ts-nocheck
-import { Controller, Get, Post, Put, Delete, Body, Param, Headers, Query, Inject, Optional } from '@nestjs/common'
+import { Controller, Get, Post, Put, Delete, Body, Param, Headers, Query, Inject } from '@nestjs/common'
 import { OrderService } from './order.service'
 import { OrderDispatchService } from '../order-dispatch/order-dispatch.service'
-import { PriceConfigService } from './price-config.service'
 
 @Controller('order')
 export class OrderController {
   constructor(
     @Inject('ORDER_SERVICE') private readonly orderService: OrderService,
-    @Inject('ORDER_DISPATCH_SERVICE') private readonly dispatchService: OrderDispatchService,
-    @Optional() private readonly priceConfigService?: PriceConfigService
+    @Inject('ORDER_DISPATCH_SERVICE') private readonly dispatchService: OrderDispatchService
   ) {}
-
-  /**
-   * 兼容旧前端：GET /api/order/price-config
-   * 新前端请用 GET /api/price-config（PriceConfigController）
-   */
-  @Get('price-config')
-  async getPriceConfigCompat() {
-    const configs = await this.priceConfigService.getAllPriceConfigs()
-    return { code: 200, data: configs, message: '获取成功' }
-  }
 
   @Post()
   async create(
@@ -81,6 +69,12 @@ export class OrderController {
   async stats(@Headers('x-user-id') userId: string) {
     const stats = await this.orderService.getOrderStats(userId || '')
     return { code: 200, data: stats, message: '获取成功' }
+  }
+
+  @Get('price-config')
+  async getPriceConfig() {
+    const configs = await this.orderService.getAllPriceConfigs()
+    return { code: 200, data: configs, message: '获取成功' }
   }
 
   @Get(':id')

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Injectable, Inject, forwardRef } from '@nestjs/common'
+import { Injectable, Inject, forwardRef, Logger } from '@nestjs/common'
 import * as crypto from 'crypto'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { EarningService } from '../earning/earning.service'
@@ -8,7 +8,6 @@ import { OrderDispatchService } from '../order-dispatch/order-dispatch.service'
 import { WechatPayService } from '../payment/wechat-pay.service'
 import { ContentGenerationService } from '../content-generation/content-generation.service'
 import { RedisService } from '../redis/redis.service'
-import { PriceConfigService } from './price-config.service'
 
 /**
  * 字段命名规则说明：
@@ -17,8 +16,28 @@ import { PriceConfigService } from './price-config.service'
  * - SQL AS 别名：如 `x as avatar_id`，返回值也是 camelCase → `avatarId`
  */
 
+// 价格配置相关接口
+export interface ContentTypePrice {
+  id: string
+  contentType: string
+  label: string
+  icon: string
+  basePrice: number
+  contentPrice: number
+  desc: string
+  output: string
+}
+
+export interface PriceCalculation {
+  base: number
+  content: number
+  total: number
+}
+
 @Injectable()
 export class OrderService {
+  private readonly logger = new Logger(OrderService.name)
+
   constructor(
     @Inject(EarningService) private readonly earningService: EarningService,
     @Inject(NotificationService) private readonly notificationService: NotificationService,
@@ -26,7 +45,6 @@ export class OrderService {
     @Inject(forwardRef(() => WechatPayService)) private readonly wechatPayService: WechatPayService,
     @Inject(forwardRef(() => ContentGenerationService)) private readonly contentGenService: ContentGenerationService,
     @Inject(RedisService) private readonly redisService: RedisService,
-    @Inject(PriceConfigService) private readonly priceConfigService: PriceConfigService,
   ) {}
 
   private safeParseJson<T>(value: any, fallback: T): T {
@@ -226,8 +244,6 @@ export class OrderService {
       } else if (allContentSubmitted) {
         newStatus = 'awaiting_acceptance'
         if (allContentStatuses.some(s => ['published', 'completed'].includes(s)) && !allContentStatuses.some(s => s === 'awaiting_acceptance')) {
-          // 只有所有需要的分身都已完成时，才设为 submitted
-          // 否则还有分身未接单/未完成，应保持 in_progress 或 pending_acceptance
           if (!hasPending && completedDispatchCount >= requiredAvatarCount) {
             newStatus = 'submitted'
           } else if (hasPending) {
@@ -305,24 +321,11 @@ export class OrderService {
     const contentType = orderData.contentType || orderData.content_type || 'text'
     const quantityPerAvatar = Number(orderData.quantityPerAvatar || orderData.quantity_per_avatar || 1)
     
-    const priceCalc = await this.priceConfigService.calculatePrice(contentType, avatarCount, quantityPerAvatar)
-    
-    if (orderData.basePrice !== undefined || orderData.contentPrice !== undefined) {
-      const validation = await this.priceConfigService.validatePrice(
-        contentType,
-        avatarCount,
-        quantityPerAvatar,
-        Number(orderData.basePrice || 0),
-        Number(orderData.contentPrice || 0)
-      )
-      if (!validation.valid) {
-        console.warn(`[OrderService] 价格校验失败: userId=${userId}, contentType=${contentType}, 预期={base:${orderData.basePrice}, content:${orderData.contentPrice}}, 实际={base:${validation.actual.base}, content:${validation.actual.content}}`)
-      }
-    }
-    
-    const baseAmount = priceCalc.base
-    const contentAmount = priceCalc.content
-    const budget = priceCalc.total
+    // 直接使用前端传来的价格，不做任何计算
+    const budget = Number(orderData.total_price || orderData.budget || 0)
+    const baseAmount = Number(orderData.base_price || orderData.basePrice || 0)
+    const contentAmount = Number(orderData.content_price || orderData.contentPrice || 0)
+    const customBasePrice = orderData.customBasePrice ? Number(orderData.customBasePrice) : null
 
     const insertData: Record<string, any> = {
       id,
@@ -330,6 +333,7 @@ export class OrderService {
       title: orderData.title,
       description: orderData.description || '',
       content_type: orderData.contentType || orderData.content_type || 'text',
+      accept_regions: JSON.stringify(orderData.acceptRegions || orderData.accept_regions || []),
       platforms: JSON.stringify(orderData.platforms || []),
       requirements: JSON.stringify(orderData.requirements || {}),
       // 添加 personality 字段，保存风格偏好和领域偏好
@@ -339,6 +343,7 @@ export class OrderService {
       budget,
       base_amount: baseAmount,
       content_amount: contentAmount,
+      custom_base_price: customBasePrice,
       status: 'pending_payment',
       expected_quantity: avatarCount,
       avatar_count: avatarCount,
@@ -388,12 +393,11 @@ export class OrderService {
     const openid = orderData.openid
     if (openid && budget > 0) {
       try {
-        const orderTitle = orderData.title || '发单支付';
         const payResult = await this.wechatPayService.createMiniProgramOrder({
           userId,
           openid,
           planId: id,
-          description: `Morena AI 任务: ${orderTitle}`,
+          description: `Morena AI 任务: ${orderData.title || '发单支付'}`,
           amount: Number(budget),
           orderType: 'order',
         })
@@ -418,7 +422,7 @@ export class OrderService {
     const db = getMySQLClient()
     
     const orderRows = await db.query(
-      `SELECT id, user_id, avatar_id, title, description, content_type, 
+      `SELECT id, user_id, avatar_id, title, description, content_type, accept_regions,
        platforms, requirements, budget, base_amount, content_amount, status, result, created_at, updated_at,
        completed_at, latitude, longitude, location_text, target_audience,
        expected_quantity, deadline, order_type, priority, assigned_to,
@@ -532,6 +536,9 @@ export class OrderService {
       title: order.title,
       description: order.description,
       contentType: order.contentType,
+      acceptRegions: typeof order.acceptRegions === 'string' 
+        ? JSON.parse(order.acceptRegions) 
+        : (order.acceptRegions || []),
       platforms: typeof order.platforms === 'string' 
         ? JSON.parse(order.platforms) 
         : (order.platforms || []),
@@ -560,7 +567,7 @@ export class OrderService {
     }
     
     const rows = await db.query(
-      `SELECT id, title, description, content_type, platforms, requirements, 
+      `SELECT id, title, description, content_type, accept_regions, platforms, requirements, 
               budget, base_amount, content_amount, status, expected_quantity, avatar_count, is_paid, created_at
        FROM orders ${whereClause} ORDER BY created_at DESC LIMIT 100`,
       params
@@ -668,6 +675,11 @@ export class OrderService {
         try { requirements = JSON.parse(requirements) } catch { requirements = {} }
       }
       
+      let acceptRegions = row.acceptRegions
+      if (typeof acceptRegions === 'string') {
+        try { acceptRegions = JSON.parse(acceptRegions) } catch { acceptRegions = [] }
+      }
+      
       let createdAt = ''
       if (row.createdAt) {
         if (row.createdAt instanceof Date) {
@@ -699,6 +711,7 @@ export class OrderService {
         title: row.title,
         description: row.description,
         contentType: row.contentType,
+        acceptRegions,
         platforms,
         requirements,
         budget: row.budget,
@@ -1238,12 +1251,11 @@ export class OrderService {
     }
 
     // 创建新的支付单
-    const repayTitle = order.title || '发单支付';
     const payResult = await this.wechatPayService.createMiniProgramOrder({
       userId,
       openid,
       planId: orderId,
-      description: `Morena AI 任务: ${repayTitle}`,
+      description: `Morena AI 任务: ${order.title || '发单支付'}`,
       amount: budget,
       orderType: 'order',
     })

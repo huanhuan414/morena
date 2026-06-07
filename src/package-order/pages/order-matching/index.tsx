@@ -1,11 +1,11 @@
 import Taro, { useLoad, useDidShow, useRouter, showToast, showLoading, hideLoading } from '@tarojs/taro'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Network } from '@/network'
 import {
   ArrowLeft, Sparkles, Check, Star, Trophy, TrendingUp,
-  Users, Loader, ThumbsUp, Send, Target, MapPin
+  Users, Loader, Crown, ThumbsUp, Send, Target, MapPin
 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import './index.css'
@@ -26,8 +26,6 @@ interface Avatar {
   platforms?: string[]
   contentTypes?: string[]
   location?: string
-  niches?: string[]
-  province?: string
 }
 
 interface OrderInfo {
@@ -51,12 +49,18 @@ export default function OrderMatchingPage() {
   const [loading, setLoading] = useState(true)
   const [dispatching, setDispatching] = useState(false)
   const [step, setStep] = useState(1)
-  const [filterType] = useState<'all' | 'exact' | 'region' | 'other'>('all')
+  const [filterType, setFilterType] = useState<'all' | 'exact' | 'region' | 'other'>('all')
   const pollTimerRef = useRef<any>(null)
 
   // 分类统计
   const regionMatchCount = recommendations.filter(a => a.matchType === 'region').length
   const otherMatchCount = recommendations.filter(a => a.matchType === 'other').length
+
+  // 过滤后的列表
+  const filteredAvatars = useMemo(() => {
+    if (filterType === 'all') return recommendations
+    return recommendations.filter(a => a.matchType === filterType)
+  }, [recommendations, filterType])
 
   /* ── 支付后状态轮询 ── */
   const startStatusPolling = (oid: string) => {
