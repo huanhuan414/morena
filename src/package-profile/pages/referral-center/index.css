@@ -164,18 +164,18 @@
   align-items: center;
   justify-content: center;
   gap: 10rpx;
-  background: linear-gradient(135deg, #8b5cf6, #6366f1);
+  background: #f5f3ff;
   border-radius: 16rpx;
   padding: 24rpx 0;
-  box-shadow: 0 4rpx 16rpx rgba(123, 58, 237, 0.3);
+  border: 2rpx solid #c4b5fd;
   transition: all 0.2s ease;
 }
 .ref-btn-copy:active {
   transform: scale(0.98);
-  box-shadow: 0 2rpx 8rpx rgba(123, 58, 237, 0.2);
+  background: #eef2ff;
 }
 .ref-btn-text {
-  color: #fff;
+  color: #7c3aed;
   font-size: 26rpx;
   font-weight: 600;
 }
@@ -186,18 +186,23 @@
   align-items: center;
   justify-content: center;
   gap: 10rpx;
-  background: #f5f3ff;
+  background: linear-gradient(135deg, #8b5cf6, #6366f1) !important;
   border-radius: 16rpx;
   padding: 24rpx 0;
-  border: 2rpx solid #c4b5fd;
+  box-shadow: 0 4rpx 16rpx rgba(123, 58, 237, 0.3);
   transition: all 0.2s ease;
+  border: none !important;
+}
+.ref-btn-share::after {
+  border: none !important;
 }
 .ref-btn-share:active {
   transform: scale(0.98);
-  background: #eef2ff;
+  box-shadow: 0 2rpx 8rpx rgba(123, 58, 237, 0.2);
+  opacity: 0.9;
 }
 .ref-btn-text-purple {
-  color: #7c3aed;
+  color: #fff;
   font-size: 26rpx;
   font-weight: 600;
 }
@@ -309,6 +314,36 @@
   font-size: 30rpx;
   font-weight: 700;
   color: #1f2937;
+}
+.ref-more-btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4rpx;
+  margin-left: auto;
+  padding: 8rpx 16rpx;
+  border-radius: 20rpx;
+  background: rgba(124, 58, 237, 0.1);
+}
+
+/* 底部更多按钮样式 */
+.ref-more-btn-bottom {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  margin-top: 24rpx;
+  padding: 16rpx 32rpx;
+  border-radius: 24rpx;
+  background: linear-gradient(135deg, #F3E8FF, #EDE9FE);
+  border: 1rpx solid #C4B5FD;
+}
+
+.ref-more-text {
+  font-size: 24rpx;
+  color: #7C3AED;
+  font-weight: 500;
 }
 .ref-milestone-list {
   display: flex;
@@ -584,6 +619,30 @@
   color: #fff;
 }
 
+/* 注册成功样式 */
+.ref-card-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16rpx;
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  border-radius: 12rpx;
+  border: 1rpx solid #86efac;
+  margin-bottom: 12rpx;
+}
+
+.ref-card-success-text {
+  font-size: 24rpx;
+  color: #059669;
+  font-weight: 600;
+}
+
+.ref-card-success-hint {
+  font-size: 22rpx;
+  color: #10b981;
+  margin-top: 6rpx;
+}
+
 /* 空状态样式 */
 .ref-card-empty {
   display: flex;
@@ -772,7 +831,7 @@
 .ref-rule-item {
   display: flex;
   flex-direction: row;
-  align-items: center;
+  align-items: flex-start;
   gap: 16rpx;
 }
 .ref-rule-icon {
@@ -782,11 +841,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  margin-top: 4rpx;
 }
 .ref-rule-text {
   font-size: 26rpx;
   color: #4B5563;
-  line-height: 1.5;
+  line-height: 1.6;
+  word-break: break-all;
+  flex: 1;
 }
 
 /* 最终活动奖励卡片 */

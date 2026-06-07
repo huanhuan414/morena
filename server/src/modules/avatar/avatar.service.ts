@@ -6,7 +6,6 @@ import { getMySQLClient } from '../../storage/database/mysql-client'
 import { getSharedCache } from '../../common/shared-cache'
 import { ReverseGeocodingService } from '../../services/reverse-geocoding.service'
 import { sharedMemoryAvatars } from '../user-stats/user-stats.service'
-import { ReferralService } from '../referral/referral.service'
 import { SubscriptionService } from '../subscription/subscription.service'
 
 // 测试用户ID列表
@@ -16,7 +15,6 @@ const TEST_USER_IDS = ['dev_user', 'test_user', 'guest-user-id', 'anonymous']
 export class AvatarService {
   constructor(
     @Inject(ReverseGeocodingService) private readonly reverseGeocodingService: ReverseGeocodingService,
-    @Inject(ReferralService) private readonly referralService: ReferralService,
     @Inject(SubscriptionService) private readonly subscriptionService: SubscriptionService,
   ) {}
   private avatarColumnsCache: Set<string> | null = null
@@ -267,14 +265,6 @@ export class AvatarService {
         const cachedAvatars = sharedCache.get(cacheKey) || []
         cachedAvatars.unshift(newAvatar)
         sharedCache.set(cacheKey, cachedAvatars)
-
-        try {
-          if (isFirstAvatar && this.referralService?.settleReferralOnFirstAvatar) {
-            await this.referralService.settleReferralOnFirstAvatar(effectiveUserId)
-          }
-        } catch (e) {
-          console.error('[AvatarService] settleReferralOnFirstAvatar failed:', (e as any)?.message || e)
-        }
 
         return { success: true, id: (result as any)?.data?.insertId, data: newAvatar }
       }

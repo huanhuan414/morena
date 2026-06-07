@@ -71,17 +71,25 @@ export class ReferralController {
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string
   ) {
+    console.log('[ReferralController] getList userId:', userId)
+    console.log('[ReferralController] this.referralService:', this.referralService)
+    
     try {
       if (this.referralService) {
+        console.log('[ReferralController] calling getReferralList')
         const result = await this.referralService.getReferralList(
           userId,
           page ? parseInt(page) : 1,
           pageSize ? parseInt(pageSize) : 20
         )
+        console.log('[ReferralController] getReferralList result:', result)
         return { code: 200, data: result, message: '获取成功' }
+      } else {
+        console.log('[ReferralController] this.referralService is null or undefined')
       }
     } catch (e) {
       console.error('[ReferralController] getList error:', e.message)
+      console.error('[ReferralController] getList error stack:', e.stack)
     }
     return { code: 200, data: { list: [], total: 0 }, message: '获取成功' }
   }
@@ -132,6 +140,31 @@ export class ReferralController {
       console.error('[ReferralController] getTaskChainStatus error:', e.message)
     }
     return { code: 200, data: { expired: false, taskChain: null }, message: '获取成功' }
+  }
+
+  /**
+   * 手动触发返佣（测试用）
+   */
+  @Post('trigger-commission')
+  async triggerCommission(
+    @Body() body: { referrerId: string, referredId: string, consumptionType: string, consumptionAmount: number }
+  ) {
+    console.log('[ReferralController] triggerCommission:', body)
+    try {
+      if (this.referralService) {
+        await this.referralService.recordCommission(
+          body.referrerId,
+          body.referredId,
+          body.consumptionType,
+          body.consumptionAmount
+        )
+        return { code: 200, data: { success: true }, message: '返佣已触发' }
+      }
+    } catch (e) {
+      console.error('[ReferralController] triggerCommission error:', e.message)
+      return { code: 500, data: { success: false }, message: e.message }
+    }
+    return { code: 200, data: { success: false }, message: '返佣服务不可用' }
   }
 
   /**

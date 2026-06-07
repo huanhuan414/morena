@@ -3,7 +3,7 @@ import { View, Text, Button } from '@tarojs/components'
 import Taro, { useDidShow, useShareAppMessage } from '@tarojs/taro'
 import { useState } from 'react'
 import { Network } from '@/network'
-import { Copy, Share2, Gift, Users, ArrowLeft, Sparkles, User, TrendingUp, Coins, Crown, Clock, Star, ChevronRight, Zap, Target, Medal, Info, DollarSign } from 'lucide-react-taro'
+import { Copy, Share2, Gift, Users, ArrowLeft, Sparkles, User, TrendingUp, Coins, Crown, Clock, Star, ChevronRight, Zap, Target, Medal, Info, DollarSign, Shield } from 'lucide-react-taro'
 import './index.css'
 
 export default function ReferralCenter() {
@@ -60,18 +60,10 @@ export default function ReferralCenter() {
       console.log('[ReferralCenter] tierData:', tierData)
       console.log('[ReferralCenter] allTiers:', tierData.allTiers)
       
-      // 强制使用默认数据，因为后端数据格式有问题
-      console.log('[ReferralCenter] 强制使用默认阶梯数据')
       setTierInfo({
         totalInvites: tierData.totalInvites || 0,
         currentTier: tierData.currentTier || null,
-        allTiers: [
-          { id: 'tier_1', tier_level: 1, min_invites: 0, max_invites: 5, base_reward: 0, coins_reward: 10, commission_rate: 0, extra_reward: null },
-          { id: 'tier_2', tier_level: 2, min_invites: 5, max_invites: 10, base_reward: 1, coins_reward: 10, commission_rate: 0.1, extra_reward: null },
-          { id: 'tier_3', tier_level: 3, min_invites: 10, max_invites: 20, base_reward: 1, coins_reward: 15, commission_rate: 0.15, extra_reward: null },
-          { id: 'tier_4', tier_level: 4, min_invites: 20, max_invites: 50, base_reward: 1, coins_reward: 15, commission_rate: 0.2, extra_reward: null },
-          { id: 'tier_5', tier_level: 5, min_invites: 50, max_invites: -1, base_reward: 1, coins_reward: 20, commission_rate: 0.2, extra_reward: '价值298元礼品' }
-        ],
+        allTiers: tierData.allTiers || [],
       })
 
       // 加载每日限制
@@ -188,11 +180,11 @@ export default function ReferralCenter() {
           <Text className="ref-stat-label">总返佣(元)</Text>
         </View>
         <View className="ref-stat-item">
-          <View className="ref-stat-icon blue">
-            <Coins size={16} color="#3B82F6" />
+          <View className="ref-stat-icon gold">
+            <Coins size={16} color="#F59E0B" />
           </View>
           <Text className="ref-stat-value">{stats.totalCoinsReward}</Text>
-          <Text className="ref-stat-label">总积分</Text>
+          <Text className="ref-stat-label">邀请积分</Text>
         </View>
         <View className="ref-stat-item">
           <View className="ref-stat-icon green">
@@ -340,7 +332,7 @@ export default function ReferralCenter() {
             <Text className="ref-tier-th-text">条件</Text>
           </View>
           <View className="ref-tier-th">
-            <Text className="ref-tier-th-text">奖励内容</Text>
+            <Text className="ref-tier-th-text">基础奖励</Text>
           </View>
           <View className="ref-tier-th">
             <Text className="ref-tier-th-text">返佣</Text>
@@ -597,9 +589,9 @@ export default function ReferralCenter() {
           </View>
           <View className="ref-rule-item">
             <View className="ref-rule-icon" style={{ background: '#EF4444' }}>
-              <Info size={12} color="#fff" />
+              <Shield size={12} color="#fff" />
             </View>
-            <Text className="ref-rule-text">同一设备/IP多次注册将自动冻结</Text>
+            <Text className="ref-rule-text">本活动规则由【莫瑞娜】制定。在法律法规允许范围内，平台基于公平诚信原则对活动规则、异常行为认定、奖励发放享有解释、调整及最终决定权；对非法刷取、恶意套利、虚假邀请等违规行为，平台有权按规则取消资格、撤销并追回奖励</Text>
           </View>
         </View>
       </View>

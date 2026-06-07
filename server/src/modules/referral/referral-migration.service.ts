@@ -99,8 +99,7 @@ export class ReferralMigrationService {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_referrer_id (referrer_id),
         INDEX idx_referred_id (referred_id),
-        INDEX idx_status (status),
-        UNIQUE INDEX unique_commission (referred_id, consumption_type)
+        INDEX idx_status (status)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='邀请返佣记录表'
     `)
     console.log('[ReferralMigrationService] referral_commissions表创建成功')
@@ -154,14 +153,20 @@ export class ReferralMigrationService {
   }
 
   /**
-   * 初始化阶梯配置数据
+   * 初始化阶梯配置数据（仅在表不存在数据时初始化）
    */
   private async initTierData(db: any): Promise<void> {
-    // 先清空表中的旧数据
-    await db.query(`TRUNCATE TABLE referral_tiers`)
-    
+    // 检查表是否已有数据
+    const existingData = await db.query(`SELECT COUNT(*) as count FROM referral_tiers`)
+
+    if (existingData[0].count > 0) {
+      console.log('[ReferralMigrationService] referral_tiers表已有数据，跳过初始化')
+      return
+    }
+
+    // 仅在表为空时插入初始数据
     const tiers = [
-      { id: 'tier_1', tier_level: 1, min_invites: 0, max_invites: 5, base_reward: 0, coins_reward: 10, commission_rate: 0, extra_reward: null },
+      { id: 'tier_1', tier_level: 1, min_invites: 0, max_invites: 5, base_reward: 0, coins_reward: 10, commission_rate: 0.05, extra_reward: null },
       { id: 'tier_2', tier_level: 2, min_invites: 5, max_invites: 10, base_reward: 1, coins_reward: 10, commission_rate: 0.1, extra_reward: null },
       { id: 'tier_3', tier_level: 3, min_invites: 10, max_invites: 20, base_reward: 1, coins_reward: 15, commission_rate: 0.15, extra_reward: null },
       { id: 'tier_4', tier_level: 4, min_invites: 20, max_invites: 50, base_reward: 1, coins_reward: 15, commission_rate: 0.2, extra_reward: null },

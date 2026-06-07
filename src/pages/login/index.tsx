@@ -64,17 +64,10 @@ const Login: React.FC = () => {
       updated_at: user.updated_at,
     } as any)
 
-    if (data.referralReward && data.referralReward > 0) {
-      Taro.showToast({ title: `注册成功，获得邀请奖励 ${data.referralReward} 积分`, icon: 'none', duration: 3000 })
-      setTimeout(() => {
-        doNavigate()
-      }, 3100)
-    } else {
-      Taro.showToast({ title: data.isNewUser ? '注册成功' : '登录成功', icon: 'success', duration: 1500 })
-      setTimeout(() => {
-        doNavigate()
-      }, 1600)
-    }
+    Taro.showToast({ title: data.isNewUser ? '注册成功' : '登录成功', icon: 'success', duration: 1500 })
+    setTimeout(() => {
+      doNavigate()
+    }, 1600)
   }
 
   const doNavigate = () => {

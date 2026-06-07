@@ -65,15 +65,26 @@ export class ReferralService {
       throw new Error('您已被邀请过')
     }
     
+    // 检查每日邀请限制（每人每日最多50人）
+    const limitInfo = await this.checkDailyInviteLimit(inviter.id)
+    if (!limitInfo.allowed) {
+      throw new Error(`今日邀请已达上限（${limitInfo.current}/${limitInfo.limit}人），邀请人无法得到奖励，不影响用户注册`)
+    }
+    
     // 注册就算邀请成功，直接标记为completed
     const id = crypto.randomUUID()
-    await db.insert('referrals', {
-      id,
-      referrer_id: inviter.id,
-      referred_id: inviteeId,
-      status: 'completed', // 直接标记为completed
-      reward_amount: 0, // 基础奖励在发放时根据阶梯计算
-      created_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
+    await db.query(
+      `INSERT INTO referrals 
+       (id, referrer_id, referred_id, referral_code, status, reward_amount, created_at)
+       VALUES (?, ?, ?, ?, 'completed', 0, NOW())`,
+      [id, inviter.id, inviteeId, code]
+    )
+    
+    // 更新被邀请人的邀请关系
+    await db.updateWhere('users', { id: inviteeId }, {
+      referred_by: inviter.id,
+      invited_by: inviter.id,
+      updated_at: new Date()
     })
     
     // 更新邀请人的邀请计数
@@ -86,7 +97,14 @@ export class ReferralService {
     // 立即发放基础奖励（根据阶梯等级）
     await this.distributeBaseReward(inviter.id, inviteeId)
 
+    // 获取当前阶梯的奖励信息
+    const tierInfo = await this.getCurrentTier(inviter.id)
+    const currentTier = tierInfo.currentTier
+    const reward = currentTier ? (currentTier.base_reward || 0) + (currentTier.coins_reward || 0) : 0
+
     return { 
+      inviterId: inviter.id,
+      reward: reward,
       success: true,
       message: '邀请成功，奖励已发放'
     }
@@ -109,15 +127,15 @@ export class ReferralService {
       `SELECT SUM(base_reward) as total_base_reward, SUM(coins_reward) as total_coins_reward FROM referral_rewards WHERE referrer_id = ?`,
       [userId]
     ) as any[]
-    const totalBaseReward = Number(baseRewards?.[0]?.total_base_reward || 0)
-    const totalCoinsReward = Number(baseRewards?.[0]?.total_coins_reward || 0)
+    const totalBaseReward = Number(baseRewards?.[0]?.totalBaseReward || baseRewards?.[0]?.total_base_reward || 0)
+    const totalCoinsReward = Number(baseRewards?.[0]?.totalCoinsReward || baseRewards?.[0]?.total_coins_reward || 0)
     
     // 计算返佣奖励总额（从 referral_commissions 表）
     const commissions = await db.query(
       `SELECT SUM(commission_amount) as total_commission FROM referral_commissions WHERE referrer_id = ? AND status = 'completed'`,
       [userId]
     ) as any[]
-    const totalCommission = Number(commissions?.[0]?.total_commission || 0)
+    const totalCommission = Number(commissions?.[0]?.totalCommission || commissions?.[0]?.total_commission || 0)
     
     // 总奖励 = 基础奖励 + 返佣奖励
     const totalReward = totalBaseReward + totalCommission
@@ -133,72 +151,35 @@ export class ReferralService {
     }
   }
 
-  async settleReferralOnFirstAvatar(inviteeId: string) {
-    const db = getMySQLClient()
-    const pending = await db.queryOne('referrals', { referred_id: inviteeId, status: 'pending' }) as any
-    const referral = pending?.data
-    if (!referral) return { skipped: true }
-
-    const inviterId = referral.referrer_id || referral.referrerId
-    if (!inviterId) return { skipped: true }
-
-    const INVITER_REWARD = 5
-    const INVITEE_REWARD = 5
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-
-    await db.updateWhere('referrals', { id: referral.id }, {
-      status: 'completed',
-      reward_amount: INVITER_REWARD,
-    })
-
-    await db.insert('earnings', {
-      id: crypto.randomUUID(),
-      user_id: inviterId,
-      type: 'referral_bonus',
-      amount: INVITER_REWARD,
-      description: '邀请好友奖励',
-      status: 'completed',
-      created_at: now,
-    })
-    await db.insert('earnings', {
-      id: crypto.randomUUID(),
-      user_id: inviteeId,
-      type: 'referral_bonus',
-      amount: INVITEE_REWARD,
-      description: '受邀创建分身奖励',
-      status: 'completed',
-      created_at: now,
-    })
-
-    await db.query(
-      'UPDATE users SET balance = balance + ?, total_earnings = total_earnings + ?, updated_at = ? WHERE id = ?',
-      [INVITER_REWARD, INVITER_REWARD, now, inviterId]
-    )
-    await db.query(
-      'UPDATE users SET balance = balance + ?, total_earnings = total_earnings + ?, updated_at = ? WHERE id = ?',
-      [INVITEE_REWARD, INVITEE_REWARD, now, inviteeId]
-    )
-
-    return { completed: true, inviterId }
-  }
-
   /**
    * 获取邀请列表
    */
   async getReferralList(userId: string, page = 1, pageSize = 10) {
     const db = getMySQLClient()
+
+    console.log('[ReferralService] getReferralList userId:', userId)
     
     const offset = (page - 1) * pageSize
-    const referrals = await db.query('referrals', { referrer_id: userId }) as any
-    
+    const referrals = await db.query(
+      `SELECT * FROM referrals WHERE referrer_id = ? ORDER BY created_at DESC`,
+      [userId]
+    ) as any
+
+    console.log('[ReferralService] referrals:', referrals)
+    console.log('[ReferralService] referrals length:', referrals?.length)
+
     const total = referrals?.length || 0
     const paginatedReferrals = referrals?.slice(offset, offset + pageSize) || []
-    
+
+    // 获取邀请人当前的阶梯等级
+    const tierInfo = await this.getCurrentTier(userId)
+    const currentTier = tierInfo.currentTier
+
     const list = await Promise.all(paginatedReferrals.map(async (ref: any) => {
       const inviteeId = ref.referred_id || ref.referredId
       let inviteeNickname = '未知用户'
       let inviteeAvatar = ''
-      
+
       if (inviteeId) {
         try {
           const invitee = await db.queryOne('users', { id: inviteeId }) as any
@@ -210,33 +191,49 @@ export class ReferralService {
           console.error('[ReferralService] 获取被邀请人信息失败:', e)
         }
       }
-      
+
       // 查询该好友的所有返佣记录
+      console.log('[ReferralService] 查询返佣记录 userId:', userId, 'inviteeId:', inviteeId)
       const commissionRecords = await db.query(
-        `SELECT 
+        `SELECT
           consumption_type,
           consumption_amount,
           commission_amount,
           created_at as commission_time
-         FROM referral_commissions 
+         FROM referral_commissions
          WHERE referrer_id = ? AND referred_id = ? AND status = 'completed'
          ORDER BY created_at DESC`,
         [userId, inviteeId]
       ) as any[]
-      
+      console.log('[ReferralService] commissionRecords:', commissionRecords)
+
       // 计算总返佣金额
       const totalCommission = commissionRecords?.reduce((sum, record) => {
-        return sum + Number(record.commission_amount || 0)
+        return sum + Number(record.commissionAmount || record.commission_amount || 0)
       }, 0) || 0
-      
+
       // 格式化返佣记录
       const formattedCommissionRecords = (commissionRecords || []).map(record => ({
-        consumption_type: record.consumption_type,
-        consumption_amount: Number(record.consumption_amount || 0),
-        commission_amount: Number(record.commission_amount || 0),
-        commission_time: record.commission_time
+        consumption_type: record.consumptionType || record.consumption_type,
+        consumption_amount: Number(record.consumptionAmount || record.consumption_amount || 0),
+        commission_amount: Number(record.commissionAmount || record.commission_amount || 0),
+        commission_time: record.commissionTime || record.commission_time
       }))
-      
+
+      // 查询该好友的注册奖励记录
+      const rewardRecord = await db.query(
+        `SELECT base_reward, coins_reward
+         FROM referral_rewards
+         WHERE referrer_id = ? AND referred_id = ? AND reward_type = 'base'
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [userId, inviteeId]
+      ) as any[]
+
+      // 获取注册时的实际积分奖励和现金奖励
+      const coinsReward = Number(rewardRecord?.[0]?.coins_reward || rewardRecord?.[0]?.coinsReward || 10)
+      const baseReward = Number(rewardRecord?.[0]?.base_reward || rewardRecord?.[0]?.baseReward || 0)
+
       return {
         invitee_id: inviteeId,
         invitee_nickname: inviteeNickname,
@@ -246,10 +243,12 @@ export class ReferralService {
         total_commission: totalCommission,
         has_commission: formattedCommissionRecords.length > 0,
         status: ref.status,
-        reward_amount: ref.reward_amount || ref.rewardAmount || 0
+        reward_amount: ref.reward_amount || ref.rewardAmount || 0,
+        coins_reward: coinsReward,  // 注册时的实际积分奖励
+        base_reward: baseReward,      // 注册时的实际现金奖励
       }
     }))
-    
+
     return {
       list,
       total,
@@ -263,51 +262,61 @@ export class ReferralService {
    */
   async getCurrentTier(userId: string): Promise<any> {
     const db = getMySQLClient()
-    
+
     // 获取用户有效邀请总数（已完成的）
     const result = await db.query(
-      `SELECT COUNT(*) as total_invites 
-       FROM referrals 
+      `SELECT COUNT(*) as total_invites
+       FROM referrals
        WHERE referrer_id = ? AND status = 'completed'`,
       [userId]
     ) as any[]
-    
-    const totalInvites = Number(result?.[0]?.total_invites || 0)
-    
+
+    console.log('[ReferralService] 查询结果:', result)
+    console.log('[ReferralService] 查询结果类型:', typeof result, '是否数组:', Array.isArray(result))
+    console.log('[ReferralService] 查询结果长度:', result?.length)
+    console.log('[ReferralService] 查询结果第一项:', result?.[0])
+    console.log('[ReferralService] 查询结果第一项类型:', typeof result?.[0])
+
+    const totalInvites = Number(result?.[0]?.totalInvites || result?.[0]?.total_invites || 0)
+    console.log('[ReferralService] 邀请总数:', totalInvites, '用户ID:', userId)
+
     // 获取所有阶梯配置
     const tiers = await db.query(
       `SELECT * FROM referral_tiers ORDER BY tier_level ASC`
     ) as any[]
-    
+
     console.log('[ReferralService] 从数据库查询的阶梯数据:', tiers)
-    
-    // 转换字段名为camelCase格式（前端期望的格式）
+
+    // 转换字段名（兼容camelCase和snake_case格式）
     const formattedTiers = (tiers || []).map(tier => ({
       id: tier.id,
-      tier_level: tier.tier_level,
-      min_invites: tier.min_invites,
-      max_invites: tier.max_invites,
-      base_reward: Number(tier.base_reward || 0),
-      coins_reward: Number(tier.coins_reward || 0),
-      commission_rate: Number(tier.commission_rate || 0),
-      extra_reward: tier.extra_reward || null,
-      created_at: tier.created_at,
-      updated_at: tier.updated_at
+      tier_level: tier.tierLevel || tier.tier_level,
+      min_invites: tier.min_invites ?? tier.minInvites ?? 0,
+      max_invites: tier.max_invites ?? tier.maxInvites ?? -1,
+      base_reward: Number(tier.base_reward ?? tier.baseReward ?? 0),
+      coins_reward: Number(tier.coins_reward ?? tier.coinsReward ?? 0),
+      commission_rate: Number(tier.commission_rate ?? tier.commissionRate ?? 0),
+      extra_reward: tier.extra_reward ?? tier.extraReward ?? null,
+      created_at: tier.created_at ?? tier.createdAt,
+      updated_at: tier.updated_at ?? tier.updatedAt
     }))
-    
+
     console.log('[ReferralService] 格式化后的阶梯数据:', formattedTiers)
-    
+
     // 找到当前阶梯
     let currentTier = formattedTiers?.[0] || null
     for (const tier of formattedTiers || []) {
+      console.log('[ReferralService] 检查阶梯:', tier.tier_level, 'min_invites:', tier.min_invites, 'max_invites:', tier.max_invites)
+      console.log('[ReferralService] 判断条件:', 'totalInvites >= min_invites:', totalInvites >= tier.min_invites, 'max_invites === -1:', tier.max_invites === -1, 'totalInvites < max_invites:', totalInvites < tier.max_invites)
       if (totalInvites >= tier.min_invites) {
         if (tier.max_invites === -1 || totalInvites < tier.max_invites) {
           currentTier = tier
+          console.log('[ReferralService] 找到匹配的阶梯:', tier.tier_level)
           break
         }
       }
     }
-    
+
     console.log('[ReferralService] 当前阶梯:', currentTier)
     
     return {
@@ -529,16 +538,18 @@ export class ReferralService {
     }
     
     // 检查是否已存在相同的返佣记录（防止重复发放）
-    const existingCommission = await db.query(
-      `SELECT * FROM referral_commissions 
-       WHERE referred_id = ? AND consumption_type = ?`,
-      [referredId, consumptionType]
-    ) as any[]
-    
-    if (existingCommission && existingCommission.length > 0) {
-      console.log(`[ReferralService] 已存在相同返佣记录，跳过发放: referredId=${referredId}, consumptionType=${consumptionType}`)
-      return
-    }
+    // 注释：已取消1小时重复检查限制，现在每次充值都会发放返佣
+    // const existingCommission = await db.query(
+    //   `SELECT * FROM referral_commissions 
+    //    WHERE referred_id = ? AND consumption_type = ? AND consumption_amount = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)`,
+    //   [referredId, consumptionType, consumptionAmount]
+    // ) as any[]
+    // 
+    // if (existingCommission && existingCommission.length > 0) {
+    //   console.log(`[ReferralService] 已存在相同返佣记录，跳过发放: referredId=${referredId}, consumptionType=${consumptionType}, amount=${consumptionAmount}`)
+    //   return
+    // }
+    console.log(`[ReferralService] 准备发放返佣: referredId=${referredId}, consumptionType=${consumptionType}, amount=${consumptionAmount}`)
     
     const commissionRate = currentTier.commission_rate
     const commissionAmount = consumptionAmount * commissionRate
