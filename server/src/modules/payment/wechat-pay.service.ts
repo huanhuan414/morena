@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { getMySQLClient } from '../../storage/database/mysql-client';
+import { ReferralService } from '../referral/referral.service';
 
 @Injectable()
 export class WechatPayService {
@@ -15,6 +16,7 @@ export class WechatPayService {
 
   constructor(
     @Inject(forwardRef(() => 'ORDER_SERVICE')) private readonly orderService: any,
+    @Inject(forwardRef(() => ReferralService)) private readonly referralService: ReferralService,
   ) {
     this.appId = process.env.WECHAT_PAY_APPID || '';
     this.mchId = process.env.WECHAT_PAY_MCHID || '';
@@ -66,6 +68,38 @@ export class WechatPayService {
     orderType: string;
   }) {
     const { userId, openid, planId, description, amount, orderType } = params;
+    
+    // 检查是否是新用户首冲会员8折优惠
+    let finalAmount = amount;
+    let discountApplied = false;
+    
+    if (orderType === 'subscription') {
+      const db = getMySQLClient();
+      
+      // 1. 检查用户是否是被邀请的新用户
+      const referralResult = await db.query(
+        `SELECT * FROM referrals WHERE referred_id = ? AND status = 'completed'`,
+        [userId]
+      ) as any[];
+      
+      const isInvitedUser = referralResult?.length > 0;
+      
+      // 2. 检查用户是否是首次充值会员
+      const subscriptionResult = await db.query(
+        `SELECT * FROM user_subscriptions WHERE user_id = ?`,
+        [userId]
+      ) as any[];
+      
+      const isFirstSubscription = !subscriptionResult || subscriptionResult.length === 0;
+      
+      // 3. 如果满足条件，应用8折优惠
+      if (isInvitedUser && isFirstSubscription) {
+        finalAmount = Math.round(amount * 0.8 * 100) / 100;  // 8折优惠，保留两位小数
+        discountApplied = true;
+        this.logger.log(`新用户首冲会员8折优惠: userId=${userId}, 原价=${amount}元, 折后价=${finalAmount}元`);
+      }
+    }
+    
     const outTradeNo = `MRL${Date.now()}${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
     // 1. 创建本地支付订单
@@ -81,15 +115,15 @@ export class WechatPayService {
         userId,
         openid,
         orderType,
-        amount,
-        JSON.stringify({ planId, description }),
+        finalAmount,
+        JSON.stringify({ planId, description, discountApplied, originalAmount: amount }),
       ],
     );
 
-    this.logger.log(`创建本地支付订单: ${orderId}, outTradeNo: ${outTradeNo}, 金额: ${amount}元`);
+    this.logger.log(`创建本地支付订单: ${orderId}, outTradeNo: ${outTradeNo}, 金额: ${finalAmount}元${discountApplied ? ' (8折优惠)' : ''}`);
 
     // 2. 调用微信V2统一下单API
-    const amountInFen = Math.round(amount * 100);
+    const amountInFen = Math.round(finalAmount * 100);
 
     const unifiedOrderParams: Record<string, string> = {
       appid: this.appId,
@@ -496,6 +530,30 @@ export class WechatPayService {
       );
       this.logger.log(`新订阅激活: userId=${order.userId}, planId=${planId}, 到期日=${endDate}`);
     }
+
+    // 集成返佣机制：检查用户是否是被邀请的用户
+    try {
+      const referralResult = await db.query(
+        `SELECT * FROM referrals WHERE referred_id = ? AND status = 'completed'`,
+        [order.userId],
+      ) as any[];
+
+      const referral = referralResult?.[0];
+      if (referral) {
+        const referrerId = referral.referrer_id || referral.referrerId;
+        const amount = Number(order.amount || 0);
+
+        this.logger.log(`检测到被邀请用户订阅，准备处理返佣: userId=${order.userId}, referrerId=${referrerId}, amount=${amount}`);
+
+        // 记录返佣
+        if (this.referralService) {
+          await this.referralService.recordCommission(referrerId, order.userId, 'subscription', amount);
+          this.logger.log(`返佣已记录: referrerId=${referrerId}, amount=${amount}`);
+        }
+      }
+    } catch (error) {
+      this.logger.error(`处理返佣失败: ${error.message}`, error.stack);
+    }
   }
 
   private async activateCoinRecharge(order: any, transactionId: string) {
@@ -552,6 +610,30 @@ export class WechatPayService {
       );
 
       this.logger.log(`✅ 币充值成功: userId=${userId}, 充值${totalCoins}币, 余额${balanceBefore}→${balanceAfter}`);
+
+      // 集成返佣机制：检查用户是否是被邀请的用户
+      try {
+        const referralResult = await db.query(
+          `SELECT * FROM referrals WHERE referred_id = ? AND status = 'completed'`,
+          [userId],
+        ) as any[];
+
+        const referral = referralResult?.[0];
+        if (referral) {
+          const referrerId = referral.referrer_id || referral.referrerId;
+          const amount = Number(pkg.price || 0);
+
+          this.logger.log(`检测到被邀请用户充值，准备处理返佣: userId=${userId}, referrerId=${referrerId}, amount=${amount}`);
+
+          // 记录返佣
+          if (this.referralService) {
+            await this.referralService.recordCommission(referrerId, userId, 'coin_recharge', amount);
+            this.logger.log(`返佣已记录: referrerId=${referrerId}, amount=${amount}`);
+          }
+        }
+      } catch (error) {
+        this.logger.error(`处理返佣失败: ${error.message}`, error.stack);
+      }
     } catch (error) {
       this.logger.error(`激活币充值失败: ${error.message}`, error.stack);
     }

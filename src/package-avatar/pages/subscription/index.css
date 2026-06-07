@@ -335,6 +335,24 @@
 .sub-plan-period {
   font-size: 20rpx;
   color: #94a3b8;
+  margin-left: 4rpx;
+}
+.sub-plan-original-price {
+  font-size: 20rpx;
+  color: #94a3b8;
+  margin-left: 8rpx;
+  text-decoration: line-through;
+}
+.sub-plan-discount-badge {
+  background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+  border-radius: 8rpx;
+  padding: 2rpx 8rpx;
+  margin-left: 8rpx;
+}
+.sub-plan-discount-text {
+  font-size: 18rpx;
+  font-weight: 700;
+  color: #fff;
 }
 
 /* 权益摘要 */

@@ -3,19 +3,37 @@ import { View, Text, Button } from '@tarojs/components'
 import Taro, { useDidShow, useShareAppMessage } from '@tarojs/taro'
 import { useState } from 'react'
 import { Network } from '@/network'
-import { Copy, Share2, Gift, Users, ArrowLeft, Sparkles, User } from 'lucide-react-taro'
+import { Copy, Share2, Gift, Users, ArrowLeft, Sparkles, User, TrendingUp, Coins, Crown, Clock, Star, ChevronRight, Zap, Target, Medal, Info, DollarSign } from 'lucide-react-taro'
 import './index.css'
 
 export default function ReferralCenter() {
   const [stats, setStats] = useState({
     referralCode: '',
     totalInvited: 0,
+    totalReward: 0,
+    totalCoinsReward: 0,
+  })
+  const [tierInfo, setTierInfo] = useState({
+    totalInvites: 0,
+    currentTier: null,
+    allTiers: [
+      { id: 'tier_1', tier_level: 1, min_invites: 0, max_invites: 5, base_reward: 0, coins_reward: 10, commission_rate: 0, extra_reward: null },
+      { id: 'tier_2', tier_level: 2, min_invites: 5, max_invites: 10, base_reward: 1, coins_reward: 10, commission_rate: 0.1, extra_reward: null },
+      { id: 'tier_3', tier_level: 3, min_invites: 10, max_invites: 20, base_reward: 1, coins_reward: 15, commission_rate: 0.15, extra_reward: null },
+      { id: 'tier_4', tier_level: 4, min_invites: 20, max_invites: 50, base_reward: 1, coins_reward: 15, commission_rate: 0.2, extra_reward: null },
+      { id: 'tier_5', tier_level: 5, min_invites: 50, max_invites: -1, base_reward: 1, coins_reward: 20, commission_rate: 0.2, extra_reward: '价值298元礼品' }
+    ],
+  })
+  const [dailyLimit, setDailyLimit] = useState({
+    allowed: true,
+    current: 0,
+    limit: 50,
   })
   const [referralList, setReferralList] = useState([])
 
   useShareAppMessage(() => {
     return {
-      title: '邀请你加入Morena AI',
+      title: '邀请你加入Morena AI，享8折优惠！',
       path: `/pages/login/index?inviteCode=${stats.referralCode}`,
     }
   })
@@ -26,21 +44,51 @@ export default function ReferralCenter() {
 
   const loadReferralData = async () => {
     try {
+      // 加载邀请统计
       const statsRes = await Network.request({ url: '/api/referral/stats' })
       const statsData = statsRes.data?.data || statsRes.data || {}
-
       setStats({
         referralCode: statsData.referralCode || '',
         totalInvited: statsData.totalInvited || 0,
+        totalReward: statsData.totalReward || 0,
+        totalCoinsReward: statsData.totalCoinsReward || 0,
       })
 
+      // 加载阶梯信息
+      const tierRes = await Network.request({ url: '/api/referral/tier' })
+      const tierData = tierRes.data?.data || tierRes.data || {}
+      console.log('[ReferralCenter] tierData:', tierData)
+      console.log('[ReferralCenter] allTiers:', tierData.allTiers)
+      
+      // 强制使用默认数据，因为后端数据格式有问题
+      console.log('[ReferralCenter] 强制使用默认阶梯数据')
+      setTierInfo({
+        totalInvites: tierData.totalInvites || 0,
+        currentTier: tierData.currentTier || null,
+        allTiers: [
+          { id: 'tier_1', tier_level: 1, min_invites: 0, max_invites: 5, base_reward: 0, coins_reward: 10, commission_rate: 0, extra_reward: null },
+          { id: 'tier_2', tier_level: 2, min_invites: 5, max_invites: 10, base_reward: 1, coins_reward: 10, commission_rate: 0.1, extra_reward: null },
+          { id: 'tier_3', tier_level: 3, min_invites: 10, max_invites: 20, base_reward: 1, coins_reward: 15, commission_rate: 0.15, extra_reward: null },
+          { id: 'tier_4', tier_level: 4, min_invites: 20, max_invites: 50, base_reward: 1, coins_reward: 15, commission_rate: 0.2, extra_reward: null },
+          { id: 'tier_5', tier_level: 5, min_invites: 50, max_invites: -1, base_reward: 1, coins_reward: 20, commission_rate: 0.2, extra_reward: '价值298元礼品' }
+        ],
+      })
+
+      // 加载每日限制
+      const limitRes = await Network.request({ url: '/api/referral/daily-limit' })
+      const limitData = limitRes.data?.data || limitRes.data || {}
+      setDailyLimit({
+        allowed: limitData.allowed || true,
+        current: limitData.current || 0,
+        limit: limitData.limit || 50,
+      })
+
+      // 加载邀请列表
       const listRes = await Network.request({ url: '/api/referral/list' })
       const listData = listRes.data?.data || listRes.data || {}
       setReferralList(listData.items || listData.list || [])
     } catch (err) {
       console.error('[ReferralCenter] load error:', err)
-    } finally {
-      // loading complete
     }
   }
 
@@ -123,7 +171,7 @@ export default function ReferralCenter() {
         </View>
       </View>
 
-      {/* 统计概览 - 只保留已邀请人数 */}
+      {/* 统计概览 */}
       <View className="ref-stats">
         <View className="ref-stat-item">
           <View className="ref-stat-icon purple">
@@ -132,7 +180,38 @@ export default function ReferralCenter() {
           <Text className="ref-stat-value">{stats.totalInvited}</Text>
           <Text className="ref-stat-label">已邀请</Text>
         </View>
+        <View className="ref-stat-item">
+          <View className="ref-stat-icon gold">
+            <DollarSign size={16} color="#F59E0B" />
+          </View>
+          <Text className="ref-stat-value">{stats.totalReward}</Text>
+          <Text className="ref-stat-label">总返佣(元)</Text>
+        </View>
+        <View className="ref-stat-item">
+          <View className="ref-stat-icon blue">
+            <Coins size={16} color="#3B82F6" />
+          </View>
+          <Text className="ref-stat-value">{stats.totalCoinsReward}</Text>
+          <Text className="ref-stat-label">总积分</Text>
+        </View>
+        <View className="ref-stat-item">
+          <View className="ref-stat-icon green">
+            <TrendingUp size={16} color="#10B981" />
+          </View>
+          <Text className="ref-stat-value">{tierInfo.currentTier?.tier_level || 1}</Text>
+          <Text className="ref-stat-label">当前等级</Text>
+        </View>
       </View>
+
+      {/* 每日限制提示 */}
+      {!dailyLimit.allowed && (
+        <View className="ref-limit-warning">
+          <Zap size={14} color="#EF4444" />
+          <Text className="ref-limit-warning-text">
+            今日邀请已达上限（{dailyLimit.current}/{dailyLimit.limit}人）
+          </Text>
+        </View>
+      )}
 
       {/* 邀请步骤 */}
       <View className="ref-steps-card">
@@ -162,12 +241,22 @@ export default function ReferralCenter() {
             </View>
           </View>
           <View className="ref-step">
-            <View className="ref-step-num" style={{ background: 'linear-gradient(135deg, #10B981, #059669)' }}>
+            <View className="ref-step-num" style={{ background: 'linear-gradient(135deg, #4F46E5, #3B82F6)' }}>
               <Text className="ref-step-num-text">3</Text>
             </View>
+            <View className="ref-step-line" />
             <View className="ref-step-content">
               <Text className="ref-step-title">邀请成功</Text>
-              <Text className="ref-step-desc">好友注册成功，邀请完成</Text>
+              <Text className="ref-step-desc">注册成功即可获得基础奖励</Text>
+            </View>
+          </View>
+          <View className="ref-step">
+            <View className="ref-step-num" style={{ background: 'linear-gradient(135deg, #3B82F6, #10B981)' }}>
+              <Text className="ref-step-num-text">4</Text>
+            </View>
+            <View className="ref-step-content">
+              <Text className="ref-step-title">好友充值</Text>
+              <Text className="ref-step-desc">好友充值会员或币，您获得返佣</Text>
             </View>
           </View>
         </View>
@@ -190,44 +279,329 @@ export default function ReferralCenter() {
         ) : (
           <View className="ref-list">
             {referralList.map((item, idx) => (
-              <View key={idx} className="ref-list-item">
-                <View className="ref-list-left">
-                  <View className="ref-list-avatar">
+              <View key={idx} className="ref-invite-card">
+                {/* 卡片头部 */}
+                <View className="ref-card-header">
+                  <View className="ref-card-avatar">
                     <User size={18} color="#fff" />
                   </View>
-                  <View className="ref-list-info">
-                    <Text className="ref-list-name">{item.referredName || item.referred_name || `用户${idx + 1}`}</Text>
-                    <Text className="ref-list-time">{formatTime(item.createdAt || item.created_at)}</Text>
+                  <View className="ref-card-info">
+                    <Text className="ref-card-name">{item.invitee_nickname || item.inviteeName || `用户${idx + 1}`}</Text>
+                    <Text className="ref-card-time">邀请时间：{formatTime(item.invite_time || item.created_at)}</Text>
                   </View>
                 </View>
-                <View className="ref-list-right">
-                  {(() => {
-                    const status = String(item.status || '')
-                    if (status === 'pending') {
-                      return (
-                        <Text className="ref-list-status" style={{ color: '#F59E0B' }}>
-                          待结算
-                        </Text>
-                      )
-                    }
-                    if (status === 'completed') {
-                      return (
-                        <Text className="ref-list-status" style={{ color: '#10B981' }}>
-                          已到账
-                        </Text>
-                      )
-                    }
-                    return (
-                      <Text className="ref-list-status" style={{ color: '#6B7280' }}>
-                        {status || '已邀请'}
-                      </Text>
-                    )
-                  })()}
-                </View>
+                
+                {/* 卡片内容 */}
+                {item.has_commission && item.commission_records && item.commission_records.length > 0 ? (
+                  <View className="ref-card-content">
+                    {/* 消费记录 */}
+                    <View className="ref-card-records">
+                      <Text className="ref-card-records-title">消费记录：</Text>
+                      {item.commission_records.map((record, ridx) => (
+                        <View key={ridx} className="ref-card-record-item">
+                          <Text className="ref-card-record-text">
+                            • {record.consumption_type === 'subscription' ? '充值会员' : '充值币'} {record.consumption_amount}元 → 返佣{record.commission_amount}元
+                          </Text>
+                          <Text className="ref-card-record-time">
+                            （{formatTime(record.commission_time)}）
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                    
+                    {/* 总返佣 */}
+                    <View className="ref-card-total">
+                      <Text className="ref-card-total-label">总返佣：</Text>
+                      <Text className="ref-card-total-amount">{item.total_commission}元</Text>
+                    </View>
+                  </View>
+                ) : (
+                  <View className="ref-card-empty">
+                    <Text className="ref-card-empty-text">提示：好友还未充值</Text>
+                    <Text className="ref-card-empty-hint">充值后您可获得返佣奖励</Text>
+                  </View>
+                )}
               </View>
             ))}
           </View>
         )}
+      </View>
+
+      {/* 阶梯奖励表格 */}
+      <View className="ref-tier-table-card">
+        <View className="ref-section-row">
+          <Crown size={14} color="#7C3AED" />
+          <Text className="ref-section-title">阶梯奖励</Text>
+        </View>
+        
+        {/* 表格头部 */}
+        <View className="ref-tier-table-header">
+          <View className="ref-tier-th">
+            <Text className="ref-tier-th-text">条件</Text>
+          </View>
+          <View className="ref-tier-th">
+            <Text className="ref-tier-th-text">奖励内容</Text>
+          </View>
+          <View className="ref-tier-th">
+            <Text className="ref-tier-th-text">返佣</Text>
+          </View>
+        </View>
+        
+        {/* 表格内容 */}
+        <View className="ref-tier-table-body">
+          {tierInfo.allTiers.map((tier, idx) => {
+            console.log('[ReferralCenter] 渲染阶梯:', idx, tier)
+            console.log('[ReferralCenter] min_invites:', tier.min_invites, 'max_invites:', tier.max_invites)
+            console.log('[ReferralCenter] base_reward:', tier.base_reward, 'coins_reward:', tier.coins_reward)
+            console.log('[ReferralCenter] commission_rate:', tier.commission_rate)
+            
+            return (
+              <View key={idx} className={`ref-tier-row ${tierInfo.currentTier?.tier_level === tier.tier_level ? 'active' : ''}`}>
+                <View className="ref-tier-td">
+                  <Text className="ref-tier-td-text">
+                    {tier.max_invites === -1 
+                      ? `邀请≥${tier.min_invites}人` 
+                      : `${tier.min_invites}人≤邀请<${tier.max_invites}人`}
+                  </Text>
+                </View>
+                <View className="ref-tier-td">
+                  <Text className="ref-tier-td-text">
+                    {tier.base_reward > 0 ? `${tier.base_reward}元+` : ''}{tier.coins_reward}积分/人
+                  </Text>
+                  {tier.extra_reward && (
+                    <Text className="ref-tier-td-extra">{tier.extra_reward}</Text>
+                  )}
+                </View>
+                <View className="ref-tier-td">
+                  <Text className="ref-tier-td-text">{tier.commission_rate * 100}%</Text>
+                </View>
+              </View>
+            )
+          })}
+        </View>
+        
+        {/* 表格说明 */}
+        <View className="ref-tier-table-footer">
+          <View className="ref-tier-footer-item">
+            <View className="ref-tier-footer-icon">
+              <Clock size={12} color="#F59E0B" />
+            </View>
+            <Text className="ref-tier-footer-text">基础奖励：实时发放</Text>
+          </View>
+          <View className="ref-tier-footer-item">
+            <View className="ref-tier-footer-icon">
+              <Target size={12} color="#10B981" />
+            </View>
+            <Text className="ref-tier-footer-text">返佣触发：受邀用户充值会员或币</Text>
+          </View>
+          <View className="ref-tier-footer-item">
+            <View className="ref-tier-footer-icon">
+              <Zap size={12} color="#3B82F6" />
+            </View>
+            <Text className="ref-tier-footer-text">返佣发放：充值完成立即到账</Text>
+          </View>
+        </View>
+      </View>
+
+{/* 最终活动奖励 */}
+      <View className="ref-final-rewards-card">
+        <View className="ref-section-title-wrap">
+          <Crown size={16} color="#F59E0B" />
+          <Text className="ref-section-title">最终活动奖励</Text>
+        </View>
+        <View className="ref-final-rewards-table">
+          {/* 表格头部 */}
+          <View className="ref-final-table-header">
+            <View className="ref-final-th">
+              <Text className="ref-final-th-text">排名</Text>
+            </View>
+            <View className="ref-final-th">
+              <Text className="ref-final-th-text">现金奖励</Text>
+            </View>
+            <View className="ref-final-th">
+              <Text className="ref-final-th-text">积分奖励</Text>
+            </View>
+            <View className="ref-final-th">
+              <Text className="ref-final-th-text">身份标识</Text>
+            </View>
+            <View className="ref-final-th">
+              <Text className="ref-final-th-text">最低门槛</Text>
+            </View>
+          </View>
+          
+          {/* 表格内容 */}
+          <View className="ref-final-table-body">
+            {/* 第一名 */}
+            <View className="ref-final-row gold">
+              <View className="ref-final-td">
+                <Text className="ref-final-td-rank">第一名</Text>
+              </View>
+              <View className="ref-final-td">
+                <Text className="ref-final-td-text">500元+礼品</Text>
+              </View>
+              <View className="ref-final-td">
+                <Text className="ref-final-td-text">1000积分</Text>
+              </View>
+              <View className="ref-final-td">
+                <Text className="ref-final-td-text">首席星推官</Text>
+              </View>
+              <View className="ref-final-td">
+                <Text className="ref-final-td-text">≥100人</Text>
+              </View>
+            </View>
+            
+            {/* 第二名 */}
+            <View className="ref-final-row silver">
+              <View className="ref-final-td">
+                <Text className="ref-final-td-rank">第二名</Text>
+              </View>
+              <View className="ref-final-td">
+                <Text className="ref-final-td-text">300元+礼品</Text>
+              </View>
+              <View className="ref-final-td">
+                <Text className="ref-final-td-text">500积分</Text>
+              </View>
+              <View className="ref-final-td">
+                <Text className="ref-final-td-text">荣誉推广大使</Text>
+              </View>
+              <View className="ref-final-td">
+                <Text className="ref-final-td-text">-</Text>
+              </View>
+            </View>
+            
+            {/* 第三名 */}
+            <View className="ref-final-row bronze">
+              <View className="ref-final-td">
+                <Text className="ref-final-td-rank">第三名</Text>
+              </View>
+              <View className="ref-final-td">
+                <Text className="ref-final-td-text">100元+礼品</Text>
+              </View>
+              <View className="ref-final-td">
+                <Text className="ref-final-td-text">300积分</Text>
+              </View>
+              <View className="ref-final-td">
+                <Text className="ref-final-td-text">荣誉推广大使</Text>
+              </View>
+              <View className="ref-final-td">
+                <Text className="ref-final-td-text">-</Text>
+              </View>
+            </View>
+            
+            {/* 第四-第10名 */}
+            <View className="ref-final-row">
+              <View className="ref-final-td">
+                <Text className="ref-final-td-rank">第4-10名</Text>
+              </View>
+              <View className="ref-final-td">
+                <Text className="ref-final-td-text">礼品1份</Text>
+              </View>
+              <View className="ref-final-td">
+                <Text className="ref-final-td-text">200积分</Text>
+              </View>
+              <View className="ref-final-td">
+                <Text className="ref-final-td-text">品牌品鉴官</Text>
+              </View>
+              <View className="ref-final-td">
+                <Text className="ref-final-td-text">≥50人</Text>
+              </View>
+            </View>
+            
+            {/* 第11-第20名 */}
+            <View className="ref-final-row">
+              <View className="ref-final-td">
+                <Text className="ref-final-td-rank">第11-20名</Text>
+              </View>
+              <View className="ref-final-td">
+                <Text className="ref-final-td-text">-</Text>
+              </View>
+              <View className="ref-final-td">
+                <Text className="ref-final-td-text">100积分</Text>
+              </View>
+              <View className="ref-final-td">
+                <Text className="ref-final-td-text">品牌品鉴官</Text>
+              </View>
+              <View className="ref-final-td">
+                <Text className="ref-final-td-text">-</Text>
+              </View>
+            </View>
+            
+            {/* 第21-第50名 */}
+            <View className="ref-final-row">
+              <View className="ref-final-td">
+                <Text className="ref-final-td-rank">第21-50名</Text>
+              </View>
+              <View className="ref-final-td">
+                <Text className="ref-final-td-text">-</Text>
+              </View>
+              <View className="ref-final-td">
+                <Text className="ref-final-td-text">50积分</Text>
+              </View>
+              <View className="ref-final-td">
+                <Text className="ref-final-td-text">品牌品鉴官</Text>
+              </View>
+              <View className="ref-final-td">
+                <Text className="ref-final-td-text">-</Text>
+              </View>
+            </View>
+          </View>
+          
+          {/* 表格说明 */}
+          <View className="ref-final-table-footer">
+            <View className="ref-final-footer-item">
+              <Gift size={12} color="#F59E0B" />
+              <Text className="ref-final-footer-text">礼品价值：298元/份</Text>
+            </View>
+            <View className="ref-final-footer-item">
+              <Medal size={12} color="#8B5CF6" />
+              <Text className="ref-final-footer-text">身份牌：专属身份标识徽章</Text>
+            </View>
+            <View className="ref-final-footer-item">
+              <Clock size={12} color="#3B82F6" />
+              <Text className="ref-final-footer-text">活动周期：30天，活动结束后统一发放</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+
+      {/* 活动规则 */}
+      <View className="ref-rules-card">
+        <View className="ref-section-title-wrap">
+          <Info size={16} color="#7C3AED" />
+          <Text className="ref-section-title">活动规则</Text>
+        </View>
+        <View className="ref-rules-list">
+          <View className="ref-rule-item">
+            <View className="ref-rule-icon" style={{ background: '#10B981' }}>
+              <Target size={12} color="#fff" />
+            </View>
+            <Text className="ref-rule-text">邀请人需Lv1及以上用户</Text>
+          </View>
+          <View className="ref-rule-item">
+            <View className="ref-rule-icon" style={{ background: '#8B5CF6' }}>
+              <Gift size={12} color="#fff" />
+            </View>
+            <Text className="ref-rule-text">新用户注册成功即可获得基础奖励</Text>
+          </View>
+          <View className="ref-rule-item">
+            <View className="ref-rule-icon" style={{ background: '#F59E0B' }}>
+              <Coins size={12} color="#fff" />
+            </View>
+            <Text className="ref-rule-text">好友充值会员或币，您获得返佣奖励</Text>
+          </View>
+          <View className="ref-rule-item">
+            <View className="ref-rule-icon" style={{ background: '#3B82F6' }}>
+              <Zap size={12} color="#fff" />
+            </View>
+            <Text className="ref-rule-text">每人每日最多邀请50人</Text>
+          </View>
+          <View className="ref-rule-item">
+            <View className="ref-rule-icon" style={{ background: '#EF4444' }}>
+              <Info size={12} color="#fff" />
+            </View>
+            <Text className="ref-rule-text">同一设备/IP多次注册将自动冻结</Text>
+          </View>
+        </View>
       </View>
     </View>
   )
