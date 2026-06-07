@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Network } from '@/network'
 import {
   ArrowLeft, Crown, Users, Zap, Sparkles, Check, X,
-  Shield, TrendingUp, Palette, Bot, ChartBar, Headphones,
-  Star, Flame, Gift, ChevronRight, CircleDollarSign,
+  TrendingUp, Palette, Bot,
+  Flame, ChevronRight, CircleDollarSign,
   Layers, BadgeCheck
 } from 'lucide-react-taro'
 import './index.css'
@@ -186,8 +186,6 @@ export default function SubscriptionPage() {
       setSelectedPlan(null)
     }
   }
-
-  const getPlanById = (id: string) => plans.find(p => p.id === id)
 
   const getFeatureVal = (planId: string, item: typeof COMPARISON_ITEMS[0]) => {
     if ((item as any).isSection) return null

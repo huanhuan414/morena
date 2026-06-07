@@ -19,6 +19,7 @@ import { RedisService } from '../redis/redis.service'
 // 价格配置相关接口
 export interface ContentTypePrice {
   id: string
+  contentType: string
   label: string
   icon: string
   basePrice: number
@@ -36,9 +37,6 @@ export interface PriceCalculation {
 @Injectable()
 export class OrderService {
   private readonly logger = new Logger(OrderService.name)
-  private priceCache: Map<string, ContentTypePrice> = new Map()
-  private priceCacheTime: number = 0
-  private readonly PRICE_CACHE_TTL = 5 * 60 * 1000
 
   constructor(
     @Inject(EarningService) private readonly earningService: EarningService,
@@ -65,11 +63,6 @@ export class OrderService {
   // ========== 价格配置相关方法 ==========
 
   async getAllPriceConfigs(): Promise<ContentTypePrice[]> {
-    if (Date.now() - this.priceCacheTime < this.PRICE_CACHE_TTL && this.priceCache.size > 0) {
-      this.logger.log(`[价格配置] 返回缓存数据，共 ${this.priceCache.size} 条`)
-      return Array.from(this.priceCache.values())
-    }
-
     try {
       const db = getMySQLClient()
       this.logger.log('[价格配置] 开始查询数据库...')
@@ -81,31 +74,20 @@ export class OrderService {
          ORDER BY sort_order ASC`
       )
       
-      this.logger.log(`[价格配置] 查询结果类型: ${typeof result}, 是否数组: ${Array.isArray(result)}`)
-      this.logger.log(`[价格配置] 查询结果: ${JSON.stringify(result)}`)
-      
       // 处理 db.query 返回的两种格式：数组或 {data: [...]}
       const rows = Array.isArray(result) ? result : (result?.data || [])
-      this.logger.log(`[价格配置] 解析后记录数: ${rows.length}`)
-      if (rows.length > 0) {
-        this.logger.log(`[价格配置] 第一条记录: ${JSON.stringify(rows[0])}`)
-      }
+      this.logger.log(`[价格配置] 查询到 ${rows.length} 条记录`)
 
-      this.priceCache.clear()
+      const configs: ContentTypePrice[] = []
       for (const row of rows as any[]) {
-        // 注意：db.query 已经将字段名转换为 camelCase
-        // row.content_type → row.contentType
-        // row.base_price → row.basePrice
-        // row.content_price → row.contentPrice
         const contentType = row.contentType || row.content_type
         const basePrice = row.basePrice || row.base_price
         const contentPrice = row.contentPrice || row.content_price
         const outputUnit = row.outputUnit || row.output_unit
         
-        this.logger.log(`[价格配置] 处理记录: contentType=${contentType}, basePrice=${basePrice}, contentPrice=${contentPrice}`)
-        
-        this.priceCache.set(contentType, {
-          id: contentType,
+        configs.push({
+          id: row.id,
+          contentType: contentType,
           label: row.name,
           icon: row.icon || '',
           basePrice: Number(basePrice) || 0,
@@ -114,8 +96,8 @@ export class OrderService {
           output: outputUnit || '',
         })
       }
-      this.priceCacheTime = Date.now()
-      return Array.from(this.priceCache.values())
+      
+      return configs
     } catch (error: any) {
       this.logger.error(`[价格配置] 加载失败: ${error.message}`)
       throw error
@@ -123,16 +105,8 @@ export class OrderService {
   }
 
   async getPriceConfig(contentType: string): Promise<ContentTypePrice | undefined> {
-    if (Date.now() - this.priceCacheTime >= this.PRICE_CACHE_TTL || this.priceCache.size === 0) {
-      await this.getAllPriceConfigs()
-    }
-    
-    let key = contentType
-    if (contentType === 'simple_task') {
-      key = 'simple'
-    }
-    
-    return this.priceCache.get(key)
+    const configs = await this.getAllPriceConfigs()
+    return configs.find(c => c.contentType === contentType)
   }
 
   async calculatePrice(
@@ -140,13 +114,13 @@ export class OrderService {
     avatarCount: number,
     quantityPerAvatar: number
   ): Promise<PriceCalculation> {
-    const config = await this.getPriceConfig(contentType)
+    // 映射数据库存储的 contentType 到价格配置的 contentType
+    const mappedContentType = contentType === 'simple' ? 'simple' : contentType
+    
+    const config = await this.getPriceConfig(mappedContentType)
     if (!config) {
-      this.logger.warn(`[价格计算] 未知内容类型: ${contentType}, 使用默认价格`)
-      const defaultConfig = this.getDefaultPriceConfig(contentType)
-      const base = defaultConfig.basePrice * avatarCount
-      const content = defaultConfig.contentPrice * quantityPerAvatar * avatarCount
-      return { base, content, total: base + content }
+      this.logger.warn(`[价格计算] 未知内容类型: ${contentType}, 数据库中未找到配置`)
+      throw new Error(`未知的内容类型: ${contentType}`)
     }
 
     const base = config.basePrice * avatarCount
@@ -180,24 +154,6 @@ export class OrderService {
     }
 
     return { valid, actual }
-  }
-
-  private getDefaultPriceConfigs(): ContentTypePrice[] {
-    return [
-      { id: 'simple', label: '简单任务', icon: '✅', basePrice: 0.5, contentPrice: 0, desc: '关注/点赞/转发等', output: '个任务' },
-      { id: 'text', label: '纯文案', icon: '📝', basePrice: 2, contentPrice: 0, desc: '文字内容创作', output: '篇原创文案' },
-      { id: 'image', label: '图文笔记', icon: '🖼️', basePrice: 3, contentPrice: 1, desc: '图文搭配呈现', output: '篇图文笔记' },
-      { id: 'video', label: '短视频', icon: '🎬', basePrice: 5, contentPrice: 20, desc: 'AI生成真实视频', output: '条短视频' },
-    ]
-  }
-
-  private getDefaultPriceConfig(contentType: string): ContentTypePrice {
-    const defaults = this.getDefaultPriceConfigs()
-    let key = contentType
-    if (contentType === 'simple_task') {
-      key = 'simple'
-    }
-    return defaults.find(c => c.id === key) || defaults[1]
   }
 
   // ========== 订单相关方法 ==========
@@ -365,25 +321,11 @@ export class OrderService {
     const contentType = orderData.contentType || orderData.content_type || 'text'
     const quantityPerAvatar = Number(orderData.quantityPerAvatar || orderData.quantity_per_avatar || 1)
     
-    const priceCalc = await this.calculatePrice(contentType, avatarCount, quantityPerAvatar)
-    
-    // 只有图文类型支持自定义基础价格
-    let baseAmount = priceCalc.base
-    let contentAmount = priceCalc.content
-    let customBasePrice: number | null = null
-    
-    if (contentType === 'image' && orderData.customBasePrice !== undefined && orderData.customBasePrice !== null) {
-      let customBase = Number(orderData.customBasePrice)
-      if (!isNaN(customBase) && customBase > 0) {
-        // 保留2位小数，避免无限小数影响结算
-        customBase = Math.round(customBase * 100) / 100
-        customBasePrice = customBase
-        baseAmount = customBase * avatarCount
-        console.log(`[OrderService] 图文类型使用自定义基础单价: ${customBase}元/分身, 总基础价格: ${baseAmount}元`)
-      }
-    }
-    
-    const budget = baseAmount + contentAmount
+    // 直接使用前端传来的价格，不做任何计算
+    const budget = Number(orderData.total_price || orderData.budget || 0)
+    const baseAmount = Number(orderData.base_price || orderData.basePrice || 0)
+    const contentAmount = Number(orderData.content_price || orderData.contentPrice || 0)
+    const customBasePrice = orderData.customBasePrice ? Number(orderData.customBasePrice) : null
 
     const insertData: Record<string, any> = {
       id,
@@ -391,8 +333,13 @@ export class OrderService {
       title: orderData.title,
       description: orderData.description || '',
       content_type: orderData.contentType || orderData.content_type || 'text',
+      accept_regions: JSON.stringify(orderData.acceptRegions || orderData.accept_regions || []),
       platforms: JSON.stringify(orderData.platforms || []),
       requirements: JSON.stringify(orderData.requirements || {}),
+      // 添加 personality 字段，保存风格偏好和领域偏好
+      personality: typeof orderData.personality === 'string' 
+        ? orderData.personality 
+        : JSON.stringify(orderData.personality || { tags: [], niches: [] }),
       budget,
       base_amount: baseAmount,
       content_amount: contentAmount,
@@ -475,7 +422,7 @@ export class OrderService {
     const db = getMySQLClient()
     
     const orderRows = await db.query(
-      `SELECT id, user_id, avatar_id, title, description, content_type, 
+      `SELECT id, user_id, avatar_id, title, description, content_type, accept_regions,
        platforms, requirements, budget, base_amount, content_amount, status, result, created_at, updated_at,
        completed_at, latitude, longitude, location_text, target_audience,
        expected_quantity, deadline, order_type, priority, assigned_to,
@@ -589,6 +536,9 @@ export class OrderService {
       title: order.title,
       description: order.description,
       contentType: order.contentType,
+      acceptRegions: typeof order.acceptRegions === 'string' 
+        ? JSON.parse(order.acceptRegions) 
+        : (order.acceptRegions || []),
       platforms: typeof order.platforms === 'string' 
         ? JSON.parse(order.platforms) 
         : (order.platforms || []),
@@ -617,7 +567,7 @@ export class OrderService {
     }
     
     const rows = await db.query(
-      `SELECT id, title, description, content_type, platforms, requirements, 
+      `SELECT id, title, description, content_type, accept_regions, platforms, requirements, 
               budget, base_amount, content_amount, status, expected_quantity, avatar_count, is_paid, created_at
        FROM orders ${whereClause} ORDER BY created_at DESC LIMIT 100`,
       params
@@ -725,6 +675,11 @@ export class OrderService {
         try { requirements = JSON.parse(requirements) } catch { requirements = {} }
       }
       
+      let acceptRegions = row.acceptRegions
+      if (typeof acceptRegions === 'string') {
+        try { acceptRegions = JSON.parse(acceptRegions) } catch { acceptRegions = [] }
+      }
+      
       let createdAt = ''
       if (row.createdAt) {
         if (row.createdAt instanceof Date) {
@@ -756,6 +711,7 @@ export class OrderService {
         title: row.title,
         description: row.description,
         contentType: row.contentType,
+        acceptRegions,
         platforms,
         requirements,
         budget: row.budget,
@@ -879,6 +835,7 @@ export class OrderService {
       `SELECT o.id, o.user_id, o.avatar_id, o.title, o.description, o.content_type, o.platforms, o.platform,
               o.requirements, o.target_audience, o.priority, o.deadline, o.content_deadline_at,
               o.budget, o.base_amount, o.content_amount, o.price, o.status, o.expected_quantity, o.avatar_count, o.quantity_per_avatar, o.is_paid,
+              o.accept_regions, o.personality,
               o.created_at, o.updated_at,
               COALESCE(a_order.name, a_latest.name, u.nickname) as publisher_nickname,
               COALESCE(a_order.avatar_url, a_latest.avatar_url, u.avatar) as publisher_avatar,
@@ -982,7 +939,9 @@ export class OrderService {
       publisherNickname: row.publisherNickname || row.publisher_nickname || '发布方',
       publisherAvatar: row.publisherAvatar || row.publisher_avatar || '',
       acceptCount: Number(row.acceptCount || row.accept_count || 0),
-      isAcceptedByMe: Boolean(row.isAcceptedByMe ?? row.is_accepted_by_me ?? 0)
+      isAcceptedByMe: Boolean(row.isAcceptedByMe ?? row.is_accepted_by_me ?? 0),
+      acceptRegions: this.safeParseJson<string[]>(row.acceptRegions || row.accept_regions, []),
+      personality: this.safeParseJson<{ tags: string; niches: string }>(row.personality || '{}', { tags: '', niches: '' })
       })
     })
 

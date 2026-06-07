@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
-import Taro, { useLoad, useRouter, navigateBack } from '@tarojs/taro'
+import Taro, { useLoad, useRouter } from '@tarojs/taro'
 import { Network } from '@/network'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -16,9 +16,54 @@ export default function OrderAcceptanceFeedback() {
 
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<any>(null)
+  const [currentUserId, setCurrentUserId] = useState<string>('')
+  const [orderUserId, setOrderUserId] = useState<string>('')
+  const [roleVerified, setRoleVerified] = useState(false)
 
-  // 通过 URL 参数判断角色：role=avatar 表示分身视角（接单者），否则为发单者
-  const isIssuer = role !== 'avatar'
+  // 通过 URL 参数和用户ID双重验证判断角色
+  // role=avatar 表示分身视角（接单者），否则为发单者
+  // 如果有用户ID信息，则只有订单用户ID等于当前用户ID才是发单者
+  const isIssuer = useMemo(() => {
+    // 接单者视角，始终显示催促验收
+    if (role === 'avatar') {
+      return false
+    }
+    // 非接单者视角，必须等待用户ID验证完成
+    if (!currentUserId || !orderUserId) {
+      return null as any // 等待数据加载时不显示按钮
+    }
+    return currentUserId === orderUserId
+  }, [role, currentUserId, orderUserId])
+
+  // 获取用户身份信息
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const loginRes = await Taro.login()
+        if (loginRes.code) {
+          const openidRes = await Network.request({
+            url: '/api/user/openid',
+            method: 'GET',
+            data: { code: loginRes.code },
+          })
+          setCurrentUserId(openidRes?.data?.data?.openid || '')
+        }
+      } catch (e) {
+        console.warn('[OrderAcceptanceFeedback] 获取openid失败:', e)
+      }
+    }
+
+    if (requestId || orderId) {
+      fetchUserInfo()
+    }
+  }, [requestId, orderId])
+
+  // 当角色验证完成后，标记已验证
+  useEffect(() => {
+    if (currentUserId && orderUserId) {
+      setRoleVerified(true)
+    }
+  }, [currentUserId, orderUserId])
 
   useLoad(() => {
     loadData()
@@ -39,6 +84,18 @@ export default function OrderAcceptanceFeedback() {
 
       if (response.data?.code === 200) {
         setData(normalizeOrderProcessingStatus(response.data.data))
+
+        // 获取订单信息以验证用户身份
+        const orderIdentifier = response.data.data?.orderId || response.data.data?.order_id || orderId
+        if (orderIdentifier) {
+          const orderRes = await Network.request({
+            url: `/api/order/${orderIdentifier}`,
+            method: 'GET',
+          })
+          if (orderRes.data?.code === 200) {
+            setOrderUserId(orderRes.data.data?.userId || orderRes.data.data?.user_id || '')
+          }
+        }
       } else {
         Taro.showToast({
           title: response.data?.message || '加载失败',
@@ -433,7 +490,7 @@ export default function OrderAcceptanceFeedback() {
 
       {/* 固定底部按钮 - 根据角色显示不同按钮 */}
       <View className="fixed-bottom">
-        {isIssuer ? (
+        {isIssuer === true ? (
           // 发单者 - 确认验收按钮
           <Button
             className="accept-button"
@@ -442,7 +499,7 @@ export default function OrderAcceptanceFeedback() {
             <CircleCheck size={18} color="#fff" />
             <Text className="button-text">确认验收</Text>
           </Button>
-        ) : (
+        ) : isIssuer === false ? (
           // 接单者 - 催促验收按钮
           <Button
             className="urge-button"
@@ -451,7 +508,7 @@ export default function OrderAcceptanceFeedback() {
             <Bell size={18} color="#fff" />
             <Text className="button-text">催促验收</Text>
           </Button>
-        )}
+        ) : null}
       </View>
     </View>
   )

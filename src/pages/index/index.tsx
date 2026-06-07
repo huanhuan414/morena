@@ -4,7 +4,7 @@ import { View, Text, ScrollView } from '@tarojs/components'
 import { Bell, Settings, Users, FileText, Coins, Plus, Zap, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye, ShoppingBag, ChevronRight, Gift, Rocket, Clock, CircleCheckBig, ChevronDown } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { BANNER_TITLE, BANNER_DESC } from '@/constants/referral-rewards'
-import { PLATFORM_UI_ORDER, PLATFORM_META_MAP, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
+import { PLATFORM_UI_ORDER, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
 import { useUserStore } from '@/stores/user'
 import { useNotifications } from '@/hooks/useNotifications'
 import { Avatar as UiAvatar } from '@/components/ui/avatar'
@@ -35,6 +35,7 @@ interface OrderItem {
   quantityPerAvatar: number
   urgency: 'urgent' | 'high' | 'normal' | 'low'
   isAcceptedByMe?: boolean
+  acceptRegions?: string[]  // 接单区域限制
 }
 
 const Index: React.FC = () => {
@@ -49,7 +50,7 @@ const Index: React.FC = () => {
   const [generatedContents, setGeneratedContents] = useState(0)
   const [growthCampaign, setGrowthCampaign] = useState<any>(null)
   const [trackedCampaignId, setTrackedCampaignId] = useState('')
-  const { avatarId: currentAvatarId, setAvatarId, isLoggedIn } = useUserStore(state => state)
+  const { setAvatarId, isLoggedIn } = useUserStore(state => state)
 
   const [showOrderModal, setShowOrderModal] = useState(false)
   const [orderModalData, setOrderModalData] = useState<any>(null)
@@ -77,7 +78,7 @@ const Index: React.FC = () => {
   const [orders, setOrders] = useState<OrderItem[]>([])
   const [ordersLoading, setOrdersLoading] = useState(false)
   const [acceptingOrderIds, setAcceptingOrderIds] = useState<Record<string, boolean>>({})
-  const [orderPage, setOrderPage] = useState(1)
+  const [, setOrderPage] = useState(1)
   const [, setOrderTotal] = useState(0)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const ordersFetchInFlightRef = useRef(false)
@@ -138,12 +139,11 @@ const Index: React.FC = () => {
           avatarCount: o.avatarCount || o.avatar_count || 1,
           quantityPerAvatar: o.quantityPerAvatar || o.quantity_per_avatar || 1,
           urgency: o.urgency || (o.priority >= 4 ? 'urgent' : o.priority >= 3 ? 'high' : o.priority >= 2 ? 'normal' : 'low'),
-          isAcceptedByMe: Boolean(o.isAcceptedByMe || o.is_accepted_by_me)
+          isAcceptedByMe: Boolean(o.isAcceptedByMe || o.is_accepted_by_me),
+          acceptRegions: Array.isArray(o.acceptRegions || o.accept_regions) ? (o.acceptRegions || o.accept_regions) : []
         }))
-        let nextLength = 0
         setOrders(prev => {
           const next = append ? [...prev, ...mapped] : mapped
-          nextLength = next.length
           return next
         })
         setOrderTotal(total)
@@ -207,7 +207,7 @@ const Index: React.FC = () => {
   }, [dismissedOrderIds, showOrderModal, orderModalData])
 
   // 接单
-  const handleAcceptOrder = async (orderId: string) => {
+  const handleAcceptOrder = async (orderId: string, orderInfo?: OrderItem) => {
     if (orderId.startsWith('demo_')) {
       Taro.showToast({ title: '示例订单，请先创建分身', icon: 'none' })
       return
@@ -221,7 +221,40 @@ const Index: React.FC = () => {
         Taro.showToast({ title: '请先创建分身', icon: 'none' })
         return
       }
-      const avatars = avatarRes.data.data
+      let avatars = avatarRes.data.data
+
+      // 检查订单区域限制
+      if (orderInfo?.acceptRegions && orderInfo.acceptRegions.length > 0) {
+        // 筛选出地址在订单限制区域内的分身
+        const avatarsWithProvince = avatars.map((avatar: any) => {
+          const locationText = avatar.locationText || avatar.location_text || ''
+          // 提取省份（与后端逻辑一致：split(/[省市区县]/) 取第一个部分）
+          const parts = locationText.split(/[省市区县]/)
+          const province = parts.length > 0 ? parts[0].trim() : ''
+          return { ...avatar, province }
+        })
+
+        // 篮选出地址在订单限制区域内的分身
+        const matchedAvatars = avatarsWithProvince.filter((avatar: any) => {
+          if (!avatar.province) return false
+          return orderInfo.acceptRegions.some(region =>
+            avatar.province.includes(region) || region.includes(avatar.province)
+          )
+        })
+
+        if (matchedAvatars.length === 0) {
+          Taro.showModal({
+            title: '无法接单',
+            content: `该订单限制了接单区域：${orderInfo.acceptRegions.join('、')}\n您的分身地址不在这些区域内，无法接单`,
+            showCancel: false,
+            confirmText: '知道了'
+          })
+          return
+        }
+
+        // 使用筛选后的分身
+        avatars = matchedAvatars
+      }
 
       const userId = useUserStore.getState().userInfo?.id
       let planId = 'plan_free'
@@ -441,7 +474,7 @@ const Index: React.FC = () => {
   const handleOrderAccept = async () => {
     if (orderModalData?.id) {
       const orderId = orderModalData.id
-      await handleAcceptOrder(orderId)
+      await handleAcceptOrder(orderId, orderModalData)
       setShowOrderModal(false)
       const newDismissed = new Set(dismissedOrderIds)
       newDismissed.add(orderId)
@@ -507,7 +540,7 @@ const Index: React.FC = () => {
 
   // 紧急程度标签
   // 截止时间格式化 - 暂时禁用期限功能
-  const formatDeadline = (deadline: string | null) => {
+  const formatDeadline = (_deadline: string | null): { color: string; text: string } | null => {
     return null
   }
 
@@ -830,7 +863,7 @@ const Index: React.FC = () => {
                 const contentTypeTag = getContentTypeTag(order)
                 const priorityColor = urgencyTag ? urgencyTag.color : '#6366F1'
                 const isExpanded = expandedOrderId === order.id
-                const deadlineInfo = formatDeadline(order.deadline || order.contentDeadlineAt)
+                void formatDeadline(order.deadline || order.contentDeadlineAt) // deadlineInfo (unused)
                 const reqTags = Array.isArray(order.requirements)
                   ? (order.requirements as string[]).slice(0, 4)
                   : (typeof order.requirements === 'object' && order.requirements?.skills)
@@ -872,6 +905,14 @@ const Index: React.FC = () => {
                           {urgencyTag && (
                             <View className="po-priority-pill" style={{ background: urgencyTag.bg }}>
                               <Text className="po-priority-pill-text" style={{ color: urgencyTag.color }}>{urgencyTag.text}</Text>
+                            </View>
+                          )}
+                          {/* 区域限制标签 */}
+                          {order.acceptRegions && order.acceptRegions.length > 0 && (
+                            <View className="po-region-pill" style={{ background: '#F59E0B15' }}>
+                              <Text className="po-region-pill-text" style={{ color: '#F59E0B' }}>
+                                📍 {order.acceptRegions.join('、')}
+                              </Text>
                             </View>
                           )}
                         </View>
@@ -997,7 +1038,7 @@ const Index: React.FC = () => {
                         onClick={(e) => {
                           e.stopPropagation()
                           if (!order.isAcceptedByMe && !acceptingOrderIds[order.id]) {
-                            handleAcceptOrder(order.id)
+                            handleAcceptOrder(order.id, order)
                           }
                         }}
                       >

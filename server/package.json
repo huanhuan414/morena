@@ -13,6 +13,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.958.0",
     "@aws-sdk/lib-storage": "^3.958.0",
+    "@larksuiteoapi/node-sdk": "^1.66.1",
     "@nestjs/axios": "^4.0.1",
     "@nestjs/common": "^10.4.15",
     "@nestjs/config": "^4.0.4",
@@ -47,6 +48,7 @@
     "socket.io": "^4.8.3",
     "uuid": "^13.0.0",
     "wechatpay-node-v3": "^2.2.1",
+    "xml2js": "^0.6.2",
     "zod": "^4.3.5"
   },
   "devDependencies": {

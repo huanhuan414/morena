@@ -228,29 +228,85 @@ export class OrderDispatchService {
   }
 
   /**
-   * 计算分身与订单的匹配度（三维匹配：技能 + 风格 + 领域）
+   * 计算分身与订单的匹配度（风格 + 领域 + 技能）
    * 返回 0-100 的匹配分数
+   * 注意：区域匹配已在 getRecommendedAvatars 中作为必须条件处理，这里不再计算区域分数
    */
-  private calculateMatchScore(avatar: any, order: any): { score: number; details: { skillScore: number; styleScore: number; nicheScore: number } } {
-    const details = { skillScore: 0, styleScore: 0, nicheScore: 0 }
+  private calculateMatchScore(avatar: any, order: any): { score: number; details: { skillScore: number; styleScore: number; nicheScore: number; regionScore: number } } {
+    const details = { skillScore: 0, styleScore: 0, nicheScore: 0, regionScore: 100 } // regionScore 固定100，因为区域匹配已在筛选时处理
 
-    // 解析分身的 content_styles 和 niche_tags
-    const avatarStyles: string[] = this.safeParseJson(avatar.contentStyles, [])
-    const avatarNiches: string[] = this.safeParseJson(avatar.nicheTags, [])
+    // this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 开始计算匹配分数`)
+    
+    // 解析分身的 personality 字段：{"tags": [], "niches": []}
+    const avatarPersonality = this.safeParseJson(avatar.personality, { tags: [], niches: [] })
+    // this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} personality 原始值: ${avatar.personality}`)
+    // this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} personality 解析后: ${JSON.stringify(avatarPersonality)}`)
+    
+    const avatarStyles: string[] = Array.isArray(avatarPersonality?.tags) ? avatarPersonality.tags : []
+    const avatarNiches: string[] = Array.isArray(avatarPersonality?.niches) ? avatarPersonality.niches : []
+    // this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 风格数组: ${JSON.stringify(avatarStyles)}`)
+    // this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 领域数组: ${JSON.stringify(avatarNiches)}`)
+    
     // 优先使用 avatar_skills 表的技能数据，fallback 到 avatars.skills 字段
     const avatarSkills: string[] = (avatar._skillsFromTable && avatar._skillsFromTable.length > 0)
       ? avatar._skillsFromTable
       : this.safeParseJson(avatar.skills, [])
 
-    // 解析订单的 preferred_styles 和 industry_tags
-    const orderStyles: string[] = this.safeParseJson(order.preferredStyles, [])
-    const orderNiches: string[] = this.safeParseJson(order.industryTags, [])
+    // 解析订单的 personality 字段：{"tags": '', "niches": ''}
+    // this.logger.log(`[calculateMatchScore] 订单 personality 原始值: ${order.personality}`)
+    const orderPersonality = this.safeParseJson(order.personality, { tags: '', niches: '' })
+    // this.logger.log(`[calculateMatchScore] 订单 personality 解析后: ${JSON.stringify(orderPersonality)}`)
+    
+    const orderStyle: string = orderPersonality?.tags || ''
+    const orderNiche: string = orderPersonality?.niches || ''
+    // this.logger.log(`[calculateMatchScore] 订单风格偏好: ${orderStyle}`)
+    // this.logger.log(`[calculateMatchScore] 订单领域偏好: ${orderNiche}`)
     
     // 订单的 content_type 和 platforms 也作为技能匹配依据
     const orderContentType = (order.content_type || order.contentType || '').toLowerCase()
     const orderPlatforms: string[] = this.safeParseJson(order.platforms, [])
 
-    // 维度一：技能匹配（权重40%）
+    // 维度一：风格匹配（权重40%）- 主要匹配因素
+    // 订单风格偏好 IN 分身风格数组
+    if (orderStyle && avatarStyles.length > 0) {
+      if (avatarStyles.includes(orderStyle)) {
+        details.styleScore = 40  // 完全匹配
+        // this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 风格匹配: 订单风格=${orderStyle}, 分身风格=${JSON.stringify(avatarStyles)}, 匹配成功, styleScore=40`)
+      } else {
+        details.styleScore = 0   // 不匹配
+        // this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 风格不匹配: 订单风格=${orderStyle}, 分身风格=${JSON.stringify(avatarStyles)}, styleScore=0`)
+      }
+    } else if (orderStyle) {
+      // 订单有风格要求但分身没设风格，给一半分
+      details.styleScore = 20
+      // this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 有订单风格要求但分身无风格, styleScore=20`)
+    } else {
+      // 订单无风格要求，给满分
+      details.styleScore = 40
+      // this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 订单无风格要求, styleScore=40`)
+    }
+
+    // 维度二：领域匹配（权重40%）- 主要匹配因素
+    // 订单领域偏好 IN 分身领域数组
+    if (orderNiche && avatarNiches.length > 0) {
+      if (avatarNiches.includes(orderNiche)) {
+        details.nicheScore = 40  // 完全匹配
+        // this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 领域匹配: 订单领域=${orderNiche}, 分身领域=${JSON.stringify(avatarNiches)}, 匹配成功, nicheScore=40`)
+      } else {
+        details.nicheScore = 0   // 不匹配
+        // this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 领域不匹配: 订单领域=${orderNiche}, 分身领域=${JSON.stringify(avatarNiches)}, nicheScore=0`)
+      }
+    } else if (orderNiche) {
+      // 订单有领域要求但分身没设领域，给一半分
+      details.nicheScore = 20
+      // this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 有订单领域要求但分身无领域, nicheScore=20`)
+    } else {
+      // 订单无领域要求，给满分
+      details.nicheScore = 40
+      // this.logger.log(`[calculateMatchScore] 分身 ${avatar.name} 订单无领域要求, nicheScore=40`)
+    }
+
+    // 维度三：技能匹配（权重20%）- 辅助匹配因素
     // 根据订单内容类型和平台推断需要的技能
     const requiredSkills: string[] = []
     if (orderContentType.includes('text') || orderContentType.includes('文案')) requiredSkills.push('content_writing')
@@ -262,37 +318,13 @@ export class OrderDispatchService {
 
     if (requiredSkills.length > 0) {
       const matchedSkills = requiredSkills.filter(s => avatarSkills.includes(s))
-      details.skillScore = Math.round((matchedSkills.length / requiredSkills.length) * 40)
+      details.skillScore = Math.round((matchedSkills.length / requiredSkills.length) * 20)
     } else {
       // 没有明确技能要求时，有技能的分身基础分更高
-      details.skillScore = avatarSkills.length > 0 ? 20 : 10
+      details.skillScore = avatarSkills.length > 0 ? 15 : 10
     }
 
-    // 维度二：风格匹配（权重30%）
-    if (orderStyles.length > 0 && avatarStyles.length > 0) {
-      const matchedStyles = orderStyles.filter(s => avatarStyles.includes(s))
-      details.styleScore = Math.round((matchedStyles.length / orderStyles.length) * 30)
-    } else if (orderStyles.length > 0) {
-      // 订单有风格要求但分身没设风格，给一半分
-      details.styleScore = 15
-    } else {
-      // 订单无风格要求，不扣分
-      details.styleScore = 30
-    }
-
-    // 维度三：领域匹配（权重30%）
-    if (orderNiches.length > 0 && avatarNiches.length > 0) {
-      const matchedNiches = orderNiches.filter(n => avatarNiches.includes(n))
-      details.nicheScore = Math.round((matchedNiches.length / orderNiches.length) * 30)
-    } else if (orderNiches.length > 0) {
-      // 订单有领域要求但分身没设领域，给一半分
-      details.nicheScore = 15
-    } else {
-      // 订单无领域要求，不扣分
-      details.nicheScore = 30
-    }
-
-    const score = Math.min(100, details.skillScore + details.styleScore + details.nicheScore)
+    const score = Math.min(100, details.styleScore + details.nicheScore + details.skillScore)
     return { score, details }
   }
 
@@ -318,22 +350,57 @@ export class OrderDispatchService {
   }
 
   /**
-   * 获取推荐分身列表（三维匹配：技能+风格+领域，按匹配度排序）
+   * 获取推荐分身列表
+   * 新逻辑：
+   * 1. 区域匹配是必须条件：先查询区域匹配的分身
+   * 2. 风格、领域是辅组条件：在区域匹配的分身中按匹配度排序
+   * 3. 不够时随机补充：其他未查询出的分身
    */
   async getRecommendedAvatars(orderId: string, limit: number = 0) {
     const db = getMySQLClient()
     const hostedWhereClause = await this.buildHostedWhereClause()
 
-    // 查询开启托管的活跃分身
-    let sql = `SELECT * FROM avatars WHERE ${hostedWhereClause} AND status = 'active' ORDER BY updated_at DESC`
-    if (limit > 0) {
-      sql += ` LIMIT ${parseInt(String(limit)) * 3}`  // 取3倍数量用于匹配筛选
+    // 如果没有指定limit，则根据订单的avatar_count自动计算：取avatar_count + 5个分身
+    let fetchLimit = 0
+    let orderAvatarCount = 0
+    if (limit === 0 && orderId) {
+      try {
+        const orderRows = await db.query('SELECT avatar_count, accept_regions, personality FROM orders WHERE id = ?', [orderId])
+        orderAvatarCount = orderRows?.[0]?.avatar_count || orderRows?.[0]?.avatarCount || 0
+        fetchLimit = Number(orderAvatarCount) + 5
+        this.logger.log(`[getRecommendedAvatars] 自动计算fetchLimit: ${fetchLimit} (avatar_count=${orderAvatarCount})`)
+      } catch (err) {
+        this.logger.warn('获取订单avatar_count失败，使用默认limit=0:', err)
+      }
     }
+
+    // 获取订单的接单区域和 personality
+    let orderRegions: string[] = []
+    let orderPersonality: any = null
+    if (orderId) {
+      try {
+        const orderRows = await db.query('SELECT accept_regions, personality FROM orders WHERE id = ?', [orderId])
+        const acceptRegionsStr = orderRows?.[0]?.accept_regions || orderRows?.[0]?.acceptRegions
+        if (acceptRegionsStr) {
+          orderRegions = this.safeParseJson(acceptRegionsStr, [])
+          this.logger.log(`[getRecommendedAvatars] 订单接单区域: ${JSON.stringify(orderRegions)}`)
+        }
+        // 获取订单的 personality
+        orderPersonality = this.safeParseJson(orderRows?.[0]?.personality, { tags: '', niches: '' })
+        this.logger.log(`[getRecommendedAvatars] 订单 personality: ${JSON.stringify(orderPersonality)}`)
+      } catch (err) {
+        this.logger.warn('获取订单接单区域失败:', err)
+      }
+    }
+
+    // 查询所有开启托管的活跃分身（不限制数量，后续按匹配条件筛选）
+    let sql = `SELECT * FROM avatars WHERE ${hostedWhereClause} AND status = 'active'`
     
     const resultRows = await db.query(sql)
-    const avatars = resultRows || []
+    const allAvatars = resultRows || []
 
-    const avatarIds = [...new Set(avatars.map((a: any) => a.id).filter(Boolean))]
+    // 获取分身技能数据
+    const avatarIds = [...new Set(allAvatars.map((a: any) => a.id).filter(Boolean))]
     const skillsMap = new Map<string, string[]>()
     if (avatarIds.length > 0) {
       try {
@@ -352,11 +419,13 @@ export class OrderDispatchService {
       }
     }
 
-    const readyAvatars = avatars.map((avatar: any) => {
-        avatar._skillsFromTable = skillsMap.get(avatar.id) || []
-        return avatar
-      })
+    // 注入技能数据
+    const readyAvatars = allAvatars.map((avatar: any) => {
+      avatar._skillsFromTable = skillsMap.get(avatar.id) || []
+      return avatar
+    })
 
+    // 获取派单统计
     const dispatchStatsMap = new Map<string, { total: number; accepted: number; expired: number }>()
     const readyAvatarIds = [...new Set(readyAvatars.map((a: any) => a.id).filter(Boolean))]
     if (readyAvatarIds.length > 0) {
@@ -386,47 +455,130 @@ export class OrderDispatchService {
       }
     }
 
-    // 如果有订单ID，尝试获取订单信息进行匹配排序
+    // 如果有订单ID，进行匹配排序
     if (orderId) {
       try {
         const orderRows2 = await db.query('SELECT * FROM orders WHERE id = ?', [orderId])
         const order = orderRows2?.[0]
         
         if (order) {
+          // 需要的分身数量
+          const requiredCount = Number(orderAvatarCount) + 5
+          
+          this.logger.log(`[getRecommendedAvatars] 开始匹配，订单接单区域: ${JSON.stringify(orderRegions)}`)
+          this.logger.log(`[getRecommendedAvatars] 订单风格偏好: ${orderPersonality.tags}, 领域偏好: ${orderPersonality.niches}`)
+          this.logger.log(`[getRecommendedAvatars] 需要分身数量: ${requiredCount}`)
+          
+          // ========== 第一步：给每个分身打上区域、风格、领域标签 ==========
+          const taggedAvatars = readyAvatars.map(avatar => {
+            const avatarLocation = (avatar.locationText || avatar.location_text || '').trim()
+            
+            // 从分身地址中提取省份
+            let avatarProvince = ''
+            if (avatarLocation) {
+              const parts = avatarLocation.split(/[省市区县]/)
+              if (parts.length > 0) {
+                avatarProvince = parts[0].trim()
+              }
+            }
+            
+            // 区域匹配检查
+            const isRegionMatched = orderRegions.length > 0 && avatarProvince
+              ? orderRegions.some(region => avatarProvince.includes(region) || region.includes(avatarProvince))
+              : orderRegions.length === 0
+            
+            // 风格和领域匹配检查
+            let isStyleMatched = false
+            let isNicheMatched = false
+            
+            // 解析分身 personality
+            let avatarPersonality: { tags?: string[]; niches?: string[] } = {}
+            try {
+              avatarPersonality = typeof avatar.personality === 'string'
+                ? JSON.parse(avatar.personality || '{}')
+                : (avatar.personality || {})
+            } catch {
+              avatarPersonality = {}
+            }
+            
+            const avatarTags = Array.isArray(avatarPersonality.tags) ? avatarPersonality.tags : []
+            const avatarNiches = Array.isArray(avatarPersonality.niches) ? avatarPersonality.niches : []
+            
+            // 风格匹配：订单风格偏好 IN 分身风格数组
+            if (orderPersonality.tags && avatarTags.length > 0) {
+              isStyleMatched = avatarTags.some(tag => 
+                tag.includes(orderPersonality.tags) || orderPersonality.tags.includes(tag)
+              )
+            }
+            
+            // 领域匹配：订单领域偏好 IN 分身领域数组
+            if (orderPersonality.niches && avatarNiches.length > 0) {
+              isNicheMatched = avatarNiches.some(niche => 
+                niche.includes(orderPersonality.niches) || orderPersonality.niches.includes(niche)
+              )
+            }
+            
+            this.logger.log(`[getRecommendedAvatars] 分身 ${avatar.name}: 区域=${isRegionMatched}, 风格=${isStyleMatched}, 领域=${isNicheMatched}`)
+            
+            return {
+              ...avatar,
+              avatarProvince,
+              isRegionMatched,
+              isStyleMatched,
+              isNicheMatched,
+              // 计算排序权重：区域匹配优先，然后风格，然后领域
+              sortWeight: (isRegionMatched ? 100 : 0) + (isStyleMatched ? 50 : 0) + (isNicheMatched ? 30 : 0),
+            }
+          })
+          
+          // ========== 第二步：按标签权重排序 ==========
+          // 排序规则：区域匹配 > 风格匹配 > 领域匹配 > 无匹配
+          taggedAvatars.sort((a, b) => b.sortWeight - a.sortWeight)
+          
+          this.logger.log(`[getRecommendedAvatars] 排序后前10个分身: ${taggedAvatars.slice(0, 10).map(a => `${a.name}(区域=${a.isRegionMatched},风格=${a.isStyleMatched},领域=${a.isNicheMatched},权重=${a.sortWeight})`).join(', ')}`)
+          
+          // ========== 第三步：取订单分身数+5个值 ==========
+          const finalAvatars = taggedAvatars.slice(0, requiredCount)
+          
+          this.logger.log(`[getRecommendedAvatars] 最终返回 ${finalAvatars.length} 个分身`)
+          
+          // ========== 第四步：为最终的分身计算匹配分数（用于前端展示） ==========
           // 批量获取用户会员优先级
-          const userIds = [...new Set(readyAvatars.map((a: any) => a.userId || a.user_id).filter(Boolean))]
+          const userIds = [...new Set(finalAvatars.map((a: any) => a.userId || a.user_id).filter(Boolean))]
           const orderPriorityMap = await this.subscriptionService.getBatchOrderPriority(userIds)
           
-          // 计算每个分身的匹配分数
-          const scoredAvatars = readyAvatars.map(avatar => {
-            const { score, details } = this.calculateMatchScore(avatar, order)
+          const scoredAvatars = finalAvatars.map(avatar => {
+            // 计算风格和领域匹配分数
+            const { score: styleNicheScore, details } = this.calculateMatchScore(avatar, order)
+            
+            // 获取派单统计
             const stats = dispatchStatsMap.get(avatar.id) || { total: 0, accepted: 0, expired: 0 }
             const rate = stats.total > 0 ? stats.accepted / stats.total : 0
-            const baseScore = score
             let bonus = 0
             if (stats.total >= 5 && rate >= 0.8) bonus = 5
             if (stats.total >= 5 && rate <= 0.3) bonus = -10
-            // 会员优先级加分：(优先级-1) * 10，免费版=0，基础版=10，专业版=20，进阶版=30
             const userId = avatar.userId || avatar.user_id
             const orderPriority = orderPriorityMap.get(userId) || 1
             const priorityBonus = (orderPriority - 1) * 10
-            const finalScore = Math.max(0, Math.min(100, baseScore + bonus + priorityBonus))
+            
+            // 最终分数：区域匹配优先，然后是风格领域匹配
+            const regionScore = avatar.isRegionMatched ? 100 : 0
+            const finalScore = Math.max(0, Math.min(200, regionScore + styleNicheScore + bonus + priorityBonus))
+            
             return {
               ...avatar,
-              matchScoreBase: baseScore,
+              matchScoreBase: styleNicheScore,
               matchScore: finalScore,
-              matchDetails: details,
+              regionScore,
+              matchDetails: { ...details, regionScore, styleScore: avatar.isStyleMatched ? 40 : 0, nicheScore: avatar.isNicheMatched ? 40 : 0 },
               dispatchStats: { ...stats, acceptanceRate: rate },
               orderPriority,
               priorityBonus,
+              matchType: avatar.isRegionMatched ? 'region' : 'other',
             }
           })
-
-          // 按匹配分数降序排序
-          scoredAvatars.sort((a, b) => b.matchScore - a.matchScore)
           
-          // 返回指定数量
-          return limit > 0 ? scoredAvatars.slice(0, limit) : scoredAvatars
+          return scoredAvatars
         }
       } catch (err) {
         this.logger.warn('匹配排序失败，使用默认排序:', err)
@@ -441,6 +593,24 @@ export class OrderDispatchService {
    */
   async dispatchOrder(orderId: string) {
     const db = getMySQLClient()
+    
+    // 检查AI生成素材状态：如果开启AI补足且素材未生成完成，拒绝派单
+    const orderForCheck = await db.query('SELECT * FROM orders WHERE id = ?', [orderId])
+    if (orderForCheck?.[0]) {
+      const order = orderForCheck[0]
+      const reqs = typeof order.requirements === 'string' ? JSON.parse(order.requirements) : (order.requirements || {})
+      if (reqs.ai_auto_fill) {
+        const generatingRows = await db.query(
+          `SELECT COUNT(*) as cnt FROM order_assets WHERE order_id = ? AND status IN ('pending', 'generating')`,
+          [orderId]
+        )
+        const generatingCount = Number(generatingRows?.[0]?.cnt || 0)
+        if (generatingCount > 0) {
+          this.logger.warn(`[dispatchOrder] 订单${orderId}素材生成中，ai_auto_fill=true，拒绝自动派单`)
+          return null
+        }
+      }
+    }
     
     // 查询开启托管的分身
     const avatars = await this.getRecommendedAvatars(orderId, 1)
@@ -586,17 +756,7 @@ async getExecutionProgress(orderId: string) {
       try {
         const redisKey = `order:accept:count:${orderId}`
         await this.redisService.getClient().decr(redisKey)
-        // 校验补偿：比对Redis与DB
-        const [orderRow] = await db.query(
-          `SELECT GREATEST(COALESCE(NULLIF(avatar_count, 0), NULLIF(expected_quantity, 0), 1), 1) as required_count FROM orders WHERE id = ?`,
-          [orderId]
-        )
-        const redisVal = parseInt(await this.redisService.getClient().get(redisKey) || '0', 10)
-        const dbCount = await this.getDbAcceptCount(orderId)
-        if (redisVal !== dbCount) {
-          console.warn(`[Redis校验] 拒绝分身后不一致 orderId=${orderId} redis=${redisVal} db=${dbCount}, 修正`)
-          await this.redisService.getClient().set(redisKey, String(dbCount), 'EX', OrderDispatchService.REDIS_TTL_SECONDS)
-        }
+        // 注意：不做DB同步补偿。并发时DB事务延迟会导致补偿覆盖INCR/DECR的正确结果
       } catch (err) {
         console.warn('[Redis] 拒绝分身DECR失败:', err.message)
       }
@@ -749,6 +909,17 @@ async getExecutionProgress(orderId: string) {
       }
       avatarIds.push(avatar.id)
       
+      // autoAccept分身直接accepted，需要同步INCR Redis计数器
+      if (avatar.autoAccept) {
+        try {
+          const redisKey = `order:accept:count:${orderId}`
+          await this.redisService.getClient().incr(redisKey)
+          this.logger.log(`[dispatchToAllAvatars] autoAccept Redis INCR: key=${redisKey}, avatarId=${avatar.id}`)
+        } catch (redisErr) {
+          this.logger.warn(`[dispatchToAllAvatars] autoAccept Redis INCR失败(可忽略): ${(redisErr as Error).message}`)
+        }
+      }
+      
       // 📌 记录事件：已派单（自动接单时记录 accepted 事件）
       this.eventService.recordEvent({
         orderId,
@@ -818,6 +989,9 @@ async getExecutionProgress(orderId: string) {
         console.error('[dispatchToAllAvatars] 创建用户通知失败:', err)
       }
     }
+
+    // 派单结束后：校验补偿Redis与DB一致性
+    // 注意：不做DB同步补偿。并发时DB事务延迟会导致补偿覆盖INCR/DECR的正确结果
     
     return { count: avatars.length, avatarIds, smsSentCount }
   }
@@ -840,6 +1014,35 @@ async getExecutionProgress(orderId: string) {
     let actualAvatarId: string | undefined = avatarId
     let requiredCount = 1
     let wasAlreadyAccepted = false
+
+    // =====================================================
+    // 第零阶段：区域限制检查
+    // =====================================================
+    // 获取订单的接单区域限制
+    const orderRegionRows = await db.query('SELECT accept_regions FROM orders WHERE id = ?', [orderId])
+    const acceptRegionsStr = (orderRegionRows as any[])?.[0]?.acceptRegions || (orderRegionRows as any[])?.[0]?.accept_regions
+    const acceptRegions = this.safeParseJson<string[]>(acceptRegionsStr, [])
+
+    // 如果订单有区域限制，检查分身地址是否在限制区域内
+    if (acceptRegions.length > 0) {
+      const avatarRows = await db.query('SELECT location_text FROM avatars WHERE id = ?', [avatarId])
+      const avatarLocationText = (avatarRows as any[])?.[0]?.locationText || (avatarRows as any[])?.[0]?.location_text || ''
+      
+      // 提取省份（与前端逻辑一致：split(/[省市区县]/) 取第一个部分）
+      const parts = avatarLocationText.split(/[省市区县]/)
+      const avatarProvince = parts.length > 0 ? parts[0].trim() : ''
+
+      this.logger.log(`[acceptOrder] 区域检查: 分身省份=${avatarProvince}, 订单区域=${JSON.stringify(acceptRegions)}`)
+
+      // 检查分身省份是否在订单限制区域内
+      const isRegionMatched = acceptRegions.some(region => 
+        avatarProvince.includes(region) || region.includes(avatarProvince)
+      )
+
+      if (!isRegionMatched) {
+        throw new BadRequestException(`该订单限制了接单区域：${acceptRegions.join('、')}，您的分身地址不在这些区域内，无法接单`)
+      }
+    }
 
     // =====================================================
     // 第一阶段：Redis快速检查（毫秒级，快速拒绝已满订单）
@@ -876,15 +1079,16 @@ async getExecutionProgress(orderId: string) {
     // 用SET NX确保只初始化一次
     const requiredSet = await this.redisService.setNX(redisKeyRequired, String(requiredCount), OrderDispatchService.REDIS_TTL_SECONDS * 1000)
     if (requiredSet) {
-      // 首次初始化：从数据库读取当前已接单数并同步到Redis
-      const currentAcceptedRows = await db.query(
-        `SELECT COUNT(DISTINCT avatar_id) as count
-         FROM order_dispatch_requests
-         WHERE order_id = ? AND status IN ('accepted', 'completed')`,
-        [orderId]
+      // 首次初始化：用SET NX初始化redisKeyAccepted（不覆盖已存在的INCR结果）
+      // 关键：并发时，其他请求可能已经先INCR了redisKeyAccepted，
+      // 如果用SET会覆盖INCR结果导致超卖，所以必须用SET NX
+      const acceptedSetResult = await this.redisService.getClient().set(
+        redisKeyAccepted, '0', 'NX', 'EX', OrderDispatchService.REDIS_TTL_SECONDS
       )
-      const currentAccepted = Number((currentAcceptedRows as any[])?.[0]?.count || 0)
-      await this.redisService.getClient().set(redisKeyAccepted, String(currentAccepted), 'EX', OrderDispatchService.REDIS_TTL_SECONDS)
+      if (!acceptedSetResult) {
+        // redisKeyAccepted已被其他并发请求INCR创建，无需初始化
+        this.logger.log(`redisKeyAccepted已存在，跳过初始化: orderId=${orderId}`)
+      }
     }
 
     // 独占模式校验：分身数不能超过可用素材数
@@ -911,48 +1115,19 @@ async getExecutionProgress(orderId: string) {
     }
 
     // 1.3 原子占位：INCR递增已接单计数
-    // 先检查Redis计数器是否与数据库一致，不一致则强制同步
-    try {
-      const currentAcceptedRows = await db.query(
-        `SELECT COUNT(DISTINCT avatar_id) as count
-         FROM order_dispatch_requests
-         WHERE order_id = ? AND status IN ('accepted', 'completed')`,
-        [orderId]
-      )
-      const dbAccepted = Number((currentAcceptedRows as any[])?.[0]?.count || 0)
-      const redisAccepted = await this.redisService.getCounter(redisKeyAccepted)
-      
-      if (redisAccepted !== dbAccepted) {
-        this.logger.log(`Redis计数器不一致，强制同步: orderId=${orderId}, Redis=${redisAccepted}, DB=${dbAccepted}`)
-        await this.redisService.getClient().set(redisKeyAccepted, String(dbAccepted), 'EX', OrderDispatchService.REDIS_TTL_SECONDS)
-      }
-    } catch (err: any) {
-      this.logger.warn(`Redis计数器同步失败: ${err.message}`)
-    }
+    // 关键：INCR之前不做DB同步检查！
+    // DB事务提交有延迟，并发时"先读DB再覆盖Redis"会导致INCR结果被覆盖，造成超卖。
+    // Redis计数器仅通过INCR/DECR原子操作管理，不需要从DB同步。
+    // 如果Redis计数器因重启丢失，SET NX初始化时已从DB同步过一次。
 
     // INCR是原子操作，返回递增后的值。如果超过名额，立即DECR回滚并拒绝
     // 这确保了即使100个请求同时到达，也只有requiredCount个能通过
     const redisRequiredCount = await this.redisService.getCounter(redisKeyRequired)
     const slotNumber = await this.redisService.getClient().incr(redisKeyAccepted)
     if (slotNumber > redisRequiredCount && redisRequiredCount > 0) {
-      // 超出名额，回滚占位
+      // 超出名额，回滚占位（DECR是原子操作，无需额外补偿）
+      // 不做DB同步补偿！并发时DB事务延迟会导致补偿覆盖INCR/DECR的正确结果
       await this.redisService.getClient().decr(redisKeyAccepted)
-
-      // 校验补偿：回滚后比对Redis与DB，不一致则修正
-      try {
-        const [dbCheckResult] = await pool.query(
-          `SELECT COUNT(DISTINCT CASE WHEN status IN ('accepted','completed') THEN avatar_id END) as cnt FROM order_dispatch_requests WHERE order_id = ?`,
-          [orderId]
-        )
-        const dbCnt = (dbCheckResult as any)?.cnt ?? (dbCheckResult as any)?.[0]?.cnt ?? 0
-        const currentRedis = await this.redisService.getClient().get(redisKeyAccepted)
-        const currentRedisNum = parseInt(currentRedis || '0', 10)
-        if (currentRedisNum !== dbCnt) {
-          this.logger.warn(`接单占位回滚后Redis不一致，修正: key=${redisKeyAccepted}, redis=${currentRedisNum}, db=${dbCnt}`)
-          await this.redisService.getClient().set(redisKeyAccepted, String(dbCnt), 'EX', OrderDispatchService.REDIS_TTL_SECONDS)
-        }
-      } catch (e) { /* 校验失败不影响主流程 */ }
-
       throw new ConflictException('名额已满，请抢其他订单')
     }
 
@@ -1324,11 +1499,26 @@ async getExecutionProgress(orderId: string) {
       throw new NotFoundException('分派记录不存在')
     }
     
+    const wasAccepted = request.status === 'accepted'
+    const orderId = request.orderId
+
     await db.updateWhere('order_dispatch_requests', { id: dispatchId }, {
       status: 'rejected',
       responded_at: new Date(),
       updated_at: new Date()
     })
+    
+    // 释放Redis已接单计数器（仅之前是accepted状态才需要DECR）
+    if (wasAccepted) {
+      try {
+        const redisKey = `order:accept:count:${orderId}`
+        await this.redisService.getClient().decr(redisKey)
+        this.logger.log(`declineOrder Redis DECR: key=${redisKey}, orderId=${orderId}`)
+        // 注意：不做DB同步补偿。并发时DB事务延迟会导致补偿覆盖DECR的正确结果
+      } catch (redisErr) {
+        this.logger.warn(`declineOrder Redis DECR失败(可忽略): ${(redisErr as Error).message}`)
+      }
+    }
     
     let declinedAvatarName = '分身'
     try {
@@ -1614,8 +1804,8 @@ async getExecutionProgress(orderId: string) {
       orderDescription: request.description || order.description || '',
       platforms: normalizedPlatforms,
       contentType: order.content_type || order.contentType || 'image_text',
-      // simple_task类型不需要AI生成内容，直接标记ready
-      skipGeneration: (order.content_type || order.contentType) === 'simple_task',
+      // simple类型不需要AI生成内容，直接标记ready
+      skipGeneration: (order.content_type || order.contentType) === 'simple',
       targetAudience: request.target_audience || order.targetAudience || '年轻用户',
       contentQuantity: request.quantityPerAvatar || request.quantity_per_avatar || order.quantityPerAvatar || order.quantity_per_avatar || 1,
       avatarName,
@@ -1934,22 +2124,12 @@ async getExecutionProgress(orderId: string) {
       this.logger.log(`释放素材: orderId=${orderId}, cgrId=${cgrId}, 释放${(releaseResult as any)?.affectedRows || 0}条素材`)
     }
 
-    // 6.5 释放Redis已接单计数器（含校验补偿）
+    // 6.5 释放Redis已接单计数器
     const redisKeyAccepted = `order:accept:count:${orderId}`
     try {
       const currentCount = await this.redisService.getClient().decr(redisKeyAccepted)
       this.logger.log(`Redis DECR: key=${redisKeyAccepted}, 释放后计数=${currentCount}`)
-
-      // 校验补偿：DECR后比对Redis与DB，不一致则修正
-      const [dbCountResult] = await db.query(
-        `SELECT COUNT(DISTINCT CASE WHEN status IN ('accepted','completed') THEN avatar_id END) as cnt FROM order_dispatch_requests WHERE order_id = ?`,
-        [orderId]
-      )
-      const dbCount = dbCountResult?.cnt ?? dbCountResult?.[0]?.cnt ?? 0
-      if (currentCount !== dbCount) {
-        this.logger.warn(`Redis计数不一致，修正: key=${redisKeyAccepted}, redis=${currentCount}, db=${dbCount}`)
-        await this.redisService.getClient().set(redisKeyAccepted, String(dbCount), 'EX', OrderDispatchService.REDIS_TTL_SECONDS)
-      }
+      // 注意：不做DB同步补偿。并发时DB事务延迟会导致补偿覆盖DECR的正确结果
     } catch (redisErr) {
       this.logger.warn(`Redis DECR失败(可忽略): ${(redisErr as Error).message}`)
     }
@@ -1970,21 +2150,11 @@ async getExecutionProgress(orderId: string) {
         `UPDATE order_dispatch_requests SET status = 'accepted', accepted_at = NOW(), updated_at = NOW() WHERE id = ?`,
         [pending.id]
       )
-      // 自动接单也需要 INCR Redis 计数器（含校验补偿）
+      // 自动接单也需要 INCR Redis 计数器
       try {
         const afterIncr = await this.redisService.getClient().incr(redisKeyAccepted)
         this.logger.log(`自动接单 Redis INCR: key=${redisKeyAccepted}, 计数=${afterIncr}`)
-
-        // 校验补偿：INCR后比对Redis与DB，不一致则修正
-        const [dbCountResult2] = await db.query(
-          `SELECT COUNT(DISTINCT CASE WHEN status IN ('accepted','completed') THEN avatar_id END) as cnt FROM order_dispatch_requests WHERE order_id = ?`,
-          [orderId]
-        )
-        const dbCount2 = dbCountResult2?.cnt ?? dbCountResult2?.[0]?.cnt ?? 0
-        if (afterIncr !== dbCount2) {
-          this.logger.warn(`自动接单后Redis计数不一致，修正: key=${redisKeyAccepted}, redis=${afterIncr}, db=${dbCount2}`)
-          await this.redisService.getClient().set(redisKeyAccepted, String(dbCount2), 'EX', OrderDispatchService.REDIS_TTL_SECONDS)
-        }
+        // 注意：不做DB同步补偿。并发时DB事务延迟会导致补偿覆盖INCR的正确结果
       } catch (redisErr2) {
         this.logger.warn(`自动接单 Redis INCR失败(可忽略): ${(redisErr2 as Error).message}`)
       }

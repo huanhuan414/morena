@@ -21,7 +21,7 @@ export default function RechargePage() {
   const [packages, setPackages] = useState<Package[]>([])
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null)
   const [balance, setBalance] = useState<number>(0)
-  const [loading, setLoading] = useState(true)
+  const [, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
   useDidShow(() => {
@@ -170,7 +170,7 @@ export default function RechargePage() {
               return (
                 <View
                   key={pkg.id}
-                  className={`recharge-package-item ${isSelected ? 'selected' : ''} ${hasBonus ? 'has-bonus' : ''}`}
+                  className={`recharge-package-item ${isSelected ? 'selected' : ''} ${hasBonus ? 'hasbonus' : ''}`}
                   onClick={() => setSelectedPackage(pkg.id)}
                 >
                   {hasBonus && (

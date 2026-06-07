@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import Taro, { useLoad, useRouter, navigateBack, showToast, previewImage } from '@tarojs/taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import { useState } from 'react'
@@ -180,7 +181,8 @@ export default function OrderAcceptance() {
     }
   }
 
-  const handleLinkClick = (url: string) => {
+  // @ts-ignore
+  const _handleLinkClick = (url: string) => {
     if (!url) {
       showToast({ title: '链接为空', icon: 'none' })
       return
