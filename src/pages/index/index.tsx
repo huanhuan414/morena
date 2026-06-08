@@ -807,77 +807,34 @@ const Index: React.FC = () => {
           </View>
         )}
 
+        {/* 邀请好友Banner */}
         <View
           className="banner"
           onClick={() => {
-            if (mindClones === 0) {
-              goToPage('/package-avatar/pages/avatar-create/index')
-            } else if (!allHostingEnabled) {
-              enableAllTrust()
-            } else {
-              goToPage('/package-profile/pages/referral-center/index')
-            }
+            goToPage('/package-profile/pages/referral-center/index')
           }}
         >
           <View className="banner-bg" />
           <View className="banner-content">
-            {mindClones === 0 ? (
-              <>
-                <View className="banner-tag">
-                  <Sparkles size={20} color="#FBBF24" />
-                  <Text className="banner-tag-text">0成本创业</Text>
-                </View>
-                <Text className="banner-title">创建AI分身 开始自动赚钱</Text>
-                <Text className="banner-desc">AI帮你接单+生成内容+自动发布，你只管收钱</Text>
-                <View className="banner-btn create">
-                  <Plus size={28} color="#6366F1" />
-                  <Text className="banner-btn-text create">免费创建，立即赚钱</Text>
-                </View>
-              </>
-            )
-              // : !allHostingEnabled ? (
-              // <>
-              //   <View className="banner-tag">
-              //     <Zap size={20} color="#FBBF24" />
-              //     <Text className="banner-tag-text">收益翻倍</Text>
-              //   </View>
-              //   <Text className="banner-title">开启托管 让分身24h赚钱</Text>
-              //   <Text className="banner-desc">自动抢单+自动生成+自动发布，不错过任何收益</Text>
-              //   <View className="banner-btn">
-              //     <Text className="banner-btn-text">一键开启</Text>
-              //     <ChevronRight size={24} color="#6366F1" />
-              //   </View>
-              // </>
-              // )
-              : (
-                <>
-                  <View className="banner-referral-header">
-                    <Gift size={32} color="#FBBF24" />
-                    <Text className="banner-title-referral">{BANNER_TITLE}</Text>
-                  </View>
-                  <Text className="banner-desc-referral">{BANNER_DESC(invitedCount)}</Text>
-                  <View className="banner-referral-bottom">
-                    <View className="referral-code-tag">
-                      <Text className="referral-code-text">邀请码：{referralCode || '加载中...'}</Text>
-                    </View>
-                    <View className="banner-btn-referral">
-                      <Text className="banner-btn-text-referral">立即邀请</Text>
-                      <ChevronRight size={20} color="#FFFFFF" />
-                    </View>
-                  </View>
-                </>
-              )}
+            <View className="banner-referral-header">
+              <Gift size={32} color="#FBBF24" />
+              <Text className="banner-title-referral">{BANNER_TITLE}</Text>
+            </View>
+            <Text className="banner-desc-referral">{BANNER_DESC(invitedCount)}</Text>
+            <View className="banner-referral-bottom">
+              <View className="referral-code-tag">
+                <Text className="referral-code-text">邀请码：{referralCode || '加载中...'}</Text>
+              </View>
+              <View className="banner-btn-referral">
+                <Text className="banner-btn-text-referral">立即邀请</Text>
+                <ChevronRight size={20} color="#FFFFFF" />
+              </View>
+            </View>
           </View>
           <View className="banner-decoration">
             <View className="deco-circle circle-1" />
             <View className="deco-circle circle-2" />
-            {mindClones === 0 ? (
-              <Rocket size={100} color="rgba(255,255,255,0.15)" />
-            ) : !allHostingEnabled ? (
-              <Zap size={100} color="rgba(255,255,255,0.15)" />
-            ) : (
-              <Gift size={100} color="rgba(255,255,255,0.15)" />
-            )}
+            <Gift size={100} color="rgba(255,255,255,0.15)" />
           </View>
         </View>
 
