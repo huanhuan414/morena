@@ -47,15 +47,37 @@ export class WithdrawService {
       throw new Error('请先绑定微信账号');
     }
 
+    // 2. 检查提现金额规则
+    // 查询推荐人数
+    const [referralRows] = await pool.query(
+      `SELECT COUNT(*) as referralCount FROM referrals WHERE referrer_id = ?`,
+      [userId]
+    ) as any[];
+    const referralCount = Number(referralRows?.[0]?.referralCount) || 0;
+
+    // 判断提现门槛
+    const MIN_AMOUNT_NORMAL = 100; // 普通用户最低提现金额
+    const MIN_AMOUNT_VIP = 20;     // 推荐2人以上最低提现金额
+    const MULTIPLE = 20;            // 提现金额必须是20的倍数
+
+    const minAmount = referralCount >= 2 ? MIN_AMOUNT_VIP : MIN_AMOUNT_NORMAL;
+
     if (amount <= 0) {
       throw new Error('提现金额必须大于0');
     }
 
-    if (amount < 1) {
-      throw new Error('最小提现金额为1元');
+    if (amount < minAmount) {
+      const condition = referralCount >= 2  
+        ? `已推荐2人及以上，可享最低提现${MIN_AMOUNT_VIP}元` 
+        : `还需推荐${2 - referralCount}人及以上可享低门槛，当前最低提现${MIN_AMOUNT_NORMAL}元`;
+      throw new Error(`提现金额不足，${condition}`);
     }
 
-    // 2. 计算可提现余额
+    if (amount % MULTIPLE !== 0) {
+      throw new Error(`提现金额必须是${MULTIPLE}的倍数`);
+    }
+
+    // 3. 计算可提现余额
     const [settledEarnings] = await pool.query(
       `SELECT amount, fee_rate FROM earnings WHERE user_id = ? AND status = 'settled'`,
       [userId]
@@ -69,7 +91,7 @@ export class WithdrawService {
       return sum + calcActualAmount(Number(e.amount), Number(e.fee_rate || 0));
     }, 0);
 
-    // 3. 查询提现记录表中的金额
+    // 4. 查询提现记录表中的金额
     const [withdrawStats] = await pool.query(
       `SELECT 
          SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END) as completedWithdraw,
@@ -88,7 +110,7 @@ export class WithdrawService {
       throw new Error(`可提现余额不足，当前可提现: ${availableBalance.toFixed(2)}元`);
     }
 
-    // 4. 检查是否有正在处理中的提现
+    // 5. 检查是否有正在处理中的提现
     const [pendingWithdraws] = await pool.query(
       `SELECT id FROM withdraw_logs WHERE user_id = ? AND status IN ('pending', 'processing')`,
       [userId]
@@ -98,7 +120,7 @@ export class WithdrawService {
       throw new Error('您有正在处理中的提现申请，请等待完成后再申请');
     }
 
-    // 5. 创建提现记录（状态为 pending，等待审核）
+    // 6. 创建提现记录（状态为 pending，等待审核）
     const withdrawLogId = crypto.randomUUID();
     const outTradeNo = `WD${Date.now()}${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 

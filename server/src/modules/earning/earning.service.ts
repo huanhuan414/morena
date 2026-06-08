@@ -83,9 +83,15 @@ export class EarningService {
         return sum + actualAmount
       }, 0)
 
-    // 统计订单数和推荐数(邀请奖励)
+    // 统计订单数
     const totalOrders = earnings.filter(e => e.type === 'order_reward').length
-    const totalReferrals = earnings.filter(e => e.type === 'referral_bonus').length
+
+    // 查询 referrals 表中的推荐人数（用于提现门槛判断）
+    const [referralRows] = await pool.query(
+      `SELECT COUNT(*) as referralCount FROM referrals WHERE referrer_id = ?`,
+      [userId]
+    ) as any[];
+    const referralCount = Number(referralRows?.[0]?.referralCount) || 0;
 
     return {
       balance,                       // 可提现余额 = settled - (已结算 + 结算中)
@@ -96,7 +102,7 @@ export class EarningService {
       processingAmount,              // 审核中 = 提现记录表 processing
       monthlyAmount,                 // 本月收益（排除 rejected 和 expired）
       totalOrders,                   // 统计订单数
-      totalReferrals                 // 推荐数(邀请奖励)数
+      referralCount                  // 推荐人数（referrals表中referrer_id=userId的记录数）
     }
   }
 

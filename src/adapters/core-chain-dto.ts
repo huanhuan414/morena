@@ -84,7 +84,7 @@ export interface EarningOverview {
   processingAmount: number
   monthlyAmount: number
   totalOrders: number
-  totalReferrals: number
+  referralCount: number  // 推荐人数（referrals表中referrer_id=userId的记录数）
 }
 
 export interface EarningRecord {
@@ -244,7 +244,7 @@ export function normalizeEarningOverview(raw: any): EarningOverview {
     processingAmount: toNumber(source.processingAmount || source.processing_amount || 0),
     monthlyAmount: toNumber(source.monthlyAmount),
     totalOrders: toNumber(source.totalOrders),
-    totalReferrals: toNumber(source.totalReferrals),
+    referralCount: toNumber(source.referralCount),
   }
 }
 

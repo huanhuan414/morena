@@ -10,7 +10,7 @@ import {
 } from '@/adapters/core-chain-dto'
 import { Network } from '@/network'
 import { formatNum, toNumber } from '@/utils/format'
-import { ArrowDownToLine, Sparkles, ArrowLeft, X } from 'lucide-react-taro'
+import { ArrowDownToLine, Sparkles, ArrowLeft, X, Info } from 'lucide-react-taro'
 import './index.css'
 
 export default function EarningCenterPage() {
@@ -23,12 +23,13 @@ export default function EarningCenterPage() {
     processingAmount: 0,
     monthlyAmount: 0,
     totalOrders: 0,
-    totalReferrals: 0
+    referralCount: 0
   })
   const [records, setRecords] = useState<EarningRecord[]>([])
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'earning' | 'withdraw'>('earning')
   const [withdrawRecords, setWithdrawRecords] = useState<any[]>([])
+  const [showRuleModal, setShowRuleModal] = useState(false)
 
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [showWithdrawModal, setShowWithdrawModal] = useState(false)
@@ -101,7 +102,7 @@ export default function EarningCenterPage() {
   const handleWithdraw = () => {
     const balance = toNumber(overview.balance)
     if (balance < 1) {
-      showToast({ title: '余额不足1元，无法提现', icon: 'none' })
+      showToast({ title: '余额不足，无法提现', icon: 'none' })
       return
     }
     // 打开提现弹窗
@@ -117,14 +118,18 @@ export default function EarningCenterPage() {
       showToast({ title: '请输入正确的提现金额', icon: 'none' })
       return
     }
-
-    if (amount < 1) {
-      showToast({ title: '最小提现金额为1元', icon: 'none' })
+    if (amount > balance) {
+      showToast({ title: `余额不足，当前余额: ${balance.toFixed(2)}元`, icon: 'none' })
       return
     }
 
-    if (amount > balance) {
-      showToast({ title: `余额不足，当前余额: ${balance.toFixed(2)}元`, icon: 'none' })
+    // 使用公共验证函数
+    if (!validateWithdrawAmount(amount)) {
+      return
+    }
+    // 检查金额是否是20的倍数
+    if (amount % 20 !== 0) {
+      showToast({ title: '提现金额必须是20的倍数', icon: 'none' })
       return
     }
 
@@ -152,8 +157,53 @@ export default function EarningCenterPage() {
     }
   }
 
+  // 验证提现金额，返回是否有效
+  const validateWithdrawAmount = (amount: number): boolean => {
+    const referralCount = toNumber(overview.referralCount)
+    const MIN_AMOUNT_NORMAL = 100
+    const MIN_AMOUNT_VIP = 20
+    const MULTIPLE = 20
+
+    const minAmount = referralCount >= 2 ? MIN_AMOUNT_VIP : MIN_AMOUNT_NORMAL
+
+    if (amount < minAmount) {
+      showToast({
+        title: referralCount >= 2
+          ? `提现金额不能低于${minAmount}元`
+          : `提现金额不能低于${minAmount}元，还需推荐${Math.max(0, 2 - referralCount)}人可享低门槛`,
+        icon: 'none'
+      })
+      return false
+    }
+
+    if (amount % MULTIPLE !== 0) {
+      showToast({ title: '提现金额必须是20的倍数', icon: 'none' })
+      return false
+    }
+
+    return true
+  }
+
   const handleWithdrawAll = () => {
-    setWithdrawAmount(String(toNumber(overview.balance)))
+    const balance = toNumber(overview.balance)
+    const referralCount = toNumber(overview.referralCount)
+    const MIN_AMOUNT_VIP = 20
+    const MULTIPLE = 20
+
+    const minAmount = referralCount >= 2 ? MIN_AMOUNT_VIP : 100
+    const maxMultiple = Math.floor(balance / MULTIPLE) * MULTIPLE
+
+    if (maxMultiple < minAmount) {
+      showToast({
+        title: referralCount >= 2
+          ? `余额不足${minAmount}元，无法提现`
+          : `余额不足${minAmount}元，还需推荐${Math.max(0, 2 - referralCount)}人可享低门槛`,
+        icon: 'none'
+      })
+      return
+    }
+
+    setWithdrawAmount(String(maxMultiple))
   }
 
   const getTypeInfo = (type: string) => {
@@ -214,10 +264,18 @@ export default function EarningCenterPage() {
       </View>
 
       {/* 收益概览卡片 */}
-      <View className="overview-section">
+      <View
+        className="overview-section"
+        style={{ paddingTop: `${statusBarHeight + 90}px` }}
+      >
         <View className="overview-card">
           <View className="overview-main">
-            <Text className="overview-label">可提现余额</Text>
+            <View className="balance-header">
+              <Text className="overview-label">可提现余额</Text>
+              <View className="help-btn" onClick={() => setShowRuleModal(true)}>
+                <Info size={20} color="#fbbf24" />
+              </View>
+            </View>
             <View className="balance-wrap">
               <Text className="currency">¥</Text>
               <Text className="balance-amount">{formatNum(overview.balance)}</Text>
@@ -399,8 +457,10 @@ export default function EarningCenterPage() {
               </View>
 
               <View className="withdraw-tips">
-                <Text className="withdraw-tip-item">• 最小提现金额：1元</Text>
-                <Text className="withdraw-tip-item">• 提现将直接到微信零钱</Text>
+                <Text className="withdraw-tip-item">• 推荐2人及以上：最低提现20元</Text>
+                <Text className="withdraw-tip-item">• 未推荐2人：最低提现100元</Text>
+                <Text className="withdraw-tip-item">• 提现金额必须是20的倍数</Text>
+                {/* <Text className="withdraw-tip-item">• 提现将直接到微信零钱 </Text> */}
                 <Text className="withdraw-tip-item">• 提现成功后不可撤销</Text>
               </View>
             </View>
@@ -410,7 +470,7 @@ export default function EarningCenterPage() {
                 className="withdraw-cancel-btn"
                 onClick={() => setShowWithdrawModal(false)}
               >
-                取消
+                ``      取消
               </Button>
               <Button
                 className="withdraw-confirm-btn"
@@ -419,6 +479,75 @@ export default function EarningCenterPage() {
               >
                 {withdrawLoading ? '处理中...' : '确认提现'}
               </Button>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* 提现规则说明弹窗 */}
+      {showRuleModal && (
+        <View className="rule-modal-overlay" onClick={() => setShowRuleModal(false)}>
+          <View className="rule-modal" onClick={(e) => e.stopPropagation()}>
+            <View className="rule-modal-header">
+              <View className="rule-modal-icon">
+                <Info size={28} color="#fff" />
+              </View>
+              <Text className="rule-modal-title">提现规则说明</Text>
+            </View>
+            <View className="rule-modal-body">
+              {/* 用户当前状态 */}
+              <View className="rule-status-card">
+                <Text className="rule-status-title">您的当前状态</Text>
+                <View className="rule-status-content">
+                  <Text className="rule-status-label">已推荐好友：</Text>
+                  <Text className="rule-status-value">
+                    {overview.referralCount} 人
+                  </Text>
+                  <Text className="rule-status-desc">
+                    {overview.referralCount >= 2 ? '，已满足低门槛提现条件' : `，还需再推荐${Math.max(0, 2 - overview.referralCount)}人`}
+                  </Text>
+                </View>
+                <View className="rule-status-content">
+                  <Text className="rule-status-label">您的提现门槛：</Text>
+                  <Text className="rule-status-value">
+                    {overview.referralCount >= 2 ? '20元起' : '100元起'}
+                  </Text>
+                </View>
+              </View>
+
+              <View className="rule-item">
+                <View className="rule-number">1</View>
+                <View className="rule-content">
+                  <Text className="rule-title">低门槛提现</Text>
+                  <Text className="rule-desc">推荐 <Text className="rule-highlight">2人及以上</Text> 好友注册，即可享受最低 <Text className="rule-highlight">20元</Text> 提现门槛</Text>
+                </View>
+              </View>
+              <View className="rule-item">
+                <View className="rule-number">2</View>
+                <View className="rule-content">
+                  <Text className="rule-title">普通提现</Text>
+                  <Text className="rule-desc">未达到推荐要求，最低提现金额为 <Text className="rule-highlight">100元</Text></Text>
+                </View>
+              </View>
+              <View className="rule-item">
+                <View className="rule-number">3</View>
+                <View className="rule-content">
+                  {/* <Text className="rule-title">提现倍数</Text> */}
+                  <Text className="rule-desc">提现金额必须是 <Text className="rule-highlight">20元</Text> 的倍数（如：20元、40元、60元...）</Text>
+                </View>
+              </View>
+              {/* <View className="rule-item">
+                <View className="rule-number">4</View>
+                <View className="rule-content">
+                  <Text className="rule-title">到账方式</Text>
+                  <Text className="rule-desc">提现申请提交后，管理员审核通过后直接转入您的 <Text className="rule-highlight">微信零钱</Text></Text>
+                </View>
+              </View> */}
+            </View>
+            <View className="rule-modal-footer">
+              <View className="rule-modal-close" onClick={() => setShowRuleModal(false)}>
+                <Text>我知道了</Text>
+              </View>
             </View>
           </View>
         </View>
