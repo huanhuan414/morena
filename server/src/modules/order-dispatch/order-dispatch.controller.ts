@@ -52,6 +52,19 @@ export class OrderDispatchController {
   }
 
   /**
+   * 获取订单名额状态（用于前端检查是否可接单）
+   */
+  @Get(':id/quota')
+  async getQuotaStatus(@Param('id') orderId: string) {
+    const quotaStatus = await this.dispatchService.getQuotaStatus(orderId)
+    return {
+      code: 200,
+      data: quotaStatus,
+      message: quotaStatus.isFull ? '名额已满，请抢其他订单' : '获取成功'
+    }
+  }
+
+  /**
    * 获取推荐分身列表
    */
   @Get('recommend/:orderId')

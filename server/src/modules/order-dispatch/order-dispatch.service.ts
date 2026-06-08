@@ -659,6 +659,48 @@ async getExecutionProgress(orderId: string) {
     }
   }
 
+  /**
+   * 获取订单名额状态（用于前端检查是否可接单）
+   */
+  async getQuotaStatus(orderId: string) {
+    const db = getMySQLClient()
+    
+    // 查询订单的名额限制
+    const orderRows = await db.query(
+      `SELECT id, avatar_count, expected_quantity FROM orders WHERE id = ? LIMIT 1`,
+      [orderId]
+    ) as any[]
+    
+    if (!orderRows || orderRows.length === 0) {
+      return { exists: false, acceptedCount: 0, totalQuota: 0, remainingQuota: 0, isFull: true }
+    }
+    
+    const order = orderRows[0]
+    const totalQuota = Math.max(
+      Number(order.avatar_count) || 0,
+      Number(order.expected_quantity) || 1,
+      1
+    )
+    
+    // 查询已接单数量
+    const acceptedRows = await db.query(
+      `SELECT COUNT(*) as count FROM order_dispatch_requests WHERE order_id = ? AND status IN ('accepted', 'completed')`,
+      [orderId]
+    ) as any[]
+    const acceptedCount = Number(acceptedRows?.[0]?.count || 0)
+    
+    const remainingQuota = Math.max(0, totalQuota - acceptedCount)
+    const isFull = acceptedCount >= totalQuota
+    
+    return {
+      exists: true,
+      acceptedCount,
+      totalQuota,
+      remainingQuota,
+      isFull
+    }
+  }
+
   async dispatchToAvatar(orderId: string, avatarId: string) {
     const db = getMySQLClient()
     

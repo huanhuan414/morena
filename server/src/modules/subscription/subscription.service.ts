@@ -37,7 +37,7 @@ export class SubscriptionService {
     const db = getMySQLClient()
     const subscriptions = await db.query(
       'SELECT us.id, us.status, us.start_date, us.end_date, us.plan_id, ' +
-      'sp.name as plan_name, sp.price as plan_price, sp.duration_days, sp.max_avatars, sp.can_receive_orders ' +
+      'sp.name as plan_name, sp.price as plan_price, sp.duration_days, sp.max_avatars, sp.can_receive_orders, sp.platform_fee_rate ' +
       'FROM user_subscriptions us ' +
       'LEFT JOIN subscription_plans sp ON us.plan_id = sp.id ' +
       'WHERE us.user_id = ? ORDER BY us.created_at DESC LIMIT 1',
@@ -57,6 +57,7 @@ export class SubscriptionService {
       endDate: sub.endDate || sub.end_date,
       maxAvatars: sub.maxAvatars || sub.max_avatars,
       canReceiveOrders: sub.canReceiveOrders || sub.can_receive_orders,
+      platformFeeRate: sub.platformFeeRate || sub.platform_fee_rate || 0.20,
       plan: {
         id: sub.planId || sub.plan_id,
         name: sub.planName || sub.plan_name,
@@ -64,6 +65,7 @@ export class SubscriptionService {
         durationDays: sub.durationDays || sub.duration_days,
         maxAvatars: sub.maxAvatars || sub.max_avatars,
         canReceiveOrders: sub.canReceiveOrders || sub.can_receive_orders,
+        platformFeeRate: sub.platformFeeRate || sub.platform_fee_rate || 0.20,
       }
     }
   }

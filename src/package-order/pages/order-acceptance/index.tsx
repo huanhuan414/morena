@@ -145,10 +145,13 @@ export default function OrderAcceptance() {
         setShowApprove(false)
         setSelectedAvatar(null)
         fetchAvatars()
+      } else {
+        // 显示后端返回的具体错误信息
+        showToast({ title: res.data?.message || '验收失败', icon: 'none' })
       }
     } catch (error) {
       console.error('验收失败:', error)
-      showToast({ title: '验收失败', icon: 'none' })
+      showToast({ title: '验收失败，请重试', icon: 'none' })
     }
   }
 

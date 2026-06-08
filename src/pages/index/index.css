@@ -860,6 +860,11 @@
   font-size: 32rpx !important;
   font-weight: 700 !important;
 }
+.po-cb-card-tip {
+  font-size: 22rpx;
+  color: #999;
+  margin-top: 4rpx;
+}
 
 /* 操作按钮行 */
 .po-card-actions {
@@ -916,6 +921,11 @@
 }
 .po-btn-label-primary {
   color: #FFFFFF;
+}
+.po-btn-label-secondary {
+  color: rgba(255,255,255,0.8);
+  font-size: 22rpx;
+  font-weight: 400;
 }
 .po-btn-mini-spinner {
   width: 24rpx;

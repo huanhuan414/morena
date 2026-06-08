@@ -834,7 +834,7 @@ export class OrderService {
     const rows = await db.query(
       `SELECT o.id, o.user_id, o.avatar_id, o.title, o.description, o.content_type, o.platforms, o.platform,
               o.requirements, o.target_audience, o.priority, o.deadline, o.content_deadline_at,
-              o.budget, o.base_amount, o.content_amount, o.price, o.status, o.expected_quantity, o.avatar_count, o.quantity_per_avatar, o.is_paid,
+              o.budget, o.base_amount, o.custom_base_price, o.content_amount, o.price, o.status, o.expected_quantity, o.avatar_count, o.quantity_per_avatar, o.is_paid,
               o.accept_regions, o.personality,
               o.created_at, o.updated_at,
               COALESCE(a_order.name, a_latest.name, u.nickname) as publisher_nickname,
@@ -906,6 +906,7 @@ export class OrderService {
       contentDeadlineAt: row.contentDeadlineAt || row.content_deadline_at || null,
       budget: Number(row.budget || 0),
       baseAmount: Number(row.baseAmount || row.base_amount || row.budget || 0),
+      customBasePrice: Number(row.customBasePrice || row.custom_base_price || 0),
       contentAmount: Number(row.contentAmount || row.content_amount || 0),
       price: Number(row.price || row.price || 0),
       status: row.status,
