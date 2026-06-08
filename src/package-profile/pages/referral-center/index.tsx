@@ -187,11 +187,18 @@ export default function ReferralCenter() {
           <Text className="ref-stat-label">邀请积分</Text>
         </View>
         <View className="ref-stat-item">
+          <View className="ref-stat-icon blue">
+            <Clock size={16} color="#3B82F6" />
+          </View>
+          <Text className="ref-stat-value">{dailyLimit.current}</Text>
+          <Text className="ref-stat-label">今日邀请</Text>
+        </View>
+        <View className="ref-stat-item">
           <View className="ref-stat-icon green">
             <TrendingUp size={16} color="#10B981" />
           </View>
           <Text className="ref-stat-value">{tierInfo.currentTier?.tier_level || 1}</Text>
-          <Text className="ref-stat-label">当前等级</Text>
+          <Text className="ref-stat-label">阶梯等级</Text>
         </View>
       </View>
 
@@ -229,7 +236,7 @@ export default function ReferralCenter() {
             <View className="ref-step-line" />
             <View className="ref-step-content">
               <Text className="ref-step-title">好友注册</Text>
-              <Text className="ref-step-desc">新用户使用邀请码完成注册</Text>
+              <Text className="ref-step-desc">新用户使用邀请码注册，享会员首冲8折</Text>
             </View>
           </View>
           <View className="ref-step">
@@ -270,7 +277,7 @@ export default function ReferralCenter() {
           </View>
         ) : (
           <View className="ref-list">
-            {referralList.map((item, idx) => (
+            {referralList.slice(0, 3).map((item, idx) => (
               <View key={idx} className="ref-invite-card">
                 {/* 卡片头部 */}
                 <View className="ref-card-header">
@@ -282,7 +289,7 @@ export default function ReferralCenter() {
                     <Text className="ref-card-time">邀请时间：{formatTime(item.invite_time || item.created_at)}</Text>
                   </View>
                 </View>
-                
+
                 {/* 卡片内容 */}
                 {item.has_commission && item.commission_records && item.commission_records.length > 0 ? (
                   <View className="ref-card-content">
@@ -300,7 +307,7 @@ export default function ReferralCenter() {
                         </View>
                       ))}
                     </View>
-                    
+
                     {/* 总返佣 */}
                     <View className="ref-card-total">
                       <Text className="ref-card-total-label">总返佣：</Text>
@@ -315,6 +322,12 @@ export default function ReferralCenter() {
                 )}
               </View>
             ))}
+          </View>
+        )}
+        {referralList.length > 3 && (
+          <View className="ref-more-btn-bottom" onClick={() => Taro.navigateTo({ url: '/package-profile/pages/referral-list/index' })}>
+            <Text className="ref-more-text">查看全部 {referralList.length} 条记录</Text>
+            <ChevronRight size={14} color="#7C3AED" />
           </View>
         )}
       </View>
@@ -563,12 +576,7 @@ export default function ReferralCenter() {
           <Text className="ref-section-title">活动规则</Text>
         </View>
         <View className="ref-rules-list">
-          <View className="ref-rule-item">
-            <View className="ref-rule-icon" style={{ background: '#10B981' }}>
-              <Target size={12} color="#fff" />
-            </View>
-            <Text className="ref-rule-text">邀请人需Lv1及以上用户</Text>
-          </View>
+          
           <View className="ref-rule-item">
             <View className="ref-rule-icon" style={{ background: '#8B5CF6' }}>
               <Gift size={12} color="#fff" />
@@ -585,7 +593,7 @@ export default function ReferralCenter() {
             <View className="ref-rule-icon" style={{ background: '#3B82F6' }}>
               <Zap size={12} color="#fff" />
             </View>
-            <Text className="ref-rule-text">每人每日最多邀请50人</Text>
+            <Text className="ref-rule-text">每人每日最多邀请50人，超出部分不计入奖励</Text>
           </View>
           <View className="ref-rule-item">
             <View className="ref-rule-icon" style={{ background: '#EF4444' }}>

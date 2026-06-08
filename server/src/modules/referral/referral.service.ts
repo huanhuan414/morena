@@ -154,7 +154,7 @@ export class ReferralService {
   /**
    * 获取邀请列表
    */
-  async getReferralList(userId: string, page = 1, pageSize = 10) {
+  async getReferralList(userId: string, page = 1, pageSize = 1000) {
     const db = getMySQLClient()
 
     console.log('[ReferralService] getReferralList userId:', userId)
@@ -490,9 +490,9 @@ export class ReferralService {
       
       // 记录收益
       await db.query(
-        `INSERT INTO earnings 
+        `INSERT INTO earnings
          (id, user_id, type, amount, description, status, created_at)
-         VALUES (?, ?, 'referral_bonus', ?, '邀请好友奖励', 'completed', NOW())`,
+         VALUES (?, ?, 'referral_bonus', ?, '邀请好友奖励', 'settled', NOW())`,
         [crypto.randomUUID(), referrerId, currentTier.base_reward]
       )
     }
@@ -571,9 +571,9 @@ export class ReferralService {
     
     // 记录收益到earnings表
     await db.query(
-      `INSERT INTO earnings 
+      `INSERT INTO earnings
        (id, user_id, type, amount, description, status, created_at)
-       VALUES (?, ?, 'referral_commission', ?, '邀请返佣', 'completed', NOW())`,
+       VALUES (?, ?, 'referral_commission', ?, '邀请返佣', 'settled', NOW())`,
       [crypto.randomUUID(), referrerId, commissionAmount]
     )
     
@@ -606,9 +606,9 @@ export class ReferralService {
     
     // 记录收益
     await db.query(
-      `INSERT INTO earnings 
+      `INSERT INTO earnings
        (id, user_id, type, amount, description, status, created_at)
-       VALUES (?, ?, 'referral_commission', ?, '邀请返佣', 'completed', NOW())`,
+       VALUES (?, ?, 'referral_commission', ?, '邀请返佣', 'settled', NOW())`,
       [crypto.randomUUID(), referrerId, commission.commission_amount]
     )
     

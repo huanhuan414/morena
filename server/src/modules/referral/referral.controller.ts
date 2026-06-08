@@ -80,7 +80,7 @@ export class ReferralController {
         const result = await this.referralService.getReferralList(
           userId,
           page ? parseInt(page) : 1,
-          pageSize ? parseInt(pageSize) : 20
+          pageSize ? parseInt(pageSize) : 1000
         )
         console.log('[ReferralController] getReferralList result:', result)
         return { code: 200, data: result, message: '获取成功' }
