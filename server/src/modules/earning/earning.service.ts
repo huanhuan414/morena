@@ -10,6 +10,8 @@ export class EarningService {
    * 使用 amount 和 feeRate 计算实际金额：实际金额 = amount * (1 - feeRate)
    * 
    * 状态流转：settled(刚创建) -> pending(提现待审核) -> processing(提现审核中) -> completed(提现成功)
+   * 
+   * 可提现余额 = settled状态收益 - (提现记录表已结算 + 结算中金额)
    */
   async getEarningsOverview(userId: string) {
     const pool = getPool()
@@ -37,40 +39,38 @@ export class EarningService {
       return sum + actualAmount
     }, 0)
 
-    // 可提现余额 = settled
-    const balance = earnings
+    // settled 可提现余额
+    const settledAmount = earnings
       .filter(e => e.status === 'settled')
       .reduce((sum: number, e: any) => {
         const actualAmount = calcActualAmount(Number(e.amount), Number(e.fee_rate || 0))
         return sum + actualAmount
       }, 0)
 
-    // 已结算 = completed
-    const completedAmount = earnings
-      .filter(e => e.status === 'completed')
-      .reduce((sum: number, e: any) => {
-        const actualAmount = calcActualAmount(Number(e.amount), Number(e.fee_rate || 0))
-        return sum + actualAmount
-      }, 0)
+    // 查询提现记录表中的金额
+    const [withdrawStats] = await pool.query(
+      `SELECT 
+         SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END) as completedWithdraw,
+         SUM(CASE WHEN status IN ('processing', 'pending') THEN amount ELSE 0 END) as settlingWithdraw,
+         SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) as pendingWithdraw,
+         SUM(CASE WHEN status = 'processing' THEN amount ELSE 0 END) as processingWithdraw
+       FROM withdraw_logs WHERE user_id = ?`,
+      [userId]
+    ) as any[]
 
-    // 待审核 = pending
-    const pendingAmount = earnings
-      .filter(e => e.status === 'pending')
-      .reduce((sum: number, e: any) => {
-        const actualAmount = calcActualAmount(Number(e.amount), Number(e.fee_rate || 0))
-        return sum + actualAmount
-      }, 0)
+    const completedWithdraw = Number(withdrawStats?.[0]?.completedWithdraw) || 0
+    const settlingWithdraw = Number(withdrawStats?.[0]?.settlingWithdraw) || 0
+    const pendingAmount = Number(withdrawStats?.[0]?.pendingWithdraw) || 0
+    const processingAmount = Number(withdrawStats?.[0]?.processingWithdraw) || 0
 
-    // 审核中 = processing
-    const processingAmount = earnings
-      .filter(e => e.status === 'processing')
-      .reduce((sum: number, e: any) => {
-        const actualAmount = calcActualAmount(Number(e.amount), Number(e.fee_rate || 0))
-        return sum + actualAmount
-      }, 0)
+    // 可提现余额 = settled状态收益 - (提现记录表已结算 + 结算中金额)
+    const balance = Number((settledAmount - completedWithdraw - settlingWithdraw).toFixed(2))
 
-    // 结算中 = pending + processing
-    const settlingAmount = pendingAmount + processingAmount
+    // 已结算 = 提现记录表中 completed 状态金额
+    const completedAmount = completedWithdraw
+
+    // 结算中 = 提现记录表中 processing + pending 状态金额
+    const settlingAmount = settlingWithdraw
 
     // 本月收益 = 排除 rejected 和 expired
     const monthlyAmount = earnings
@@ -88,12 +88,12 @@ export class EarningService {
     const totalReferrals = earnings.filter(e => e.type === 'referral_bonus').length
 
     return {
-      balance,                       // 可提现余额 = settled
+      balance,                       // 可提现余额 = settled - (已结算 + 结算中)
       totalEarnings,                 // 累计收益 = 全部状态
-      completedAmount,               // 已结算 = completed
-      settlingAmount,                // 结算中 = pending + processing
-      pendingAmount,                 // 待审核 = pending
-      processingAmount,              // 审核中 = processing
+      completedAmount,               // 已结算 = 提现记录表 completed
+      settlingAmount,                // 结算中 = 提现记录表 processing + pending
+      pendingAmount,                 // 待审核 = 提现记录表 pending
+      processingAmount,              // 审核中 = 提现记录表 processing
       monthlyAmount,                 // 本月收益（排除 rejected 和 expired）
       totalOrders,                   // 统计订单数
       totalReferrals                 // 推荐数(邀请奖励)数

@@ -43,6 +43,7 @@ import { AiSkillModule } from './modules/ai-skill/ai-skill.module';
 import { OrderAssetsModule } from './modules/order-assets/order-assets.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { CoinModule } from './modules/coin/coin.module';
+import { WithdrawModule } from './modules/withdraw/withdraw.module';
 
 @Module({
   imports: [
@@ -86,7 +87,8 @@ import { CoinModule } from './modules/coin/coin.module';
     VideoGenModule,
     AiSkillModule,
     OrderAssetsModule,
-    CoinModule
+    CoinModule,
+    WithdrawModule
   ],
   controllers: [AppController],
   providers: [AppService],

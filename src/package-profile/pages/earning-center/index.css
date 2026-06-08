@@ -702,3 +702,209 @@
 [data-theme="dark"] .record-item {
   border-color: rgba(255, 255, 255, 0.05);
 }
+
+/* 提现弹窗样式 */
+.withdraw-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.withdraw-modal {
+  width: 600rpx;
+  background: var(--bg-card);
+  border-radius: 24rpx;
+  overflow: hidden;
+}
+
+.withdraw-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32rpx;
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.1);
+}
+
+.withdraw-modal-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.withdraw-modal-close {
+  padding: 8rpx;
+}
+
+.withdraw-modal-body {
+  padding: 32rpx;
+}
+
+.withdraw-balance-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32rpx;
+  padding: 24rpx;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16rpx;
+}
+
+.withdraw-balance-label {
+  font-size: 28rpx;
+  color: var(--text-secondary);
+}
+
+.withdraw-balance-value {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #00ff88;
+}
+
+.withdraw-input-wrapper {
+  margin-bottom: 24rpx;
+}
+
+.withdraw-input-label {
+  font-size: 28rpx;
+  color: var(--text-secondary);
+  margin-bottom: 16rpx;
+}
+
+.withdraw-input-box {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12rpx;
+  padding: 20rpx 24rpx;
+  margin-bottom: 16rpx;
+}
+
+.withdraw-input-prefix {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-right: 12rpx;
+}
+
+.withdraw-input {
+  flex: 1;
+  font-size: 32rpx;
+  color: var(--text-primary);
+  background: transparent;
+}
+
+.withdraw-all-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16rpx 24rpx;
+  background: rgba(0, 255, 136, 0.1);
+  border-radius: 8rpx;
+}
+
+.withdraw-all-text {
+  font-size: 26rpx;
+  color: #00ff88;
+}
+
+.withdraw-tips {
+  padding: 20rpx;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12rpx;
+}
+
+.withdraw-tip-item {
+  font-size: 24rpx;
+  color: var(--text-tertiary);
+  line-height: 40rpx;
+}
+
+.withdraw-modal-footer {
+  display: flex;
+  gap: 24rpx;
+  padding: 24rpx 32rpx 32rpx;
+}
+
+.withdraw-cancel-btn {
+  flex: 1;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  color: var(--text-secondary);
+}
+
+.withdraw-confirm-btn {
+  flex: 1;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #00ff88, #00d4aa);
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #000;
+}
+
+.withdraw-confirm-btn[disabled] {
+  opacity: 0.6;
+}
+
+/* Tab 切换样式 */
+.tab-switch {
+  display: flex;
+  gap: 12rpx;
+  background: rgba(251, 191, 36, 0.08);
+  border-radius: var(--radius-lg);
+  padding: 6rpx;
+  backdrop-filter: blur(10px);
+  border: 1rpx solid rgba(251, 191, 36, 0.15);
+}
+
+.tab-item {
+  flex: 1;
+  padding: 20rpx 32rpx;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tab-item.active {
+  background: rgba(251, 191, 36, 0.25);
+  box-shadow: 0 4rpx 16rpx rgba(251, 191, 36, 0.3);
+}
+
+.tab-item:active {
+  transform: scale(0.98);
+}
+
+.tab-text {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--text-secondary);
+  transition: all 0.3s ease;
+}
+
+.tab-text.active {
+  font-weight: 700;
+}
+
+/* 拒绝原因样式 */
+.record-remark {
+  font-size: 22rpx;
+  color: #ff6b6b;
+  margin-top: 4rpx;
+}
