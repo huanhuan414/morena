@@ -652,6 +652,13 @@
   color: var(--text-tertiary);
 }
 
+.record-fee-formula {
+  font-size: 24rpx;
+  color: #6b7280;
+  font-weight: 500;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
 .record-right {
   display: flex;
   flex-direction: column;

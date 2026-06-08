@@ -17,7 +17,10 @@ export default function EarningCenterPage() {
   const [overview, setOverview] = useState<EarningOverview>({
     balance: 0,
     totalEarnings: 0,
+    completedAmount: 0,
+    settlingAmount: 0,
     pendingAmount: 0,
+    processingAmount: 0,
     monthlyAmount: 0,
     totalOrders: 0,
     totalReferrals: 0
@@ -93,21 +96,21 @@ export default function EarningCenterPage() {
   const getTypeInfo = (type: string) => {
     const typeMap: Record<string, { label: string; icon: string; color: string }> = {
       order_reward: { label: '订单收益', icon: '💰', color: '#00ff88' },
-      order_income: { label: '订单收益', icon: '💰', color: '#00ff88' },
+      // order_income: { label: '订单收益', icon: '💰', color: '#00ff88' },
       referral_bonus: { label: '邀请奖励', icon: '🎁', color: '#a78bfa' },
-      withdrawal: { label: '提现', icon: '💸', color: '#ff6b6b' }
+      // withdrawal: { label: '提现', icon: '💸', color: '#ff6b6b' }
     }
     return typeMap[type] || { label: type, icon: '💵', color: '#fff' }
   }
 
   const getStatusInfo = (status: string) => {
     const statusMap: Record<string, { label: string; color: string }> = {
-      pending: { label: '待处理', color: '#ffaa00' },
       settled: { label: '已到账', color: '#00ff88' },
-      completed: { label: '已到账', color: '#00ff88' },
+      pending: { label: '结算中', color: '#ffaa00' },
+      processing: { label: '结算中', color: '#00f5ff' },
+      completed: { label: '已结算', color: '#4ade80' },
       rejected: { label: '已拒绝', color: '#ff6b6b' },
-      expired: { label: '已过期', color: '#999999' },
-      processing: { label: '处理中', color: '#00f5ff' }
+      expired: { label: '已过期', color: '#999999' }
     }
     return statusMap[status] || { label: status, color: '#fff' }
   }
@@ -141,7 +144,7 @@ export default function EarningCenterPage() {
             <ArrowLeft size={20} color="#fff" />
           </View>
           <View className="earning-header-center">
-           <Text className="header-title">收益中心</Text>
+            <Text className="header-title">收益中心</Text>
           </View>
           <View className="earning-header-right" />
         </View>
@@ -170,8 +173,13 @@ export default function EarningCenterPage() {
             </View>
             <View className="stat-divider" />
             <View className="stat-col">
-              <Text className="stat-value">¥{formatNum(overview.pendingAmount)}</Text>
-              <Text className="stat-label">待结算</Text>
+              <Text className="stat-value">¥{formatNum(overview.completedAmount)}</Text>
+              <Text className="stat-label">已结算</Text>
+            </View>
+            <View className="stat-divider" />
+            <View className="stat-col">
+              <Text className="stat-value">¥{formatNum(overview.settlingAmount)}</Text>
+              <Text className="stat-label">结算中</Text>
             </View>
           </View>
 
@@ -213,12 +221,16 @@ export default function EarningCenterPage() {
                       </View>
                       <View className="record-info">
                         <Text className="record-desc">{record.description || typeInfo.label}</Text>
+                        {/* 显示计算式：原始金额 × (1 - 抽成比例) = 实际金额 */}
+                        <Text className="record-fee-formula">
+                          接单¥{formatNum(record.amount)} × (1-平台{Math.round(record.feeRate * 100)}%) = ¥{formatNum(record.feeAmount)}
+                        </Text>
                         <Text className="record-time">{formatTime(record.createdAt)}</Text>
                       </View>
                     </View>
                     <View className="record-right">
                       <Text className={`record-amount ${record.type === 'withdrawal' ? 'negative' : 'positive'}`}>
-                        {record.type === 'withdrawal' ? '-' : '+'}¥{formatNum(record.amount)}
+                        {record.type === 'withdrawal' ? '-' : '+'}¥{formatNum(record.feeAmount)}
                       </Text>
                       <Text className="record-status" style={{ color: statusInfo.color }}>
                         {statusInfo.label}

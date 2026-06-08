@@ -7,50 +7,102 @@ import * as crypto from 'crypto'
 export class EarningService {
   /**
    * 获取用户收益概览
+   * 使用 amount 和 feeRate 计算实际金额：实际金额 = amount * (1 - feeRate)
+   * 
+   * 状态流转：settled(刚创建) -> pending(提现待审核) -> processing(提现审核中) -> completed(提现成功)
    */
   async getEarningsOverview(userId: string) {
-    const db = getMySQLClient()
-    
-    const user = await db.queryOne('users', { id: userId })
-    
-    const completedEarnings = await db.queryWhere('earnings',
-      `user_id = '${userId}' AND status IN ('settled', 'completed')`
-    ) as any
-    const totalEarnings = completedEarnings?.reduce((sum: number, e: any) => sum + Number(e.amount), 0) || 0
-    
-    const pendingEarnings = await db.queryWhere('earnings',
-      `user_id = '${userId}' AND status = 'pending'`
-    ) as any
-    const pendingAmount = pendingEarnings?.reduce((sum: number, e: any) => sum + Number(e.amount), 0) || 0
-    
+    const pool = getPool()
+
+    // 计算实际金额的辅助函数
+    const calcActualAmount = (amount: number, feeRate: number) => {
+      return Number((amount * (1 - (feeRate || 0))).toFixed(2))
+    }
+
+    // 只查询一次数据库，获取用户所有收益记录
+    const [allRows] = await pool.query(
+      `SELECT amount, fee_rate, status, type, created_at FROM earnings WHERE user_id = ?`,
+      [userId]
+    ) as any[]
+
+    const earnings = allRows || []
+
+    // 从查询结果中计算各个统计值
     const now = new Date()
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-    
-    const monthlyEarnings = await db.queryWhere('earnings',
-      `user_id = '${userId}' AND status IN ('settled', 'completed') AND created_at >= '${monthStart.toISOString()}'`
-    ) as any
-    const monthlyAmount = monthlyEarnings?.reduce((sum: number, e: any) => sum + Number(e.amount), 0) || 0
-    
-    const totalOrders = await db.countWhere('earnings',
-      `user_id = '${userId}' AND type = 'order_reward'`
-    )
-    
-    const totalReferrals = await db.countWhere('earnings',
-      `user_id = '${userId}' AND type = 'referral_bonus'`
-    )
-    
+
+    // 累计收益 = 全部状态
+    const totalEarnings = earnings.reduce((sum: number, e: any) => {
+      const actualAmount = calcActualAmount(Number(e.amount), Number(e.fee_rate || 0))
+      return sum + actualAmount
+    }, 0)
+
+    // 可提现余额 = settled
+    const balance = earnings
+      .filter(e => e.status === 'settled')
+      .reduce((sum: number, e: any) => {
+        const actualAmount = calcActualAmount(Number(e.amount), Number(e.fee_rate || 0))
+        return sum + actualAmount
+      }, 0)
+
+    // 已结算 = completed
+    const completedAmount = earnings
+      .filter(e => e.status === 'completed')
+      .reduce((sum: number, e: any) => {
+        const actualAmount = calcActualAmount(Number(e.amount), Number(e.fee_rate || 0))
+        return sum + actualAmount
+      }, 0)
+
+    // 待审核 = pending
+    const pendingAmount = earnings
+      .filter(e => e.status === 'pending')
+      .reduce((sum: number, e: any) => {
+        const actualAmount = calcActualAmount(Number(e.amount), Number(e.fee_rate || 0))
+        return sum + actualAmount
+      }, 0)
+
+    // 审核中 = processing
+    const processingAmount = earnings
+      .filter(e => e.status === 'processing')
+      .reduce((sum: number, e: any) => {
+        const actualAmount = calcActualAmount(Number(e.amount), Number(e.fee_rate || 0))
+        return sum + actualAmount
+      }, 0)
+
+    // 结算中 = pending + processing
+    const settlingAmount = pendingAmount + processingAmount
+
+    // 本月收益 = 排除 rejected 和 expired
+    const monthlyAmount = earnings
+      .filter(e => {
+        const createdAt = new Date(e.created_at)
+        return e.status !== 'rejected' && e.status !== 'expired' && createdAt >= monthStart
+      })
+      .reduce((sum: number, e: any) => {
+        const actualAmount = calcActualAmount(Number(e.amount), Number(e.fee_rate || 0))
+        return sum + actualAmount
+      }, 0)
+
+    // 统计订单数和推荐数(邀请奖励)
+    const totalOrders = earnings.filter(e => e.type === 'order_reward').length
+    const totalReferrals = earnings.filter(e => e.type === 'referral_bonus').length
+
     return {
-      balance: user?.balance || 0,
-      totalEarnings,
-      pendingAmount,
-      monthlyAmount,
-      totalOrders: totalOrders || 0,
-      totalReferrals: totalReferrals || 0
+      balance,                       // 可提现余额 = settled
+      totalEarnings,                 // 累计收益 = 全部状态
+      completedAmount,               // 已结算 = completed
+      settlingAmount,                // 结算中 = pending + processing
+      pendingAmount,                 // 待审核 = pending
+      processingAmount,              // 审核中 = processing
+      monthlyAmount,                 // 本月收益（排除 rejected 和 expired）
+      totalOrders,                   // 统计订单数
+      totalReferrals                 // 推荐数(邀请奖励)数
     }
   }
 
   /**
    * 获取收益明细
+   * feeAmount 从 amount 和 feeRate 计算：feeAmount = amount * (1 - feeRate)
    */
   async getEarningsList(userId: string, options?: {
     type?: string
@@ -85,8 +137,19 @@ export class EarningService {
       params
     )
     
+    // 计算 feeAmount = amount * (1 - feeRate)
+    const processedList = (Array.isArray(list) ? list : []).map(item => {
+      const amount = Number(item.amount) || 0
+      const feeRate = Number(item.fee_rate) || 0
+      const feeAmount = Number((amount * (1 - feeRate)).toFixed(2))
+      return {
+        ...item,
+        feeAmount
+      }
+    })
+    
     return {
-      list: Array.isArray(list) ? list : [],
+      list: processedList,
       total: countResult?.[0]?.total || 0,
       page,
       pageSize

@@ -78,7 +78,10 @@ export interface OrderProcessingData {
 export interface EarningOverview {
   balance: number
   totalEarnings: number
+  completedAmount: number
+  settlingAmount: number
   pendingAmount: number
+  processingAmount: number
   monthlyAmount: number
   totalOrders: number
   totalReferrals: number
@@ -86,7 +89,9 @@ export interface EarningOverview {
 
 export interface EarningRecord {
   id: string
-  amount: number
+  amount: number           // 实际到账金额
+  feeRate: number          // 抽成比例（0.20表示20%）
+  feeAmount: number        // 抽成金额
   type: string
   status: string
   createdAt: string
@@ -233,7 +238,10 @@ export function normalizeEarningOverview(raw: any): EarningOverview {
   return {
     balance: toNumber(source.balance),
     totalEarnings: toNumber(source.totalEarnings),
+    completedAmount: toNumber(source.completedAmount || source.completed_amount || 0),
+    settlingAmount: toNumber(source.settlingAmount || source.settling_amount || 0),
     pendingAmount: toNumber(source.pendingAmount),
+    processingAmount: toNumber(source.processingAmount || source.processing_amount || 0),
     monthlyAmount: toNumber(source.monthlyAmount),
     totalOrders: toNumber(source.totalOrders),
     totalReferrals: toNumber(source.totalReferrals),
@@ -249,9 +257,16 @@ export function normalizeEarningRecords(raw: any): EarningRecord[] {
 
   return list.map((item: any) => {
     const record = asRecord(item) || {}
+    const amount = toNumber(record.amount)
+    const feeRate = toNumber(record.feeRate || record.fee_rate || 0)
+    // feeAmount 优先从后端获取，如果没有则自己计算：amount * (1 - feeRate)
+    const feeAmount = toNumber(record.feeAmount || record.fee_amount) || Number((amount * (1 - feeRate)).toFixed(2))
+    
     return {
       id: record.id || '',
-      amount: toNumber(record.amount),
+      amount: amount,
+      feeRate: feeRate,
+      feeAmount: feeAmount,
       type: record.type || '',
       status: record.status || '',
       createdAt: record.createdAt || record.created_at || '',
