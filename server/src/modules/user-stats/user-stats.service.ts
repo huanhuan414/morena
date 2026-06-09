@@ -163,11 +163,11 @@ export class UserStatsService {
         ) as any[]
         const statsMap = new Map(statsResult.map((r: any) => [r.avatarId || r.avatar_id, r]))
 
-        // 一次性查询所有分身的收益统计
+        // 一次性查询所有分身的收益统计   `SELECT COALESCE(SUM(amount * (1 - COALESCE(fee_rate, 0))), 0) as total
         const earnResult = await db.query(
-          `SELECT avatar_id, COALESCE(SUM(amount), 0) as total
+          `SELECT avatar_id, COALESCE(SUM(amount * (1 - COALESCE(fee_rate, 0))), 0) as total
            FROM earnings
-           WHERE avatar_id IN (${avatarIdList}) AND status IN ('settled', 'completed')
+           WHERE avatar_id IN (${avatarIdList}) AND status IN ('settled', 'pending')
            GROUP BY avatar_id`
         ) as any[]
         const earnMap = new Map(earnResult.map((r: any) => [r.avatarId || r.avatar_id, Number(r.total || 0)]))

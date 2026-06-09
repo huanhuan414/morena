@@ -341,10 +341,10 @@ export class AvatarService {
         const earningsRows = await db.query(
           `SELECT 
             avatar_id,
-            SUM(amount) as total_earnings,
-            SUM(CASE WHEN created_at >= ? THEN amount ELSE 0 END) as today_earnings
+            SUM(amount * (1 - COALESCE(fee_rate, 0))) as total_earnings,
+            SUM(CASE WHEN created_at >= ? THEN amount * (1 - COALESCE(fee_rate, 0)) ELSE 0 END) as today_earnings
            FROM earnings 
-           WHERE avatar_id IN (${idList}) AND status IN ('settled', 'completed')
+           WHERE avatar_id IN (${idList}) AND status IN ('settled', 'pending')
            GROUP BY avatar_id`,
           [today]
         )
