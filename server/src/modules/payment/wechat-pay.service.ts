@@ -5,6 +5,9 @@ import * as crypto from 'crypto';
 import { getMySQLClient } from '../../storage/database/mysql-client';
 import { ReferralService } from '../referral/referral.service';
 
+// 微信支付V3 API证书序列号
+let wechatPaySerialNo: string | null = null;
+
 @Injectable()
 export class WechatPayService {
   private readonly logger = new Logger(WechatPayService.name);
@@ -41,6 +44,12 @@ export class WechatPayService {
       this.logger.log('从文件加载商户私钥成功');
     } else {
       this.logger.error('商户私钥文件不存在，请检查 WECHAT_PAY_PRIVATE_KEY_PATH 配置');
+    }
+
+    // 加载微信支付V3证书序列号（用于商户转账）
+    wechatPaySerialNo = process.env.WECHAT_PAY_SERIAL_NO || null;
+    if (!wechatPaySerialNo) {
+      this.logger.warn('⚠️ 未配置 WECHAT_PAY_SERIAL_NO，商户转账功能可能无法使用');
     }
 
     this.logger.log(`微信支付(V2)初始化 - AppID: ${this.appId}, MchID: ${this.mchId}, APIv2Key: ${this.apiKeyV2 ? '已配置' : '未配置'}`);
@@ -671,10 +680,14 @@ export class WechatPayService {
 
       // 集成返佣机制：检查用户是否是被邀请的用户
       try {
+        this.logger.log(`检查返佣: userId=${userId}`);
+        
         const referralResult = await db.query(
           `SELECT * FROM referrals WHERE referred_id = ? AND status = 'completed'`,
           [userId],
         ) as any[];
+
+        this.logger.log(`查询邀请关系结果: userId=${userId}, referralResult=${JSON.stringify(referralResult)}`);
 
         const referral = referralResult?.[0];
         if (referral) {
@@ -685,9 +698,14 @@ export class WechatPayService {
 
           // 记录返佣
           if (this.referralService) {
+            this.logger.log(`准备调用recordCommission: referrerId=${referrerId}, userId=${userId}, amount=${amount}`);
             await this.referralService.recordCommission(referrerId, userId, 'coin_recharge', amount);
             this.logger.log(`返佣已记录: referrerId=${referrerId}, amount=${amount}`);
+          } else {
+            this.logger.error(`ReferralService未注入，跳过返佣`);
           }
+        } else {
+          this.logger.log(`未找到邀请关系，跳过返佣: userId=${userId}`);
         }
       } catch (error) {
         this.logger.error(`处理返佣失败: ${error.message}`, error.stack);
@@ -787,5 +805,238 @@ export class WechatPayService {
       this.logger.error(`关闭订单失败: ${error.message}`);
       throw error;
     }
+  }
+
+  /**
+   * ===================== 微信商户转账（商家转账到零钱） =====================
+   * 
+   * 微信支付V3 API - 商家转账到零钱
+   * 文档: https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter4_3_1.shtml
+   * 
+   * 使用场景：用户提现、退款、奖励发放等
+   */
+
+  /**
+   * 商家转账到零钱（V3 API）
+   * 
+   * @param params 转账参数
+   * @returns 转账结果
+   */
+  async transferToBalance(params: {
+    openid: string;           // 收款用户openid
+    amount: number;           // 转账金额（元）
+    description: string;      // 转账说明
+    outBatchNo?: string;      // 商户批次单号（可选，自动生成）
+    outDetailNo?: string;     // 商户明细单号（可选，自动生成）
+  }): Promise<{
+    out_batch_no: string;
+    batch_id: string;
+    out_detail_no: string;
+    detail_id: string;
+    status: string;
+  }> {
+    const { openid, amount, description } = params;
+
+    // 生成批次单号和明细单号
+    const timestamp = Date.now();
+    const randomStr = crypto.randomBytes(4).toString('hex');
+    const outBatchNo = params.outBatchNo || `WB${timestamp}${randomStr}`;
+    const outDetailNo = params.outDetailNo || `WD${timestamp}${randomStr}`;
+
+    // 金额转换为分
+    const amountInFen = Math.round(amount * 100);
+
+    this.logger.log(`发起商户转账: openid=${openid}, amount=${amountInFen}分, batchNo=${outBatchNo}`);
+
+    // 构建请求体
+    const requestBody = {
+      appid: this.appId,
+      out_batch_no: outBatchNo,
+      batch_name: '用户提现',
+      batch_remark: description,
+      total_amount: amountInFen,
+      total_num: 1,
+      transfer_detail_list: [
+        {
+          out_detail_no: outDetailNo,
+          transfer_amount: amountInFen,
+          transfer_remark: description,
+          openid: openid,
+        }
+      ]
+    };
+
+    // 生成V3签名并调用API
+    try {
+      const axios = require('axios');
+      const url = 'https://api.mch.weixin.qq.com/v3/transfer/batches';
+      const method = 'POST';
+      const bodyStr = JSON.stringify(requestBody);
+
+      // 生成Authorization签名
+      const authorization = this.generateV3Authorization(method, url, bodyStr);
+
+      const response = await axios.post(url, requestBody, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': authorization,
+        },
+        timeout: 15000,
+      });
+
+      const result = response.data;
+      this.logger.log(`✅ 商户转账成功: batchId=${result.batch_id}, detailId=${result.detail_list?.[0]?.detail_id}`);
+
+      return {
+        out_batch_no: outBatchNo,
+        batch_id: result.batch_id,
+        out_detail_no: outDetailNo,
+        detail_id: result.detail_list?.[0]?.detail_id || '',
+        status: result.detail_list?.[0]?.status || 'PROCESSING',
+      };
+    } catch (error: any) {
+      const errMsg = error.response?.data?.message || error.message;
+      const errCode = error.response?.data?.code || '';
+      this.logger.error(`商户转账失败: code=${errCode}, message=${errMsg}`);
+      throw new Error(`商户转账失败: ${errMsg}(${errCode})`);
+    }
+  }
+
+  /**
+   * 查询转账批次状态
+   * 
+   * @param outBatchNo 商户批次单号
+   * @returns 转账状态
+   */
+  async queryTransferBatch(outBatchNo: string): Promise<{
+    batch_id: string;
+    status: string;
+    total_amount: number;
+    total_num: number;
+    detail_list: Array<{
+      out_detail_no: string;
+      detail_id: string;
+      status: string;
+      fail_reason?: string;
+    }>;
+  }> {
+    this.logger.log(`查询转账批次状态: outBatchNo=${outBatchNo}`);
+
+    try {
+      const axios = require('axios');
+      const url = `https://api.mch.weixin.qq.com/v3/transfer/batches/out-batch-no/${outBatchNo}`;
+      const method = 'GET';
+      const bodyStr = '';
+
+      const authorization = this.generateV3Authorization(method, url, bodyStr);
+
+      const response = await axios.get(url, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': authorization,
+        },
+        timeout: 10000,
+      });
+
+      const result = response.data;
+      this.logger.log(`查询转账批次成功: batchId=${result.batch_id}, status=${result.status}`);
+
+      return {
+        batch_id: result.batch_id,
+        status: result.status,
+        total_amount: result.total_amount,
+        total_num: result.total_num,
+        detail_list: result.detail_list || [],
+      };
+    } catch (error: any) {
+      const errMsg = error.response?.data?.message || error.message;
+      this.logger.error(`查询转账批次失败: ${errMsg}`);
+      throw new Error(`查询转账批次失败: ${errMsg}`);
+    }
+  }
+
+  /**
+   * 查询转账明细状态
+   * 
+   * @param outBatchNo 商户批次单号
+   * @param outDetailNo 商户明细单号
+   * @returns 转账明细状态
+   */
+  async queryTransferDetail(outBatchNo: string, outDetailNo: string): Promise<{
+    detail_id: string;
+    status: string;
+    fail_reason?: string;
+    transfer_amount: number;
+  }> {
+    this.logger.log(`查询转账明细状态: outBatchNo=${outBatchNo}, outDetailNo=${outDetailNo}`);
+
+    try {
+      const axios = require('axios');
+      const url = `https://api.mch.weixin.qq.com/v3/transfer-detail/out-batch-no/${outBatchNo}/out-detail-no/${outDetailNo}`;
+      const method = 'GET';
+      const bodyStr = '';
+
+      const authorization = this.generateV3Authorization(method, url, bodyStr);
+
+      const response = await axios.get(url, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': authorization,
+        },
+        timeout: 10000,
+      });
+
+      const result = response.data;
+      this.logger.log(`查询转账明细成功: detailId=${result.detail_id}, status=${result.status}`);
+
+      return {
+        detail_id: result.detail_id,
+        status: result.status,
+        fail_reason: result.fail_reason,
+        transfer_amount: result.transfer_amount,
+      };
+    } catch (error: any) {
+      const errMsg = error.response?.data?.message || error.message;
+      this.logger.error(`查询转账明细失败: ${errMsg}`);
+      throw new Error(`查询转账明细失败: ${errMsg}`);
+    }
+  }
+
+  /**
+   * 生成微信支付V3 Authorization签名
+   * 
+   * V3签名规则：
+   * Authorization = WECHATPAY2-SHA256-RSA2048 mchid="",nonce_str="",signature="",timestamp="",serial_no=""
+   * 
+   * signature生成步骤：
+   * 1. 构造签名串：HTTP方法\nURL\n请求时间戳\n请求随机串\n请求体\n
+   * 2. 使用商户私钥对签名串进行SHA256withRSA签名
+   * 3. Base64编码签名结果
+   */
+  private generateV3Authorization(method: string, url: string, body: string): string {
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const nonceStr = crypto.randomBytes(16).toString('hex');
+
+    // 构造签名串
+    // URL需要去掉域名部分，只保留路径和查询参数
+    const urlPath = url.replace(/^https:\/\/[^\/]+/, '');
+    const signStr = `${method}\n${urlPath}\n${timestamp}\n${nonceStr}\n${body}\n`;
+
+    // 使用商户私钥签名
+    const sign = crypto.createSign('RSA-SHA256');
+    sign.update(signStr);
+    const signature = sign.sign(this.privateKey, 'base64');
+
+    // 构造Authorization头
+    if (!wechatPaySerialNo) {
+      throw new Error('未配置微信支付证书序列号 WECHAT_PAY_SERIAL_NO');
+    }
+
+    const authorization = `WECHATPAY2-SHA256-RSA2048 mchid="${this.mchId}",nonce_str="${nonceStr}",signature="${signature}",timestamp="${timestamp}",serial_no="${wechatPaySerialNo}"`;
+
+    return authorization;
   }
 }

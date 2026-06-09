@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { getMySQLClient } from '../../storage/database/mysql-client';
 import { ensureGrowthCampaignTables } from '../activities/growth-campaign.tables';
+import { WechatPayService } from '../payment/wechat-pay.service';
 
 @Injectable()
 export class AdminService {
+  constructor(private readonly wechatPayService: WechatPayService) {}
+
   private async ensureGrowthCampaignTables(): Promise<void> {
     await ensureGrowthCampaignTables();
   }
@@ -639,28 +642,204 @@ export class AdminService {
   async approveWithdraw(id: string): Promise<any> {
     try {
       const db = getMySQLClient();
-      await db.query(
-        `UPDATE withdrawal_requests SET status = 'approved', updated_at = NOW() WHERE id = ?`,
+      
+      // 检查提现申请状态
+      const withdrawResult = await db.query(
+        `SELECT * FROM withdrawal_requests WHERE id = ?`,
         [id]
       );
+      const withdraw = withdrawResult.data?.[0] || withdrawResult?.[0];
+      
+      if (!withdraw) {
+        return { success: false, message: '提现申请不存在' };
+      }
+      
+      if (withdraw.status !== 'pending') {
+        return { success: false, message: '该提现申请已处理' };
+      }
+      
+      // 更新状态为已审核通过
+      await db.query(
+        `UPDATE withdrawal_requests SET status = 'approved', approved_at = NOW(), updated_at = NOW() WHERE id = ?`,
+        [id]
+      );
+      
+      console.log(`✅ 提现申请审核通过: id=${id}`);
       return { success: true };
     } catch (error) {
       console.error('批准提现失败:', error);
-      return { success: false };
+      return { success: false, message: error.message };
     }
   }
 
   async rejectWithdraw(id: string, reason?: string): Promise<any> {
     try {
       const db = getMySQLClient();
+      
+      // 检查提现申请状态
+      const withdrawResult = await db.query(
+        `SELECT * FROM withdrawal_requests WHERE id = ?`,
+        [id]
+      );
+      const withdraw = withdrawResult.data?.[0] || withdrawResult?.[0];
+      
+      if (!withdraw) {
+        return { success: false, message: '提现申请不存在' };
+      }
+      
+      if (withdraw.status !== 'pending') {
+        return { success: false, message: '该提现申请已处理' };
+      }
+      
+      // 解冻用户余额
+      const userId = withdraw.user_id;
+      const amount = withdraw.amount;
+      
+      await db.query(
+        `UPDATE users SET frozen_balance = frozen_balance - ?, balance = balance + ? WHERE id = ?`,
+        [amount, amount, userId]
+      );
+      
+      // 更新提现申请状态
       await db.query(
         `UPDATE withdrawal_requests SET status = 'rejected', reject_reason = ?, updated_at = NOW() WHERE id = ?`,
         [reason || '审核未通过', id]
       );
+      
+      console.log(`✅ 提现申请已拒绝: id=${id}, reason=${reason}, 已解冻余额 ${amount}元`);
       return { success: true };
     } catch (error) {
       console.error('拒绝提现失败:', error);
-      return { success: false };
+      return { success: false, message: error.message };
+    }
+  }
+
+  /**
+   * 确认打款 - 调用微信商户转账API
+   */
+  async confirmPayment(id: string, proof?: string): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      
+      // 检查提现申请状态
+      const withdrawResult = await db.query(
+        `SELECT w.*, u.openid FROM withdrawal_requests w LEFT JOIN users u ON w.user_id = u.id WHERE w.id = ?`,
+        [id]
+      );
+      const withdraw = withdrawResult.data?.[0] || withdrawResult?.[0];
+      
+      if (!withdraw) {
+        return { success: false, message: '提现申请不存在' };
+      }
+      
+      if (withdraw.status !== 'approved') {
+        return { success: false, message: '该提现申请未审核通过，无法打款' };
+      }
+      
+      const openid = withdraw.openid;
+      const amount = withdraw.amount;
+      
+      if (!openid) {
+        return { success: false, message: '用户openid不存在，无法进行微信转账' };
+      }
+      
+      // 调用微信商户转账API
+      const transferResult = await this.wechatPayService.transferToBalance({
+        openid: openid,
+        amount: amount,
+        description: `用户提现-${withdraw.id}`,
+      });
+      
+      // 更新提现申请状态
+      await db.query(
+        `UPDATE withdrawal_requests SET 
+          status = 'completed', 
+          completed_at = NOW(), 
+          transfer_batch_id = ?, 
+          transfer_detail_id = ?,
+          payment_proof = ?,
+          updated_at = NOW() 
+        WHERE id = ?`,
+        [transferResult.out_batch_no, transferResult.out_detail_no, proof || '', id]
+      );
+      
+      // 解冻余额（从冻结余额中扣除）
+      await db.query(
+        `UPDATE users SET frozen_balance = frozen_balance - ? WHERE id = ?`,
+        [amount, withdraw.user_id]
+      );
+      
+      console.log(`✅ 打款成功: id=${id}, batchNo=${transferResult.out_batch_no}, amount=${amount}元`);
+      
+      return { 
+        success: true, 
+        transfer_batch_id: transferResult.out_batch_no,
+        transfer_detail_id: transferResult.out_detail_no,
+      };
+    } catch (error) {
+      console.error('确认打款失败:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  /**
+   * 查询转账状态
+   */
+  async queryTransferStatus(id: string): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      
+      // 获取提现申请的转账批次号
+      const withdrawResult = await db.query(
+        `SELECT * FROM withdrawal_requests WHERE id = ?`,
+        [id]
+      );
+      const withdraw = withdrawResult.data?.[0] || withdrawResult?.[0];
+      
+      if (!withdraw) {
+        return { success: false, message: '提现申请不存在' };
+      }
+      
+      const batchNo = withdraw.transfer_batch_id;
+      const detailNo = withdraw.transfer_detail_id;
+      
+      if (!batchNo || !detailNo) {
+        return { success: false, message: '该提现申请未进行微信转账' };
+      }
+      
+      // 查询微信转账状态
+      const transferStatus = await this.wechatPayService.queryTransferDetail(batchNo, detailNo);
+      
+      // 如果转账成功，更新状态
+      if (transferStatus.status === 'SUCCESS' && withdraw.status !== 'completed') {
+        await db.query(
+          `UPDATE withdrawal_requests SET status = 'completed', completed_at = NOW(), updated_at = NOW() WHERE id = ?`,
+          [id]
+        );
+      }
+      
+      // 如果转账失败，更新状态并退回余额
+      if (transferStatus.status === 'FAIL' && withdraw.status !== 'failed') {
+        await db.query(
+          `UPDATE withdrawal_requests SET status = 'failed', reject_reason = ?, updated_at = NOW() WHERE id = ?`,
+          [transferStatus.fail_reason || '转账失败', id]
+        );
+        
+        // 退回余额
+        await db.query(
+          `UPDATE users SET frozen_balance = frozen_balance - ?, balance = balance + ? WHERE id = ?`,
+          [withdraw.amount, withdraw.amount, withdraw.user_id]
+        );
+      }
+      
+      return { 
+        success: true, 
+        status: transferStatus.status,
+        fail_reason: transferStatus.fail_reason,
+      };
+    } catch (error) {
+      console.error('查询转账状态失败:', error);
+      return { success: false, message: error.message };
     }
   }
 

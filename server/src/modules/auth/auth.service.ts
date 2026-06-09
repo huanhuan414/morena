@@ -8,6 +8,7 @@ import {
 import * as crypto from "crypto";
 import { getMySQLClient } from "../../storage/database/mysql-client";
 import { AuthSmsService } from "./sms.service";
+import { ReferralService } from "../referral/referral.service";
 
 @Injectable()
 export class AuthService {
@@ -15,6 +16,7 @@ export class AuthService {
   private accessTokenCache: { token: string; expiresAt: number } | null = null;
   constructor(
     @Inject("AUTH_SMS_SERVICE") private readonly smsService: AuthSmsService,
+    private readonly referralService: ReferralService,
   ) {}
 
   /**
@@ -54,12 +56,15 @@ export class AuthService {
    * 手机号验证码登录/注册
    * 如果用户不存在则自动注册
    * 支持邀请码参数，注册成功后自动发放邀请奖励
+   * 支持设备ID和IP地址记录
    */
   async phoneLogin(
     phone: string,
     code: string,
     nickname?: string,
     referralCode?: string,
+    deviceId?: string,
+    ipAddress?: string,
   ): Promise<{
     user: any;
     isNewUser: boolean;
@@ -91,6 +96,17 @@ export class AuthService {
       ? result[0]
       : (result as any)?.data?.[0];
     if (existingUser) {
+      // 更新最后登录IP
+      if (ipAddress) {
+        try {
+          await db.updateWhere('users', { id: existingUser.id }, {
+            last_login_ip: ipAddress,
+            updated_at: new Date()
+          })
+        } catch (err) {
+          console.error('[AuthService] 更新登录IP失败:', err)
+        }
+      }
       return {
         user: existingUser,
         isNewUser: false,
@@ -109,6 +125,9 @@ export class AuthService {
       exp: 0,
       credits: 100,
       referral_code: this.generateReferralCode(),
+      device_id: deviceId || null,
+      ip_address: ipAddress || null,
+      last_login_ip: ipAddress || null,
       created_at: new Date().toISOString().slice(0, 19).replace("T", " "),
       updated_at: new Date().toISOString().slice(0, 19).replace("T", " "),
     };
@@ -131,6 +150,8 @@ export class AuthService {
         const referralResult = await this.processReferral(
           newUser.id,
           referralCode,
+          deviceId,
+          ipAddress,
         );
         referralReward = referralResult.reward;
       } catch (error: any) {
@@ -149,78 +170,33 @@ export class AuthService {
 
   /**
    * 处理邀请关系并发放奖励
+   * 调用 ReferralService 的 useReferralCode 方法，确保逻辑一致性
+   * 支持设备ID和IP地址记录
    */
   private async processReferral(
     inviteeId: string,
     referralCode: string,
+    deviceId?: string,
+    ipAddress?: string,
   ): Promise<{ inviterId: string; reward: number }> {
-    const db = getMySQLClient();
-    const inviterResult = await db.query("users", {
-      referral_code: referralCode,
-    });
-    const inviter = Array.isArray(inviterResult)
-      ? inviterResult[0]
-      : (inviterResult as any)?.data?.[0];
-    if (!inviter) {
-      throw new Error("邀请码无效");
-    }
-
-    if (inviter.id === inviteeId) {
-      throw new Error("不能使用自己的邀请码");
-    }
-
-    const existingReferralResult = await db.query("referrals", {
-      referred_id: inviteeId,
-    });
-    const existingReferral = Array.isArray(existingReferralResult)
-      ? existingReferralResult[0]
-      : (existingReferralResult as any)?.data?.[0];
-    if (existingReferral) {
-      throw new Error("您已被邀请过");
-    }
-
-    const DAILY_INVITE_LIMIT = 20;
     try {
-      const dailyCountResult = await db.query(
-        `SELECT COUNT(*) as count FROM referrals WHERE referrer_id = ? AND DATE(created_at) = CURDATE()`,
-        [inviter.id],
+      const result = await this.referralService.useReferralCode(
+        inviteeId, referralCode, deviceId, ipAddress
       );
-      const dailyCount =
-        dailyCountResult?.data?.[0]?.count ??
-        (Array.isArray(dailyCountResult) ? dailyCountResult[0]?.count : 0) ??
-        0;
-      if (Number(dailyCount) >= DAILY_INVITE_LIMIT) {
-        throw new Error("今日邀请已达上限");
-      }
-    } catch (e) {
-      console.error(
-        "[processReferral] daily limit check failed:",
-        (e as any)?.message || e,
-      );
+      return { 
+        inviterId: result.inviterId, 
+        reward: result.reward || 0 
+      };
+    } catch (error: any) {
+      console.error('[AuthService] 处理邀请码失败:', error.message);
+      throw new Error(error.message);
     }
-
-    const INVITER_REWARD = 5;
-    const referralId = require("uuid").v4();
-    const insertResult = await db.insert("referrals", {
-      id: referralId,
-      referrer_id: inviter.id,
-      referred_id: inviteeId,
-      status: "pending",
-      reward_amount: INVITER_REWARD,
-      created_at: new Date().toISOString().slice(0, 19).replace("T", " "),
-    });
-    if (insertResult.error) {
-      throw new Error(
-        `创建邀请记录失败: ${insertResult.error.message || JSON.stringify(insertResult.error)}`,
-      );
-    }
-
-    return { inviterId: inviter.id, reward: 0 };
   }
 
   /**
    * 微信手机号授权登录
    * 通过微信 getPhoneNumber 获取手机号，根据手机号查找或创建用户
+   * 支持设备ID和IP地址记录
    */
   async wechatPhoneLogin(
     code: string,
@@ -228,6 +204,8 @@ export class AuthService {
     nickname?: string,
     avatar?: string,
     referralCode?: string,
+    deviceId?: string,
+    ipAddress?: string,
   ): Promise<{
     user: any;
     isNewUser: boolean;
@@ -283,6 +261,9 @@ export class AuthService {
         if (avatar && !userByOpenid.avatar) {
           updateData.avatar = avatar;
         }
+        if (ipAddress) {
+          updateData.last_login_ip = ipAddress;
+        }
         if (Object.keys(updateData).length > 0) {
           await db.update("users", userByOpenid.id, updateData);
           const updatedResult = await db.query("users", { id: userByOpenid.id });
@@ -294,6 +275,17 @@ export class AuthService {
             isNewUser: false,
             token: this.generateToken(userByOpenid.id),
           };
+        }
+        // 即使没有其他更新，也要更新登录IP
+        if (ipAddress) {
+          try {
+            await db.updateWhere('users', { id: userByOpenid.id }, {
+              last_login_ip: ipAddress,
+              updated_at: new Date()
+            })
+          } catch (err) {
+            console.error('[AuthService] 更新登录IP失败:', err)
+          }
         }
         return {
           user: userByOpenid,
@@ -323,6 +315,9 @@ export class AuthService {
         if (avatar && !userByPhone.avatar) {
           updateData.avatar = avatar;
         }
+        if (ipAddress) {
+          updateData.last_login_ip = ipAddress;
+        }
         if (Object.keys(updateData).length > 0) {
           await db.update("users", userByPhone.id, updateData);
           const updatedResult = await db.query("users", { id: userByPhone.id });
@@ -334,6 +329,17 @@ export class AuthService {
             isNewUser: false,
             token: this.generateToken(userByPhone.id),
           };
+        }
+        // 即使没有其他更新，也要更新登录IP
+        if (ipAddress) {
+          try {
+            await db.updateWhere('users', { id: userByPhone.id }, {
+              last_login_ip: ipAddress,
+              updated_at: new Date()
+            })
+          } catch (err) {
+            console.error('[AuthService] 更新登录IP失败:', err)
+          }
         }
         return {
           user: userByPhone,
@@ -353,6 +359,9 @@ export class AuthService {
         exp: 0,
         credits: 100,
         referral_code: this.generateReferralCode(),
+        device_id: deviceId || null,
+        ip_address: ipAddress || null,
+        last_login_ip: ipAddress || null,
         created_at: new Date().toISOString().slice(0, 19).replace("T", " "),
         updated_at: new Date().toISOString().slice(0, 19).replace("T", " "),
       };
@@ -375,6 +384,8 @@ export class AuthService {
           const referralResult = await this.processReferral(
             newUser.id,
             referralCode,
+            deviceId,
+            ipAddress,
           );
           referralReward = referralResult.reward;
         } catch (error: any) {
