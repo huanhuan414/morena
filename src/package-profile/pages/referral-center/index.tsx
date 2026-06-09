@@ -33,8 +33,9 @@ export default function ReferralCenter() {
 
   useShareAppMessage(() => {
     return {
-      title: '邀请你加入Morena AI，享8折优惠！',
+      title: '真的！莫瑞娜邀请好友有现金+20%返利！',
       path: `/pages/login/index?inviteCode=${stats.referralCode}`,
+      imageUrl: 'https://voic.51webjs.com/tos-cn-i-699z2ac540/user%2Fc90c11aa5dae2c830a32ab382a59071e.png~tplv-699z2ac540-image.png',
     }
   })
 
