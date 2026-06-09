@@ -116,8 +116,8 @@ export default function EarningCenterPage() {
 
   const handleWithdraw = () => {
     const balance = toNumber(overview.balance)
-    if (balance < 1) {
-      showToast({ title: '余额不足，无法提现', icon: 'none' })
+    if (balance < 20) {
+      showToast({ title: '余额不足20元，无法提现', icon: 'none' })
       return
     }
     // 打开提现弹窗

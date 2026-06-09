@@ -845,8 +845,23 @@ export class OrderProcessingService {
       ) as any[]
       
       let platformFeeRate = 0.20 // 默认抽成 20%（免费版）
-      if (subRows && subRows.length > 0) {
-        platformFeeRate = Number(subRows[0]?.platform_fee_rate || 0.20)
+      
+      // 处理 db.query 返回的不同格式
+      if (subRows) {
+        if (Array.isArray(subRows) && subRows.length > 0) {
+          // 返回的是数组格式
+          const row = subRows[0]
+          const rate = row.platform_fee_rate || row.platformFeeRate
+          if (rate !== undefined && rate !== null) {
+            platformFeeRate = Number(rate)
+          }
+        } else if (typeof subRows === 'object') {
+          // 返回的是单个对象格式（如 {"platformFeeRate":0.15}）
+          const rate = subRows.platform_fee_rate || subRows.platformFeeRate
+          if (rate !== undefined && rate !== null) {
+            platformFeeRate = Number(rate)
+          }
+        }
       }
 
       console.log('[结算] 获取用户会员等级抽成比例: orderId=' + orderId + ', userId=' + userId + ', platformFeeRate=' + platformFeeRate + ', customBasePrice=' + customBasePrice)

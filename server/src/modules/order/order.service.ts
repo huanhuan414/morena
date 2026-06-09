@@ -872,7 +872,7 @@ export class OrderService {
          GROUP BY r.order_id
        ) odm ON odm.order_id = o.id
        ${whereClause}
-       ORDER BY o.id DESC, o.created_at DESC
+       ORDER BY o.priority DESC, o.created_at DESC
        LIMIT ? OFFSET ?`,
       [userId || null, ...platformParams, safePageSize, offset]
     )
