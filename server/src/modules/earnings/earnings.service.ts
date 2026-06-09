@@ -46,11 +46,11 @@ export class EarningsService {
 
     // mysql2 的 LIMIT/OFFSET 必须用内联数值，不能用占位符
     const [rows] = await pool.query(
-      `SELECT * FROM earnings WHERE user_id = ? ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`,
+      `SELECT * FROM earnings WHERE user_id = ? and status IN ('settled')  ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`,
       [userId]
     )
     const [countRows] = await pool.query(
-      'SELECT COUNT(*) as total FROM earnings WHERE user_id = ?',
+      `SELECT COUNT(*) as total FROM earnings WHERE user_id = ? and status IN ('settled')`,
       [userId]
     )
 

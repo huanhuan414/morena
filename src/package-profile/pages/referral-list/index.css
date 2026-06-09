@@ -5,15 +5,19 @@
 
 /* 头部 */
 .list-header {
-  position: relative;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
   background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 50%, #4f46e5 100%);
-  padding: 100rpx 32rpx 60rpx;
+  padding: 120rpx 32rpx 60rpx;
   border-radius: 0 0 48rpx 48rpx;
   overflow: hidden;
 }
 .list-header-back {
   position: absolute;
-  top: 40rpx;
+  top: 120rpx;
   left: 24rpx;
   width: 64rpx;
   height: 64rpx;
@@ -86,8 +90,10 @@
 
 /* 内容区域 */
 .list-content {
-  height: calc(100vh - 280rpx);
-  padding: 0 24rpx 24rpx;
+  padding-top: 30rpx;
+  padding-left: 24rpx;
+  padding-right: 24rpx;
+  padding-bottom: 24rpx;
 }
 
 /* 空状态 */

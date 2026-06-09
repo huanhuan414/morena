@@ -42,7 +42,7 @@ export class DashboardController {
       let totalEarnings = '0.00'
       if (userId && userId.trim()) {
         const earningResult = await db.query(
-          "SELECT SUM(amount * (1 - COALESCE(fee_rate, 0))) as total FROM earnings WHERE user_id = ? and status IN ('pending', 'settled')",
+          "SELECT SUM(amount * (1 - COALESCE(fee_rate, 0))) as total FROM earnings WHERE user_id = ? and status IN ('settled')",
           [userId]
         )
         totalEarnings = earningResult?.[0]?.total || '0.00'

@@ -115,11 +115,11 @@ export default function EarningCenterPage() {
   }
 
   const handleWithdraw = () => {
-    const balance = toNumber(overview.balance)
-    if (balance < 20) {
-      showToast({ title: '余额不足20元，无法提现', icon: 'none' })
-      return
-    }
+    // const balance = toNumber(overview.balance)
+    // if (balance < 20) {
+    //   showToast({ title: '余额不足20元，无法提现', icon: 'none' })
+    //   return
+    // }
     // 打开提现弹窗
     setShowWithdrawModal(true)
     setWithdrawAmount('')
@@ -478,6 +478,11 @@ export default function EarningCenterPage() {
                       : '✗ 未降低门槛，最低提现100元'
                     }
                   </Text>
+                  {overview.referralCount < 2 && (
+                    <View className="invite-btn" onClick={() => Taro.navigateTo({ url: '/package-profile/pages/referral-center/index' })}>
+                      立即邀请
+                    </View>
+                  )}
                 </View>
               </View>
 
@@ -495,7 +500,7 @@ export default function EarningCenterPage() {
                 className="withdraw-cancel-btn"
                 onClick={() => setShowWithdrawModal(false)}
               >
-                ``      取消
+                取消
               </Button>
               <Button
                 className="withdraw-confirm-btn"

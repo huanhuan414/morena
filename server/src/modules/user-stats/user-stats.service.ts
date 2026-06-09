@@ -101,7 +101,7 @@ export class UserStatsService {
       const totalResult = await db.query(
         `SELECT COALESCE(SUM(amount * (1 - COALESCE(fee_rate, 0))), 0) as total
          FROM earnings 
-         WHERE user_id = ? AND status IN ('pending', 'settled')`,
+         WHERE user_id = ? AND status IN ('settled')`,
         [userId]
       ) as any[]
       

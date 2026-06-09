@@ -949,8 +949,10 @@ const Index: React.FC = () => {
                     <View className="po-reward-card" onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}>
                       <View className="po-reward-left">
                         <View className="po-reward-amount">
-                          <Text className="po-reward-symbol">¥</Text>
-                          <Text className="po-reward-value">{order.estimatedEarning.toFixed(2)}</Text>
+                          {/* <Text className="po-reward-symbol">¥</Text> */}
+                          {/* <Text className="po-reward-value">{order.estimatedEarning.toFixed(2)}</Text> */}
+                          <Text className="po-reward-value">{calcEarningRange(order.estimatedEarning)}</Text>
+
                           <Text className="po-reward-unit">/单</Text>
                         </View>
                         <Text className="po-reward-hint">预计创作收益</Text>
@@ -1028,8 +1030,9 @@ const Index: React.FC = () => {
                       </View>
                       <View className="po-cb-card po-cb-benefit">
                         <Text className="block po-cb-card-label">预计收益</Text>
-                        <Text className="block po-cb-card-value po-cb-card-value-hl">¥{(order.estimatedEarning || 0).toFixed(2)}</Text>
-                        <Text className="block po-cb-card-tip">(预收益{calcEarningRange(order.estimatedEarning)})</Text>
+                        <Text className="block po-cb-card-value po-cb-card-value-hl">{calcEarningRange(order.estimatedEarning)}</Text>
+                        {/* <Text className="block po-cb-card-value po-cb-card-value-hl">¥{(order.estimatedEarning || 0).toFixed(2)}</Text> */}
+                        {/* <Text className="block po-cb-card-tip">(预收益{calcEarningRange(order.estimatedEarning)})</Text> */}
                       </View>
                     </View>
 
@@ -1073,8 +1076,11 @@ const Index: React.FC = () => {
                         ) : (
                           <>
                             <Sparkles size={16} color="#fff" />
-                            <Text className="po-btn-label po-btn-label-primary">接单赚¥{(order.customBasePrice || order.estimatedEarning).toFixed(2)}</Text>
-                            <Text className="po-btn-label po-btn-label-secondary">(预收益{calcEarningRange(order.estimatedEarning)})</Text>
+                            {/* <Text className="po-btn-label po-btn-label-primary">接单赚¥{(order.customBasePrice || order.estimatedEarning).toFixed(2)}</Text> */}
+                            {/* <Text className="po-btn-label po-btn-label-secondary">(预收益{calcEarningRange(order.estimatedEarning)})</Text> */}
+
+                            <Text className="po-btn-label po-btn-label-primary">接单预收益{calcEarningRange(order.customBasePrice || order.estimatedEarning)}</Text>
+
                             <ChevronRight size={14} color="rgba(255,255,255,0.7)" />
                           </>
                         )}
