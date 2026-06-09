@@ -529,6 +529,49 @@ export class AdminController {
     }
   }
 
+  /**
+   * 确认打款（调用微信商户转账API）
+   */
+  @Post('finance/withdraw/:id/confirm-payment')
+  async confirmPayment(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Param('id') id: string,
+    @Body('proof') proof?: string
+  ) {
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
+    if (!admin) {
+      return { code: 401, data: null, message: '未授权' }
+    }
+    
+    const result = await this.adminService.confirmPayment(id, proof)
+    return {
+      code: result.success ? 200 : 400,
+      data: result,
+      message: result.message
+    }
+  }
+
+  /**
+   * 查询转账状态
+   */
+  @Get('finance/withdraw/:id/transfer-status')
+  async queryTransferStatus(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Param('id') id: string
+  ) {
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
+    if (!admin) {
+      return { code: 401, data: null, message: '未授权' }
+    }
+    
+    const result = await this.adminService.queryTransferStatus(id)
+    return {
+      code: result.success ? 200 : 400,
+      data: result,
+      message: result.message
+    }
+  }
+
   // ===== 推广管理 =====
 
   /**

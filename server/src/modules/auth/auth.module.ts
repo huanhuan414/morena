@@ -2,8 +2,10 @@ import { Module } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { AuthSmsService } from './sms.service';
+import { ReferralModule } from '../referral/referral.module';
 
 @Module({
+  imports: [ReferralModule],
   controllers: [AuthController],
   providers: [
     AuthService,

@@ -126,7 +126,7 @@ export default function ReferralCenter() {
             <Gift size={20} color="#FFD700" />
           </View>
           <Text className="ref-header-title">邀请好友</Text>
-          <Text className="ref-header-desc">邀请好友一起体验Morena AI</Text>
+          <Text className="ref-header-desc">邀请好友一起体验Morena AI 领现金大奖</Text>
         </View>
       </View>
 

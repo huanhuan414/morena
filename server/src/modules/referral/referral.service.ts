@@ -45,8 +45,14 @@ export class ReferralService {
 
   /**
    * 使用邀请码注册 - 注册就算邀请成功
+   * 支持设备ID和IP地址记录
    */
-  async useReferralCode(inviteeId: string, code: string) {
+  async useReferralCode(
+    inviteeId: string, 
+    code: string,
+    deviceId?: string,
+    ipAddress?: string
+  ) {
     const db = getMySQLClient()
     
     const inviter = await db.queryOne('users', { referral_code: code }) as any
@@ -72,12 +78,14 @@ export class ReferralService {
     }
     
     // 注册就算邀请成功，直接标记为completed
+    // 同时记录设备ID和IP地址
     const id = crypto.randomUUID()
     await db.query(
       `INSERT INTO referrals 
-       (id, referrer_id, referred_id, referral_code, status, reward_amount, created_at)
-       VALUES (?, ?, ?, ?, 'completed', 0, NOW())`,
-      [id, inviter.id, inviteeId, code]
+       (id, referrer_id, referred_id, referral_code, status, reward_amount, 
+        device_id, ip_address, created_at)
+       VALUES (?, ?, ?, ?, 'completed', 0, ?, ?, NOW())`,
+      [id, inviter.id, inviteeId, code, deviceId || null, ipAddress || null]
     )
     
     // 更新被邀请人的邀请关系
