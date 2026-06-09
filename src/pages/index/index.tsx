@@ -1073,7 +1073,7 @@ const Index: React.FC = () => {
                         ) : (
                           <>
                             <Sparkles size={16} color="#fff" />
-                            <Text className="po-btn-label po-btn-label-primary">接单赚¥{order.customBasePrice.toFixed(2)}</Text>
+                            <Text className="po-btn-label po-btn-label-primary">接单赚¥{(order.customBasePrice || order.estimatedEarning).toFixed(2)}</Text>
                             <Text className="po-btn-label po-btn-label-secondary">(预收益{calcEarningRange(order.estimatedEarning)})</Text>
                             <ChevronRight size={14} color="rgba(255,255,255,0.7)" />
                           </>

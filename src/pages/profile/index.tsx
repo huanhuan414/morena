@@ -92,7 +92,7 @@ export default function ProfilePage() {
       setStats({
         avatarCount: data.avatarCount || 0,
         totalEarnings: earningsData.totalEarnings || 0,
-        totalWithdraw: 0,
+        totalWithdraw: earningsData.completedAmount || 0,
         level: 1
       })
       setCoinBalance(coinData.balance || 0)

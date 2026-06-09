@@ -89,12 +89,27 @@ export default function EarningCenterPage() {
     }
   }
 
+  // 处理 tab 切换并刷新数据
+  const handleTabChange = (tab: 'earning' | 'withdraw') => {
+    setActiveTab(tab)
+
+    // 切换 tab 时刷新概览数据
+    fetchOverview()
+
+    // 根据切换到的 tab 刷新对应数据
+    if (tab === 'earning') {
+      fetchRecords()
+    } else if (tab === 'withdraw') {
+      fetchWithdrawRecords()
+    }
+  }
+
   const getWithdrawStatusInfo = (status: string) => {
     const statusMap: Record<string, { label: string; color: string }> = {
       pending: { label: '待审核', color: '#ffaa00' },
       processing: { label: '审核中', color: '#00f5ff' },
       completed: { label: '已到账', color: '#4ade80' },
-      rejected: { label: '已拒绝', color: '#ff6b6b' }
+      rejected: { label: '已驳回', color: '#ff6b6b' }
     }
     return statusMap[status] || { label: status, color: '#fff' }
   }
@@ -295,12 +310,12 @@ export default function EarningCenterPage() {
             <View className="stat-divider" />
             <View className="stat-col">
               <Text className="stat-value">¥{formatNum(overview.completedAmount)}</Text>
-              <Text className="stat-label">已结算</Text>
+              <Text className="stat-label">累计提现</Text>
             </View>
             <View className="stat-divider" />
             <View className="stat-col">
               <Text className="stat-value">¥{formatNum(overview.settlingAmount)}</Text>
-              <Text className="stat-label">结算中</Text>
+              <Text className="stat-label">提现中</Text>
             </View>
           </View>
 
@@ -319,13 +334,13 @@ export default function EarningCenterPage() {
           <View className="tab-switch">
             <View
               className={`tab-item ${activeTab === 'earning' ? 'active' : ''}`}
-              onClick={() => setActiveTab('earning')}
+              onClick={() => handleTabChange('earning')}
             >
               <Text className={`tab-text ${activeTab === 'earning' ? 'active' : ''}`}>收益明细</Text>
             </View>
             <View
               className={`tab-item ${activeTab === 'withdraw' ? 'active' : ''}`}
-              onClick={() => setActiveTab('withdraw')}
+              onClick={() => handleTabChange('withdraw')}
             >
               <Text className={`tab-text ${activeTab === 'withdraw' ? 'active' : ''}`}>提现明细</Text>
             </View>
@@ -401,7 +416,7 @@ export default function EarningCenterPage() {
                           <Text className="record-time">{formatTime(record.createdAt)}</Text>
                           {/* 拒绝时显示备注 */}
                           {record.status === 'rejected' && record.remark && (
-                            <Text className="record-remark">拒绝原因：{record.remark}</Text>
+                            <Text className="record-remark">驳回原因：{record.remark}</Text>
                           )}
                         </View>
                       </View>
