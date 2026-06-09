@@ -2,7 +2,7 @@
 import { Injectable, Inject } from '@nestjs/common'
 import { Config, LLMClient, ImageGenerationClient, VideoGenerationClient } from 'coze-coding-dev-sdk'
 import * as crypto from 'crypto'
-import { getMySQLClient } from '../../storage/database/mysql-client'
+import { getMySQLClient, getPool } from '../../storage/database/mysql-client'
 import { getSharedCache } from '../../common/shared-cache'
 import { ReverseGeocodingService } from '../../services/reverse-geocoding.service'
 import { sharedMemoryAvatars } from '../user-stats/user-stats.service'
@@ -333,30 +333,38 @@ export class AvatarService {
     if (avatarIds.length > 0) {
       try {
         const db = getMySQLClient()
+        const pool = getPool()
         const today = new Date()
         today.setHours(0, 0, 0, 0)
         
         const idList = avatarIds.map(id => `'${id}'`).join(', ')
         
-        const earningsRows = await db.query(
-          `SELECT 
-            avatar_id,
-            SUM(amount * (1 - COALESCE(fee_rate, 0))) as total_earnings,
-            SUM(CASE WHEN created_at >= ? THEN amount * (1 - COALESCE(fee_rate, 0)) ELSE 0 END) as today_earnings
+        // 与首页和收益中心保持一致：先查询每条收益记录，然后逐笔计算（每笔都四舍五入到2位小数）
+        const [earningsRows] = await pool.query(
+          `SELECT avatar_id, amount, fee_rate, created_at
            FROM earnings 
-           WHERE avatar_id IN (${idList}) AND status IN ('settled', 'pending')
-           GROUP BY avatar_id`,
-          [today]
-        )
+           WHERE avatar_id IN (${idList}) AND status IN ('settled')`,
+          []
+        ) as any[]
         
-        
-        const earningsData = Array.isArray(earningsRows) ? earningsRows : (earningsRows?.data || [])
-        for (const e of earningsData) {
-          const avatarId = e.avatarId || e.avatar_id
-          earningsMap[avatarId] = {
-            total: Number(e.totalEarnings || e.total_earnings) || 0,
-            today: Number(e.todayEarnings || e.today_earnings) || 0
+        // 按分身分组，逐笔计算每笔收益（四舍五入到2位小数）
+        const avatarEarningsMap: Record<string, any[]> = {}
+        for (const e of earningsRows || []) {
+          const avatarId = e.avatar_id
+          if (!avatarEarningsMap[avatarId]) {
+            avatarEarningsMap[avatarId] = []
           }
+          const actualAmount = Number((Number(e.amount) * (1 - Number(e.fee_rate || 0))).toFixed(2))
+          const isToday = new Date(e.created_at) >= today
+          avatarEarningsMap[avatarId].push({ total: actualAmount, today: isToday ? actualAmount : 0 })
+        }
+        
+        // 合并计算每个分身的总收益和今日收益
+        for (const avatarId of Object.keys(avatarEarningsMap)) {
+          const earningsList = avatarEarningsMap[avatarId]
+          const total = earningsList.reduce((sum, e) => sum + e.total, 0)
+          const todayTotal = earningsList.reduce((sum, e) => sum + e.today, 0)
+          earningsMap[avatarId] = { total, today: todayTotal }
         }
       } catch (error) {
         console.warn('[AvatarService] 查询收益失败:', error)

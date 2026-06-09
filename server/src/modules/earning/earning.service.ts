@@ -33,9 +33,9 @@ export class EarningService {
     const now = new Date()
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
 
-    // 累计收益 = 全部状态
+    // 累计收益 = 只统计 settled 状态
     const totalEarnings = earnings
-      .filter(e => e.status === 'pending' || e.status === 'settled')
+      .filter(e => e.status === 'settled')
       .reduce((sum: number, e: any) => {
         const actualAmount = calcActualAmount(Number(e.amount), Number(e.fee_rate || 0))
         return sum + actualAmount
@@ -116,8 +116,8 @@ export class EarningService {
     const pageSize = options?.pageSize || 20
     const offset = (page - 1) * pageSize
     
-    let where = 'user_id = ?'
-    const params: any[] = [userId]
+    let where = 'user_id = ? AND status IN (?)'
+    const params: any[] = [userId, 'settled']
     if (options?.type) {
       where += ' AND type = ?'
       params.push(options.type)

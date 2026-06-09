@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { Injectable } from '@nestjs/common'
-import { getMySQLClient } from '../../storage/database/mysql-client'
+import { getMySQLClient, getPool } from '../../storage/database/mysql-client'
 import { getSharedCache } from '../../common/shared-cache'
 
 // 共享内存缓存（与 avatar.service.ts 共享）
@@ -97,15 +97,20 @@ export class UserStatsService {
       // 4. 统计累计收益（只从 earnings 表计算，status='pending' 或 'settled'，考虑抽成）
       userResult = await db.queryOne('users', { id: userId }) as any
       
-      // 直接在数据库中计算，避免字段名不匹配问题
-      const totalResult = await db.query(
-        `SELECT COALESCE(SUM(amount * (1 - COALESCE(fee_rate, 0))), 0) as total
-         FROM earnings 
+      // 与收益中心保持一致：使用 pool.query 查询收益记录，然后逐笔计算（每笔都四舍五入到2位小数）
+      const pool = getPool()
+      const [earningsRows] = await pool.query(
+        `SELECT amount, fee_rate FROM earnings 
          WHERE user_id = ? AND status IN ('settled')`,
         [userId]
       ) as any[]
       
-      totalEarnings = Number(totalResult?.[0]?.total || 0)
+      // 计算累计收益，每笔记录都先四舍五入到2位小数（与收益中心calcActualAmount一致）
+      totalEarnings = (earningsRows || []).reduce((sum: number, e: any) => {
+        const actualAmount = Number((Number(e.amount) * (1 - Number(e.fee_rate || 0))).toFixed(2))
+        console.log('[UserStats] 收益记录: amount=', e.amount, ', fee_rate=', e.fee_rate || e.feeRate, ', actual=', actualAmount)
+        return sum + actualAmount
+      }, 0)
       
       // 5. 获取用户邀请码和邀请人数
       try {
@@ -163,14 +168,22 @@ export class UserStatsService {
         ) as any[]
         const statsMap = new Map(statsResult.map((r: any) => [r.avatarId || r.avatar_id, r]))
 
-        // 一次性查询所有分身的收益统计   `SELECT COALESCE(SUM(amount * (1 - COALESCE(fee_rate, 0))), 0) as total
-        const earnResult = await db.query(
-          `SELECT avatar_id, COALESCE(SUM(amount * (1 - COALESCE(fee_rate, 0))), 0) as total
+        // 与首页和收益中心保持一致：先查询每条收益记录，然后逐笔计算（每笔都四舍五入到2位小数）
+        const [earnRows] = await pool.query(
+          `SELECT avatar_id, amount, fee_rate
            FROM earnings
-           WHERE avatar_id IN (${avatarIdList}) AND status IN ('settled', 'pending')
-           GROUP BY avatar_id`
+           WHERE avatar_id IN (${avatarIdList}) AND status IN ('settled')`,
+          []
         ) as any[]
-        const earnMap = new Map(earnResult.map((r: any) => [r.avatarId || r.avatar_id, Number(r.total || 0)]))
+        
+        // 按分身分组，逐笔计算每笔收益（四舍五入到2位小数）
+        const avatarEarningsMap: Record<string, number> = {}
+        for (const e of earnRows || []) {
+          const avatarId = e.avatar_id
+          const actualAmount = Number((Number(e.amount) * (1 - Number(e.fee_rate || 0))).toFixed(2))
+          avatarEarningsMap[avatarId] = (avatarEarningsMap[avatarId] || 0) + actualAmount
+        }
+        const earnMap = new Map(Object.entries(avatarEarningsMap).map(([id, total]) => [id, total]))
 
         for (const a of avatarList) {
           const stats = statsMap.get(a.id)
