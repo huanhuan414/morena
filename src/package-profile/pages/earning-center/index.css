@@ -818,6 +818,22 @@
   color: #00ff88;
 }
 
+/* 门槛说明样式 */
+.withdraw-threshold-tip {
+  padding: 16rpx 24rpx;
+  margin-top: 16rpx;
+  margin-bottom: 8rpx;
+  border-radius: 8rpx;
+  /* background: rgba(251, 191, 36, 0.1); */
+  text-align: center;
+}
+
+.threshold-text {
+  font-size: 24rpx;
+  color: #fbbf24;
+  font-weight: 500;
+}
+
 .withdraw-tips {
   padding: 20rpx;
   background: rgba(255, 255, 255, 0.03);

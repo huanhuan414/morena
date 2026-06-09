@@ -427,7 +427,7 @@ export default function EarningCenterPage() {
         <View className="withdraw-modal-overlay">
           <View className="withdraw-modal">
             <View className="withdraw-modal-header">
-              <Text className="withdraw-modal-title">提现到微信零钱</Text>
+              <Text className="withdraw-modal-title">提现</Text>
               <View className="withdraw-modal-close" onClick={() => setShowWithdrawModal(false)}>
                 <X size={20} color="#666" />
               </View>
@@ -454,6 +454,16 @@ export default function EarningCenterPage() {
                 <View className="withdraw-all-btn" onClick={handleWithdrawAll}>
                   <Text className="withdraw-all-text">全部提现</Text>
                 </View>
+
+                {/* 门槛说明 */}
+                <View className="withdraw-threshold-tip">
+                  <Text className="threshold-text">
+                    {overview.referralCount >= 2
+                      ? '✓ 已降低门槛，最低提现20元'
+                      : '✗ 未降低门槛，最低提现100元'
+                    }
+                  </Text>
+                </View>
               </View>
 
               <View className="withdraw-tips">
@@ -461,7 +471,7 @@ export default function EarningCenterPage() {
                 <Text className="withdraw-tip-item">• 未推荐2人：最低提现100元</Text>
                 <Text className="withdraw-tip-item">• 提现金额必须是20的倍数</Text>
                 {/* <Text className="withdraw-tip-item">• 提现将直接到微信零钱 </Text> */}
-                <Text className="withdraw-tip-item">• 提现成功后不可撤销</Text>
+                <Text className="withdraw-tip-item">• 预计一周内到账，提现成功后不可撤销</Text>
               </View>
             </View>
 
@@ -534,6 +544,12 @@ export default function EarningCenterPage() {
                 <View className="rule-content">
                   {/* <Text className="rule-title">提现倍数</Text> */}
                   <Text className="rule-desc">提现金额必须是 <Text className="rule-highlight">20元</Text> 的倍数（如：20元、40元、60元...）</Text>
+                </View>
+              </View>
+              <View className="rule-item">
+                <View className="rule-number">4</View>
+                <View className="rule-content">
+                  <Text className="rule-desc">预计 <Text className="rule-highlight">一周</Text> 内到账，提现成功后不可撤销</Text>
                 </View>
               </View>
               {/* <View className="rule-item">
