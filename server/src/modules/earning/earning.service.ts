@@ -34,14 +34,8 @@ export class EarningService {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
 
     // 累计收益 = 全部状态
-    const totalEarnings = earnings.reduce((sum: number, e: any) => {
-      const actualAmount = calcActualAmount(Number(e.amount), Number(e.fee_rate || 0))
-      return sum + actualAmount
-    }, 0)
-
-    // settled 可提现余额
-    const settledAmount = earnings
-      .filter(e => e.status === 'settled')
+    const totalEarnings = earnings
+      .filter(e => e.status === 'pending' || e.status === 'settled')
       .reduce((sum: number, e: any) => {
         const actualAmount = calcActualAmount(Number(e.amount), Number(e.fee_rate || 0))
         return sum + actualAmount
@@ -63,8 +57,8 @@ export class EarningService {
     const pendingAmount = Number(withdrawStats?.[0]?.pendingWithdraw) || 0
     const processingAmount = Number(withdrawStats?.[0]?.processingWithdraw) || 0
 
-    // 可提现余额 = settled状态收益 - (提现记录表已结算 + 结算中金额)
-    const balance = Number((settledAmount - completedWithdraw - settlingWithdraw).toFixed(2))
+    // 可提现余额 = totalEarnings累计收益 - (提现记录表已结算 + 结算中金额)
+    const balance = Number((totalEarnings - completedWithdraw - settlingWithdraw).toFixed(2))
 
     // 已结算 = 提现记录表中 completed 状态金额
     const completedAmount = completedWithdraw
@@ -76,7 +70,7 @@ export class EarningService {
     const monthlyAmount = earnings
       .filter(e => {
         const createdAt = new Date(e.created_at)
-        return e.status !== 'rejected' && e.status !== 'expired' && createdAt >= monthStart
+        return (e.status === 'pending' || e.status === 'settled') && createdAt >= monthStart
       })
       .reduce((sum: number, e: any) => {
         const actualAmount = calcActualAmount(Number(e.amount), Number(e.fee_rate || 0))
@@ -84,7 +78,7 @@ export class EarningService {
       }, 0)
 
     // 统计订单数
-    const totalOrders = earnings.filter(e => e.type === 'order_reward').length
+    const totalOrders = earnings.filter(e => e.status === 'pending' || e.status === 'settled').length
 
     // 查询 referrals 表中的推荐人数（用于提现门槛判断）
     const [referralRows] = await pool.query(

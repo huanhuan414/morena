@@ -94,16 +94,18 @@ export class UserStatsService {
         }
       }
       
-      // 4. 统计累计收益（只从 earnings 表计算，status='settled' 或 'completed'）
+      // 4. 统计累计收益（只从 earnings 表计算，status='pending' 或 'settled'，考虑抽成）
       userResult = await db.queryOne('users', { id: userId }) as any
       
-      const earningsResult = await db.queryWhere(
-        'earnings',
-        `user_id = '${userId}' AND status IN ('settled', 'completed')`
+      // 直接在数据库中计算，避免字段名不匹配问题
+      const totalResult = await db.query(
+        `SELECT COALESCE(SUM(amount * (1 - COALESCE(fee_rate, 0))), 0) as total
+         FROM earnings 
+         WHERE user_id = ? AND status IN ('pending', 'settled')`,
+        [userId]
       ) as any[]
-      totalEarnings = earningsResult?.reduce(
-        (sum: number, e: any) => sum + Number(e.amount || 0), 0
-      ) || 0
+      
+      totalEarnings = Number(totalResult?.[0]?.total || 0)
       
       // 5. 获取用户邀请码和邀请人数
       try {
