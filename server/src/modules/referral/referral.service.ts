@@ -77,14 +77,14 @@ export class ReferralService {
       throw new Error(`今日邀请已达上限（${limitInfo.current}/${limitInfo.limit}人），邀请人无法得到奖励，不影响用户注册`)
     }
     
-    // 注册就算邀请成功，直接标记为completed
+    // 注册时创建邀请记录，标记为pending（待发放奖励）
     // 同时记录设备ID和IP地址
     const id = crypto.randomUUID()
     await db.query(
       `INSERT INTO referrals 
        (id, referrer_id, referred_id, referral_code, status, reward_amount, 
         device_id, ip_address, created_at)
-       VALUES (?, ?, ?, ?, 'completed', 0, ?, ?, NOW())`,
+       VALUES (?, ?, ?, ?, 'pending', 0, ?, ?, NOW())`,
       [id, inviter.id, inviteeId, code, deviceId || null, ipAddress || null]
     )
     
@@ -95,26 +95,13 @@ export class ReferralService {
       updated_at: new Date()
     })
     
-    // 更新邀请人的邀请计数
-    const inviterRecord = await db.queryOne('users', { id: inviter.id }) as any
-    await db.updateWhere('users', { id: inviter.id }, {
-      referral_count: (inviterRecord?.referral_count || 0) + 1,
-      updated_at: new Date()
-    })
-    
-    // 立即发放基础奖励（根据阶梯等级）
-    await this.distributeBaseReward(inviter.id, inviteeId)
-
-    // 获取当前阶梯的奖励信息
-    const tierInfo = await this.getCurrentTier(inviter.id)
-    const currentTier = tierInfo.currentTier
-    const reward = currentTier ? (currentTier.base_reward || 0) + (currentTier.coins_reward || 0) : 0
+    // 注意：邀请人的邀请计数和奖励发放将在被邀请人创建分身后执行
 
     return { 
       inviterId: inviter.id,
-      reward: reward,
+      reward: 0,
       success: true,
-      message: '邀请成功，奖励已发放'
+      message: '邀请成功，奖励将在被邀请人创建分身后发放'
     }
   }
 
@@ -344,12 +331,12 @@ export class ReferralService {
     const result = await db.query(
       `SELECT COUNT(*) as count 
        FROM referrals 
-       WHERE referrer_id = ? AND DATE(created_at) = ?`,
+       WHERE referrer_id = ? AND DATE(created_at) = ? AND status = 'completed'`,
       [userId, today]
     ) as any[]
     
     const currentCount = Number(result?.[0]?.count || 0)
-    const DAILY_LIMIT = 50
+    const DAILY_LIMIT = 10
     
     return {
       allowed: currentCount < DAILY_LIMIT,
@@ -651,5 +638,74 @@ export class ReferralService {
     }
     
     console.log(`[ReferralService] 批量发放返佣完成，共处理${pendingCommissions?.length || 0}条记录`)
+  }
+
+  /**
+   * 创建分身后发放奖励
+   */
+  async distributeRewardAfterAvatarCreated(referrerId: string, referredId: string): Promise<void> {
+    console.log(`[ReferralService] distributeRewardAfterAvatarCreated 开始执行: referrerId=${referrerId}, referredId=${referredId}`)
+    
+    const db = getMySQLClient()
+    
+    // 1. 检查是否存在pending状态的邀请记录
+    const referral = await db.queryOne('referrals', { 
+      referred_id: referredId, 
+      status: 'pending' 
+    }) as any
+    
+    console.log(`[ReferralService] 查询邀请记录结果:`, referral)
+    
+    if (!referral) {
+      console.log(`[ReferralService] 未找到pending状态的邀请记录，跳过奖励发放: referredId=${referredId}`)
+      return
+    }
+    
+    // 2. 检查被邀请人是否创建分身（直接查询avatars表）
+    console.log(`[ReferralService] 检查被邀请人是否创建分身: referredId=${referredId}`)
+    const avatarResult = await db.query(
+      `SELECT COUNT(*) as count FROM avatars WHERE user_id = ? AND status = 'active'`,
+      [referredId]
+    ) as any[]
+    
+    const avatarCount = Number(avatarResult?.[0]?.count || avatarResult?.[0]?.Count || 0)
+    const avatarCreated = avatarCount > 0
+    
+    console.log(`[ReferralService] 被邀请人创建分身状态: avatarCreated=${avatarCreated}, avatarCount=${avatarCount}`)
+    
+    if (!avatarCreated) {
+      console.log(`[ReferralService] 被邀请人未创建分身，跳过奖励发放: referredId=${referredId}`)
+      return
+    }
+    
+    // 3. 发放基础奖励
+    console.log(`[ReferralService] 开始发放基础奖励: referrerId=${referrerId}, referredId=${referredId}`)
+    await this.distributeBaseReward(referrerId, referredId)
+    console.log(`[ReferralService] 基础奖励发放完成`)
+    
+    // 4. 更新邀请状态为completed
+    console.log(`[ReferralService] 开始更新邀请状态为completed: referredId=${referredId}`)
+    await db.updateWhere('referrals', { referred_id: referredId }, {
+      status: 'completed'
+    })
+    console.log(`[ReferralService] 邀请状态更新完成`)
+    
+    // 5. 更新邀请人的邀请计数（如果字段存在）
+    console.log(`[ReferralService] 开始更新邀请人的邀请计数: referrerId=${referrerId}`)
+    try {
+      const inviterRecord = await db.queryOne('users', { id: referrerId }) as any
+      if (inviterRecord && inviterRecord.referralCount !== undefined) {
+        await db.updateWhere('users', { id: referrerId }, {
+          referral_count: (inviterRecord?.referralCount || 0) + 1
+        })
+        console.log(`[ReferralService] 邀请计数更新完成`)
+      } else {
+        console.log(`[ReferralService] 用户表中没有referral_count字段，跳过更新`)
+      }
+    } catch (error) {
+      console.log(`[ReferralService] 更新邀请计数失败，跳过:`, error.message)
+    }
+    
+    console.log(`[ReferralService] 被邀请人创建分身，已发放奖励给用户 ${referrerId}`)
   }
 }

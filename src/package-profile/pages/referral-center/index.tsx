@@ -27,7 +27,7 @@ export default function ReferralCenter() {
   const [dailyLimit, setDailyLimit] = useState({
     allowed: true,
     current: 0,
-    limit: 50,
+    limit: 10,
   })
   const [referralList, setReferralList] = useState([])
 
@@ -73,7 +73,7 @@ export default function ReferralCenter() {
       setDailyLimit({
         allowed: limitData.allowed || true,
         current: limitData.current || 0,
-        limit: limitData.limit || 50,
+        limit: limitData.limit || 10,
       })
 
       // 加载邀请列表
@@ -237,7 +237,7 @@ export default function ReferralCenter() {
             <View className="ref-step-line" />
             <View className="ref-step-content">
               <Text className="ref-step-title">好友注册</Text>
-              <Text className="ref-step-desc">新用户使用邀请码注册，享会员首冲8折</Text>
+              <Text className="ref-step-desc">新用户使用邀请码注册并创建分身，享会员首冲8折</Text>
             </View>
           </View>
           <View className="ref-step">
@@ -247,7 +247,7 @@ export default function ReferralCenter() {
             <View className="ref-step-line" />
             <View className="ref-step-content">
               <Text className="ref-step-title">邀请成功</Text>
-              <Text className="ref-step-desc">注册成功即可获得基础奖励</Text>
+              <Text className="ref-step-desc">注册成功并创建分身即可获得基础奖励</Text>
             </View>
           </View>
           <View className="ref-step">
@@ -582,7 +582,7 @@ export default function ReferralCenter() {
             <View className="ref-rule-icon" style={{ background: '#8B5CF6' }}>
               <Gift size={12} color="#fff" />
             </View>
-            <Text className="ref-rule-text">新用户注册成功即可获得基础奖励</Text>
+            <Text className="ref-rule-text">新用户注册成功并创建分身即可获得基础奖励</Text>
           </View>
           <View className="ref-rule-item">
             <View className="ref-rule-icon" style={{ background: '#F59E0B' }}>
@@ -594,7 +594,7 @@ export default function ReferralCenter() {
             <View className="ref-rule-icon" style={{ background: '#3B82F6' }}>
               <Zap size={12} color="#fff" />
             </View>
-            <Text className="ref-rule-text">每人每日最多邀请50人，超出部分不计入奖励</Text>
+            <Text className="ref-rule-text">每人每日最多邀请10人，超出部分不计入奖励</Text>
           </View>
           <View className="ref-rule-item">
             <View className="ref-rule-icon" style={{ background: '#EF4444' }}>
