@@ -82,7 +82,7 @@ export class EarningService {
 
     // 查询 referrals 表中的推荐人数（用于提现门槛判断）
     const [referralRows] = await pool.query(
-      `SELECT COUNT(*) as referralCount FROM referrals WHERE referrer_id = ?`,
+      `SELECT COUNT(1) as referralCount FROM referrals WHERE referrer_id = ? and status = 'completed'`,
       [userId]
     ) as any[];
     const referralCount = Number(referralRows?.[0]?.referralCount) || 0;

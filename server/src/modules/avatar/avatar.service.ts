@@ -7,7 +7,6 @@ import { getSharedCache } from '../../common/shared-cache'
 import { ReverseGeocodingService } from '../../services/reverse-geocoding.service'
 import { sharedMemoryAvatars } from '../user-stats/user-stats.service'
 import { SubscriptionService } from '../subscription/subscription.service'
-import { ReferralService } from '../referral/referral.service'
 
 // 测试用户ID列表
 const TEST_USER_IDS = ['dev_user', 'test_user', 'guest-user-id', 'anonymous']
@@ -17,7 +16,6 @@ export class AvatarService {
   constructor(
     @Inject(ReverseGeocodingService) private readonly reverseGeocodingService: ReverseGeocodingService,
     @Inject(SubscriptionService) private readonly subscriptionService: SubscriptionService,
-    @Inject(ReferralService) private readonly referralService: ReferralService,
   ) {}
   private avatarColumnsCache: Set<string> | null = null
 
@@ -267,30 +265,6 @@ export class AvatarService {
         const cachedAvatars = sharedCache.get(cacheKey) || []
         cachedAvatars.unshift(newAvatar)
         sharedCache.set(cacheKey, cachedAvatars)
-
-        // 检查是否是被邀请人，如果是则发放奖励
-        try {
-          const db = getMySQLClient()
-          const referral = await db.queryOne('referrals', { 
-            referred_id: effectiveUserId, 
-            status: 'pending' 
-          }) as any
-          
-          console.log(`[AvatarService] 查询邀请记录结果:`, referral)
-          
-          if (referral && referral.referrerId) {
-            // 触发奖励发放
-            console.log(`[AvatarService] 被邀请人创建分身，准备触发奖励发放: userId=${effectiveUserId}, referrerId=${referral.referrerId}`)
-            await this.referralService.distributeRewardAfterAvatarCreated(referral.referrerId, effectiveUserId)
-            console.log(`[AvatarService] 被邀请人创建分身，已触发奖励发放: userId=${effectiveUserId}, referrerId=${referral.referrerId}`)
-          } else if (referral) {
-            console.warn(`[AvatarService] 邀请记录存在但referrerId为空: referral=${JSON.stringify(referral)}`)
-          } else {
-            console.log(`[AvatarService] 未找到pending状态的邀请记录: userId=${effectiveUserId}`)
-          }
-        } catch (error) {
-          console.error('[AvatarService] 检查邀请关系失败:', error)
-        }
 
         return { success: true, id: (result as any)?.data?.insertId, data: newAvatar }
       }

@@ -102,6 +102,8 @@ export class AuthSmsService {
       'isv.SIGN_NAME_ILLEGAL': '短信签名不合法',
       'isv.TEMPLATE_MISSING_PARAMETERS': '短信模板参数缺失',
       'isp.RAM_PERMISSION_DENY': 'RAM权限不足',
+      'isv.OUT_OF_SERVICE': '短信服务暂时不可用，请稍后再试',
+      'isv.BUSINESS_STOPPED': '短信服务已停止，请联系管理员',
     }
     return errorMap[code] || message || `短信发送失败(${code})`
   }

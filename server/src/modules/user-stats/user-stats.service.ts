@@ -108,7 +108,7 @@ export class UserStatsService {
       // 计算累计收益，每笔记录都先四舍五入到2位小数（与收益中心calcActualAmount一致）
       totalEarnings = (earningsRows || []).reduce((sum: number, e: any) => {
         const actualAmount = Number((Number(e.amount) * (1 - Number(e.fee_rate || 0))).toFixed(2))
-        console.log('[UserStats] 收益记录: amount=', e.amount, ', fee_rate=', e.fee_rate || e.feeRate, ', actual=', actualAmount)
+        // console.log('[UserStats] 收益记录: amount=', e.amount, ', fee_rate=', e.fee_rate || e.feeRate, ', actual=', actualAmount)
         return sum + actualAmount
       }, 0)
       
