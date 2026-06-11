@@ -29,6 +29,14 @@ const BLACKLISTED_IPS = [
     '106.61.93.89',
 ];
 
+// 获取北京时间格式字符串 (YYYY-MM-DD HH:mm:ss)
+function getBeijingTimeString(): string {
+  const now = new Date();
+  const beijing = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+  const pad = (n: number) => n < 10 ? '0' + n : n;
+  return `${beijing.getUTCFullYear()}-${pad(beijing.getUTCMonth() + 1)}-${pad(beijing.getUTCDate())} ${pad(beijing.getUTCHours())}:${pad(beijing.getUTCMinutes())}:${pad(beijing.getUTCSeconds())}`;
+}
+
 function isVirtualCarrierPhone(phone: string): boolean {
     if (!phone || phone.length < 3) return false;
     return VIRTUAL_CARRIER_PREFIXES.includes(phone.substring(0, 3));
@@ -212,7 +220,7 @@ export class AuthService {
         try {
           await db.updateWhere('users', { id: existingUser.id }, {
             last_login_ip: ipAddress,
-            updated_at: new Date()
+            updated_at: getBeijingTimeString()
           })
         } catch (err) {
           console.error('[AuthService] 更新登录IP失败:', err)
@@ -239,8 +247,8 @@ export class AuthService {
       device_id: deviceId || null,
       ip_address: ipAddress || null,
       last_login_ip: ipAddress || null,
-      created_at: new Date().toISOString().slice(0, 19).replace("T", " "),
-      updated_at: new Date().toISOString().slice(0, 19).replace("T", " "),
+      created_at: getBeijingTimeString(),
+      updated_at: getBeijingTimeString(),
     };
     const insertResult = await db.insert("users", newUserData);
     if (insertResult.error) {
@@ -484,8 +492,8 @@ export class AuthService {
         device_id: deviceId || null,
         ip_address: ipAddress || null,
         last_login_ip: ipAddress || null,
-        created_at: new Date().toISOString().slice(0, 19).replace("T", " "),
-        updated_at: new Date().toISOString().slice(0, 19).replace("T", " "),
+        created_at: getBeijingTimeString(),
+        updated_at: getBeijingTimeString(),
       };
       const insertResult = await db.insert("users", newUserData);
       if (insertResult.error) {
