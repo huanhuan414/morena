@@ -164,18 +164,18 @@
   align-items: center;
   justify-content: center;
   gap: 10rpx;
-  background: linear-gradient(135deg, #8b5cf6, #6366f1);
+  background: #f5f3ff;
   border-radius: 16rpx;
   padding: 24rpx 0;
-  box-shadow: 0 4rpx 16rpx rgba(123, 58, 237, 0.3);
+  border: 2rpx solid #c4b5fd;
   transition: all 0.2s ease;
 }
 .ref-btn-copy:active {
   transform: scale(0.98);
-  box-shadow: 0 2rpx 8rpx rgba(123, 58, 237, 0.2);
+  background: #eef2ff;
 }
 .ref-btn-text {
-  color: #fff;
+  color: #7c3aed;
   font-size: 26rpx;
   font-weight: 600;
 }
@@ -186,18 +186,23 @@
   align-items: center;
   justify-content: center;
   gap: 10rpx;
-  background: #f5f3ff;
+  background: linear-gradient(135deg, #8b5cf6, #6366f1) !important;
   border-radius: 16rpx;
   padding: 24rpx 0;
-  border: 2rpx solid #c4b5fd;
+  box-shadow: 0 4rpx 16rpx rgba(123, 58, 237, 0.3);
   transition: all 0.2s ease;
+  border: none !important;
+}
+.ref-btn-share::after {
+  border: none !important;
 }
 .ref-btn-share:active {
   transform: scale(0.98);
-  background: #eef2ff;
+  box-shadow: 0 2rpx 8rpx rgba(123, 58, 237, 0.2);
+  opacity: 0.9;
 }
 .ref-btn-text-purple {
-  color: #7c3aed;
+  color: #fff;
   font-size: 26rpx;
   font-weight: 600;
 }
@@ -264,6 +269,12 @@
 .ref-stat-icon.yellow {
   background: linear-gradient(135deg, #fffbeb, #fef3c7);
 }
+.ref-stat-icon.blue {
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+}
+.ref-stat-icon.gold {
+  background: linear-gradient(135deg, #fffbeb, #fef3c7);
+}
 .ref-stat-value {
   font-size: 36rpx;
   font-weight: 800;
@@ -303,6 +314,36 @@
   font-size: 30rpx;
   font-weight: 700;
   color: #1f2937;
+}
+.ref-more-btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4rpx;
+  margin-left: auto;
+  padding: 8rpx 16rpx;
+  border-radius: 20rpx;
+  background: rgba(124, 58, 237, 0.1);
+}
+
+/* 底部更多按钮样式 */
+.ref-more-btn-bottom {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  margin-top: 24rpx;
+  padding: 16rpx 32rpx;
+  border-radius: 24rpx;
+  background: linear-gradient(135deg, #F3E8FF, #EDE9FE);
+  border: 1rpx solid #C4B5FD;
+}
+
+.ref-more-text {
+  font-size: 24rpx;
+  color: #7C3AED;
+  font-weight: 500;
 }
 .ref-milestone-list {
   display: flex;
@@ -426,6 +467,7 @@
 }
 
 /* 邀请记录 */
+/* 邀请记录卡片式设计 */
 .ref-list-card {
   margin: 0 24rpx 24rpx;
   background: #fff;
@@ -433,12 +475,14 @@
   padding: 28rpx;
   box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
 }
+
 .ref-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 48rpx 0;
 }
+
 .ref-empty-icon {
   width: 80rpx;
   height: 80rpx;
@@ -448,44 +492,43 @@
   align-items: center;
   justify-content: center;
 }
+
 .ref-empty-text {
   font-size: 28rpx;
   color: #9ca3af;
   margin-top: 20rpx;
 }
+
 .ref-empty-hint {
   font-size: 22rpx;
   color: #d1d5db;
   margin-top: 10rpx;
   text-align: center;
 }
+
 .ref-list {
   display: flex;
   flex-direction: column;
+  gap: 16rpx;
 }
-.ref-list-item {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  padding: 24rpx 16rpx;
+
+/* 邀请卡片样式 */
+.ref-invite-card {
+  background: linear-gradient(135deg, #f9fafb, #f3f4f6);
   border-radius: 16rpx;
-  margin-bottom: 8rpx;
-  transition: all 0.2s ease;
+  padding: 20rpx;
+  border: 1rpx solid #e5e7eb;
 }
-.ref-list-item:active {
-  background: #f9fafb;
-}
-.ref-list-item:last-child {
-  margin-bottom: 0;
-}
-.ref-list-left {
+
+.ref-card-header {
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: 16rpx;
+  margin-bottom: 16rpx;
 }
-.ref-list-avatar {
+
+.ref-card-avatar {
   width: 64rpx;
   height: 64rpx;
   border-radius: 32rpx;
@@ -494,34 +537,450 @@
   align-items: center;
   justify-content: center;
 }
-.ref-list-info {
+
+.ref-card-info {
   display: flex;
   flex-direction: column;
   gap: 6rpx;
 }
-.ref-list-name {
+
+.ref-card-name {
   font-size: 28rpx;
   font-weight: 600;
   color: #1f2937;
 }
-.ref-list-time {
+
+.ref-card-time {
   font-size: 22rpx;
   color: #9ca3af;
 }
-.ref-list-right {
+
+/* 卡片内容样式 */
+.ref-card-content {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  gap: 12rpx;
+  padding-top: 12rpx;
+  border-top: 1rpx solid #e5e7eb;
+}
+
+.ref-card-records {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.ref-card-records-title {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 4rpx;
+}
+
+.ref-card-record-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+  padding: 8rpx 12rpx;
+  background: #fff;
+  border-radius: 8rpx;
+}
+
+.ref-card-record-text {
+  font-size: 24rpx;
+  color: #1f2937;
+}
+
+.ref-card-record-time {
+  font-size: 20rpx;
+  color: #9ca3af;
+}
+
+.ref-card-total {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12rpx 16rpx;
+  background: linear-gradient(135deg, #10b981, #059669);
+  border-radius: 12rpx;
+  margin-top: 8rpx;
+}
+
+.ref-card-total-label {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
+.ref-card-total-amount {
+  font-size: 32rpx;
+  font-weight: 800;
+  color: #fff;
+}
+
+/* 注册成功样式 */
+.ref-card-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16rpx;
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  border-radius: 12rpx;
+  border: 1rpx solid #86efac;
+  margin-bottom: 12rpx;
+}
+
+.ref-card-success-text {
+  font-size: 24rpx;
+  color: #059669;
+  font-weight: 600;
+}
+
+.ref-card-success-hint {
+  font-size: 22rpx;
+  color: #10b981;
+  margin-top: 6rpx;
+}
+
+/* 空状态样式 */
+.ref-card-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16rpx;
+  background: #fff;
+  border-radius: 12rpx;
+  border: 1rpx dashed #d1d5db;
+}
+
+.ref-card-empty-text {
+  font-size: 24rpx;
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+.ref-card-empty-hint {
+  font-size: 22rpx;
+  color: #9ca3af;
+  margin-top: 6rpx;
+}
+
+/* 统计概览新增样式 */
+.ref-stat-icon.gold {
+  background: linear-gradient(135deg, #fffbeb, #fef3c7);
+}
+
+/* 阶梯奖励表格卡片 */
+.ref-tier-table-card {
+  margin: 0 24rpx 24rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 28rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+}
+
+/* 表格头部 */
+.ref-tier-table-header {
+  display: flex;
+  flex-direction: row;
+  background: linear-gradient(135deg, #F5F3FF, #EEF2FF);
+  border-radius: 12rpx 12rpx 0 0;
+  padding: 16rpx 12rpx;
+  margin-bottom: 2rpx;
+}
+.ref-tier-th {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ref-tier-th-text {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #7C3AED;
+}
+
+/* 表格内容 */
+.ref-tier-table-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2rpx;
+}
+.ref-tier-row {
+  display: flex;
+  flex-direction: row;
+  background: #F9FAFB;
+  padding: 16rpx 12rpx;
+  border-radius: 8rpx;
+  transition: all 0.3s ease;
+}
+.ref-tier-row.active {
+  background: linear-gradient(135deg, #FFF7ED, #FEF3C7);
+  border: 2rpx solid #FCD34D;
+}
+.ref-tier-td {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 4rpx;
 }
-.ref-list-amount {
-  font-size: 28rpx;
-  font-weight: 700;
-  color: #10b981;
+.ref-tier-td-text {
+  font-size: 24rpx;
+  color: #1F2937;
+  text-align: center;
+  line-height: 1.4;
 }
-.ref-list-status {
-  font-size: 22rpx;
+.ref-tier-row.active .ref-tier-td-text {
+  color: #92400E;
   font-weight: 600;
+}
+.ref-tier-td-extra {
+  font-size: 20rpx;
+  color: #F59E0B;
+  font-weight: 600;
+}
+
+/* 表格说明 */
+.ref-tier-table-footer {
+  margin-top: 20rpx;
+  padding-top: 16rpx;
+  border-top: 2rpx solid #E5E7EB;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+.ref-tier-footer-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12rpx;
+}
+.ref-tier-footer-icon {
+  width: 32rpx;
+  height: 32rpx;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ref-tier-footer-text {
+  font-size: 24rpx;
+  color: #6B7280;
+  line-height: 1.5;
+}
+
+/* 任务链提示 */
+.ref-task-notice {
+  margin: 0 24rpx 24rpx;
+  padding: 16rpx 20rpx;
+  background: #FFF7ED;
+  border-radius: 12rpx;
+  border: 2rpx solid #FED7AA;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12rpx;
+}
+.ref-task-notice-text {
+  font-size: 24rpx;
+  color: #9A3412;
+  line-height: 1.5;
+}
+
+/* 每日限制警告 */
+.ref-limit-warning {
+  margin: 0 24rpx 24rpx;
+  padding: 16rpx 20rpx;
+  background: #FEE2E2;
+  border-radius: 12rpx;
+  border: 2rpx solid #FECACA;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12rpx;
+}
+.ref-limit-warning-text {
+  font-size: 24rpx;
+  color: #991B1B;
+  line-height: 1.5;
+}
+
+/* 活动规则卡片 */
+.ref-rules-card {
+  margin: 0 24rpx 24rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 28rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+}
+.ref-section-title-wrap {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10rpx;
+  margin-bottom: 24rpx;
+}
+.ref-rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+.ref-rule-item {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16rpx;
+}
+.ref-rule-icon {
+  width: 32rpx;
+  height: 32rpx;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 4rpx;
+}
+.ref-rule-text {
+  font-size: 26rpx;
+  color: #4B5563;
+  line-height: 1.6;
+  word-break: break-all;
+  flex: 1;
+}
+
+/* 最终活动奖励卡片 */
+.ref-final-rewards-card {
+  margin: 24rpx 24rpx 40rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 24rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.ref-final-rewards-table {
+  margin-top: 16rpx;
+}
+
+/* 表格头部 */
+.ref-final-table-header {
+  display: flex;
+  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+  border-radius: 12rpx 12rpx 0 0;
+  padding: 16rpx 0;
+}
+
+.ref-final-th {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8rpx 4rpx;
+}
+
+.ref-final-th-text {
+  font-size: 24rpx;
+  color: #fff;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* 表格内容 */
+.ref-final-table-body {
+  background: #fff;
+  border: 1rpx solid #E5E7EB;
+  border-top: none;
+  border-radius: 0 0 12rpx 12rpx;
+}
+
+.ref-final-row {
+  display: flex;
+  border-bottom: 1rpx solid #E5E7EB;
+  padding: 16rpx 0;
+  transition: background 0.2s;
+}
+
+.ref-final-row:last-child {
+  border-bottom: none;
+}
+
+/* 金牌样式 */
+.ref-final-row.gold {
+  background: linear-gradient(90deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 215, 0, 0.05) 100%);
+}
+
+.ref-final-row.gold .ref-final-td-rank {
+  color: #FFD700;
+  font-weight: 700;
+}
+
+/* 银牌样式 */
+.ref-final-row.silver {
+  background: linear-gradient(90deg, rgba(192, 192, 192, 0.1) 0%, rgba(192, 192, 192, 0.05) 100%);
+}
+
+.ref-final-row.silver .ref-final-td-rank {
+  color: #C0C0C0;
+  font-weight: 700;
+}
+
+/* 铜牌样式 */
+.ref-final-row.bronze {
+  background: linear-gradient(90deg, rgba(205, 127, 50, 0.1) 0%, rgba(205, 127, 50, 0.05) 100%);
+}
+
+.ref-final-row.bronze .ref-final-td-rank {
+  color: #CD7F32;
+  font-weight: 700;
+}
+
+.ref-final-td {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8rpx 4rpx;
+}
+
+.ref-final-td-rank {
+  font-size: 24rpx;
+  color: #4B5563;
+  font-weight: 600;
+}
+
+.ref-final-td-text {
+  font-size: 22rpx;
+  color: #6B7280;
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* 表格底部说明 */
+.ref-final-table-footer {
+  margin-top: 16rpx;
+  padding: 16rpx;
+  background: #F9FAFB;
+  border-radius: 12rpx;
+}
+
+.ref-final-footer-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12rpx;
+}
+
+.ref-final-footer-item:last-child {
+  margin-bottom: 0;
+}
+
+.ref-final-footer-text {
+  font-size: 22rpx;
+  color: #6B7280;
+  margin-left: 8rpx;
+  line-height: 1.4;
 }
 
 /* 底部提示 */

@@ -1,0 +1,333 @@
+.list-page {
+  min-height: 100vh;
+  background: #f5f5f5;
+}
+
+/* 头部 */
+.list-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 50%, #4f46e5 100%);
+  padding: 120rpx 32rpx 60rpx;
+  border-radius: 0 0 48rpx 48rpx;
+  overflow: hidden;
+}
+.list-header-back {
+  position: absolute;
+  top: 120rpx;
+  left: 24rpx;
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 32rpx;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.list-header-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+}
+.list-header-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #fff;
+}
+.list-header-count {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* 统计概览 */
+.list-stats {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  padding: 32rpx;
+  margin: 24rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+}
+.list-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+}
+.list-stat-icon {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.list-stat-icon.purple {
+  background: rgba(124, 58, 237, 0.1);
+}
+.list-stat-icon.gold {
+  background: rgba(245, 158, 11, 0.1);
+}
+.list-stat-icon.blue {
+  background: rgba(59, 130, 246, 0.1);
+}
+.list-stat-value {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #1f2937;
+}
+.list-stat-label {
+  font-size: 22rpx;
+  color: #6b7280;
+}
+
+/* 内容区域 */
+.list-content {
+  padding-top: 30rpx;
+  padding-left: 24rpx;
+  padding-right: 24rpx;
+  padding-bottom: 24rpx;
+}
+
+/* 空状态 */
+.list-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx 32rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+}
+.list-empty-icon {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 40rpx;
+  background: rgba(167, 139, 250, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16rpx;
+}
+.list-empty-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8rpx;
+}
+.list-empty-hint {
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+/* 邀请记录列表 */
+.list-items {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+/* 邀请卡片 */
+.list-invite-card {
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+}
+
+/* 卡片头部 */
+.list-card-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+.list-card-avatar {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 24rpx;
+  background: linear-gradient(135deg, #8B5CF6, #6366F1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.list-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+.list-card-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1f2937;
+}
+.list-card-time {
+  font-size: 22rpx;
+  color: #6b7280;
+}
+
+/* 卡片内容 */
+.list-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+/* 注册奖励 */
+.list-card-reward {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  padding: 12rpx;
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  border-radius: 12rpx;
+  border: 1rpx solid #86efac;
+}
+.list-card-reward-title {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #059669;
+}
+.list-card-reward-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+.list-card-reward-text {
+  font-size: 22rpx;
+  color: #10b981;
+}
+
+/* 消费记录 */
+.list-card-records {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  padding: 12rpx;
+  background: rgba(124, 58, 237, 0.05);
+  border-radius: 12rpx;
+}
+.list-card-records-title {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #7C3AED;
+}
+.list-card-record-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8rpx;
+}
+.list-card-record-text {
+  font-size: 22rpx;
+  color: #374151;
+}
+.list-card-record-time {
+  font-size: 20rpx;
+  color: #6b7280;
+}
+
+/* 总返佣 */
+.list-card-total {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12rpx;
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  border-radius: 12rpx;
+  border: 1rpx solid #86efac;
+}
+.list-card-total-label {
+  font-size: 24rpx;
+  color: #059669;
+  font-weight: 600;
+}
+.list-card-total-amount {
+  font-size: 28rpx;
+  color: #059669;
+  font-weight: 700;
+}
+
+/* 注册成功样式 */
+.list-card-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16rpx;
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  border-radius: 12rpx;
+  border: 1rpx solid #86efac;
+  margin-bottom: 12rpx;
+}
+.list-card-success-text {
+  font-size: 24rpx;
+  color: #059669;
+  font-weight: 600;
+}
+.list-card-success-reward {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+  margin-top: 8rpx;
+}
+.list-card-success-hint {
+  font-size: 22rpx;
+  color: #10b981;
+}
+
+/* 充值提示 */
+.list-card-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16rpx;
+  background: rgba(124, 58, 237, 0.05);
+  border-radius: 12rpx;
+}
+.list-card-empty-text {
+  font-size: 24rpx;
+  color: #7C3AED;
+  font-weight: 600;
+}
+.list-card-empty-hint {
+  font-size: 22rpx;
+  color: #6b7280;
+  margin-top: 6rpx;
+}
+
+/* 加载状态 */
+.list-loading {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 24rpx;
+}
+.list-loading-text {
+  font-size: 24rpx;
+  color: #7C3AED;
+}
+
+/* 没有更多 */
+.list-no-more {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 24rpx;
+}
+.list-no-more-text {
+  font-size: 24rpx;
+  color: #9ca3af;
+}

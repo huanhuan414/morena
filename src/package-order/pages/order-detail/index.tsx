@@ -389,7 +389,7 @@ export default function OrderDetailPage() {
 
   const avatarStats = order.avatarStats || []
   const hasAwaitingAcceptance = avatarStats.some((a: any) =>
-    ['submitted', 'awaiting_acceptance', 'feedback_submitted', 'preview'].includes(a.status)
+    ['submitted', 'awaiting_acceptance', 'feedback_submitted', 'preview', 'published'].includes(a.status)
   )
   const isAllVerified = avatarStats.length > 0 && avatarStats.every((a: any) =>
     ['completed', 'rejected'].includes(a.status)

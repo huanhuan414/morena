@@ -2,12 +2,12 @@
 import { Injectable, Inject } from '@nestjs/common'
 import { Config, LLMClient, ImageGenerationClient, VideoGenerationClient } from 'coze-coding-dev-sdk'
 import * as crypto from 'crypto'
-import { getMySQLClient } from '../../storage/database/mysql-client'
+import { getMySQLClient, getPool } from '../../storage/database/mysql-client'
 import { getSharedCache } from '../../common/shared-cache'
 import { ReverseGeocodingService } from '../../services/reverse-geocoding.service'
 import { sharedMemoryAvatars } from '../user-stats/user-stats.service'
-import { ReferralService } from '../referral/referral.service'
 import { SubscriptionService } from '../subscription/subscription.service'
+import { ReferralService } from '../referral/referral.service'
 
 // 测试用户ID列表
 const TEST_USER_IDS = ['dev_user', 'test_user', 'guest-user-id', 'anonymous']
@@ -16,8 +16,8 @@ const TEST_USER_IDS = ['dev_user', 'test_user', 'guest-user-id', 'anonymous']
 export class AvatarService {
   constructor(
     @Inject(ReverseGeocodingService) private readonly reverseGeocodingService: ReverseGeocodingService,
-    @Inject(ReferralService) private readonly referralService: ReferralService,
     @Inject(SubscriptionService) private readonly subscriptionService: SubscriptionService,
+    @Inject(ReferralService) private readonly referralService: ReferralService,
   ) {}
   private avatarColumnsCache: Set<string> | null = null
 
@@ -268,12 +268,28 @@ export class AvatarService {
         cachedAvatars.unshift(newAvatar)
         sharedCache.set(cacheKey, cachedAvatars)
 
+        // 检查是否是被邀请人，如果是则发放奖励
         try {
-          if (isFirstAvatar && this.referralService?.settleReferralOnFirstAvatar) {
-            await this.referralService.settleReferralOnFirstAvatar(effectiveUserId)
+          const db = getMySQLClient()
+          const referral = await db.queryOne('referrals', { 
+            referred_id: effectiveUserId, 
+            status: 'pending' 
+          }) as any
+          
+          console.log(`[AvatarService] 查询邀请记录结果:`, referral)
+          
+          if (referral && referral.referrerId) {
+            // 触发奖励发放
+            console.log(`[AvatarService] 被邀请人创建分身，准备触发奖励发放: userId=${effectiveUserId}, referrerId=${referral.referrerId}`)
+            await this.referralService.distributeRewardAfterAvatarCreated(referral.referrerId, effectiveUserId)
+            console.log(`[AvatarService] 被邀请人创建分身，已触发奖励发放: userId=${effectiveUserId}, referrerId=${referral.referrerId}`)
+          } else if (referral) {
+            console.warn(`[AvatarService] 邀请记录存在但referrerId为空: referral=${JSON.stringify(referral)}`)
+          } else {
+            console.log(`[AvatarService] 未找到pending状态的邀请记录: userId=${effectiveUserId}`)
           }
-        } catch (e) {
-          console.error('[AvatarService] settleReferralOnFirstAvatar failed:', (e as any)?.message || e)
+        } catch (error) {
+          console.error('[AvatarService] 检查邀请关系失败:', error)
         }
 
         return { success: true, id: (result as any)?.data?.insertId, data: newAvatar }
@@ -343,30 +359,38 @@ export class AvatarService {
     if (avatarIds.length > 0) {
       try {
         const db = getMySQLClient()
+        const pool = getPool()
         const today = new Date()
         today.setHours(0, 0, 0, 0)
         
         const idList = avatarIds.map(id => `'${id}'`).join(', ')
         
-        const earningsRows = await db.query(
-          `SELECT 
-            avatar_id,
-            SUM(amount) as total_earnings,
-            SUM(CASE WHEN created_at >= ? THEN amount ELSE 0 END) as today_earnings
+        // 与首页和收益中心保持一致：先查询每条收益记录，然后逐笔计算（每笔都四舍五入到2位小数）
+        const [earningsRows] = await pool.query(
+          `SELECT avatar_id, amount, fee_rate, created_at
            FROM earnings 
-           WHERE avatar_id IN (${idList}) AND status IN ('settled', 'completed')
-           GROUP BY avatar_id`,
-          [today]
-        )
+           WHERE avatar_id IN (${idList}) AND status IN ('settled')`,
+          []
+        ) as any[]
         
-        
-        const earningsData = Array.isArray(earningsRows) ? earningsRows : (earningsRows?.data || [])
-        for (const e of earningsData) {
-          const avatarId = e.avatarId || e.avatar_id
-          earningsMap[avatarId] = {
-            total: Number(e.totalEarnings || e.total_earnings) || 0,
-            today: Number(e.todayEarnings || e.today_earnings) || 0
+        // 按分身分组，逐笔计算每笔收益（四舍五入到2位小数）
+        const avatarEarningsMap: Record<string, any[]> = {}
+        for (const e of earningsRows || []) {
+          const avatarId = e.avatar_id
+          if (!avatarEarningsMap[avatarId]) {
+            avatarEarningsMap[avatarId] = []
           }
+          const actualAmount = Number((Number(e.amount) * (1 - Number(e.fee_rate || 0))).toFixed(2))
+          const isToday = new Date(e.created_at) >= today
+          avatarEarningsMap[avatarId].push({ total: actualAmount, today: isToday ? actualAmount : 0 })
+        }
+        
+        // 合并计算每个分身的总收益和今日收益
+        for (const avatarId of Object.keys(avatarEarningsMap)) {
+          const earningsList = avatarEarningsMap[avatarId]
+          const total = earningsList.reduce((sum, e) => sum + e.total, 0)
+          const todayTotal = earningsList.reduce((sum, e) => sum + e.today, 0)
+          earningsMap[avatarId] = { total, today: todayTotal }
         }
       } catch (error) {
         console.warn('[AvatarService] 查询收益失败:', error)

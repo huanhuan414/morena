@@ -659,6 +659,58 @@ async getExecutionProgress(orderId: string) {
     }
   }
 
+  /**
+   * 获取订单名额状态（用于前端检查是否可接单）
+   */
+  async getQuotaStatus(orderId: string) {
+    const db = getMySQLClient()
+    const pool = getPool()
+    
+    // 查询订单的名额限制（与 acceptOrder 保持一致）
+    // 使用 GREATEST(COALESCE(NULLIF(x, 0), NULLIF(y, 0), 1), 1) 逻辑
+    const [orderRows] = await pool.query(
+      `SELECT id, avatar_count, expected_quantity,
+              GREATEST(COALESCE(NULLIF(avatar_count, 0), NULLIF(expected_quantity, 0), 1), 1) as required_count
+       FROM orders WHERE id = ? LIMIT 1`,
+      [orderId]
+    ) as any[]
+    
+    if (!orderRows || orderRows.length === 0) {
+      return { exists: false, acceptedCount: 0, totalQuota: 0, remainingQuota: 0, isFull: true }
+    }
+    
+    const order = orderRows[0]
+    // 与 acceptOrder 完全一致的名额计算逻辑
+    const totalQuota = Math.max(
+      Number(order.avatar_count) || 0,
+      Number(order.expected_quantity) || 0,
+      1
+    )
+    
+    // 如果 avatar_count 和 expected_quantity 都是 0 或 null，使用 required_count
+    const effectiveTotalQuota = (Number(order.avatar_count) === 0 && Number(order.expected_quantity) === 0)
+      ? Number(order.required_count || 1)
+      : totalQuota
+    
+    // 查询已接单数量
+    const acceptedRows = await db.query(
+      `SELECT COUNT(*) as count FROM order_dispatch_requests WHERE order_id = ? AND status IN ('accepted', 'completed')`,
+      [orderId]
+    ) as any[]
+    const acceptedCount = Number(acceptedRows?.[0]?.count || 0)
+    
+    const remainingQuota = Math.max(0, effectiveTotalQuota - acceptedCount)
+    const isFull = acceptedCount >= effectiveTotalQuota
+    
+    return {
+      exists: true,
+      acceptedCount,
+      totalQuota: effectiveTotalQuota,
+      remainingQuota,
+      isFull
+    }
+  }
+
   async dispatchToAvatar(orderId: string, avatarId: string) {
     const db = getMySQLClient()
     

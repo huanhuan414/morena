@@ -1,6 +1,6 @@
 import Taro, { useDidShow, showToast, useLoad, navigateBack } from '@tarojs/taro'
 import { useState } from 'react'
-import { View, Text, ScrollView } from '@tarojs/components'
+import { View, Text, ScrollView, Input } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import {
   normalizeEarningOverview,
@@ -10,22 +10,31 @@ import {
 } from '@/adapters/core-chain-dto'
 import { Network } from '@/network'
 import { formatNum, toNumber } from '@/utils/format'
-import { ArrowDownToLine, Sparkles, ArrowLeft } from 'lucide-react-taro'
+import { ArrowDownToLine, Sparkles, ArrowLeft, X, Info } from 'lucide-react-taro'
 import './index.css'
 
 export default function EarningCenterPage() {
   const [overview, setOverview] = useState<EarningOverview>({
     balance: 0,
     totalEarnings: 0,
+    completedAmount: 0,
+    settlingAmount: 0,
     pendingAmount: 0,
+    processingAmount: 0,
     monthlyAmount: 0,
     totalOrders: 0,
-    totalReferrals: 0
+    referralCount: 0
   })
   const [records, setRecords] = useState<EarningRecord[]>([])
   const [loading, setLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState<'earning' | 'withdraw'>('earning')
+  const [withdrawRecords, setWithdrawRecords] = useState<any[]>([])
+  const [showRuleModal, setShowRuleModal] = useState(false)
 
   const [statusBarHeight, setStatusBarHeight] = useState(20)
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false)
+  const [withdrawAmount, setWithdrawAmount] = useState('')
+  const [withdrawLoading, setWithdrawLoading] = useState(false)
 
   useLoad(() => {
     const systemInfo = Taro.getSystemInfoSync()
@@ -35,6 +44,7 @@ export default function EarningCenterPage() {
   useDidShow(() => {
     fetchOverview()
     fetchRecords()
+    fetchWithdrawRecords()
   })
 
   const fetchOverview = async () => {
@@ -62,52 +72,173 @@ export default function EarningCenterPage() {
     }
   }
 
-  const handleWithdraw = async () => {
-    if (toNumber(overview.balance) < 100) {
-      showToast({ title: '余额不足100元，无法提现', icon: 'none' })
+  // 获取提现记录（排除failed）
+  const fetchWithdrawRecords = async () => {
+    try {
+      const res = await Network.request({ url: '/api/withdraw/list' })
+      if (res.data?.code === 200) {
+        // 过滤掉失败的记录
+        const allRecords = res.data?.data?.list || []
+        const filteredRecords = allRecords.filter(
+          (record: any) => record.status !== 'failed'
+        )
+        setWithdrawRecords(filteredRecords)
+      }
+    } catch (error) {
+      console.error('获取提现记录失败:', error)
+    }
+  }
+
+  // 处理 tab 切换并刷新数据
+  const handleTabChange = (tab: 'earning' | 'withdraw') => {
+    setActiveTab(tab)
+
+    // 切换 tab 时刷新概览数据
+    fetchOverview()
+
+    // 根据切换到的 tab 刷新对应数据
+    if (tab === 'earning') {
+      fetchRecords()
+    } else if (tab === 'withdraw') {
+      fetchWithdrawRecords()
+    }
+  }
+
+  const getWithdrawStatusInfo = (status: string) => {
+    const statusMap: Record<string, { label: string; color: string }> = {
+      pending: { label: '待审核', color: '#ffaa00' },
+      processing: { label: '审核中', color: '#00f5ff' },
+      completed: { label: '已到账', color: '#4ade80' },
+      rejected: { label: '已驳回', color: '#ff6b6b' }
+    }
+    return statusMap[status] || { label: status, color: '#fff' }
+  }
+
+  const handleWithdraw = () => {
+    // const balance = toNumber(overview.balance)
+    // if (balance < 20) {
+    //   showToast({ title: '余额不足20元，无法提现', icon: 'none' })
+    //   return
+    // }
+    // 打开提现弹窗
+    setShowWithdrawModal(true)
+    setWithdrawAmount('')
+  }
+
+  const handleWithdrawConfirm = async () => {
+    const amount = Number(withdrawAmount)
+    const balance = toNumber(overview.balance)
+
+    if (!amount || amount <= 0) {
+      showToast({ title: '请输入正确的提现金额', icon: 'none' })
       return
     }
+    if (amount > balance) {
+      showToast({ title: `余额不足，当前余额: ${balance.toFixed(2)}元`, icon: 'none' })
+      return
+    }
+
+    // 使用公共验证函数
+    if (!validateWithdrawAmount(amount)) {
+      return
+    }
+    // 检查金额是否是20的倍数
+    if (amount % 20 !== 0) {
+      showToast({ title: '提现金额必须是20的倍数', icon: 'none' })
+      return
+    }
+
+    setWithdrawLoading(true)
     try {
       const res = await Network.request({
-        url: '/api/earnings/withdraw',
+        url: '/api/withdraw/apply',
         method: 'POST',
-        data: {
-          amount: toNumber(overview.balance),
-          method: 'wechat',
-          accountInfo: {}
-        }
+        data: { amount }
       })
+
       if (res.data?.code === 200) {
-        showToast({ title: '提现申请已提交', icon: 'success' })
+        showToast({ title: res.data?.msg || '提现申请已提交，请等待审核', icon: 'success', duration: 3000 })
+        setShowWithdrawModal(false)
         fetchOverview()
         fetchRecords()
       } else {
-        showToast({ title: res.data?.message || '提现失败', icon: 'none' })
+        showToast({ title: res.data?.msg || '提现失败', icon: 'none' })
       }
     } catch (error) {
       console.error('提现失败:', error)
-      showToast({ title: '提现失败', icon: 'none' })
+      showToast({ title: '提现失败，请稍后重试', icon: 'none' })
+    } finally {
+      setWithdrawLoading(false)
     }
+  }
+
+  // 验证提现金额，返回是否有效
+  const validateWithdrawAmount = (amount: number): boolean => {
+    const referralCount = toNumber(overview.referralCount)
+    const MIN_AMOUNT_NORMAL = 100
+    const MIN_AMOUNT_VIP = 20
+    const MULTIPLE = 20
+
+    const minAmount = referralCount >= 2 ? MIN_AMOUNT_VIP : MIN_AMOUNT_NORMAL
+
+    if (amount < minAmount) {
+      showToast({
+        title: referralCount >= 2
+          ? `提现金额不能低于${minAmount}元`
+          : `提现金额不能低于${minAmount}元，还需推荐${Math.max(0, 2 - referralCount)}人可享低门槛`,
+        icon: 'none'
+      })
+      return false
+    }
+
+    if (amount % MULTIPLE !== 0) {
+      showToast({ title: '提现金额必须是20的倍数', icon: 'none' })
+      return false
+    }
+
+    return true
+  }
+
+  const handleWithdrawAll = () => {
+    const balance = toNumber(overview.balance)
+    const referralCount = toNumber(overview.referralCount)
+    const MIN_AMOUNT_VIP = 20
+    const MULTIPLE = 20
+
+    const minAmount = referralCount >= 2 ? MIN_AMOUNT_VIP : 100
+    const maxMultiple = Math.floor(balance / MULTIPLE) * MULTIPLE
+
+    if (maxMultiple < minAmount) {
+      showToast({
+        title: referralCount >= 2
+          ? `余额不足${minAmount}元，无法提现`
+          : `余额不足${minAmount}元，还需推荐${Math.max(0, 2 - referralCount)}人可享低门槛`,
+        icon: 'none'
+      })
+      return
+    }
+
+    setWithdrawAmount(String(maxMultiple))
   }
 
   const getTypeInfo = (type: string) => {
     const typeMap: Record<string, { label: string; icon: string; color: string }> = {
       order_reward: { label: '订单收益', icon: '💰', color: '#00ff88' },
-      order_income: { label: '订单收益', icon: '💰', color: '#00ff88' },
+      // order_income: { label: '订单收益', icon: '💰', color: '#00ff88' },
       referral_bonus: { label: '邀请奖励', icon: '🎁', color: '#a78bfa' },
-      withdrawal: { label: '提现', icon: '💸', color: '#ff6b6b' }
+      // withdrawal: { label: '提现', icon: '💸', color: '#ff6b6b' }
     }
     return typeMap[type] || { label: type, icon: '💵', color: '#fff' }
   }
 
   const getStatusInfo = (status: string) => {
     const statusMap: Record<string, { label: string; color: string }> = {
-      pending: { label: '待处理', color: '#ffaa00' },
       settled: { label: '已到账', color: '#00ff88' },
-      completed: { label: '已到账', color: '#00ff88' },
+      pending: { label: '结算中', color: '#ffaa00' },
+      processing: { label: '结算中', color: '#00f5ff' },
+      completed: { label: '已结算', color: '#4ade80' },
       rejected: { label: '已拒绝', color: '#ff6b6b' },
-      expired: { label: '已过期', color: '#999999' },
-      processing: { label: '处理中', color: '#00f5ff' }
+      expired: { label: '已过期', color: '#999999' }
     }
     return statusMap[status] || { label: status, color: '#fff' }
   }
@@ -141,17 +272,25 @@ export default function EarningCenterPage() {
             <ArrowLeft size={20} color="#fff" />
           </View>
           <View className="earning-header-center">
-           <Text className="header-title">收益中心</Text>
+            <Text className="header-title">收益中心</Text>
           </View>
           <View className="earning-header-right" />
         </View>
       </View>
 
       {/* 收益概览卡片 */}
-      <View className="overview-section">
+      <View
+        className="overview-section"
+        style={{ paddingTop: `${statusBarHeight + 90}px` }}
+      >
         <View className="overview-card">
           <View className="overview-main">
-            <Text className="overview-label">可提现余额</Text>
+            <View className="balance-header">
+              <Text className="overview-label">可提现余额</Text>
+              <View className="help-btn" onClick={() => setShowRuleModal(true)}>
+                <Info size={20} color="#fbbf24" />
+              </View>
+            </View>
             <View className="balance-wrap">
               <Text className="currency">¥</Text>
               <Text className="balance-amount">{formatNum(overview.balance)}</Text>
@@ -170,8 +309,13 @@ export default function EarningCenterPage() {
             </View>
             <View className="stat-divider" />
             <View className="stat-col">
-              <Text className="stat-value">¥{formatNum(overview.pendingAmount)}</Text>
-              <Text className="stat-label">待结算</Text>
+              <Text className="stat-value">¥{formatNum(overview.completedAmount)}</Text>
+              <Text className="stat-label">累计提现</Text>
+            </View>
+            <View className="stat-divider" />
+            <View className="stat-col">
+              <Text className="stat-value">¥{formatNum(overview.settlingAmount)}</Text>
+              <Text className="stat-label">提现中</Text>
             </View>
           </View>
 
@@ -184,55 +328,266 @@ export default function EarningCenterPage() {
         </View>
       </View>
 
-      {/* 收益明细 */}
+      {/* 收益明细/提现明细 */}
       <View className="records-section">
         <View className="section-header">
-          <Text className="section-title">收益明细</Text>
+          <View className="tab-switch">
+            <View
+              className={`tab-item ${activeTab === 'earning' ? 'active' : ''}`}
+              onClick={() => handleTabChange('earning')}
+            >
+              <Text className={`tab-text ${activeTab === 'earning' ? 'active' : ''}`}>收益明细</Text>
+            </View>
+            <View
+              className={`tab-item ${activeTab === 'withdraw' ? 'active' : ''}`}
+              onClick={() => handleTabChange('withdraw')}
+            >
+              <Text className={`tab-text ${activeTab === 'withdraw' ? 'active' : ''}`}>提现明细</Text>
+            </View>
+          </View>
         </View>
 
         <ScrollView className="records-scroll" scrollY>
-          {loading ? (
-            <View className="loading-state">
-              <Text className="loading-text">加载中...</Text>
-            </View>
-          ) : records.length === 0 ? (
-            <View className="empty-state">
-              <Sparkles size={48} color="rgba(255,255,255,0.2)" />
-              <Text className="empty-text">暂无收益记录</Text>
-            </View>
-          ) : (
-            <View className="records-list">
-              {records.map(record => {
-                const typeInfo = getTypeInfo(record.type)
-                const statusInfo = getStatusInfo(record.status)
-                return (
-                  <View key={record.id} className="record-item">
-                    <View className="record-left">
-                      <View className="record-icon">
-                        <Text>{typeInfo.icon}</Text>
+          {/* 收益明细 */}
+          {activeTab === 'earning' && (
+            loading ? (
+              <View className="loading-state">
+                <Text className="loading-text">加载中...</Text>
+              </View>
+            ) : records.length === 0 ? (
+              <View className="empty-state">
+                <Sparkles size={48} color="rgba(255,255,255,0.2)" />
+                <Text className="empty-text">暂无收益记录</Text>
+              </View>
+            ) : (
+              <View className="records-list">
+                {records.map(record => {
+                  const typeInfo = getTypeInfo(record.type)
+                  const statusInfo = getStatusInfo(record.status)
+                  return (
+                    <View key={record.id} className="record-item">
+                      <View className="record-left">
+                        <View className="record-icon">
+                          <Text>{typeInfo.icon}</Text>
+                        </View>
+                        <View className="record-info">
+                          <Text className="record-desc">{record.description || typeInfo.label}</Text>
+                          {/* 显示计算式：原始金额 × (1 - 抽成比例) = 实际金额 */}
+                          <Text className="record-fee-formula">
+                            接单¥{formatNum(record.amount)} × (1-平台{Math.round(record.feeRate * 100)}%) = ¥{formatNum(record.feeAmount)}
+                          </Text>
+                          <Text className="record-time">{formatTime(record.createdAt)}</Text>
+                        </View>
                       </View>
-                      <View className="record-info">
-                        <Text className="record-desc">{record.description || typeInfo.label}</Text>
-                        <Text className="record-time">{formatTime(record.createdAt)}</Text>
+                      <View className="record-right">
+                        <Text className={`record-amount ${record.type === 'withdrawal' ? 'negative' : 'positive'}`}>
+                          {record.type === 'withdrawal' ? '-' : '+'}¥{formatNum(record.feeAmount)}
+                        </Text>
+                        <Text className="record-status" style={{ color: statusInfo.color }}>
+                          {statusInfo.label}
+                        </Text>
                       </View>
                     </View>
-                    <View className="record-right">
-                      <Text className={`record-amount ${record.type === 'withdrawal' ? 'negative' : 'positive'}`}>
-                        {record.type === 'withdrawal' ? '-' : '+'}¥{formatNum(record.amount)}
-                      </Text>
-                      <Text className="record-status" style={{ color: statusInfo.color }}>
-                        {statusInfo.label}
-                      </Text>
+                  )
+                })}
+              </View>
+            )
+          )}
+
+          {/* 提现明细 */}
+          {activeTab === 'withdraw' && (
+            withdrawRecords.length === 0 ? (
+              <View className="empty-state">
+                <Sparkles size={48} color="rgba(255,255,255,0.2)" />
+                <Text className="empty-text">暂无提现记录</Text>
+              </View>
+            ) : (
+              <View className="records-list">
+                {withdrawRecords.map(record => {
+                  const statusInfo = getWithdrawStatusInfo(record.status)
+                  return (
+                    <View key={record.id} className="record-item">
+                      <View className="record-left">
+                        <View className="record-icon">
+                          <Text>💸</Text>
+                        </View>
+                        <View className="record-info">
+                          <Text className="record-desc">提现到微信零钱</Text>
+                          <Text className="record-time">{formatTime(record.createdAt)}</Text>
+                          {/* 拒绝时显示备注 */}
+                          {record.status === 'rejected' && record.remark && (
+                            <Text className="record-remark">驳回原因：{record.remark}</Text>
+                          )}
+                        </View>
+                      </View>
+                      <View className="record-right">
+                        <Text className="record-amount negative">-¥{formatNum(record.amount)}</Text>
+                        <Text className="record-status" style={{ color: statusInfo.color }}>
+                          {statusInfo.label}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-                )
-              })}
-            </View>
+                  )
+                })}
+              </View>
+            )
           )}
 
           <View className="bottom-space" />
         </ScrollView>
       </View>
+
+      {/* 提现弹窗 */}
+      {showWithdrawModal && (
+        <View className="withdraw-modal-overlay">
+          <View className="withdraw-modal">
+            <View className="withdraw-modal-header">
+              <Text className="withdraw-modal-title">提现</Text>
+              <View className="withdraw-modal-close" onClick={() => setShowWithdrawModal(false)}>
+                <X size={20} color="#666" />
+              </View>
+            </View>
+
+            <View className="withdraw-modal-body">
+              <View className="withdraw-balance-info">
+                <Text className="withdraw-balance-label">可提现余额</Text>
+                <Text className="withdraw-balance-value">¥{formatNum(overview.balance)}</Text>
+              </View>
+
+              <View className="withdraw-input-wrapper">
+                <Text className="withdraw-input-label">提现金额</Text>
+                <View className="withdraw-input-box">
+                  <Text className="withdraw-input-prefix">¥</Text>
+                  <Input
+                    className="withdraw-input"
+                    type="digit"
+                    placeholder="请输入提现金额"
+                    value={withdrawAmount}
+                    onInput={(e) => setWithdrawAmount(e.detail.value)}
+                  />
+                </View>
+                <View className="withdraw-all-btn" onClick={handleWithdrawAll}>
+                  <Text className="withdraw-all-text">全部提现</Text>
+                </View>
+
+                {/* 门槛说明 */}
+                <View className="withdraw-threshold-tip">
+                  <Text className="threshold-text">
+                    {overview.referralCount >= 2
+                      ? '✓ 已降低门槛，最低提现20元'
+                      : '✗ 未降低门槛，最低提现100元'
+                    }
+                  </Text>
+                  {overview.referralCount < 2 && (
+                    <View className="invite-btn" onClick={() => Taro.navigateTo({ url: '/package-profile/pages/referral-center/index' })}>
+                      立即邀请
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              <View className="withdraw-tips">
+                <Text className="withdraw-tip-item">• 推荐2人及以上：最低提现20元</Text>
+                <Text className="withdraw-tip-item">• 未推荐2人：最低提现100元</Text>
+                <Text className="withdraw-tip-item">• 提现金额必须是20的倍数</Text>
+                {/* <Text className="withdraw-tip-item">• 提现将直接到微信零钱 </Text> */}
+                <Text className="withdraw-tip-item">• 预计一周内到账，提现成功后不可撤销</Text>
+              </View>
+            </View>
+
+            <View className="withdraw-modal-footer">
+              <Button
+                className="withdraw-cancel-btn"
+                onClick={() => setShowWithdrawModal(false)}
+              >
+                取消
+              </Button>
+              <Button
+                className="withdraw-confirm-btn"
+                onClick={handleWithdrawConfirm}
+                disabled={withdrawLoading}
+              >
+                {withdrawLoading ? '处理中...' : '确认提现'}
+              </Button>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* 提现规则说明弹窗 */}
+      {showRuleModal && (
+        <View className="rule-modal-overlay" onClick={() => setShowRuleModal(false)}>
+          <View className="rule-modal" onClick={(e) => e.stopPropagation()}>
+            <View className="rule-modal-header">
+              <View className="rule-modal-icon">
+                <Info size={28} color="#fff" />
+              </View>
+              <Text className="rule-modal-title">提现规则说明</Text>
+            </View>
+            <View className="rule-modal-body">
+              {/* 用户当前状态 */}
+              <View className="rule-status-card">
+                <Text className="rule-status-title">您的当前状态</Text>
+                <View className="rule-status-content">
+                  <Text className="rule-status-label">已推荐好友：</Text>
+                  <Text className="rule-status-value">
+                    {overview.referralCount} 人
+                  </Text>
+                  <Text className="rule-status-desc">
+                    {overview.referralCount >= 2 ? '，已满足低门槛提现条件' : `，还需再推荐${Math.max(0, 2 - overview.referralCount)}人`}
+                  </Text>
+                </View>
+                <View className="rule-status-content">
+                  <Text className="rule-status-label">您的提现门槛：</Text>
+                  <Text className="rule-status-value">
+                    {overview.referralCount >= 2 ? '20元起' : '100元起'}
+                  </Text>
+                </View>
+              </View>
+
+              <View className="rule-item">
+                <View className="rule-number">1</View>
+                <View className="rule-content">
+                  <Text className="rule-title">低门槛提现</Text>
+                  <Text className="rule-desc">推荐 <Text className="rule-highlight">2人及以上</Text> 好友注册，即可享受最低 <Text className="rule-highlight">20元</Text> 提现门槛</Text>
+                </View>
+              </View>
+              <View className="rule-item">
+                <View className="rule-number">2</View>
+                <View className="rule-content">
+                  <Text className="rule-title">普通提现</Text>
+                  <Text className="rule-desc">未达到推荐要求，最低提现金额为 <Text className="rule-highlight">100元</Text></Text>
+                </View>
+              </View>
+              <View className="rule-item">
+                <View className="rule-number">3</View>
+                <View className="rule-content">
+                  {/* <Text className="rule-title">提现倍数</Text> */}
+                  <Text className="rule-desc">提现金额必须是 <Text className="rule-highlight">20元</Text> 的倍数（如：20元、40元、60元...）</Text>
+                </View>
+              </View>
+              <View className="rule-item">
+                <View className="rule-number">4</View>
+                <View className="rule-content">
+                  <Text className="rule-desc">预计 <Text className="rule-highlight">一周</Text> 内到账，提现成功后不可撤销</Text>
+                </View>
+              </View>
+              {/* <View className="rule-item">
+                <View className="rule-number">4</View>
+                <View className="rule-content">
+                  <Text className="rule-title">到账方式</Text>
+                  <Text className="rule-desc">提现申请提交后，管理员审核通过后直接转入您的 <Text className="rule-highlight">微信零钱</Text></Text>
+                </View>
+              </View> */}
+            </View>
+            <View className="rule-modal-footer">
+              <View className="rule-modal-close" onClick={() => setShowRuleModal(false)}>
+                <Text>我知道了</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   )
 }

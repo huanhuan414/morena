@@ -6,3 +6,5 @@ export default {
     PROJECT_DOMAIN: JSON.stringify('https://mrlweb.51webjs.com'),
   },
 }
+
+// https://mrlweb-test.51webjs.com

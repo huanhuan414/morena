@@ -15,6 +15,7 @@ export function getPool(): Pool {
       connectionLimit: 1500,
       queueLimit: 0,
       decimalNumbers: true,
+      charset: 'utf8mb4',  // 明确设置字符集为 utf8mb4
     });
   }
   return pool;

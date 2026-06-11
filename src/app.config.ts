@@ -46,6 +46,7 @@ export default defineAppConfig({
         'pages/feedback/index',
         'pages/earning-center/index',
         'pages/referral-center/index',
+        'pages/referral-list/index',
         'pages/earnings-wall/index',
       ],
     },

@@ -50,6 +50,7 @@ export class OrderProcessingService {
 
     // 校验当前用户是否是发单方
     if ((order.userId || order.user_id) !== currentUserId) {
+      console.log('无权操作，只有发单方可以验收/反馈/修改************', order.userId,order.user_id,currentUserId)
       throw new Error('无权操作，只有发单方可以验收/反馈/修改')
     }
   }
@@ -731,6 +732,28 @@ export class OrderProcessingService {
       }
     }
 
+    const normalizedBefore = this.normalizeRecord(current)
+    let userId = normalizedBefore.userId
+    const db = getMySQLClient()
+
+    if (!userId && normalizedBefore.orderId && normalizedBefore.avatarId) {
+      const dispatchRows = await db.query(
+        `SELECT user_id FROM order_dispatch_requests WHERE order_id = ? AND avatar_id = ? LIMIT 1`,
+        [normalizedBefore.orderId, normalizedBefore.avatarId]
+      )
+      const dispatchRow = Array.isArray(dispatchRows) ? dispatchRows[0] : (dispatchRows as any)?.data?.[0]
+      userId = dispatchRow?.user_id || dispatchRow?.userId
+      if (userId) {
+        this.logger.log(`[验收] 从派单记录获取userId: orderId=${normalizedBefore.orderId}, avatarId=${normalizedBefore.avatarId}, userId=${userId}`)
+      }
+    }
+
+    // 先执行结算，结算成功后再更新状态
+    if (normalizedBefore.orderId && normalizedBefore.avatarId && userId) {
+      await this.settleSingleDispatch(normalizedBefore.orderId, normalizedBefore.avatarId, userId)
+    }
+
+    // 结算成功后更新状态
     const record = await this.updateRecordByIdentifier(identifier, {
       status: 'settled'
     })
@@ -740,30 +763,12 @@ export class OrderProcessingService {
     setCache(normalized.requestId, normalized)
     setCache(normalized.orderId, normalized)
 
-    const db = getMySQLClient()
     if (normalized.orderId && normalized.avatarId) {
       await db.query(
         `UPDATE order_dispatch_requests SET status = 'completed', updated_at = NOW() WHERE order_id = ? AND avatar_id = ?`,
         [normalized.orderId, normalized.avatarId]
       )
       this.logger.log(`[验收] 已更新派单记录状态: orderId=${normalized.orderId}, avatarId=${normalized.avatarId}`)
-    }
-
-    let userId = normalized.userId
-    if (!userId && normalized.orderId && normalized.avatarId) {
-      const dispatchRows = await db.query(
-        `SELECT user_id FROM order_dispatch_requests WHERE order_id = ? AND avatar_id = ? LIMIT 1`,
-        [normalized.orderId, normalized.avatarId]
-      )
-      const dispatchRow = Array.isArray(dispatchRows) ? dispatchRows[0] : (dispatchRows as any)?.data?.[0]
-      userId = dispatchRow?.user_id || dispatchRow?.userId
-      if (userId) {
-        this.logger.log(`[验收] 从派单记录获取userId: orderId=${normalized.orderId}, avatarId=${normalized.avatarId}, userId=${userId}`)
-      }
-    }
-
-    if (normalized.orderId && normalized.avatarId && userId) {
-      await this.settleSingleDispatch(normalized.orderId, normalized.avatarId, userId)
     }
 
     await this.syncOrderStatus(normalized.orderId)
@@ -775,7 +780,7 @@ export class OrderProcessingService {
       const db = getMySQLClient()
 
       const orderRows = await db.query(
-        `SELECT id, budget, base_amount, is_paid, expected_quantity, avatar_count FROM orders WHERE id = ? LIMIT 1`,
+        `SELECT id, budget, base_amount, custom_base_price, is_paid, expected_quantity, avatar_count FROM orders WHERE id = ? LIMIT 1`,
         [orderId]
       )
       const order = Array.isArray(orderRows) ? orderRows[0] : (orderRows as any)?.data?.[0]
@@ -809,32 +814,74 @@ export class OrderProcessingService {
         const n = Number(raw)
         return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1
       })()
-
       const totalAmount = Number((order as any).baseAmount || (order as any).base_amount || 0)
       const totalCents = Math.max(0, Math.round(totalAmount * 100))
-      if (totalCents <= 0) {
-        this.logger.error(`[结算] base_amount为空或为0，数据异常: orderId=${orderId}, baseAmount=${(order as any).baseAmount}, base_amount=${(order as any).base_amount}`)
-        return
-      }
-
       const amountPerSlotCents = Math.floor(totalCents / requiredCount)
       const amountPerSlot = amountPerSlotCents / 100
 
+
+      // 获取 custom_base_price 值
+      const customBasePrice = Number((order as any).customBasePrice || (order as any).custom_base_price || amountPerSlot)
+      
+      // 确定实际结算金额：如果 customBasePrice 为空或与计算值不一致，报错并中止
+
+      if (customBasePrice <= 0) {
+        this.logger.error(`[结算] custom_base_price 为空: orderId=${orderId}, customBasePrice=${customBasePrice}`)
+        throw new Error(`结算失败: 收益值 不能为空`)
+      }
+      if (amountPerSlot !== customBasePrice) {
+        this.logger.error(`[结算] custom_base_price 与计算值不一致: orderId=${orderId}, customBasePrice=${customBasePrice}, amountPerSlot=${amountPerSlot}`)
+        throw new Error(`结算失败: 收益值(${customBasePrice}) 与计算的值(${amountPerSlot})不一致`)
+      }
+  
+      // 查询用户会员等级获取抽成比例
+      const [subRows] = await db.query(
+        `SELECT sp.platform_fee_rate 
+         FROM user_subscriptions us 
+         LEFT JOIN subscription_plans sp ON us.plan_id = sp.id 
+         WHERE us.user_id = ? AND us.status = 'active' 
+         ORDER BY us.created_at DESC LIMIT 1`,
+        [userId]
+      ) as any[]
+      
+      let platformFeeRate = 0.20 // 默认抽成 20%（免费版）
+      
+      // 处理 db.query 返回的不同格式
+      if (subRows) {
+        if (Array.isArray(subRows) && subRows.length > 0) {
+          // 返回的是数组格式
+          const row = subRows[0]
+          const rate = row.platform_fee_rate || row.platformFeeRate
+          if (rate !== undefined && rate !== null) {
+            platformFeeRate = Number(rate)
+          }
+        } else if (typeof subRows === 'object') {
+          // 返回的是单个对象格式（如 {"platformFeeRate":0.15}）
+          const rate = subRows.platform_fee_rate || subRows.platformFeeRate
+          if (rate !== undefined && rate !== null) {
+            platformFeeRate = Number(rate)
+          }
+        }
+      }
+
+      console.log('[结算] 获取用户会员等级抽成比例: orderId=' + orderId + ', userId=' + userId + ', platformFeeRate=' + platformFeeRate + ', customBasePrice=' + customBasePrice)
+      const feeAmount = Number((customBasePrice * (1 - platformFeeRate)).toFixed(2))
       const earningId = randomUUID()
       await db.query(
-        `INSERT INTO earnings (id, user_id, type, amount, status, description, avatar_id, order_id, created_at)
-         VALUES (?, ?, 'order_reward', ?, 'settled', '订单收益', ?, ?, NOW())`,
-        [earningId, userId, amountPerSlot, avatarId, orderId]
+        `INSERT INTO earnings (id, user_id, type, amount, status, description, avatar_id, order_id, created_at, fee_rate, fee_amount)
+         VALUES (?, ?, 'order_reward', ?, 'settled', '订单收益', ?, ?, NOW(), ?,?)`,
+        [earningId, userId, customBasePrice, avatarId, orderId, platformFeeRate, feeAmount]
       )
 
       await db.query(
-        `UPDATE users SET balance = COALESCE(balance, 0) + ?, total_earnings = COALESCE(total_earnings, 0) + ?, updated_at = NOW() WHERE id = ?`,
-        [amountPerSlot, amountPerSlot, userId]
+        `UPDATE users SET balance = COALESCE(balance, 0) + ?, total_earnings = COALESCE(total_earnings, 0) + ?, fee_balance = COALESCE(fee_balance, 0) + ?, fee_total_earnings = COALESCE(fee_total_earnings, 0) + ?,updated_at = NOW() WHERE id = ?`,
+        [customBasePrice, customBasePrice, feeAmount, feeAmount, userId]
       )
 
-      this.logger.log(`[结算] 分身结算成功: orderId=${orderId}, avatarId=${avatarId}, userId=${userId}, amount=${amountPerSlot}`)
+      this.logger.log(`[结算] 分身结算成功: orderId=${orderId}, avatarId=${avatarId}, userId=${userId}, amount=${feeAmount}`)
     } catch (error: any) {
       this.logger.error(`[结算] 分身结算失败: orderId=${orderId}, avatarId=${avatarId}, error=${error.message}`)
+      throw error // 抛出异常，让验收流程中断
     }
   }
 

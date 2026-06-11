@@ -1,9 +1,32 @@
-import { Controller, Post, Body, Get, Headers, Inject } from '@nestjs/common'
+import { Controller, Post, Body, Get, Headers, Inject, Req } from '@nestjs/common'
+import { Request } from 'express'
 import { AuthService } from './auth.service'
 
 @Controller('auth')
 export class AuthController {
   constructor(@Inject("AUTH_SERVICE") private readonly authService: AuthService) {}
+
+  /**
+   * 获取客户端真实IP
+   */
+  private getClientIp(request: Request): string {
+    // 优先级：X-Forwarded-For > X-Real-IP > remoteAddress
+    const forwardedFor = request.headers['x-forwarded-for']
+    if (forwardedFor) {
+      // X-Forwarded-For可能包含多个IP，取第一个（客户端IP）
+      return forwardedFor.toString().split(',')[0].trim()
+    }
+
+    const realIp = request.headers['x-real-ip']
+    if (realIp) {
+      return realIp.toString()
+    }
+
+    // 最后使用连接IP
+    return request.connection?.remoteAddress ||
+           request.socket?.remoteAddress ||
+           'unknown'
+  }
 
   /**
    * 发送验证码
@@ -22,6 +45,7 @@ export class AuthController {
    * 手机号验证码登录/注册
    * 未注册用户自动注册
    * 支持邀请码参数，注册成功后自动发放邀请奖励
+   * 支持设备ID和IP地址记录
    */
   @Post('phone-login')
   async phoneLogin(
@@ -29,8 +53,15 @@ export class AuthController {
     @Body('code') code: string,
     @Body('nickname') nickname?: string,
     @Body('referral_code') referralCode?: string,
+    @Body('device_id') deviceId?: string,
+    @Req() request?: Request,
   ) {
-    const result = await this.authService.phoneLogin(phone, code, nickname, referralCode)
+    // 获取客户端IP
+    const ipAddress = request ? this.getClientIp(request) : 'unknown'
+
+    const result = await this.authService.phoneLogin(
+      phone, code, nickname, referralCode, deviceId, ipAddress
+    )
     return {
       code: 200,
       data: result,
@@ -55,8 +86,15 @@ export class AuthController {
     @Body('nickname') nickname?: string,
     @Body('avatar') avatar?: string,
     @Body('referral_code') referralCode?: string,
+    @Body('device_id') deviceId?: string,
+    @Req() request?: Request,
   ) {
-    const result = await this.authService.wechatPhoneLogin(code, phoneCode, nickname, avatar, referralCode)
+    // 获取客户端IP
+    const ipAddress = request ? this.getClientIp(request) : 'unknown'
+
+    const result = await this.authService.wechatPhoneLogin(
+      code, phoneCode, nickname, avatar, referralCode, deviceId, ipAddress
+    )
     return {
       code: 200,
       data: result,

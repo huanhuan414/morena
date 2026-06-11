@@ -19,6 +19,7 @@ interface OrderItem {
   platforms: string[]
   estimatedEarning: number
   budget: number
+  customBasePrice: number  // 自定义基础费用
   avatarCountRaw: number
   deliveryDays: number
   acceptCount: number
@@ -52,6 +53,13 @@ const Index: React.FC = () => {
   const [trackedCampaignId, setTrackedCampaignId] = useState('')
   const { setAvatarId, isLoggedIn } = useUserStore(state => state)
 
+  // 计算实际收益范围
+  const calcEarningRange = (customBasePrice: number) => {
+    const minEarning = (customBasePrice * (1 - feeRateRange.max)).toFixed(2)
+    const maxEarning = (customBasePrice * (1 - feeRateRange.min)).toFixed(2)
+    return `¥${minEarning} ~ ¥${maxEarning}`
+  }
+
   const [showOrderModal, setShowOrderModal] = useState(false)
   const [orderModalData, setOrderModalData] = useState<any>(null)
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
@@ -67,11 +75,34 @@ const Index: React.FC = () => {
   })
   const loadUserFromStorage = useUserStore(state => state.loadUserFromStorage)
 
+  // 获取抽成比例范围
+  const fetchFeeRateRange = useCallback(async () => {
+    try {
+      const res = await Network.request({ url: '/api/subscription/plans' })
+      if (res.data?.code === 200 && res.data?.data?.length > 0) {
+        const rates = res.data.data.map((p: any) => {
+          // 支持下划线和驼峰两种格式，默认为 0.20（免费版抽成）
+          const rate = p.platform_fee_rate || p.platformFeeRate || 0.20
+          return Number(rate)
+        }).filter(r => r > 0)
+
+        if (rates.length > 0) {
+          const minRate = Math.min(...rates)
+          const maxRate = Math.max(...rates)
+          setFeeRateRange({ min: minRate, max: maxRate })
+        }
+      }
+    } catch (err) {
+      console.error('获取抽成比例失败:', err)
+    }
+  }, [])
+
   const { unreadCount, showModal, currentNotification, closeModal } = useNotifications({
     pollInterval: 10000
   })
 
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null)
+  const [feeRateRange, setFeeRateRange] = useState<{ min: number; max: number }>({ min: 0.05, max: 0.20 })
 
   // ===== 订单广场相关状态 =====
   const [activePlatform, setActivePlatform] = useState('all')
@@ -123,6 +154,7 @@ const Index: React.FC = () => {
           platform: canonicalizePlatform(o.primaryPlatform || o.platforms?.[0] || o.platform),
           platforms: Array.isArray(o.platforms) ? o.platforms : (o.platform ? [o.platform] : []),
           budget: Number(o.budget || o.price || 0),
+          customBasePrice: Number(o.customBasePrice || o.custom_base_price),
           avatarCountRaw: Number(o.avatarCount || o.avatar_count || 0),
           estimatedEarning: Number(o.expectedEarnings || o.expected_earnings || 0),
           deliveryDays: o.deliveryDays || o.delivery_days || 3,
@@ -216,57 +248,61 @@ const Index: React.FC = () => {
     setAcceptingOrderIds(prev => ({ ...prev, [orderId]: true }))
 
     try {
-      const avatarRes = await Network.request({ url: '/api/avatar' })
-      if (avatarRes.data?.code !== 200 || !avatarRes.data?.data?.length) {
-        Taro.showToast({ title: '请先创建分身', icon: 'none' })
+      // 1. 调用后端接口检查名额是否已满
+      const quotaRes = await Network.request({
+        url: `/api/order-dispatch/${orderId}/quota`,
+        method: 'GET'
+      })
+      if (quotaRes.data?.code === 200 && quotaRes.data?.data?.isFull) {
+        Taro.showToast({ title: quotaRes.data?.message || '名额已满，请抢其他订单', icon: 'none' })
         return
       }
-      let avatars = avatarRes.data.data
 
-      // 检查订单区域限制
-      if (orderInfo?.acceptRegions && orderInfo.acceptRegions.length > 0) {
-        // 筛选出地址在订单限制区域内的分身
-        const avatarsWithProvince = avatars.map((avatar: any) => {
-          const locationText = avatar.locationText || avatar.location_text || ''
-          // 提取省份（与后端逻辑一致：split(/[省市区县]/) 取第一个部分）
-          const parts = locationText.split(/[省市区县]/)
-          const province = parts.length > 0 ? parts[0].trim() : ''
-          return { ...avatar, province }
-        })
-
-        // 篮选出地址在订单限制区域内的分身
-        const matchedAvatars = avatarsWithProvince.filter((avatar: any) => {
-          if (!avatar.province) return false
-          return orderInfo.acceptRegions.some(region =>
-            avatar.province.includes(region) || region.includes(avatar.province)
-          )
-        })
-
-        if (matchedAvatars.length === 0) {
-          Taro.showModal({
-            title: '无法接单',
-            content: `该订单限制了接单区域：${orderInfo.acceptRegions.join('、')}\n您的分身地址不在这些区域内，无法接单`,
-            showCancel: false,
-            confirmText: '知道了'
-          })
-          return
-        }
-
-        // 使用筛选后的分身
-        avatars = matchedAvatars
-      }
-
+      // 2. 获取用户会员信息和抽成比例
       const userId = useUserStore.getState().userInfo?.id
       let planId = 'plan_free'
+      let planName = '免费版'
+      let platformFeeRate = 0.20
       if (userId) {
         const subRes = await Network.request({
           url: `/api/subscription/status?userId=${userId}`,
           method: 'GET',
         })
-        planId = subRes?.data?.data?.plan?.id || 'plan_free'
+        const plan = subRes?.data?.data?.plan
+        planId = plan?.id || 'plan_free'
+        planName = plan?.name || '免费版'
+        platformFeeRate = Number(plan?.platformFeeRate || plan?.platform_fee_rate || 0.20)
       }
-      const isPro = planId === 'plan_pro' || planId === 'plan_enterprise'
 
+      // 3. 弹出抽成确认框
+      const orderPrice = orderInfo?.customBasePrice || 0
+      const actualEarning = Number((orderPrice * (1 - platformFeeRate)).toFixed(2))
+      const feePercentage = (platformFeeRate * 100).toFixed(0)
+      const confirmResult = await new Promise<boolean>((resolve) => {
+        Taro.showModal({
+          title: '确认接单',
+          content: `收益将扣除平台抽成：${planName} ${feePercentage}%(详情看我的订阅中心) 扣除抽成后实收：¥${orderPrice} * (1-${feePercentage}%) = ¥${actualEarning} 是否确认接单？`,
+          confirmText: '确认接单',
+          cancelText: '取消',
+          success: (res) => resolve(res.confirm),
+          fail: () => resolve(false),
+        })
+      })
+
+      if (!confirmResult) {
+        return
+      }
+
+      // 4. 获取分身列表
+      const avatarRes = await Network.request({ url: '/api/avatar' })
+      if (avatarRes.data?.code !== 200 || !avatarRes.data?.data?.length) {
+        Taro.showToast({ title: '请先创建分身', icon: 'none' })
+        return
+      }
+      const avatars = avatarRes.data.data
+
+      // 5. 选择分身
+      const isPro = planId === 'plan_pro' || planId === 'plan_enterprise'
       let avatarIdToUse: string
 
       if (avatars.length === 1) {
@@ -299,8 +335,31 @@ const Index: React.FC = () => {
         avatarIdToUse = avatars[0].id
       }
 
+      // 6. 检查订单区域限制
+      if (orderInfo?.acceptRegions && orderInfo.acceptRegions.length > 0) {
+        const selectedAvatar = avatars.find((a: any) => a.id === avatarIdToUse)
+        const locationText = selectedAvatar?.locationText || selectedAvatar?.location_text || ''
+        const parts = locationText.split(/[省市区县]/)
+        const avatarProvince = parts.length > 0 ? parts[0].trim() : ''
+
+        const isInRegion = avatarProvince && orderInfo.acceptRegions.some(region =>
+          avatarProvince.includes(region) || region.includes(avatarProvince)
+        )
+
+        if (!isInRegion) {
+          Taro.showModal({
+            title: '无法接单',
+            content: `该订单限制了接单区域：【${orderInfo.acceptRegions.join('、')}】\n您的分身地址【${avatarProvince || ''}】不在这些区域内，无法接单`,
+            showCancel: false,
+            confirmText: '知道了'
+          })
+          return
+        }
+      }
+
       setAvatarId(avatarIdToUse)
 
+      // 7. 调用后端接单接口
       const res = await Network.request({
         url: `/api/order-dispatch/avatar/${avatarIdToUse}/accept/${orderId}`,
         method: 'POST'
@@ -425,6 +484,7 @@ const Index: React.FC = () => {
       fetchGrowthCampaign()
       fetchAssignedOrders()
       fetchOrders()
+      fetchFeeRateRange()
     }).catch(err => console.error('刷新数据失败:', err))
   })
 
@@ -747,77 +807,34 @@ const Index: React.FC = () => {
           </View>
         )}
 
+        {/* 邀请好友Banner */}
         <View
           className="banner"
           onClick={() => {
-            if (mindClones === 0) {
-              goToPage('/package-avatar/pages/avatar-create/index')
-            } else if (!allHostingEnabled) {
-              enableAllTrust()
-            } else {
-              goToPage('/package-profile/pages/referral-center/index')
-            }
+            goToPage('/package-profile/pages/referral-center/index')
           }}
         >
           <View className="banner-bg" />
           <View className="banner-content">
-            {mindClones === 0 ? (
-              <>
-                <View className="banner-tag">
-                  <Sparkles size={20} color="#FBBF24" />
-                  <Text className="banner-tag-text">0成本创业</Text>
-                </View>
-                <Text className="banner-title">创建AI分身 开始自动赚钱</Text>
-                <Text className="banner-desc">AI帮你接单+生成内容+自动发布，你只管收钱</Text>
-                <View className="banner-btn create">
-                  <Plus size={28} color="#6366F1" />
-                  <Text className="banner-btn-text create">免费创建，立即赚钱</Text>
-                </View>
-              </>
-            )
-              // : !allHostingEnabled ? (
-              // <>
-              //   <View className="banner-tag">
-              //     <Zap size={20} color="#FBBF24" />
-              //     <Text className="banner-tag-text">收益翻倍</Text>
-              //   </View>
-              //   <Text className="banner-title">开启托管 让分身24h赚钱</Text>
-              //   <Text className="banner-desc">自动抢单+自动生成+自动发布，不错过任何收益</Text>
-              //   <View className="banner-btn">
-              //     <Text className="banner-btn-text">一键开启</Text>
-              //     <ChevronRight size={24} color="#6366F1" />
-              //   </View>
-              // </>
-              // )
-              : (
-                <>
-                  <View className="banner-referral-header">
-                    <Gift size={32} color="#FBBF24" />
-                    <Text className="banner-title-referral">{BANNER_TITLE}</Text>
-                  </View>
-                  <Text className="banner-desc-referral">{BANNER_DESC(invitedCount)}</Text>
-                  <View className="banner-referral-bottom">
-                    <View className="referral-code-tag">
-                      <Text className="referral-code-text">邀请码：{referralCode || '加载中...'}</Text>
-                    </View>
-                    <View className="banner-btn-referral">
-                      <Text className="banner-btn-text-referral">立即邀请</Text>
-                      <ChevronRight size={20} color="#FFFFFF" />
-                    </View>
-                  </View>
-                </>
-              )}
+            <View className="banner-referral-header">
+              <Gift size={32} color="#FBBF24" />
+              <Text className="banner-title-referral">{BANNER_TITLE}</Text>
+            </View>
+            <Text className="banner-desc-referral">{BANNER_DESC(invitedCount)}</Text>
+            <View className="banner-referral-bottom">
+              <View className="referral-code-tag">
+                <Text className="referral-code-text">邀请码：{referralCode || '加载中...'}</Text>
+              </View>
+              <View className="banner-btn-referral">
+                <Text className="banner-btn-text-referral">立即邀请</Text>
+                <ChevronRight size={20} color="#FFFFFF" />
+              </View>
+            </View>
           </View>
           <View className="banner-decoration">
             <View className="deco-circle circle-1" />
             <View className="deco-circle circle-2" />
-            {mindClones === 0 ? (
-              <Rocket size={100} color="rgba(255,255,255,0.15)" />
-            ) : !allHostingEnabled ? (
-              <Zap size={100} color="rgba(255,255,255,0.15)" />
-            ) : (
-              <Gift size={100} color="rgba(255,255,255,0.15)" />
-            )}
+            <Gift size={100} color="rgba(255,255,255,0.15)" />
           </View>
         </View>
 
@@ -932,8 +949,10 @@ const Index: React.FC = () => {
                     <View className="po-reward-card" onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}>
                       <View className="po-reward-left">
                         <View className="po-reward-amount">
-                          <Text className="po-reward-symbol">¥</Text>
-                          <Text className="po-reward-value">{order.estimatedEarning.toFixed(2)}</Text>
+                          {/* <Text className="po-reward-symbol">¥</Text> */}
+                          {/* <Text className="po-reward-value">{order.estimatedEarning.toFixed(2)}</Text> */}
+                          <Text className="po-reward-value">{calcEarningRange(order.estimatedEarning)}</Text>
+
                           <Text className="po-reward-unit">/单</Text>
                         </View>
                         <Text className="po-reward-hint">预计创作收益</Text>
@@ -1011,7 +1030,9 @@ const Index: React.FC = () => {
                       </View>
                       <View className="po-cb-card po-cb-benefit">
                         <Text className="block po-cb-card-label">预计收益</Text>
-                        <Text className="block po-cb-card-value po-cb-card-value-hl">¥{(order.estimatedEarning || 0).toFixed(2)}</Text>
+                        <Text className="block po-cb-card-value po-cb-card-value-hl">{calcEarningRange(order.estimatedEarning)}</Text>
+                        {/* <Text className="block po-cb-card-value po-cb-card-value-hl">¥{(order.estimatedEarning || 0).toFixed(2)}</Text> */}
+                        {/* <Text className="block po-cb-card-tip">(预收益{calcEarningRange(order.estimatedEarning)})</Text> */}
                       </View>
                     </View>
 
@@ -1055,7 +1076,11 @@ const Index: React.FC = () => {
                         ) : (
                           <>
                             <Sparkles size={16} color="#fff" />
-                            <Text className="po-btn-label po-btn-label-primary">接单赚¥{order.estimatedEarning.toFixed(2)}</Text>
+                            {/* <Text className="po-btn-label po-btn-label-primary">接单赚¥{(order.customBasePrice || order.estimatedEarning).toFixed(2)}</Text> */}
+                            {/* <Text className="po-btn-label po-btn-label-secondary">(预收益{calcEarningRange(order.estimatedEarning)})</Text> */}
+
+                            <Text className="po-btn-label po-btn-label-primary">接单预收益{calcEarningRange(order.customBasePrice || order.estimatedEarning)}</Text>
+
                             <ChevronRight size={14} color="rgba(255,255,255,0.7)" />
                           </>
                         )}

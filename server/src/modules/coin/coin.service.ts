@@ -1,5 +1,6 @@
-import { Injectable, BadRequestException } from '@nestjs/common'
+import { Injectable, BadRequestException, Inject } from '@nestjs/common'
 import { getMySQLClient, getPool } from '../../storage/database/mysql-client'
+import { ReferralService } from '../referral/referral.service'
 import * as crypto from 'crypto'
 
 const SKILL_NAMES: Record<string, string> = {

@@ -630,6 +630,7 @@ export const subscriptionPlans = pgTable("subscription_plans", {
 	features: jsonb().default({}),
 	displayOrder: integer("display_order").default(0).notNull(),
 	isActive: boolean("is_active").default(true).notNull(),
+	platformFeeRate: numeric("platform_fee_rate", { precision: 5, scale: 2 }).notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 }, (table) => [

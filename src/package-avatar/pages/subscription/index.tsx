@@ -70,12 +70,14 @@ export default function SubscriptionPage() {
   const [, setLoading] = useState(true)
   const [purchasing, setPurchasing] = useState(false)
   const [statusBarHeight, setStatusBarHeight] = useState(20)
+  const [discountInfo, setDiscountInfo] = useState<{ eligible: boolean; discountRate: number }>({ eligible: false, discountRate: 1.0 })
 
   useLoad(() => {
     const systemInfo = getSystemInfoSync()
     setStatusBarHeight(systemInfo.statusBarHeight || 20)
     fetchPlans()
     fetchUserSubscription()
+    fetchDiscountInfo()
   })
 
   const fetchPlans = async () => {
@@ -102,6 +104,17 @@ export default function SubscriptionPage() {
       }
     } catch (error) {
       console.error('获取用户订阅失败:', error)
+    }
+  }
+
+  const fetchDiscountInfo = async () => {
+    try {
+      const res = await Network.request({ url: '/api/referral/check-discount' })
+      if (res.data?.code === 200 && res.data.data) {
+        setDiscountInfo(res.data.data)
+      }
+    } catch (error) {
+      console.error('获取优惠信息失败:', error)
     }
   }
 
@@ -352,11 +365,27 @@ export default function SubscriptionPage() {
                         </View>
                       </View>
                       <View className="sub-plan-price-wrap">
-                        <Text className="sub-plan-currency">¥</Text>
-                        <Text className={`sub-plan-price sub-plan-price-${theme}`}>
-                          {plan.price > 0 ? plan.price : '免费'}
-                        </Text>
-                        {plan.price > 0 && <Text className="sub-plan-period">/月</Text>}
+                        {discountInfo.eligible && plan.price > 0 ? (
+                          <>
+                            <Text className="sub-plan-currency">¥</Text>
+                            <Text className={`sub-plan-price sub-plan-price-${theme}`}>
+                              {Math.round(plan.price * discountInfo.discountRate * 100) / 100}
+                            </Text>
+                            <Text className="sub-plan-period">/月</Text>
+                            <Text className="sub-plan-original-price">原价¥{plan.price}</Text>
+                            <View className="sub-plan-discount-badge">
+                              <Text className="sub-plan-discount-text">8折</Text>
+                            </View>
+                          </>
+                        ) : (
+                          <>
+                            <Text className="sub-plan-currency">¥</Text>
+                            <Text className={`sub-plan-price sub-plan-price-${theme}`}>
+                              {plan.price > 0 ? plan.price : '免费'}
+                            </Text>
+                            {plan.price > 0 && <Text className="sub-plan-period">/月</Text>}
+                          </>
+                        )}
                       </View>
                     </View>
 

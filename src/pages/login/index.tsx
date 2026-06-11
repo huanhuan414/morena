@@ -64,17 +64,10 @@ const Login: React.FC = () => {
       updated_at: user.updated_at,
     } as any)
 
-    if (data.referralReward && data.referralReward > 0) {
-      Taro.showToast({ title: `注册成功，获得邀请奖励 ${data.referralReward} 积分`, icon: 'none', duration: 3000 })
-      setTimeout(() => {
-        doNavigate()
-      }, 3100)
-    } else {
-      Taro.showToast({ title: data.isNewUser ? '注册成功' : '登录成功', icon: 'success', duration: 1500 })
-      setTimeout(() => {
-        doNavigate()
-      }, 1600)
-    }
+    Taro.showToast({ title: data.isNewUser ? '注册成功' : '登录成功', icon: 'success', duration: 1500 })
+    setTimeout(() => {
+      doNavigate()
+    }, 1600)
   }
 
   const doNavigate = () => {
@@ -150,7 +143,16 @@ const Login: React.FC = () => {
 
     setLoading(true)
     try {
-      const loginData: Record<string, string> = { phone, code }
+      // 获取设备ID
+      let deviceId = ''
+      try {
+        const deviceInfo = await Taro.getDeviceInfo()
+        deviceId = deviceInfo.deviceId || `${deviceInfo.brand}_${deviceInfo.model}_${Date.now()}`
+      } catch (err) {
+        deviceId = `unknown_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      }
+
+      const loginData: Record<string, string> = { phone, code, device_id: deviceId }
       if (referralCode.trim()) {
         loginData.referral_code = referralCode.trim()
       }
@@ -259,9 +261,19 @@ const Login: React.FC = () => {
         return
       }
 
+      // 获取设备ID
+      let deviceId = ''
+      try {
+        const deviceInfo = await Taro.getDeviceInfo()
+        deviceId = deviceInfo.deviceId || `${deviceInfo.brand}_${deviceInfo.model}_${Date.now()}`
+      } catch (err) {
+        deviceId = `unknown_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      }
+
       const requestData: Record<string, string> = {
         code: loginRes.code,
         phoneCode: e.detail.code,
+        device_id: deviceId,
       }
       if (wechatReferralCode.trim()) {
         requestData.referral_code = wechatReferralCode.trim()
