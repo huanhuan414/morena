@@ -10,23 +10,120 @@ import { getMySQLClient } from "../../storage/database/mysql-client";
 import { AuthSmsService } from "./sms.service";
 import { ReferralService } from "../referral/referral.service";
 
+// ==================== 安全防护配置 ====================
+const VIRTUAL_CARRIER_PREFIXES = ['162', '165', '167', '170', '171'];
+const IP_SEND_LIMIT = { maxRequests: 3, windowMs: 60 * 1000 };
+const PHONE_SEND_LIMIT = { maxRequests: 1, windowMs: 60 * 1000 };
+const IP_LOGIN_LIMIT = { maxRequests: 5, windowMs: 60 * 1000 };
+const PHONE_LOGIN_LIMIT = { maxRequests: 3, windowMs: 60 * 1000 };
+const IP_DAILY_REG_LIMIT = 5;
+
+// 已知刷量IP黑名单
+const BLACKLISTED_IPS = [
+    '183.251.117.116',
+    '27.8.102.224',
+    '110.82.0.233',
+    '112.83.154.74',
+    '106.34.182.141',
+    '119.39.248.16',
+    '106.61.93.89',
+];
+
+function isVirtualCarrierPhone(phone: string): boolean {
+    if (!phone || phone.length < 3) return false;
+    return VIRTUAL_CARRIER_PREFIXES.includes(phone.substring(0, 3));
+}
+
+function isBlacklistedIp(ip: string): boolean {
+    if (!ip || ip === 'unknown') return false;
+    return BLACKLISTED_IPS.includes(ip);
+}
+
+function checkRateLimit(store: Map<string, { count: number; windowStart: number }>, key: string, config: { maxRequests: number; windowMs: number }): number | null {
+    const now = Date.now();
+    const record = store.get(key);
+    if (!record || now - record.windowStart > config.windowMs) {
+        store.set(key, { count: 1, windowStart: now });
+        return null;
+    }
+    if (record.count >= config.maxRequests) {
+        return Math.ceil((config.windowMs - (now - record.windowStart)) / 1000);
+    }
+    record.count++;
+    return null;
+}
+
 @Injectable()
 export class AuthService {
   private codeCache = new Map<string, { code: string; expiresAt: number }>();
   private accessTokenCache: { token: string; expiresAt: number } | null = null;
+  
+  // 安全防护Store
+  private ipSendStore = new Map<string, { count: number; windowStart: number }>();
+  private phoneSendStore = new Map<string, { count: number; windowStart: number }>();
+  private ipLoginStore = new Map<string, { count: number; windowStart: number }>();
+  private phoneLoginStore = new Map<string, { count: number; windowStart: number }>();
+  
   constructor(
     @Inject("AUTH_SMS_SERVICE") private readonly smsService: AuthSmsService,
     private readonly referralService: ReferralService,
   ) {}
 
   /**
+   * 检查IP每日注册限制
+   */
+  async checkIpDailyRegLimit(ip: string): Promise<void> {
+    if (!ip || ip === 'unknown') return;
+    
+    const db = getMySQLClient();
+    try {
+      const result = await db.query(
+        "SELECT COUNT(*) as cnt FROM users WHERE (ip_address = ? OR last_login_ip = ?) AND DATE(created_at) = CURDATE()",
+        [ip, ip]
+      );
+      const count = Number(Array.isArray(result) ? result[0]?.cnt : result?.[0]?.cnt || 0);
+      if (count >= IP_DAILY_REG_LIMIT) {
+        throw new BadRequestException("该网络今日注册数量已达上限，请明天再试");
+      }
+    } catch (err) {
+      if (err instanceof BadRequestException) throw err;
+      console.error("[AuthService] 查询IP每日注册数失败:", err.message);
+    }
+  }
+
+  /**
    * 发送验证码
    */
   async sendVerificationCode(
     phone: string,
+    ip?: string,
   ): Promise<{ success: boolean; message: string; code?: string }> {
     if (!/^1[3-9]\d{9}$/.test(phone)) {
       throw new BadRequestException("请输入正确的手机号");
+    }
+
+    // 检查虚拟号段
+    if (isVirtualCarrierPhone(phone)) {
+      throw new BadRequestException("该号段暂不支持注册，请使用正规运营商手机号");
+    }
+
+    // 检查IP每日注册限制
+    if (ip) {
+      await this.checkIpDailyRegLimit(ip);
+    }
+
+    // 检查IP发送频率限制
+    if (ip && ip !== 'unknown') {
+      const ipRetry = checkRateLimit(this.ipSendStore, ip, IP_SEND_LIMIT);
+      if (ipRetry !== null) {
+        throw new BadRequestException(`操作过于频繁，请${ipRetry}秒后再试`);
+      }
+    }
+
+    // 检查手机号发送频率限制
+    const phoneRetry = checkRateLimit(this.phoneSendStore, phone, PHONE_SEND_LIMIT);
+    if (phoneRetry !== null) {
+      throw new BadRequestException(`该手机号操作过于频繁，请${phoneRetry}秒后再试`);
     }
 
     const cached = this.codeCache.get(phone);
@@ -73,6 +170,20 @@ export class AuthService {
   }> {
     if (!/^1[3-9]\d{9}$/.test(phone)) {
       throw new BadRequestException("请输入正确的手机号");
+    }
+
+    // 检查IP登录频率限制
+    if (ipAddress && ipAddress !== 'unknown') {
+      const ipRetry = checkRateLimit(this.ipLoginStore, ipAddress, IP_LOGIN_LIMIT);
+      if (ipRetry !== null) {
+        throw new BadRequestException(`登录尝试过于频繁，请${ipRetry}秒后再试`);
+      }
+    }
+
+    // 检查手机号登录频率限制
+    const phoneRetry = checkRateLimit(this.phoneLoginStore, phone, PHONE_LOGIN_LIMIT);
+    if (phoneRetry !== null) {
+      throw new BadRequestException(`该手机号登录尝试过于频繁，请${phoneRetry}秒后再试`);
     }
 
     const cached = this.codeCache.get(phone);
@@ -212,6 +323,17 @@ export class AuthService {
     token: string;
     referralReward?: number;
   }> {
+    // 检查黑名单IP
+    if (isBlacklistedIp(ipAddress)) {
+      console.log("[AuthService] 黑名单IP请求wechat-phone-login，已拦截:", ipAddress);
+      throw new BadRequestException("操作受限，请联系客服");
+    }
+
+    // 检查IP每日注册限制
+    if (ipAddress) {
+      await this.checkIpDailyRegLimit(ipAddress);
+    }
+
     const wxAppId = process.env.WX_APP_ID;
     const wxAppSecret = process.env.WX_APP_SECRET;
     if (!wxAppId || !wxAppSecret) {
