@@ -47,6 +47,36 @@ export class ReferralService {
    * 使用邀请码注册 - 注册就算邀请成功
    * 支持设备ID和IP地址记录
    */
+  /**
+   * 检查邀请人的IP每日邀请限制（同一IP每天最多10个不同的邀请人）
+   * @param inviterIp 邀请人的IP地址
+   * @returns 是否允许邀请
+   */
+  async checkInviterIpLimit(inviterIp: string): Promise<{ allowed: boolean; current: number; limit: number }> {
+    const db = getMySQLClient()
+    
+    if (!inviterIp) {
+      return { allowed: true, current: 0, limit: 10 }
+    }
+    
+    // 查询今天同一IP下有多少个不同的邀请人
+    const result = await db.query(
+      `SELECT COUNT(*) as count 
+       FROM users 
+       WHERE (last_login_ip = ? OR ip_address = ?) AND DATE(created_at) = CURDATE()`,
+      [inviterIp, inviterIp]
+    ) as any[]
+    
+    const currentCount = Number(result?.[0]?.count || 0)
+    const IP_DAILY_LIMIT = 10  // 同一IP每天最多10个不同的邀请人
+    
+    return {
+      allowed: currentCount < IP_DAILY_LIMIT,
+      current: currentCount,
+      limit: IP_DAILY_LIMIT
+    }
+  }
+
   async useReferralCode(
     inviteeId: string, 
     code: string,
@@ -71,10 +101,19 @@ export class ReferralService {
       throw new Error('您已被邀请过')
     }
     
-    // 检查每日邀请限制（每人每日最多50人）
+    // 检查每日邀请限制（每人每日最多10人）
     const limitInfo = await this.checkDailyInviteLimit(inviter.id)
     if (!limitInfo.allowed) {
       throw new Error(`今日邀请已达上限（${limitInfo.current}/${limitInfo.limit}人），邀请人无法得到奖励，不影响用户注册`)
+    }
+    
+    // ✅ 检查邀请人的IP每日限制（同一IP每天最多10个不同的邀请人）
+    const inviterIp = inviter.last_login_ip || inviter.ip_address
+    if (inviterIp) {
+      const ipLimitInfo = await this.checkInviterIpLimit(inviterIp)
+      if (!ipLimitInfo.allowed) {
+        throw new Error(`同一IP今日邀请人数过多（${ipLimitInfo.current}/${ipLimitInfo.limit}人），邀请人无法得到奖励，不影响用户注册`)
+      }
     }
     
     // 注册时创建邀请记录，标记为pending（待发放奖励）
