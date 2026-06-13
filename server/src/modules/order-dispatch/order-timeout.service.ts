@@ -30,6 +30,7 @@ export class OrderTimeoutService {
    */
   @Cron(CronExpression.EVERY_MINUTE)
   async handleAcceptTimeouts() {
+    this.logger.log(' ======开始检查接单超时 ===============')
     let count = 0
     try {
       count = await this.checkAcceptTimeouts()

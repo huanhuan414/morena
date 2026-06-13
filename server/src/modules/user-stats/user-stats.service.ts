@@ -355,7 +355,7 @@ export class UserStatsService {
       try {
         // 选择列表展示需要的字段（base64 图片已迁移到 TOS，images 字段现在只存 URL）
         const avatarIdParams = avatarIds.map(() => '?').join(',')
-        const sql = `SELECT cgr.id, cgr.order_id, cgr.avatar_id, cgr.content_type, cgr.platform, cgr.platforms, cgr.status, cgr.revision_count, cgr.created_at, cgr.updated_at, cgr.video_url, cgr.images, cgr.publish_feedback, SUBSTRING(cgr.content, 1, 200) as content, CASE WHEN cgr.images IS NOT NULL AND cgr.images != '' AND cgr.images != '[]' THEN JSON_LENGTH(cgr.images) ELSE 0 END as image_count, o.title as order_title FROM content_generation_requests cgr LEFT JOIN orders o ON cgr.order_id = o.id WHERE cgr.avatar_id IN (${avatarIdParams}) ORDER BY cgr.created_at DESC LIMIT 50`
+        const sql = `SELECT cgr.id, cgr.order_id, cgr.avatar_id, cgr.content_type, cgr.platform, cgr.platforms, cgr.status, cgr.revision_count, cgr.created_at, cgr.updated_at, cgr.video_url, cgr.images, cgr.publish_feedback, SUBSTRING(cgr.content, 1, 200) as content, CASE WHEN cgr.images IS NOT NULL AND cgr.images != '' AND cgr.images != '[]' THEN JSON_LENGTH(cgr.images) ELSE 0 END as image_count, o.title as order_title, dr.accept_timeout_at FROM content_generation_requests cgr LEFT JOIN orders o ON cgr.order_id = o.id LEFT JOIN order_dispatch_requests dr ON cgr.order_id = dr.order_id AND cgr.avatar_id = dr.avatar_id WHERE cgr.avatar_id IN (${avatarIdParams}) ORDER BY cgr.created_at DESC LIMIT 50`
         const t0 = Date.now()
         const result = await db.query(sql, avatarIds) as any
         contents = Array.isArray(result) ? result : (result?.data || [])
@@ -406,6 +406,7 @@ export class UserStatsService {
         images,
         status: content.status,
         createdAt: content.createdAt || content.created_at || '',
+        acceptTimeoutAt: content.acceptTimeoutAt || content.accept_timeout_at || null,
       }
     })
     

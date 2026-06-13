@@ -1028,7 +1028,7 @@ export class OrderProcessingService {
           } else {
             silenceText = `${Math.round(silenceMs / (24 * 60 * 60 * 1000))}天`
           }
-          const silenceNoticeText = isFinalRejection ? `，静默${silenceText}内无法接单` : ''
+          const silenceNoticeText = isFinalRejection ? `，${silenceText}内无法接单` : ''
           await notificationService.createNotification({
             user_id: actualUserId,
             type: 'order_rejected',

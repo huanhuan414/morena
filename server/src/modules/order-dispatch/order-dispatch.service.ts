@@ -1235,7 +1235,7 @@ async getExecutionProgress(orderId: string) {
           )
           const existingCount = Number((existingDispatchRows as any[])?.[0]?.count || 0)
           if (existingCount > 0) {
-            throw new ConflictException('您已有分身接单，不能重复接单')
+            throw new ConflictException('您已接过此订单，不能重复接单')
           }
         }
       }

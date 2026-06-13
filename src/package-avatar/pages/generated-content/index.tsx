@@ -97,6 +97,17 @@ export default function GeneratedContentPage() {
   const [activeTab, setActiveTab] = useState('all')
   const [selectedAvatarId, setSelectedAvatarId] = useState<string | null>(null)
   const [avatarDropdownOpen, setAvatarDropdownOpen] = useState(false)
+
+  // 格式化剩余时间
+  const formatRemainingTime = (timeoutAt: string | null): string | null => {
+    if (!timeoutAt) return null
+    const remaining = new Date(timeoutAt).getTime() - Date.now()
+    if (remaining <= 0) return null
+    if (remaining < 60 * 1000) return `${Math.ceil(remaining / 1000)}秒`
+    if (remaining < 60 * 60 * 1000) return `${Math.ceil(remaining / (60 * 1000))}分钟`
+    if (remaining < 24 * 60 * 60 * 1000) return `${Math.ceil(remaining / (60 * 60 * 1000))}小时`
+    return `${Math.ceil(remaining / (24 * 60 * 60 * 1000))}天`
+  }
   const [regeneratingIds, setRegeneratingIds] = useState<Record<string, true>>({})
 
   useDidShow(() => {
@@ -546,6 +557,16 @@ export default function GeneratedContentPage() {
                     <Text className="order-title-text">{content.orderTitle || content.order_title}</Text>
                   </View>
                 ) : null}
+
+                {/* 超时倒计时（未发布且有超时时间） */}
+                {content.acceptTimeoutAt && (
+                  <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                    <Clock size={12} color={formatRemainingTime(content.acceptTimeoutAt) ? '#EF4444' : '#EF4444'} />
+                    <Text style={{ fontSize: 11, color: formatRemainingTime(content.acceptTimeoutAt) ? '#EF4444' : '#EF4444', marginLeft: 4 }}>
+                      {formatRemainingTime(content.acceptTimeoutAt) ? `剩余 ${formatRemainingTime(content.acceptTimeoutAt)}不发布，将自动释放名额！` : '超时未发布，名额已释放'}
+                    </Text>
+                  </View>
+                )}
 
                 {/* 内容类型标签 */}
                 <View className="type-tag">
