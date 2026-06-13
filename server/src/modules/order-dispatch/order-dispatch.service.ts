@@ -1218,16 +1218,25 @@ async getExecutionProgress(orderId: string) {
       }
 
       if (!request && avatarId && avatarId !== 'undefined') {
-        const [existingDispatchRows] = await conn.query(
-          `SELECT COUNT(*) as count
-           FROM order_dispatch_requests
-           WHERE order_id = ? AND avatar_id = ?
-             AND status IN ('pending', 'accepted', 'completed')`,
-          [orderId, avatarId]
+        // 先获取该分身所属的用户ID（按用户判断，不是按分身）
+        const [avatarRows] = await conn.query(
+          `SELECT user_id FROM avatars WHERE id = ? LIMIT 1`,
+          [avatarId]
         )
-        const existingCount = Number((existingDispatchRows as any[])?.[0]?.count || 0)
-        if (existingCount > 0) {
-          throw new ConflictException('该分身已接单，不能重复接单')
+        const avatarUserId = (avatarRows as any[])?.[0]?.user_id
+        
+        if (avatarUserId) {
+          // 按用户ID检查是否已接单
+          const [existingDispatchRows] = await conn.query(
+            `SELECT COUNT(1) as count
+             FROM order_dispatch_requests
+             WHERE order_id = ? AND user_id = ?`,
+            [orderId, avatarUserId]
+          )
+          const existingCount = Number((existingDispatchRows as any[])?.[0]?.count || 0)
+          if (existingCount > 0) {
+            throw new ConflictException('您已有分身接单，不能重复接单')
+          }
         }
       }
 
