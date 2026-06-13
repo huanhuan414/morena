@@ -1246,7 +1246,7 @@ async getExecutionProgress(orderId: string) {
 
       if (!request) {
         const [acceptOrderRows] = await conn.query(
-          `SELECT id, title, user_id as owner_user_id, description, platforms, budget, expected_quantity, quantity_per_avatar, target_audience, status
+          `SELECT id, title, user_id as owner_user_id, description, platforms, budget, expected_quantity, quantity_per_avatar, target_audience, status, accept_timeout
            FROM orders WHERE id = ? AND is_deleted = 0`,
           [orderId]
         )
@@ -1278,8 +1278,19 @@ async getExecutionProgress(orderId: string) {
         )
         const silenceUntil = (silenceRows as any[])?.[0]?.silence_until || (silenceRows as any[])?.[0]?.silenceUntil
         if (silenceUntil && new Date(silenceUntil) > new Date()) {
-          const remaining = Math.ceil((new Date(silenceUntil).getTime() - Date.now()) / (1000 * 60 * 60))
-          throw new ConflictException(`您因超时未发布被限制接单，${remaining}小时后可恢复`)
+          // 计算剩余静默时间并格式化
+          const remainingMs = new Date(silenceUntil).getTime() - Date.now()
+          let remainingText = ''
+          if (remainingMs < 60 * 1000) {
+            remainingText = `${Math.ceil(remainingMs / 1000)}秒`
+          } else if (remainingMs < 60 * 60 * 1000) {
+            remainingText = `${Math.ceil(remainingMs / (60 * 1000))}分钟`
+          } else if (remainingMs < 24 * 60 * 60 * 1000) {
+            remainingText = `${Math.ceil(remainingMs / (60 * 60 * 1000))}小时`
+          } else {
+            remainingText = `${Math.ceil(remainingMs / (24 * 60 * 60 * 1000))}天`
+          }
+          throw new ConflictException(`您目前处于静默期，${remainingText}后可恢复接单`)
         }
 
         // 接单权限校验：检查每日次数+同时接单数
@@ -1290,15 +1301,22 @@ async getExecutionProgress(orderId: string) {
 
         const dispatchId = 'odr-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8)
         try {
+          // 如果订单设置了接单超时时间，计算超时截止时间
+          const acceptTimeoutMinutes = order.accept_timeout ? Number(order.accept_timeout) : null
+          const acceptTimeoutAt = acceptTimeoutMinutes
+            ? new Date(Date.now() + acceptTimeoutMinutes * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ')
+            : null
+          
           await conn.query(
-            `INSERT INTO order_dispatch_requests (id, order_id, avatar_id, user_id, platform, status, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, 'pending', NOW(), NOW())`,
+            `INSERT INTO order_dispatch_requests (id, order_id, avatar_id, user_id, platform, status, accept_timeout_at, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, 'pending', ?, NOW(), NOW())`,
             [
               dispatchId,
               orderId,
               avatarId,
               avatarOwner.user_id,
               Array.isArray(order.platforms) ? order.platforms[0] : (order.platforms || 'general'),
+              acceptTimeoutAt,
             ]
           )
         } catch (err: any) {
