@@ -8,6 +8,7 @@ import {
   ArrowLeft, Check, CircleAlert, Image as ImageIcon, ExternalLink,
   ChevronRight, TrendingUp, CircleCheckBig, Video, FileText, Play
 } from 'lucide-react-taro'
+import { getPlatformLabel } from '@/constants/publish-platform'
 import '../order-detail/index.css'
 
 const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
@@ -70,6 +71,34 @@ export default function OrderAcceptance() {
   const [showApprove, setShowApprove] = useState(false)
   const [showReject, setShowReject] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
+  const [selectedReasonIdx, setSelectedReasonIdx] = useState(-1)
+  const [silenceDurationMs, setSilenceDurationMs] = useState(86400000)  // 默认24小时（毫秒）
+
+  // 格式化静默时间显示（根据配置的毫秒数动态计算单位）
+  const formatSilenceDuration = (ms: number) => {
+    if (ms < 60 * 1000) {
+      return `${Math.round(ms / 1000)}秒`
+    } else if (ms < 60 * 60 * 1000) {
+      return `${Math.round(ms / (60 * 1000))}分钟`
+    } else if (ms < 24 * 60 * 60 * 1000) {
+      const hours = Math.round(ms / (60 * 60 * 1000))
+      return `${hours}小时`
+    } else {
+      const days = Math.round(ms / (24 * 60 * 60 * 1000))
+      return `${days}天`
+    }
+  }
+
+  // 预设驳回理由
+  const REJECT_REASONS = [
+    '未按要求发布',
+    '未按要求整改',
+    '内容质量不达标',
+    '文案与要求不符',
+    '配图/视频与要求不符',
+    '发布平台不正确',
+    '其他',
+  ]
   const [generatedContent, setGeneratedContent] = useState<{ content?: string; images?: string[]; videos?: string[]; status?: string } | null>(null)
   const [hasPermission, setHasPermission] = useState(true)
   const statusBarHeight = getStatusBarHeight()
@@ -94,6 +123,10 @@ export default function OrderAcceptance() {
         }
         const allAvatars = orderData.summary_stats.avatarStats.map((a: AvatarStat) => ({ ...a, orderId }))
         setAvatars(allAvatars)
+        // 设置静默时间配置
+        if (orderData.silenceDurationMs) {
+          setSilenceDurationMs(orderData.silenceDurationMs)
+        }
       }
     } catch (error) {
       console.error('获取分身列表失败:', error)
@@ -156,10 +189,33 @@ export default function OrderAcceptance() {
   }
 
   const handleReject = async () => {
-    if (!selectedAvatar || !rejectReason.trim()) {
-      showToast({ title: '请输入驳回原因', icon: 'none' })
+    if (!selectedAvatar) {
+      showToast({ title: '请先选择分身', icon: 'none' })
       return
     }
+    const isOther = selectedReasonIdx === REJECT_REASONS.length - 1
+    const finalReason = isOther ? rejectReason.trim() : (selectedReasonIdx >= 0 ? REJECT_REASONS[selectedReasonIdx] : '')
+    if (!finalReason) {
+      showToast({ title: isOther ? '请输入驳回原因' : '请选择驳回原因', icon: 'none' })
+      return
+    }
+
+    // 检查是否是第2次驳回（通过 revisionHistory 判断）
+    const publishFeedback = selectedAvatar.publishFeedback || {}
+    const revisionHistory = publishFeedback.revisionHistory || []
+    const isSecondReject = revisionHistory.length >= 1  // 已有1次驳回记录，这次是第2次
+
+    // 第2次驳回需要确认
+    if (isSecondReject) {
+      const modalRes = await Taro.showModal({
+        title: '确认最终驳回',
+        content: `这是第2次驳回，驳回后该接单者将被静默${formatSilenceDuration(silenceDurationMs)}，期间无法接单。确定要驳回吗？`,
+        confirmText: '确认驳回',
+        cancelText: '取消',
+      })
+      if (!modalRes.confirm) return
+    }
+
     try {
       const requestId = selectedAvatar.requestId
       if (!requestId) {
@@ -169,12 +225,13 @@ export default function OrderAcceptance() {
       const res = await Network.request({
         url: `/api/order-processing/revision/${requestId}`,
         method: 'POST',
-        data: { feedback: { rejectReason: rejectReason.trim(), status: 'revision_requested' } }
+        data: { feedback: { rejectReason: finalReason, status: 'revision_requested' } }
       })
       if (res.data?.code === 200) {
         showToast({ title: '已驳回', icon: 'success' })
         setShowReject(false)
         setRejectReason('')
+        setSelectedReasonIdx(-1)
         setSelectedAvatar(null)
         fetchAvatars()
       }
@@ -401,190 +458,329 @@ export default function OrderAcceptance() {
             </View>
           )}
 
-          {/* 发布提交 */}
-          {selectedAvatar.publishFeedback && (
-            <>
-              {/* 数据统计 */}
-              {Object.entries(selectedAvatar.publishFeedback).map(([platform, feedback]: [string, any]) => (
-                <View key={platform}>
-                  {(feedback.views !== undefined || feedback.likes !== undefined || feedback.comments !== undefined || feedback.shares !== undefined) && (
-                    <View className="od-card od-stats-card">
-                      <View className="od-stats-header">
-                        <TrendingUp size={16} color="#6366F1" />
-                        <Text className="block od-stats-title">数据统计</Text>
-                      </View>
-                      <View className="od-stats-row">
-                        {feedback.views !== undefined && (
-                          <View className="od-stat-item">
-                            <Text className="block od-stat-value">{formatNumber(feedback.views)}</Text>
-                            <Text className="block od-stat-label">浏览</Text>
-                          </View>
-                        )}
-                        {feedback.likes !== undefined && (
-                          <View className="od-stat-item">
-                            <Text className="block od-stat-value">{formatNumber(feedback.likes)}</Text>
-                            <Text className="block od-stat-label">点赞</Text>
-                          </View>
-                        )}
-                        {feedback.comments !== undefined && (
-                          <View className="od-stat-item">
-                            <Text className="block od-stat-value">{formatNumber(feedback.comments)}</Text>
-                            <Text className="block od-stat-label">评论</Text>
-                          </View>
-                        )}
-                        {feedback.shares !== undefined && (
-                          <View className="od-stat-item">
-                            <Text className="block od-stat-value">{formatNumber(feedback.shares)}</Text>
-                            <Text className="block od-stat-label">分享</Text>
-                          </View>
-                        )}
-                      </View>
+          {/* 发布反馈 */}
+          {selectedAvatar.publishFeedback && (() => {
+            const pf = selectedAvatar.publishFeedback
+            // 分离元数据字段和平台数据（包括大小写变体）
+            const metadataKeys = [
+              'rejectreason', 'reject_reason',
+              'revisionhistory', 'revision_history',
+              'status',
+              'feedback_submitted_at', 'submitted_at',
+              'revision_count'
+            ]
+            const platformEntries = Object.entries(pf).filter(([key, value]) => {
+              if (metadataKeys.includes(key.toLowerCase())) return false
+              if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
+              return true
+            })
+
+            return (
+              <>
+                {/* 驳回信息（如果有） */}
+                {(pf.rejectReason || pf.reject_reason || pf.revisionHistory) && (
+                  <View className="od-card" style={{ backgroundColor: '#FFF7ED', border: '1px solid #FED7AA', marginBottom: 12 }}>
+                    <View style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                      <CircleAlert size={16} color="#EA580C" />
+                      <Text style={{ marginLeft: 8, color: '#C2410C', fontWeight: 600 }}>整改要求</Text>
                     </View>
-                  )}
-                </View>
-              ))}
-
-              {/* 链接和截图 */}
-              {Object.entries(selectedAvatar.publishFeedback).map(([platform, feedback]: [string, any]) => (
-                <View key={platform} className="od-card">
-                  <Text className="block od-section-title">
-                    {platform === 'xiaohongshu' ? '小红书' : platform === 'wechat_mp' ? '微信公众号' : platform}
-                  </Text>
-
-                  {feedback.link && (
-                    <View className="od-link-item" onClick={() => {
-                      Taro.setClipboardData({ data: feedback.link }).then(() => {
-                        Taro.showToast({ title: '链接已复制', icon: 'success', duration: 1500 })
-                      }).catch(() => {
-                        Taro.showToast({ title: '复制失败', icon: 'none', duration: 1500 })
-                      })
-                    }}
-                    >
-                      <View className="od-link-icon">
-                        <ExternalLink size={14} color="#6366F1" />
-                      </View>
-                      <View className="od-link-content">
-                        <Text className="block od-link-label">发布链接</Text>
-                        <Text className="block od-link-url">{feedback.link}</Text>
-                      </View>
-                      <ChevronRight size={16} color="#9CA3AF" />
-                    </View>
-                  )}
-
-                  {feedback.images && Array.isArray(feedback.images) && feedback.images.length > 0 && (
-                    <View className="od-images-section">
-                      <View className="od-images-header">
-                        <ImageIcon size={14} color="#6366F1" />
-                        <Text className="block od-images-label">发布截图</Text>
-                      </View>
-                      <View className="od-images-grid">
-                        {feedback.images.map((img: string, idx: number) => (
-                          <Image
-                            key={idx}
-                            src={img}
-                            className="od-preview-image"
-                            mode="aspectFill"
-                            onClick={() => handleImagePreview(img)}
-                          />
+                    {(pf.rejectReason || pf.reject_reason) && (
+                      <Text style={{ color: '#C2410C', fontSize: 14, lineHeight: 1.6 }}>
+                        {pf.rejectReason || pf.reject_reason}
+                      </Text>
+                    )}
+                    {pf.revisionHistory && pf.revisionHistory.length > 0 && (
+                      <View style={{ marginTop: 8 }}>
+                        <Text style={{ color: '#9CA3AF', fontSize: 12, marginBottom: 8 }}>历史整改记录</Text>
+                        {pf.revisionHistory.map((item: any, idx: number) => (
+                          <View key={idx} style={{ marginBottom: 8, padding: 10, backgroundColor: '#fff', borderRadius: 6 }}>
+                            <View style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
+                              <Text style={{ color: '#EF4444', fontSize: 12 }}>第{item.count}次</Text>
+                              <Text style={{ color: '#9CA3AF', fontSize: 11, marginLeft: 8 }}>{item.time ? new Date(item.time).toLocaleString('zh-CN') : ''}</Text>
+                            </View>
+                            <Text style={{ color: '#374151', fontSize: 13, marginBottom: 6 }}>{item.reason || '无'}</Text>
+                            {item.snapshot && Object.keys(item.snapshot).length > 0 && (
+                              <>
+                                {/* 数据统计 */}
+                                {Object.entries(item.snapshot).map(([platform, data]: [string, any]) => (
+                                  (data.views !== undefined || data.likes !== undefined || data.comments !== undefined || data.shares !== undefined) && (
+                                    <View key={platform} className="od-card od-stats-card" style={{ marginTop: 8 }}>
+                                      <View className="od-stats-header">
+                                        <TrendingUp size={16} color="#6366F1" />
+                                        <Text className="block od-stats-title">{getPlatformLabel(platform)}</Text>
+                                      </View>
+                                      <View className="od-stats-row">
+                                        {data.views !== undefined && (
+                                          <View className="od-stat-item">
+                                            <Text className="block od-stat-value">{formatNumber(data.views)}</Text>
+                                            <Text className="block od-stat-label">浏览</Text>
+                                          </View>
+                                        )}
+                                        {data.likes !== undefined && (
+                                          <View className="od-stat-item">
+                                            <Text className="block od-stat-value">{formatNumber(data.likes)}</Text>
+                                            <Text className="block od-stat-label">点赞</Text>
+                                          </View>
+                                        )}
+                                        {data.comments !== undefined && (
+                                          <View className="od-stat-item">
+                                            <Text className="block od-stat-value">{formatNumber(data.comments)}</Text>
+                                            <Text className="block od-stat-label">评论</Text>
+                                          </View>
+                                        )}
+                                        {data.shares !== undefined && (
+                                          <View className="od-stat-item">
+                                            <Text className="block od-stat-value">{formatNumber(data.shares)}</Text>
+                                            <Text className="block od-stat-label">分享</Text>
+                                          </View>
+                                        )}
+                                      </View>
+                                    </View>
+                                  )
+                                ))}
+                                {/* 链接和截图 */}
+                                {Object.entries(item.snapshot).map(([platform, data]: [string, any]) => (
+                                  (data.link || (data.images && data.images.length > 0)) && (
+                                    <View key={`link-${platform}`} className="od-card" style={{ marginTop: 8 }}>
+                                      <Text className="block od-section-title">{getPlatformLabel(platform)}</Text>
+                                      {data.link && (
+                                        <View className="od-link-item" onClick={() => {
+                                          Taro.setClipboardData({ data: data.link }).then(() => {
+                                            Taro.showToast({ title: '链接已复制', icon: 'success', duration: 1500 })
+                                          }).catch(() => {
+                                            Taro.showToast({ title: '复制失败', icon: 'none', duration: 1500 })
+                                          })
+                                        }}
+                                        >
+                                          <View className="od-link-icon">
+                                            <ExternalLink size={14} color="#6366F1" />
+                                          </View>
+                                          <View className="od-link-content">
+                                            <Text className="block od-link-label">发布链接</Text>
+                                            <Text className="block od-link-url">{data.link}</Text>
+                                          </View>
+                                          <ChevronRight size={16} color="#9CA3AF" />
+                                        </View>
+                                      )}
+                                      {data.images && data.images.length > 0 && (
+                                        <View className="od-images-section">
+                                          <View className="od-images-header">
+                                            <ImageIcon size={14} color="#6366F1" />
+                                            <Text className="block od-images-label">发布截图</Text>
+                                          </View>
+                                          <View className="od-images-grid">
+                                            {data.images.map((img: string, imgIdx: number) => (
+                                              <Image
+                                                key={imgIdx}
+                                                src={img}
+                                                className="od-preview-image"
+                                                mode="aspectFill"
+                                                onClick={() => handleImagePreview(img)}
+                                              />
+                                            ))}
+                                          </View>
+                                        </View>
+                                      )}
+                                    </View>
+                                  )
+                                ))}
+                              </>
+                            )}
+                          </View>
                         ))}
                       </View>
-                    </View>
-                  )}
+                    )}
+                  </View>
+                )}
 
-                  {feedback.image && !feedback.images && (
-                    <View className="od-images-section">
-                      <View className="od-images-header">
-                        <ImageIcon size={14} color="#6366F1" />
-                        <Text className="block od-images-label">发布截图</Text>
+                {/* 数据统计 */}
+                {platformEntries.map(([platform, feedback]: [string, any]) => (
+                  <View key={platform}>
+                    {(feedback.views !== undefined || feedback.likes !== undefined || feedback.comments !== undefined || feedback.shares !== undefined) && (
+                      <View className="od-card od-stats-card">
+                        <View className="od-stats-header">
+                          <TrendingUp size={16} color="#6366F1" />
+                          <Text className="block od-stats-title">{getPlatformLabel(platform)}</Text>
+                        </View>
+                        <View className="od-stats-row">
+                          {feedback.views !== undefined && (
+                            <View className="od-stat-item">
+                              <Text className="block od-stat-value">{formatNumber(feedback.views)}</Text>
+                              <Text className="block od-stat-label">浏览</Text>
+                            </View>
+                          )}
+                          {feedback.likes !== undefined && (
+                            <View className="od-stat-item">
+                              <Text className="block od-stat-value">{formatNumber(feedback.likes)}</Text>
+                              <Text className="block od-stat-label">点赞</Text>
+                            </View>
+                          )}
+                          {feedback.comments !== undefined && (
+                            <View className="od-stat-item">
+                              <Text className="block od-stat-value">{formatNumber(feedback.comments)}</Text>
+                              <Text className="block od-stat-label">评论</Text>
+                            </View>
+                          )}
+                          {feedback.shares !== undefined && (
+                            <View className="od-stat-item">
+                              <Text className="block od-stat-value">{formatNumber(feedback.shares)}</Text>
+                              <Text className="block od-stat-label">分享</Text>
+                            </View>
+                          )}
+                        </View>
                       </View>
-                      <View className="od-images-grid">
-                        <Image
-                          src={feedback.image}
-                          className="od-preview-image"
-                          mode="aspectFill"
-                          onClick={() => handleImagePreview(feedback.image)}
-                        />
+                    )}
+                  </View>
+                ))}
+
+                {/* 链接和截图 */}
+                {platformEntries.map(([platform, feedback]: [string, any]) => (
+                  <View key={`link-${platform}`} className="od-card">
+                    <Text className="block od-section-title">{getPlatformLabel(platform)}</Text>
+                    {feedback.link && (
+                      <View className="od-link-item" onClick={() => {
+                        Taro.setClipboardData({ data: feedback.link }).then(() => {
+                          Taro.showToast({ title: '链接已复制', icon: 'success', duration: 1500 })
+                        }).catch(() => {
+                          Taro.showToast({ title: '复制失败', icon: 'none', duration: 1500 })
+                        })
+                      }}
+                      >
+                        <View className="od-link-icon">
+                          <ExternalLink size={14} color="#6366F1" />
+                        </View>
+                        <View className="od-link-content">
+                          <Text className="block od-link-label">发布链接</Text>
+                          <Text className="block od-link-url">{feedback.link}</Text>
+                        </View>
+                        <ChevronRight size={16} color="#9CA3AF" />
                       </View>
-                    </View>
-                  )}
-                </View>
-              ))}
-            </>
-          )}
+                    )}
+                    {feedback.images && feedback.images.length > 0 && (
+                      <View className="od-images-section">
+                        <View className="od-images-header">
+                          <ImageIcon size={14} color="#6366F1" />
+                          <Text className="block od-images-label">截图 ({feedback.images.length})</Text>
+                        </View>
+                        <View className="od-images-grid">
+                          {feedback.images.map((img: string, idx: number) => (
+                            <Image key={idx} src={img} className="od-preview-image" mode="aspectFill" onClick={() => handleImagePreview(img)} />
+                          ))}
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </>
+            )
+          })()}
         </ScrollView>
 
         {/* 底部操作 - 仅待验收状态(含preview)显示验收/驳回按钮 */}
-        {['awaiting_acceptance', 'feedback_submitted', 'preview'].includes(selectedAvatar.status) && (
-          <View className="od-actions">
-            <View className="od-action-btn od-action-danger" onClick={() => setShowReject(true)}>
-              <CircleAlert size={16} color="#EF4444" />
-              <Text className="block od-action-text" style={{ color: '#EF4444' }}>驳回</Text>
+        {
+          ['awaiting_acceptance', 'feedback_submitted', 'preview'].includes(selectedAvatar.status) && (
+            <View className="od-actions">
+              <View className="od-action-btn od-action-danger" onClick={() => setShowReject(true)}>
+                <CircleAlert size={16} color="#EF4444" />
+                <Text className="block od-action-text" style={{ color: '#EF4444' }}>驳回</Text>
+              </View>
+              {(() => {
+                const isPublished = generatedContent?.status === 'awaiting_acceptance'
+                return isPublished ? (
+                  <View className="od-action-btn od-action-primary" onClick={() => setShowApprove(true)}>
+                    <CircleCheckBig size={16} color="#fff" />
+                    <Text className="block od-action-text" style={{ color: '#fff' }}>验收通过</Text>
+                  </View>
+                ) : (
+                  <View
+                    className="od-action-btn od-action-primary od-action-disabled"
+                    onClick={() => showToast({ title: '请等待分身发布内容后再验收', icon: 'none' })}
+                  >
+                    <CircleCheckBig size={16} color="#fff" />
+                    <Text className="block od-action-text" style={{ color: '#fff' }}>验收通过</Text>
+                  </View>
+                )
+              })()}
             </View>
-            {(() => {
-              const isPublished = generatedContent?.status === 'awaiting_acceptance'
-              return isPublished ? (
-                <View className="od-action-btn od-action-primary" onClick={() => setShowApprove(true)}>
-                  <CircleCheckBig size={16} color="#fff" />
-                  <Text className="block od-action-text" style={{ color: '#fff' }}>验收通过</Text>
-                </View>
-              ) : (
-                <View
-                  className="od-action-btn od-action-primary od-action-disabled"
-                  onClick={() => showToast({ title: '请等待分身发布内容后再验收', icon: 'none' })}
-                >
-                  <CircleCheckBig size={16} color="#fff" />
-                  <Text className="block od-action-text" style={{ color: '#fff' }}>验收通过</Text>
-                </View>
-              )
-            })()}
-          </View>
-        )}
+          )
+        }
 
         {/* 驳回弹窗 */}
-        {showReject && (
-          <View className="od-modal-overlay" onClick={() => setShowReject(false)}>
-            <View className="od-modal" onClick={(e) => e.stopPropagation()}>
-              <View className="od-modal-icon" style={{ backgroundColor: '#FEE2E2' }}>
-                <CircleAlert size={24} color="#EF4444" />
-              </View>
-              <Text className="block od-modal-title">驳回修改</Text>
-              <Text className="block od-modal-desc">请输入驳回原因，方便分身修改</Text>
-              <View className="od-modal-input-wrap">
-                <Input className="od-modal-input" placeholder="请详细描述问题..." value={rejectReason} onInput={(e: any) => setRejectReason(e.detail.value)} />
-              </View>
-              <View className="od-modal-actions">
-                <View className="od-modal-btn od-modal-btn-cancel" onClick={() => setShowReject(false)}>
-                  <Text className="block">取消</Text>
+        {
+          showReject && (
+            <View className="od-modal-overlay" onClick={() => { setShowReject(false); setSelectedReasonIdx(-1); setRejectReason('') }}>
+              <View className="od-modal" onClick={(e) => e.stopPropagation()}>
+                <View className="od-modal-icon" style={{ backgroundColor: '#FEE2E2' }}>
+                  <CircleAlert size={24} color="#EF4444" />
                 </View>
-                <View className="od-modal-btn od-modal-btn-danger" onClick={handleReject}>
-                  <Text className="block" style={{ color: '#fff' }}>确认驳回</Text>
+                <Text className="block od-modal-title">驳回修改</Text>
+                <Text className="block od-modal-desc">请选择驳回原因，方便分身修改</Text>
+                <View style={{ maxHeight: '320px', overflowY: 'auto' }}>
+                  {REJECT_REASONS.map((reason, idx) => (
+                    <View
+                      key={idx}
+                      className="od-reject-reason-item"
+                      style={{
+                        display: 'flex', flexDirection: 'row', alignItems: 'center',
+                        padding: '10px 12px', marginBottom: '6px', borderRadius: '8px',
+                        backgroundColor: selectedReasonIdx === idx ? '#FEF2F2' : '#F9FAFB',
+                        border: selectedReasonIdx === idx ? '1px solid #EF4444' : '1px solid #E5E7EB',
+                      }}
+                      onClick={() => setSelectedReasonIdx(idx)}
+                    >
+                      <View style={{
+                        width: '18px', height: '18px', borderRadius: '9px',
+                        border: selectedReasonIdx === idx ? '5px solid #EF4444' : '2px solid #D1D5DB',
+                        marginRight: '10px', flexShrink: 0,
+                      }}
+                      />
+                      <Text className="block" style={{ fontSize: '14px', color: selectedReasonIdx === idx ? '#EF4444' : '#374151' }}>
+                        {reason}
+                      </Text>
+                    </View>
+                  ))}
+                  {selectedReasonIdx === REJECT_REASONS.length - 1 && (
+                    <View className="od-modal-input-wrap" style={{ marginTop: '4px' }}>
+                      <Input className="od-modal-input" placeholder="请详细描述问题..." value={rejectReason} onInput={(e: any) => setRejectReason(e.detail.value)} />
+                    </View>
+                  )}
+                </View>
+                <View className="od-modal-actions">
+                  <View className="od-modal-btn od-modal-btn-cancel" onClick={() => { setShowReject(false); setSelectedReasonIdx(-1); setRejectReason('') }}>
+                    <Text className="block">取消</Text>
+                  </View>
+                  <View className="od-modal-btn od-modal-btn-danger" onClick={handleReject}>
+                    <Text className="block" style={{ color: '#fff' }}>确认驳回</Text>
+                  </View>
                 </View>
               </View>
             </View>
-          </View>
-        )}
+          )
+        }
 
         {/* 验收通过弹窗 */}
-        {showApprove && (
-          <View className="od-modal-overlay" onClick={() => setShowApprove(false)}>
-            <View className="od-modal" onClick={(e) => e.stopPropagation()}>
-              <View className="od-modal-icon" style={{ backgroundColor: '#D1FAE5' }}>
-                <Check size={24} color="#10B981" />
-              </View>
-              <Text className="block od-modal-title">确认验收通过？</Text>
-              <Text className="block od-modal-desc">验收通过后将无法撤回，请仔细检查</Text>
-              <View className="od-modal-actions">
-                <View className="od-modal-btn od-modal-btn-cancel" onClick={() => setShowApprove(false)}>
-                  <Text className="block">取消</Text>
+        {
+          showApprove && (
+            <View className="od-modal-overlay" onClick={() => setShowApprove(false)}>
+              <View className="od-modal" onClick={(e) => e.stopPropagation()}>
+                <View className="od-modal-icon" style={{ backgroundColor: '#D1FAE5' }}>
+                  <Check size={24} color="#10B981" />
                 </View>
-                <View className="od-modal-btn od-modal-btn-primary" onClick={handleApprove}>
-                  <Text className="block" style={{ color: '#fff' }}>确认通过</Text>
+                <Text className="block od-modal-title">确认验收通过？</Text>
+                <Text className="block od-modal-desc">验收通过后将无法撤回，请仔细检查</Text>
+                <View className="od-modal-actions">
+                  <View className="od-modal-btn od-modal-btn-cancel" onClick={() => setShowApprove(false)}>
+                    <Text className="block">取消</Text>
+                  </View>
+                  <View className="od-modal-btn od-modal-btn-primary" onClick={handleApprove}>
+                    <Text className="block" style={{ color: '#fff' }}>确认通过</Text>
+                  </View>
                 </View>
               </View>
             </View>
-          </View>
-        )}
-      </View>
+          )
+        }
+      </View >
     )
   }
 

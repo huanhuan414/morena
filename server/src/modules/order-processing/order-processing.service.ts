@@ -329,9 +329,17 @@ export class OrderProcessingService {
     incoming: Record<string, any>
   ): Record<string, any> {
     const base = { ...(existing || {}) }
-    const nonPlatformFields = ['rejectReason', 'reject_reason', 'status', 'rating', 'comment', 'feedback', 'revision_requested']
+    // 需要保留的元数据字段（不作为平台处理）
+    const nonPlatformFields = [
+      'rejectReason', 'reject_reason',
+      'status', 'rating', 'comment', 'feedback', 'revision_requested',
+      'revisionHistory', 'revision_history',
+      'feedback_submitted_at', 'submitted_at'
+    ]
     Object.entries(incoming || {}).forEach(([key, value]) => {
-      if (nonPlatformFields.includes(key)) {
+      // 大小写不敏感匹配
+      const keyLower = key.toLowerCase()
+      if (nonPlatformFields.some(f => f.toLowerCase() === keyLower)) {
         base[key] = value
         return
       }
@@ -909,12 +917,34 @@ export class OrderProcessingService {
     
     const revisionCount = (current.revisionCount || current.revision_count || 0) + 1
 
-    // 添加驳回历史记录
+    // 添加驳回历史记录（包含当时的反馈数据）
     const revisionHistory = existingFeedback.revisionHistory || []
+    // 提取各平台的反馈数据（图片、链接）用于历史记录
+    const platformFeedbackSnapshot: Record<string, any> = {}
+    const metadataKeys = [
+      'rejectReason', 'reject_reason',
+      'revisionHistory', 'revision_history',
+      'status',
+      'feedback_submitted_at', 'submitted_at'
+    ]
+    Object.keys(existingFeedback).forEach(key => {
+      // 大小写不敏感过滤元数据字段
+      const keyLower = key.toLowerCase()
+      if (metadataKeys.some(f => f.toLowerCase() === keyLower)) return
+      const pf = existingFeedback[key]
+      if (pf && typeof pf === 'object' && !Array.isArray(pf)) {
+        platformFeedbackSnapshot[key] = {
+          images: pf.images || [],
+          link: pf.link || ''
+        }
+      }
+    })
     revisionHistory.push({
       reason: feedback.rejectReason || '',
       time: new Date().toISOString(),
-      count: revisionCount
+      count: revisionCount,
+      // 保存当时的反馈数据快照
+      snapshot: platformFeedbackSnapshot
     })
     mergedFeedback.revisionHistory = revisionHistory
     mergedFeedback.rejectReason = feedback.rejectReason || ''
@@ -938,9 +968,10 @@ export class OrderProcessingService {
       // 首次驳回：dispatch保持accepted（分身仍可重新生成，ENUM无revision_requested值）
       // 最终驳回：dispatch改为rejected（释放名额）
       const dispatchStatus = isFinalRejection ? 'rejected' : 'accepted'
+      const kickType = isFinalRejection ? 'final_rejection' : null
       await db.query(
-        `UPDATE order_dispatch_requests SET status = ?, reject_reason = ?, updated_at = NOW() WHERE order_id = ? AND avatar_id = ?`,
-        [dispatchStatus, feedback.rejectReason || '', normalized.orderId, normalized.avatarId]
+        `UPDATE order_dispatch_requests SET status = ?, reject_reason = ?, kick_type = ?, updated_at = NOW() WHERE order_id = ? AND avatar_id = ?`,
+        [dispatchStatus, feedback.rejectReason || '', kickType, normalized.orderId, normalized.avatarId]
       )
       this.logger.log(`[驳回] 已更新派单记录状态: orderId=${normalized.orderId}, avatarId=${normalized.avatarId}, dispatchStatus=${dispatchStatus}`)
 
@@ -960,21 +991,54 @@ export class OrderProcessingService {
         `SELECT a.user_id, o.title FROM avatars a LEFT JOIN orders o ON o.id = ? WHERE a.id = ?`,
         [normalized.orderId, normalized.avatarId]
       )
-      const avatarInfo: any = (avatarRows as any[])?.[0]
-      if (avatarInfo?.user_id) {
+      this.logger.log(`[驳回] avatarRows: ${JSON.stringify(avatarRows)}`)
+      // 处理不同的返回格式（数组或对象）
+      let avatarInfo: any = null
+      if (Array.isArray(avatarRows)) {
+        avatarInfo = avatarRows[0]
+      } else if (avatarRows?.userId || avatarRows?.user_id || avatarRows?.title) {
+        avatarInfo = avatarRows
+      }
+      this.logger.log(`[驳回] isFinalRejection=${isFinalRejection}, revisionCount=${revisionCount}, avatarInfo.userId=${avatarInfo?.userId}`)
+      const actualUserId = avatarInfo?.userId || avatarInfo?.user_id
+      if (actualUserId) {
+        // 最终驳回：设置用户静默期
+        if (isFinalRejection) {
+          const silenceDurationMs = parseInt(process.env.ORDER_SILENCE_DURATION_MS || '86400000', 10)
+          const silenceUntil = new Date(Date.now() + silenceDurationMs)
+          await db.query(
+            `UPDATE users SET silence_until = ? WHERE id = ? AND (silence_until IS NULL OR silence_until < ?)`,
+            [silenceUntil, actualUserId, silenceUntil]
+          )
+          this.logger.log(`[驳回] 已设置用户静默期: userId=${actualUserId}, silenceUntil=${silenceUntil.toISOString()}`)
+        }
+
         try {
           const notificationService = new NotificationService()
           const canRegenerate = revisionCount < 2
+          // 计算静默时间文本（支持秒、分钟、小时、天）
+          const silenceMs = parseInt(process.env.ORDER_SILENCE_DURATION_MS || '86400000', 10)
+          let silenceText = ''
+          if (silenceMs < 60 * 1000) {
+            silenceText = `${Math.round(silenceMs / 1000)}秒`
+          } else if (silenceMs < 60 * 60 * 1000) {
+            silenceText = `${Math.round(silenceMs / (60 * 1000))}分钟`
+          } else if (silenceMs < 24 * 60 * 60 * 1000) {
+            silenceText = `${Math.round(silenceMs / (60 * 60 * 1000))}小时`
+          } else {
+            silenceText = `${Math.round(silenceMs / (24 * 60 * 60 * 1000))}天`
+          }
+          const silenceNoticeText = isFinalRejection ? `，静默${silenceText}内无法接单` : ''
           await notificationService.createNotification({
-            user_id: avatarInfo.user_id,
+            user_id: actualUserId,
             type: 'order_rejected',
-            title: canRegenerate ? '订单已被驳回' : '订单已被驳回（最终驳回）',
+            title: canRegenerate ? '订单已被驳回' : '订单已被踢出',
             content: canRegenerate
               ? `订单「${avatarInfo.title || '内容'}」已被驳回，原因：${feedback.rejectReason || '无'}，可重新生成1次`
-              : `订单「${avatarInfo.title || '内容'}」已被驳回，原因：${feedback.rejectReason || '无'}，驳回次数已用完，无法重新生成`,
+              : `订单「${avatarInfo.title || '内容'}」已被驳回，原因：${feedback.rejectReason || '无'}，驳回次数已用完${silenceNoticeText}`,
             metadata: { orderId: normalized.orderId, requestId: normalized.requestId, revisionCount }
           })
-          this.logger.log(`[驳回] 已发送通知给用户: ${avatarInfo.user_id}`)
+          this.logger.log(`[驳回] 已发送通知给用户: ${actualUserId}`)
         } catch (err: any) {
           this.logger.warn(`[驳回] 发送通知失败: ${err.message}`)
         }

@@ -99,7 +99,7 @@ export class OrderDispatchService {
     const orderRows = await db.query(
       `SELECT id, status, is_paid,
               GREATEST(COALESCE(NULLIF(avatar_count, 0), NULLIF(expected_quantity, 0), 1), 1) as required_count
-       FROM orders WHERE id = ? LIMIT 1`,
+       FROM orders WHERE id = ? AND is_deleted = 0 LIMIT 1`,
       [data.order_id]
     )
     const order: any = orderRows?.[0]
@@ -365,7 +365,7 @@ export class OrderDispatchService {
     let orderAvatarCount = 0
     if (limit === 0 && orderId) {
       try {
-        const orderRows = await db.query('SELECT avatar_count, accept_regions, personality FROM orders WHERE id = ?', [orderId])
+        const orderRows = await db.query('SELECT avatar_count, accept_regions, personality FROM orders WHERE id = ? AND is_deleted = 0', [orderId])
         orderAvatarCount = orderRows?.[0]?.avatar_count || orderRows?.[0]?.avatarCount || 0
         fetchLimit = Number(orderAvatarCount) + 5
         this.logger.log(`[getRecommendedAvatars] 自动计算fetchLimit: ${fetchLimit} (avatar_count=${orderAvatarCount})`)
@@ -379,7 +379,7 @@ export class OrderDispatchService {
     let orderPersonality: any = null
     if (orderId) {
       try {
-        const orderRows = await db.query('SELECT accept_regions, personality FROM orders WHERE id = ?', [orderId])
+        const orderRows = await db.query('SELECT accept_regions, personality FROM orders WHERE id = ? AND is_deleted = 0', [orderId])
         const acceptRegionsStr = orderRows?.[0]?.accept_regions || orderRows?.[0]?.acceptRegions
         if (acceptRegionsStr) {
           orderRegions = this.safeParseJson(acceptRegionsStr, [])
@@ -458,9 +458,9 @@ export class OrderDispatchService {
     // 如果有订单ID，进行匹配排序
     if (orderId) {
       try {
-        const orderRows2 = await db.query('SELECT * FROM orders WHERE id = ?', [orderId])
+        const orderRows2 = await db.query('SELECT * FROM orders WHERE id = ? AND is_deleted = 0', [orderId])
         const order = orderRows2?.[0]
-        
+
         if (order) {
           // 需要的分身数量
           const requiredCount = Number(orderAvatarCount) + 5
@@ -593,9 +593,9 @@ export class OrderDispatchService {
    */
   async dispatchOrder(orderId: string) {
     const db = getMySQLClient()
-    
+
     // 检查AI生成素材状态：如果开启AI补足且素材未生成完成，拒绝派单
-    const orderForCheck = await db.query('SELECT * FROM orders WHERE id = ?', [orderId])
+    const orderForCheck = await db.query('SELECT * FROM orders WHERE id = ? AND is_deleted = 0', [orderId])
     if (orderForCheck?.[0]) {
       const order = orderForCheck[0]
       const reqs = typeof order.requirements === 'string' ? JSON.parse(order.requirements) : (order.requirements || {})
@@ -671,10 +671,10 @@ async getExecutionProgress(orderId: string) {
     const [orderRows] = await pool.query(
       `SELECT id, avatar_count, expected_quantity,
               GREATEST(COALESCE(NULLIF(avatar_count, 0), NULLIF(expected_quantity, 0), 1), 1) as required_count
-       FROM orders WHERE id = ? LIMIT 1`,
+       FROM orders WHERE id = ? AND is_deleted = 0 LIMIT 1`,
       [orderId]
     ) as any[]
-    
+
     if (!orderRows || orderRows.length === 0) {
       return { exists: false, acceptedCount: 0, totalQuota: 0, remainingQuota: 0, isFull: true }
     }
@@ -719,11 +719,11 @@ async getExecutionProgress(orderId: string) {
     if (avatars.length === 0) {
       throw new NotFoundException('分身不存在或已失效')
     }
-    
+
     const orderRows = await db.query(
       `SELECT id, status, is_paid,
               GREATEST(COALESCE(NULLIF(avatar_count, 0), NULLIF(expected_quantity, 0), 1), 1) as required_count
-       FROM orders WHERE id = ? LIMIT 1`,
+       FROM orders WHERE id = ? AND is_deleted = 0 LIMIT 1`,
       [orderId]
     )
     const order: any = orderRows?.[0]
@@ -822,15 +822,14 @@ async getExecutionProgress(orderId: string) {
    */
   async dispatchToAllAvatars(orderId: string) {
     const db = getMySQLClient()
-    
     // 查询订单信息
-    const orderRows = await db.query('SELECT * FROM orders WHERE id = ?', [orderId])
+    const orderRows = await db.query('SELECT * FROM orders WHERE id = ? AND is_deleted = 0', [orderId])
     const order = orderRows?.[0]
-    
+
     if (!order) {
       return { count: 0, avatarIds: [], smsSentCount: 0 }
     }
-    
+
     // 获取订单需要的分身数量
     const requiredCount = Math.max(
       1,
@@ -1071,7 +1070,7 @@ async getExecutionProgress(orderId: string) {
     // 第零阶段：区域限制检查
     // =====================================================
     // 获取订单的接单区域限制
-    const orderRegionRows = await db.query('SELECT accept_regions FROM orders WHERE id = ?', [orderId])
+    const orderRegionRows = await db.query('SELECT accept_regions FROM orders WHERE id = ? AND is_deleted = 0', [orderId])
     const acceptRegionsStr = (orderRegionRows as any[])?.[0]?.acceptRegions || (orderRegionRows as any[])?.[0]?.accept_regions
     const acceptRegions = this.safeParseJson<string[]>(acceptRegionsStr, [])
 
@@ -1102,7 +1101,7 @@ async getExecutionProgress(orderId: string) {
 
     // 1.1 快速校验订单状态（不加锁，读最新数据即可）
     const orderRows = await db.query(
-      `SELECT id, status, is_paid,
+      `SELECT id, status, is_paid, accept_timeout,
               GREATEST(COALESCE(NULLIF(avatar_count, 0), NULLIF(expected_quantity, 0), 1), 1) as required_count
        FROM orders
        WHERE id = ?`,
@@ -1111,12 +1110,13 @@ async getExecutionProgress(orderId: string) {
     const orderRow: any = (orderRows as any[])?.[0]
     // db.query 内部会 convertKeysToCamel，所以 required_count → requiredCount
     requiredCount = Number(orderRow?.requiredCount || orderRow?.required_count || 1) || 1
+    const orderAcceptTimeout = orderRow?.acceptTimeout || orderRow?.accept_timeout || null // 接单超时（分钟）
 
     if (!orderRow) {
       throw new NotFoundException('订单不存在')
     }
 
-    const acceptablStatuses = ['pending', 'pending_payment', 'open', 'created', 'assigned', 'pending_acceptance', 'pending_dispatch', 'awaiting_acceptance', 'in_progress']
+    const acceptablStatuses = ['pending', 'in_progress', 'awaiting_acceptance', 'submitted']
     if (!acceptablStatuses.includes(orderRow.status)) {
       throw new ConflictException(`订单已${orderRow.status === 'completed' ? '完成' : orderRow.status === 'cancelled' ? '取消' : '关闭'}, 无法接单`)
     }
@@ -1146,7 +1146,7 @@ async getExecutionProgress(orderId: string) {
     // 独占模式校验：分身数不能超过可用素材数
     let effectiveRequired = requiredCount
     try {
-      const orderInfoRows = await db.query('SELECT asset_distribute_mode FROM orders WHERE id = ?', [orderId])
+      const orderInfoRows = await db.query('SELECT asset_distribute_mode FROM orders WHERE id = ? AND is_deleted = 0', [orderId])
       const orderDistributeMode = (orderInfoRows as any[])?.[0]?.assetDistributeMode || (orderInfoRows as any[])?.[0]?.asset_distribute_mode || 'shared'
       if (orderDistributeMode === 'exclusive') {
         const assetCountRows = await db.query(
@@ -1247,7 +1247,7 @@ async getExecutionProgress(orderId: string) {
       if (!request) {
         const [acceptOrderRows] = await conn.query(
           `SELECT id, title, user_id as owner_user_id, description, platforms, budget, expected_quantity, quantity_per_avatar, target_audience, status
-           FROM orders WHERE id = ?`,
+           FROM orders WHERE id = ? AND is_deleted = 0`,
           [orderId]
         )
         const order: any = (acceptOrderRows as any[])?.[0]
@@ -1269,6 +1269,17 @@ async getExecutionProgress(orderId: string) {
         const avatarOwner: any = (avatarOwnerRows as any[])?.[0]
         if (!avatarOwner || avatarOwner.status !== 'active') {
           throw new NotFoundException('分身不存在或已失效，无法接单')
+        }
+
+        // 静默期检查：用户在静默期内不能接单
+        const [silenceRows] = await conn.query(
+          `SELECT silence_until FROM users WHERE id = ?`,
+          [avatarOwner.user_id]
+        )
+        const silenceUntil = (silenceRows as any[])?.[0]?.silence_until || (silenceRows as any[])?.[0]?.silenceUntil
+        if (silenceUntil && new Date(silenceUntil) > new Date()) {
+          const remaining = Math.ceil((new Date(silenceUntil).getTime() - Date.now()) / (1000 * 60 * 60))
+          throw new ConflictException(`您因超时未发布被限制接单，${remaining}小时后可恢复`)
         }
 
         // 接单权限校验：检查每日次数+同时接单数
@@ -1325,14 +1336,20 @@ async getExecutionProgress(orderId: string) {
         }
       }
 
+      // 计算接单超时截止时间
+      const acceptTimeoutAt = orderAcceptTimeout
+        ? new Date(Date.now() + orderAcceptTimeout * 60 * 1000)
+        : null
+
       const [updateResult] = await conn.query(
         `UPDATE order_dispatch_requests
          SET status = 'accepted',
              accepted_at = IFNULL(accepted_at, NOW()),
+             accept_timeout_at = ?,
              responded_at = NOW(),
              updated_at = NOW()
          WHERE id = ? AND status = 'pending'`,
-        [request.id]
+        [acceptTimeoutAt, request.id]
       )
       if (!updateResult || Number((updateResult as any).affectedRows || 0) !== 1) {
         const [rowCheck] = await conn.query(
@@ -1406,7 +1423,7 @@ async getExecutionProgress(orderId: string) {
             `UPDATE orders
              SET status = 'in_progress',
                  updated_at = NOW()
-             WHERE id = ?`,
+             WHERE id = ? AND status NOT IN ('completed', 'cancelled')`,
             [orderId]
           )
         }
@@ -1585,11 +1602,10 @@ async getExecutionProgress(orderId: string) {
       source: 'avatar',
       avatarName: declinedAvatarName,
     }).catch(err => console.warn('[事件] rejected 记录失败:', err.message))
-    
     try {
-      const orderInfo = await db.query('SELECT user_id, title FROM orders WHERE id = ?', [request.orderId])
+      const orderInfo = await db.query('SELECT user_id, title FROM orders WHERE id = ? AND is_deleted = 0', [request.orderId])
       const order = orderInfo?.[0]
-      
+
       if (order?.user_id) {
         await this.notificationService.createNotification({
           user_id: order.user_id,
@@ -1881,7 +1897,7 @@ async getExecutionProgress(orderId: string) {
    */
   private async getOrderById(orderId: string): Promise<any | null> {
     const db = getMySQLClient()
-    const orderRows3 = await db.query('SELECT * FROM orders WHERE id = ?', [orderId])
+    const orderRows3 = await db.query('SELECT * FROM orders WHERE id = ? AND is_deleted = 0', [orderId])
     return orderRows3?.[0] || null
   }
 
@@ -2119,7 +2135,7 @@ async getExecutionProgress(orderId: string) {
 
     // 2. 验证该分身确实已接单
     const dispatchRows = await db.query(
-      `SELECT id, status, accepted_at, updated_at, created_at, target_avatar_id FROM order_dispatch_requests WHERE order_id = ? AND (target_avatar_id = ? OR avatar_id = ?) AND status = 'accepted'`,
+      `SELECT id, status, accepted_at, updated_at, created_at, target_avatar_id, user_id FROM order_dispatch_requests WHERE order_id = ? AND (target_avatar_id = ? OR avatar_id = ?) AND status = 'accepted'`,
       [orderId, avatarId, avatarId]
     )
     const dispatch = dispatchRows?.[0]
@@ -2150,9 +2166,9 @@ async getExecutionProgress(orderId: string) {
       return { success: false, message: '该分身已提交反馈，无法踢出' }
     }
 
-    // 5. 执行踢出：更新 dispatch_request 状态为 expired
+    // 5. 执行踢出：更新 dispatch_request 状态为 expired，记录 kick_type
     await db.query(
-      `UPDATE order_dispatch_requests SET status = 'expired', updated_at = NOW() WHERE id = ?`,
+      `UPDATE order_dispatch_requests SET status = 'expired', kick_type = 'manual_kick', reject_reason = '发单者手动踢出', updated_at = NOW() WHERE id = ?`,
       [dispatch.id]
     )
 
@@ -2174,6 +2190,68 @@ async getExecutionProgress(orderId: string) {
         [orderId, cgrId]
       )
       this.logger.log(`释放素材: orderId=${orderId}, cgrId=${cgrId}, 释放${(releaseResult as any)?.affectedRows || 0}条素材`)
+    }
+
+    // 8. 设置用户静默期（按用户，不按分身）
+    const silenceDurationMs = parseInt(process.env.ORDER_SILENCE_DURATION_MS || '86400000', 10)
+    const silenceUntil = new Date(Date.now() + silenceDurationMs)
+    await db.query(
+      `UPDATE users SET silence_until = ? WHERE id = ? AND (silence_until IS NULL OR silence_until < ?)`,
+      [silenceUntil, dispatch.userId || dispatch.user_id, silenceUntil]
+    )
+    this.logger.log(`手动踢出: 用户 ${dispatch.userId || dispatch.user_id} 静默期至 ${silenceUntil.toISOString()}`)
+
+    // 9. 发送通知给被踢出的用户
+    try {
+      const notificationService = new NotificationService()
+      // 获取订单标题用于通知
+      let orderTitle = ''
+      try {
+        const [orderRows] = await db.query(
+          `SELECT title FROM orders WHERE id = ? LIMIT 1`,
+          [orderId]
+        )
+      
+        // 处理不同的返回格式
+        const rawRows = (orderRows as any)
+        let orderRow = null
+        if (Array.isArray(rawRows)) {
+          orderRow = rawRows[0]
+        } else if (rawRows?.data && Array.isArray(rawRows.data)) {
+          orderRow = rawRows.data[0]
+        } else if (rawRows?.title) {
+          // rawRows 本身就是单条记录
+          orderRow = rawRows
+        }
+        if (orderRow?.title) {
+          orderTitle = orderRow.title
+        }
+      } catch (orderErr) {
+        this.logger.warn(`获取订单标题失败: ${(orderErr as Error).message}`)
+      }
+
+      // 计算静默期文本（支持秒、分钟、小时、天）
+      let silenceText = ''
+      if (silenceDurationMs < 60 * 1000) {
+        silenceText = `${Math.round(silenceDurationMs / 1000)}秒`
+      } else if (silenceDurationMs < 60 * 60 * 1000) {
+        silenceText = `${Math.round(silenceDurationMs / (60 * 1000))}分钟`
+      } else if (silenceDurationMs < 24 * 60 * 60 * 1000) {
+        silenceText = `${Math.round(silenceDurationMs / (60 * 60 * 1000))}小时`
+      } else {
+        silenceText = `${Math.round(silenceDurationMs / (24 * 60 * 60 * 1000))}天`
+      }
+      console.log('orderTitle2:', orderTitle)
+      await notificationService.createNotification({
+        user_id: dispatch.userId || dispatch.user_id,
+        type: 'manual_kick',
+        title: '您已被踢出订单',
+        content: `您在订单「${orderTitle}」中被发单者踢出。${silenceText}内无法接单。`,
+        metadata: { orderId, avatarId }
+      })
+      this.logger.log(`手动踢出: 已发送通知给用户 ${dispatch.userId || dispatch.user_id}`)
+    } catch (notifyErr) {
+      this.logger.warn(`手动踢出: 发送通知失败 ${(notifyErr as Error).message}`)
     }
 
     // 6.5 释放Redis已接单计数器

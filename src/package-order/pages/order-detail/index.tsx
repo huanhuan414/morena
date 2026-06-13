@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
-import Taro from '@tarojs/taro'
+import Taro, { useDidShow } from '@tarojs/taro'
 import { Network } from '@/network'
 import {
   ArrowLeft, Loader, Users, CircleCheckBig, CircleX, Clock,
@@ -142,6 +142,22 @@ export default function OrderDetailPage() {
   const [events, setEvents] = useState<TimelineEventDto[]>([])
   const [loading, setLoading] = useState(true)
   const [paying, setPaying] = useState(false)
+  const [silenceDurationMs, setSilenceDurationMs] = useState(86400000)  // 默认24小时
+
+  // 格式化静默时间显示
+  const formatSilenceDuration = (ms: number) => {
+    if (ms < 60 * 1000) {
+      return `${Math.round(ms / 1000)}秒`
+    } else if (ms < 60 * 60 * 1000) {
+      return `${Math.round(ms / (60 * 1000))}分钟`
+    } else if (ms < 24 * 60 * 60 * 1000) {
+      const hours = Math.round(ms / (60 * 60 * 1000))
+      return `${hours}小时`
+    } else {
+      const days = Math.round(ms / (24 * 60 * 60 * 1000))
+      return `${days}天`
+    }
+  }
   const [selectedAvatar, setSelectedAvatar] = useState<any>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogTab, setDialogTab] = useState('content')
@@ -169,6 +185,10 @@ export default function OrderDetailPage() {
       ])
       const orderData = normalizeOrderDetail(orderRes.data?.data)
       setOrder(orderData)
+      // 设置静默时间配置
+      if (orderRes.data?.data?.silenceDurationMs) {
+        setSilenceDurationMs(orderRes.data.data.silenceDurationMs)
+      }
 
       const eventData = normalizeTimelineEvents(eventRes.data?.data)
       setEvents(eventData)
@@ -180,6 +200,11 @@ export default function OrderDetailPage() {
   }, [orderId])
 
   useEffect(() => { fetchDetail() }, [fetchDetail])
+
+  // 从下一级页面返回时刷新数据
+  useDidShow(() => {
+    fetchDetail()
+  })
 
   // ===== 素材池数据 =====
   const fetchAssetSummary = useCallback(async () => {
@@ -313,7 +338,7 @@ export default function OrderDetailPage() {
         Taro.showToast({ title: res.data?.message || '取消失败', icon: 'none' })
       }
     } catch { Taro.showToast({ title: '取消失败', icon: 'none' }) }
-  }, [orderId, fetchDetail])
+  }, [orderId, fetchDetail, silenceDurationMs])
 
   // ===== 删除 =====
   const handleDelete = useCallback(async () => {
@@ -334,7 +359,7 @@ export default function OrderDetailPage() {
     try {
       const { confirm } = await Taro.showModal({
         title: '踢出分身',
-        content: `确定踢出分身"${avatarName}"吗？踢出后名额将释放给其他分身接单。`,
+        content: `确定踢出分身"${avatarName}"吗？踢出后名额将释放给其他分身接单，并将该接单者静默${formatSilenceDuration(silenceDurationMs)}！`,
         confirmText: '确定踢出',
         confirmColor: '#DC2626',
         cancelText: '取消'
@@ -346,7 +371,7 @@ export default function OrderDetailPage() {
         method: 'POST'
       })
       Taro.hideLoading()
-      console.log('踢出分身结果:', res.data)
+      // console.log('踢出分身结果:', res.data)
       if (res.data?.code === 200 || res.data?.data) {
         Taro.showToast({ title: '已踢出', icon: 'success' })
         fetchDetail()
@@ -355,10 +380,10 @@ export default function OrderDetailPage() {
       }
     } catch (err) {
       Taro.hideLoading()
-      console.error('踢出分身失败:', err)
+      // console.error('踢出分身失败:', err)
       Taro.showToast({ title: '操作失败', icon: 'none' })
     }
-  }, [orderId, fetchDetail])
+  }, [orderId, fetchDetail, silenceDurationMs])
 
   const handleVerify = useCallback(() => {
     Taro.navigateTo({ url: `/package-order/pages/order-acceptance/index?orderId=${orderId}` })
@@ -388,11 +413,12 @@ export default function OrderDetailPage() {
   }
 
   const avatarStats = order.avatarStats || []
+  // 只有"待验收"(awaiting_acceptance)状态才显示验收按钮
   const hasAwaitingAcceptance = avatarStats.some((a: any) =>
-    ['submitted', 'awaiting_acceptance', 'feedback_submitted', 'preview', 'published'].includes(a.status)
+    a.status === 'awaiting_acceptance'
   )
   const isAllVerified = avatarStats.length > 0 && avatarStats.every((a: any) =>
-    ['completed', 'rejected'].includes(a.status)
+    a.status === 'completed'
   )
 
   const effectiveStatus = order.status
@@ -673,7 +699,7 @@ export default function OrderDetailPage() {
               }
               const cfg = statusConfig[avatarStatus] || statusConfig.pending
               const hasContent = ['preview', 'publishing', 'submitted', 'published', 'awaiting_acceptance', 'feedback_submitted', 'completed'].includes(avatarStatus)
-              const contentTypeLabel = avatar.contentType === 'image_text' || avatar.contentType === 'image' ? '图文' : avatar.contentType === 'video' ? '视频' : avatar.contentType === 'text' ? '纯文案' : avatar.contentType
+              const contentTypeLabel = CONTENT_TYPE_MAP[avatar.contentType]?.label || avatar.contentType || '内容'
 
               return (
                 <View key={avatar.avatarId || idx} className="od-av-wrap" onClick={() => openAvatarDetail(avatar)}>
@@ -718,7 +744,7 @@ export default function OrderDetailPage() {
                           <Eye size={14} color="#6366F1" />
                         </View>
                       )}
-                      {isOrderOwner && !['pending', 'expired', 'cancelled', 'submitted', 'settled', 'completed'].includes(avatarStatus) && (() => {
+                      {isOrderOwner && !['settled', 'completed', 'awaiting_acceptance', 'rejected'].includes(avatarStatus) && (() => {
                         const kickTime = avatar.acceptedAt || avatar.updatedAt || avatar.createdAt
                         return kickTime && (Date.now() - new Date(kickTime).getTime() > 5 * 60 * 1000)
                       })() && (
@@ -753,7 +779,7 @@ export default function OrderDetailPage() {
               const avatarVideoUrls = av.videoUrls
               const publishFeedback = av.publishFeedback || {}
               const hasFeedback = publishFeedback && Object.keys(publishFeedback).length > 0
-              const contentTypeLabel = av.contentType === 'image_text' || av.contentType === 'image' ? '图文' : av.contentType === 'video' ? '视频' : av.contentType === 'text' ? '纯文案' : av.contentType || '内容'
+              const contentTypeLabel = CONTENT_TYPE_MAP[av.contentType]?.label || av.contentType || '内容'
               const avatarStatusCfg = STATUS_CONFIG[avatarStatus] || { label: avatarStatus, color: '#9CA3AF', bgColor: '#F9FAFB' }
               const previewCount = (av.content ? 1 : 0) + avatarImages.length + avatarVideoUrls.length
               const feedbackPlatformCount = hasFeedback ? Object.keys(publishFeedback).length : 0

@@ -248,7 +248,15 @@ const Index: React.FC = () => {
     setAcceptingOrderIds(prev => ({ ...prev, [orderId]: true }))
 
     try {
-      // 1. 调用后端接口检查名额是否已满
+      // 1. 获取分身列表
+      const avatarRes = await Network.request({ url: '/api/avatar' })
+      if (avatarRes.data?.code !== 200 || !avatarRes.data?.data?.length) {
+        Taro.showToast({ title: '请先创建分身', icon: 'none' })
+        return
+      }
+      const avatars = avatarRes.data.data
+
+      // 2. 调用后端接口检查名额是否已满
       const quotaRes = await Network.request({
         url: `/api/order-dispatch/${orderId}/quota`,
         method: 'GET'
@@ -258,7 +266,7 @@ const Index: React.FC = () => {
         return
       }
 
-      // 2. 获取用户会员信息和抽成比例
+      // 3. 获取用户会员信息和抽成比例
       const userId = useUserStore.getState().userInfo?.id
       let planId = 'plan_free'
       let planName = '免费版'
@@ -293,13 +301,6 @@ const Index: React.FC = () => {
         return
       }
 
-      // 4. 获取分身列表
-      const avatarRes = await Network.request({ url: '/api/avatar' })
-      if (avatarRes.data?.code !== 200 || !avatarRes.data?.data?.length) {
-        Taro.showToast({ title: '请先创建分身', icon: 'none' })
-        return
-      }
-      const avatars = avatarRes.data.data
 
       // 5. 选择分身
       const isPro = planId === 'plan_pro' || planId === 'plan_enterprise'

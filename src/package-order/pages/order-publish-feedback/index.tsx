@@ -59,6 +59,8 @@ export default function OrderPublishFeedback() {
   const [currentPlatform, setCurrentPlatform] = useState<string>('')
   const [actualRequestId, setActualRequestId] = useState<string>('')
   const [verifyResults, setVerifyResults] = useState<Record<string, { verified: boolean; message: string; title?: string; verifying?: boolean }>>({})
+  const [requestStatus, setRequestStatus] = useState<string>('')
+  const [revisionReason, setRevisionReason] = useState<string>('')
 
   useLoad(() => {
     loadOrderData()
@@ -108,6 +110,40 @@ export default function OrderPublishFeedback() {
 
         if (response.data?.code === 200) {
           const data = response.data.data
+
+          // 获取请求状态和整改原因
+          const rawStatus = data.status || ''
+          setRequestStatus(rawStatus)
+          // 从 publishFeedback 中获取 rejectReason 和已有的反馈数据
+          const publishFeedback = data.publishFeedback || data.publish_feedback || {}
+          const rejectReason = publishFeedback.rejectReason || publishFeedback.reject_reason || ''
+          setRevisionReason(rejectReason)
+
+          // 加载已有的反馈数据（图片和链接）- 用于显示已填写的内容
+          if (publishFeedback && typeof publishFeedback === 'object') {
+            const existingFeedback: Record<string, { images: string[]; link: string }> = {}
+            // 需要过滤的元数据字段（包括大小写变体）
+            const metadataKeys = [
+              'rejectReason', 'reject_reason',
+              'revisionHistory', 'revision_history',
+              'status',
+              'feedback_submitted_at', 'submitted_at'
+            ]
+            Object.keys(publishFeedback).forEach(key => {
+              // 跳过元数据字段和非对象值
+              if (metadataKeys.includes(key.toLowerCase())) return
+              const pf = publishFeedback[key]
+              if (pf && typeof pf === 'object' && !Array.isArray(pf)) {
+                existingFeedback[key] = {
+                  images: safeParseArray(pf.images || pf.publishImages || pf.screenshot),
+                  link: pf.link || pf.publishUrl || pf.url || ''
+                }
+              }
+            })
+            if (Object.keys(existingFeedback).length > 0) {
+              setFeedback(existingFeedback)
+            }
+          }
 
           if (!contentData) {
             setGeneratedContent(data.generatedContent)
@@ -325,20 +361,30 @@ export default function OrderPublishFeedback() {
       Taro.showToast({ title: '请至少为一个平台填写反馈', icon: 'none' })
       return
     }
+    // 先检查需要验证的平台是否填写了截图或链接（至少填一项）
+    const verifyRequiredPlatforms = publishPlatforms.filter(p => isVerifyRequired(p.platform))
+    if (verifyRequiredPlatforms.length > 0) {
+      // 检查是否有平台既没截图也没链接
+      const hasEmptyAll = verifyRequiredPlatforms.some(p => {
+        const fb = feedback[p.platform] as { images?: string[]; link?: string } | undefined
+        return !fb || !fb.images?.length || !fb.link
+      })
+      if (hasEmptyAll) {
+        Taro.showToast({ title: '请至少填写截图或链接', icon: 'none' })
+        return
+      }
+    }
 
-    const hasInvalid = platforms.some(platform => {
-      const fb = feedback[platform]
-      return !fb.images?.length && !fb.link
-    })
-
-    if (hasInvalid) {
-      Taro.showToast({ title: '请填写截图或链接', icon: 'none' })
+    // 检查是否有需要验证的平台未验证
+    const hasVerifyRequiredPlatforms = publishPlatforms.some(p => isVerifyRequired(p.platform))
+    if (hasVerifyRequiredPlatforms && !allVerified()) {
+      Taro.showToast({ title: '请先点击"验证发布"完成验证后再提交', icon: 'none' })
       return
     }
 
     const verified = allVerified()
 
-    if (!verified && publishPlatforms.some(p => isVerifyRequired(p.platform))) {
+    if (!verified && hasVerifyRequiredPlatforms) {
       const modalRes = await Taro.showModal({
         title: '发布验证未通过',
         content: '仍可提交并进入人工核验（可能影响验收速度）',
@@ -584,21 +630,23 @@ export default function OrderPublishFeedback() {
             )}
           </View>
 
-          {/* 填写链接 */}
-          <View className="feedback-section">
-            <Text className="feedback-label">发布链接</Text>
-            <View className="feedback-link-input">
-              <Link size={14} color="#9CA3AF" />
-              <View className="feedback-link-field">
-                <Input
-                  style={{ width: '100%', fontSize: '13px', lineHeight: '1.4', backgroundColor: 'transparent' }}
-                  placeholder={isVerifyRequired(platform) ? '请输入发布链接（必填，用于验证）' : '请输入发布链接'}
-                  value={fb.link}
-                  onInput={(e) => handleLinkChange(platform, e.detail.value)}
-                />
+          {/* 填写链接（朋友圈不需要链接） */}
+          {isVerifyRequired(platform) && (
+            <View className="feedback-section">
+              <Text className="feedback-label">发布链接</Text>
+              <View className="feedback-link-input">
+                <Link size={14} color="#9CA3AF" />
+                <View className="feedback-link-field">
+                  <Input
+                    style={{ width: '100%', fontSize: '13px', lineHeight: '1.4', backgroundColor: 'transparent' }}
+                    placeholder={isVerifyRequired(platform) ? '请输入发布链接（必填，用于验证）' : '请输入发布链接'}
+                    value={fb.link}
+                    onInput={(e) => handleLinkChange(platform, e.detail.value)}
+                  />
+                </View>
               </View>
             </View>
-          </View>
+          )}
 
           {/* 发布验证（仅需要验证的平台） */}
           {isVerifyRequired(platform) && (
@@ -684,11 +732,11 @@ export default function OrderPublishFeedback() {
             <ArrowLeft size={20} color="#fff" />
           </View>
           <View className="feedback-header-center">
-            <Text className="feedback-header-title">发布反馈</Text>
+            <Text className="feedback-header-title">{requestStatus === 'revision_requested' ? '待整改' : '发布反馈'}</Text>
           </View>
           <View style={{ width: '64rpx' }} />
         </View>
-        <Text className="feedback-header-desc">上传发布截图或链接，完成反馈确认</Text>
+        <Text className="feedback-header-desc">{requestStatus === 'revision_requested' ? '请根据整改要求修改并重新提交' : '上传发布截图或链接，完成反馈确认'}</Text>
       </View>
 
       {/* 内容概览 */}
@@ -705,6 +753,19 @@ export default function OrderPublishFeedback() {
         </View>
       ) : (
         publishPlatforms.map((result, index) => renderPlatformCard(result, index))
+      )}
+
+      {/* 整改内容 - 仅 revision_requested 状态显示 */}
+      {requestStatus === 'revision_requested' && revisionReason && (
+        <View className="feedback-section">
+          <View style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '16rpx', padding: '24rpx', margin: '0 24rpx 24rpx' }}>
+            <View style={{ display: 'flex', alignItems: 'center', marginBottom: '16rpx' }}>
+              <ShieldAlert size={18} color="#EA580C" />
+              <Text style={{ marginLeft: '8rpx', color: '#C2410C', fontSize: '28rpx', fontWeight: 600 }}>整改要求</Text>
+            </View>
+            <Text style={{ color: '#C2410C', fontSize: '26rpx', lineHeight: '40rpx' }}>{revisionReason}</Text>
+          </View>
+        </View>
       )}
 
       {/* 底部提交按钮 */}

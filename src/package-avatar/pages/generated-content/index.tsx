@@ -19,7 +19,7 @@ const BACKEND_STATUS_TO_TAB: Record<string, string> = {
   generating_video: 'generating',
   preview: 'preview',
   completed: 'preview',
-  revision_requested: 'preview',
+  revision_requested: 'revision_requested',
   publishing: 'published',
   published: 'published',
   feedback_submitted: 'awaiting_acceptance',
@@ -54,6 +54,7 @@ const CONTENT_STATUS_MAP: Record<string, { label: string; color: string; bgColor
   failed: { label: '生成失败', color: '#EF4444', bgColor: '#FEE2E2' },
   rejected: { label: '已驳回', color: '#EF4444', bgColor: '#FEE2E2' },
   cancelled: { label: '已取消', color: '#94A3B8', bgColor: '#F1F5F9' },
+  revision_requested: { label: '待整改', color: '#EF4444', bgColor: '#F1F5F9' },
 }
 
 // Tab 状态筛选
@@ -214,6 +215,17 @@ export default function GeneratedContentPage() {
 
   // 查看内容详情
   const handleView = (content: any) => {
+    const backendStatus = content.status
+    const normalizedStatus = BACKEND_STATUS_TO_TAB[backendStatus] || 'generating'
+
+    // 待整改状态跳转到发布反馈页面
+    if (backendStatus === 'revision_requested') {
+      Taro.navigateTo({
+        url: `/package-order/pages/order-publish-feedback/index?requestId=${encodeURIComponent(content.id || '')}&orderId=${encodeURIComponent(content.orderId || '')}`
+      })
+      return
+    }
+
     const query = [
       `orderId=${encodeURIComponent(content.orderId || '')}`,
       content.avatarId ? `avatarId=${encodeURIComponent(content.avatarId)}` : '',

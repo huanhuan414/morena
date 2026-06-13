@@ -322,9 +322,24 @@ export class SubscriptionService {
     //   }
     // }
     
+    // 3. 检查静默期（接单超时被限制）
+    const silenceResult = await db.query(
+      `SELECT silence_until FROM users WHERE id = ?`,
+      [userId]
+    ) as any[]
+    const silenceUntil = silenceResult?.[0]?.silence_until || silenceResult?.[0]?.silenceUntil
+    if (silenceUntil && new Date(silenceUntil) > new Date()) {
+      const remaining = Math.ceil((new Date(silenceUntil).getTime() - Date.now()) / (1000 * 60 * 60))
+      return {
+        allowed: false,
+        reason: `您因超时未发布被限制接单，${remaining}小时后可恢复`,
+        silenceUntil
+      }
+    }
+
     console.log('[checkOrderPermission] ALLOWED (concurrent limit disabled)')
-    return { 
-      allowed: true, 
+    return {
+      allowed: true,
       usedToday: todayCount,
       dailyLimit: benefits.dailyOrderLimit,
       pendingCount: 0,

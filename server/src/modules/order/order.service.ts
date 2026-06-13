@@ -334,6 +334,7 @@ export class OrderService {
       description: orderData.description || '',
       content_type: orderData.contentType || orderData.content_type || 'text',
       accept_regions: JSON.stringify(orderData.acceptRegions || orderData.accept_regions || []),
+      accept_timeout: orderData.acceptTimeout || orderData.accept_timeout || null, // 接单超时时间（分钟），空表示不限时
       platforms: JSON.stringify(orderData.platforms || []),
       requirements: JSON.stringify(orderData.requirements || {}),
       // 添加 personality 字段，保存风格偏好和领域偏好
@@ -427,7 +428,7 @@ export class OrderService {
        completed_at, latitude, longitude, location_text, target_audience,
        expected_quantity, deadline, order_type, priority, assigned_to,
        avatar_count, quantity_per_avatar, is_paid
-       FROM orders WHERE id = ?`,
+       FROM orders WHERE id = ? AND is_deleted = 0`,
       [orderId]
     )
     
@@ -530,6 +531,9 @@ export class OrderService {
         ? Math.round((baseAmount / requiredCount) * 100) / 100
         : baseAmount
     
+    // 静默时间配置（毫秒，让前端计算合适的显示单位）
+    const silenceDurationMs = parseInt(process.env.ORDER_SILENCE_DURATION_MS || '86400000', 10)
+  
     return {
       ...order,
       id: order.id,
@@ -551,23 +555,24 @@ export class OrderService {
       avatarCount: requiredCount,
       avatarStats,
       summary_stats: summaryStats,
+      silenceDurationMs,  // 静默时间（毫秒）
       createdAt
     }
   }
 
   async getOrders(userId: string, filters: Record<string, any> = {}) {
     const db = getMySQLClient()
-    
-    let whereClause = 'WHERE user_id = ?'
+
+    let whereClause = 'WHERE user_id = ? AND is_deleted = 0'
     const params: any[] = [userId]
-    
+
     if (filters.status) {
       whereClause += ' AND status = ?'
       params.push(filters.status)
     }
-    
+
     const rows = await db.query(
-      `SELECT id, title, description, content_type, accept_regions, platforms, requirements, 
+      `SELECT id, title, description, content_type, accept_regions, platforms, requirements,
               budget, base_amount, content_amount, status, expected_quantity, avatar_count, is_paid, created_at
        FROM orders ${whereClause} ORDER BY created_at DESC LIMIT 100`,
       params
@@ -732,13 +737,13 @@ export class OrderService {
     const db = getMySQLClient()
     
     const rows = await db.query(
-      `SELECT 
+      `SELECT
          COUNT(*) as total,
          SUM(CASE WHEN status = 'pending_payment' THEN 1 ELSE 0 END) as pendingPayment,
          SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as inProgress,
          SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
          SUM(budget) as totalBudget
-       FROM orders WHERE user_id = ?`,
+       FROM orders WHERE user_id = ? AND is_deleted = 0`,
       [userId]
     )
     
@@ -820,13 +825,14 @@ export class OrderService {
 
     const whereClause = `
       WHERE (
-        o.is_paid = 1 
-        AND o.status IN ('open', 'pending_dispatch', 'pending', 'in_progress', 
+        o.is_paid = 1
+        AND o.is_deleted = 0
+        AND o.status IN ('open', 'pending_dispatch', 'pending', 'in_progress',
                          'awaiting_acceptance', 'submitted', 'auto_cancelled',
                          'pending_acceptance', 'created', 'assigned', 'pending_payment')
         AND NOT EXISTS (
-          SELECT 1 FROM order_assets oa 
-          WHERE oa.order_id COLLATE utf8mb4_general_ci = o.id AND oa.status NOT IN ('ready', 'failed')
+          SELECT 1 FROM order_assets oa
+          WHERE oa.order_id COLLATE utf8mb4_general_ci = o.id AND oa.status NOT IN ('ready')
         )
       )${platformClause}
     `
@@ -1036,7 +1042,7 @@ export class OrderService {
   async acceptOrder(orderId: string, avatarId?: string) {
     const db = getMySQLClient()
     const orderRows = await db.query(
-      `SELECT id, status, is_paid FROM orders WHERE id = ? LIMIT 1`,
+      `SELECT id, status, is_paid FROM orders WHERE id = ? AND is_deleted = 0 LIMIT 1`,
       [orderId]
     )
     const order = orderRows?.[0]
@@ -1100,7 +1106,7 @@ export class OrderService {
   }
 
   /**
-   * 删除订单（仅已取消/已完成的订单可删除，物理删除）
+   * 删除订单（仅已取消/已完成的订单可删除，逻辑删除）
    */
   async deleteOrder(orderId: string, userId: string) {
     const order = await this.getOrderById(orderId)
@@ -1115,10 +1121,32 @@ export class OrderService {
       throw new Error('只有已完成、已取消或待支付的订单才能删除')
     }
     const db = getMySQLClient()
-    await db.query('DELETE FROM order_dispatch_requests WHERE order_id = ?', [orderId])
-    await db.query('DELETE FROM content_generation_requests WHERE order_id = ?', [orderId])
-    await db.query('DELETE FROM order_results WHERE order_id = ?', [orderId])
-    await db.query('DELETE FROM order_events WHERE order_id = ?', [orderId])
+    // 逻辑删除：更新 is_deleted 和 deleted_at 字段
+    await db.query(
+      `UPDATE orders SET is_deleted = 1, deleted_at = NOW(), updated_at = NOW() WHERE id = ?`,
+      [orderId]
+    )
+    // 同时删除关联表的关联数据（逻辑删除）
+    await db.query(
+      `UPDATE order_dispatch_requests SET is_deleted = 1, deleted_at = NOW() WHERE order_id = ?`,
+      [orderId]
+    )
+    await db.query(
+      `UPDATE content_generation_requests SET is_deleted = 1, deleted_at = NOW() WHERE order_id = ?`,
+      [orderId]
+    )
+    await db.query(
+      `UPDATE order_assets SET is_deleted = 1, deleted_at = NOW() WHERE order_id = ?`,
+      [orderId]
+    )
+    await db.query(
+      `UPDATE order_results SET is_deleted = 1, deleted_at = NOW() WHERE order_id = ?`,
+      [orderId]
+    )
+    await db.query(
+      `UPDATE order_events SET is_deleted = 1, deleted_at = NOW() WHERE order_id = ?`,
+      [orderId]
+    )
     // 清理Redis接单计数器
     try {
       const redisClient = this.redisService?.getClient()
@@ -1129,7 +1157,6 @@ export class OrderService {
     } catch (e) {
       console.warn('删除订单Redis计数器失败:', e?.message || e)
     }
-    await db.query('DELETE FROM orders WHERE id = ?', [orderId])
     return { success: true, orderId }
   }
 
@@ -1165,7 +1192,7 @@ export class OrderService {
 
     try {
       const paidCountRows = await db.query(
-        `SELECT COUNT(*) as count FROM orders WHERE user_id = ? AND is_paid = 1`,
+        `SELECT COUNT(*) as count FROM orders WHERE user_id = ? AND is_paid = 1 AND is_deleted = 0`,
         [order.userId]
       )
       const paidCount = paidCountRows?.[0]?.count ?? paidCountRows?.data?.[0]?.count ?? 0

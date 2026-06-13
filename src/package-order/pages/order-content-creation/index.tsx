@@ -252,6 +252,8 @@ function getStepHint(rawStatus: string, contentType?: string, isTimeout?: boolea
       return '内容生成失败，可点击重新生成'
     case 'rejected':
       return '内容已被驳回，请查看驳回原因'
+    case 'revision_requested':
+      return '内容待整改，请查看整改要求'
     default:
       return '处理中...'
   }
@@ -394,6 +396,8 @@ export default function OrderContentCreation() {
   const isSimpleTaskReady = isSimpleTask && rawStatus === 'ready'
   const isGenerating = GENERATING_STATUSES.includes(rawStatus) || (isSimpleTask && ['pending', 'processing'].includes(rawStatus))
   const isRejected = rawStatus === 'rejected'
+  const isRevisionRequested = rawStatus === 'revision_requested'
+  const showRejectInfo = isRejected || isRevisionRequested  // 已驳回或待整改都要显示理由
   const rejectReason = processingData?.publishFeedback?.rejectReason || ''
 
   // 重试生成失败内容
@@ -787,12 +791,12 @@ export default function OrderContentCreation() {
                 </View>
               </View>
             )}
-            {/* 兼容旧数据：只显示最后一次驳回原因 */}
-            {isRejected && (!processingData?.publishFeedback?.revisionHistory || processingData.publishFeedback.revisionHistory.length === 0) && rejectReason && (
+            {/* 兼容旧数据：只显示最后一次驳回原因（已驳回或待整改都要显示） */}
+            {showRejectInfo && (!processingData?.publishFeedback?.revisionHistory || processingData.publishFeedback.revisionHistory.length === 0) && rejectReason && (
               <View className="cc-content-card" style={{ background: '#FEF2F2', borderColor: '#FECACA' }}>
                 <View className="cc-card-header">
                   <CircleAlert size={16} color="#EF4444" />
-                  <Text className="cc-card-title" style={{ color: '#EF4444' }}>驳回原因</Text>
+                  <Text className="cc-card-title" style={{ color: '#EF4444' }}>{isRevisionRequested ? '整改要求' : '驳回原因'}</Text>
                 </View>
                 <View className="cc-markdown-body">
                   <Text style={{ color: '#DC2626' }}>{rejectReason}</Text>
@@ -868,18 +872,18 @@ export default function OrderContentCreation() {
           </View>
         )}
 
-        {/* 驳回状态单独显示 */}
-        {isRejected && !isCompleted && !effectiveIsPartialFailed && (
+        {/* 驳回状态单独显示（已驳回或待整改） */}
+        {showRejectInfo && !isCompleted && !effectiveIsPartialFailed && (
           <View className="cc-content-section">
             <View className="cc-done-banner" style={{ background: '#FEF2F2' }}>
               <CircleAlert size={20} color="#EF4444" />
-              <Text className="block cc-done-text" style={{ color: '#DC2626' }}>订单已被驳回</Text>
+              <Text className="block cc-done-text" style={{ color: '#DC2626' }}>{isRevisionRequested ? '订单待整改' : '订单已被驳回'}</Text>
             </View>
             {rejectReason && (
               <View className="cc-content-card" style={{ background: '#FEF2F2', borderColor: '#FECACA' }}>
                 <View className="cc-card-header">
                   <CircleAlert size={16} color="#EF4444" />
-                  <Text className="cc-card-title" style={{ color: '#EF4444' }}>驳回原因</Text>
+                  <Text className="cc-card-title" style={{ color: '#EF4444' }}>{isRevisionRequested ? '整改要求' : '驳回原因'}</Text>
                 </View>
                 <View className="cc-markdown-body">
                   <Text style={{ color: '#DC2626' }}>{rejectReason}</Text>

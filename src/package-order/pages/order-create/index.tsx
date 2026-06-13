@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Taro from '@tarojs/taro'
-import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
+import { View, Text, ScrollView, Image, Video, Picker } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -45,11 +45,25 @@ const PLATFORM_OPTIONS = PLATFORM_UI_ORDER
 
 export default function OrderCreate() {
   const [contentTypes, setContentTypes] = useState<any[]>([])
+  // 接单超时选项
+  const ACCEPT_TIMEOUT_OPTIONS = [
+    { value: 5, label: '5 分钟' },
+    { value: 10, label: '10 分钟' },
+    { value: 15, label: '15 分钟' },
+    { value: 30, label: '30 分钟' },
+    { value: 60, label: '1 小时' },
+    { value: 120, label: '2 小时' },
+    { value: 1440, label: '1 天' },
+    { value: 2880, label: '2 天' },
+    { value: 4320, label: '3 天' },
+  ]
+
   const [form, setForm] = useState({
     title: '',
     description: '',
     contentType: 'text',
     acceptRegions: [] as string[], // 接单区域（省份列表）
+    acceptTimeout: 30, // 接单超时时间（分钟），默认 30 分钟
     platform: '' as string,
     platforms: [] as string[],
     preferredStyle: '',
@@ -65,6 +79,9 @@ export default function OrderCreate() {
     customBasePrice: 0, // 图文类型自定义基础单价
   })
   const [, setCustomBasePriceInput] = useState('') // 输入框显示值
+  const [showTimeoutPicker, setShowTimeoutPicker] = useState(false)
+  const [customTimeout, setCustomTimeout] = useState('')
+  const [timeoutPickerValue, setTimeoutPickerValue] = useState('30') // Picker 绑定值
   const [uploadedAssets, setUploadedAssets] = useState<{ id: string; url: string; type: 'image' | 'video'; filename: string; size: number; mimeType: string }[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [zipProgress, setZipProgress] = useState<{ status: string; message: string; totalFiles: number; processedFiles: number } | null>(null)
@@ -674,11 +691,23 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         ? NICHE_TAGS.find(n => n.key === form.preferredNiche)?.name || form.preferredNiche
         : ''
 
+      // 验证接单超时时间
+      let acceptTimeout: number | null = null
+      if (customTimeout && customTimeout.trim() !== '') {
+        const parsed = parseInt(customTimeout, 10)
+        if (Number.isNaN(parsed) || parsed < 1) {
+          Taro.showToast({ title: '“接单超时“请输入有效数字', icon: 'none' })
+          return
+        }
+        acceptTimeout = parsed
+      }
+
       const orderData = {
         title: form.title,
         description: form.description,
         content_type: backendContentType,
         accept_regions: form.acceptRegions,
+        accept_timeout: acceptTimeout,
         platforms: canonicalizePlatforms(form.platforms),
         preferred_style: form.preferredStyle,
         preferred_niche: form.preferredNiche,
@@ -1020,56 +1049,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         </View>
 
 
-        {/* 自定义文案 - 简单任务不需要 */}
-        {form.contentType !== 'simple' && (
-          <View className="section">
-            <View className="section-header">
-              <View className="section-title-row">
-                <View className="title-dot accent" />
-                <FileText size={16} color="#6366F1" />
-                <Text className="section-title">文案设置</Text>
-              </View>
-              <View
-                className={`asset-ai-switch ${form.useCustomCopywriting ? 'active' : ''}`}
-                onClick={() => setForm(prev => ({ ...prev, useCustomCopywriting: !prev.useCustomCopywriting }))}
-              >
-                <View className={`asset-ai-switch-dot ${form.useCustomCopywriting ? 'active' : ''}`} />
-              </View>
-            </View>
-            <View className="asset-ai-toggle-row" style={{ marginTop: '8px', marginBottom: '8px' }}>
-              <View className="asset-ai-toggle-left">
-                <Sparkles size={14} color="#8B5CF6" />
-                <Text className="asset-ai-toggle-label">
-                  {form.useCustomCopywriting ? '自定义文案' : 'AI生成文案'}
-                </Text>
-              </View>
-              <Text className="section-hint" style={{ fontSize: '12px' }}>
-                {form.useCustomCopywriting ? '分身将使用您输入的文案' : '分身接单时AI自动生成'}
-              </Text>
-            </View>
-            {form.useCustomCopywriting && (
-              <View>
-                <View className="textarea-wrapper">
-                  <Textarea
-                    className="desc-textarea"
-                    style={{ height: '200px' }}
-                    placeholder="请输入文案内容，分身将直接使用此文案发布..."
-                    value={form.customCopywriting}
-                    onInput={e => setForm(prev => ({ ...prev, customCopywriting: e.detail.value }))}
-                    maxlength={5000}
-                  />
-                </View>
-                <View className="desc-footer">
-                  <View className="ai-hint">
-                    <Lightbulb size={12} color="#8B5CF6" />
-                    <Text className="ai-hint-text">每个分身将直接使用此文案，不再AI生成</Text>
-                  </View>
-                  <Text className="char-count">{form.customCopywriting.length}/5000</Text>
-                </View>
-              </View>
-            )}
-          </View>
-        )}
+
 
         {/* 发布平台 */}
         <View className="section">
@@ -1181,7 +1161,56 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
             ))}
           </View>
         </View>
-
+        {/* 自定义文案 - 简单任务不需要 */}
+        {form.contentType !== 'simple' && (
+          <View className="section">
+            <View className="section-header">
+              <View className="section-title-row">
+                <View className="title-dot accent" />
+                <FileText size={16} color="#6366F1" />
+                <Text className="section-title">文案设置</Text>
+              </View>
+              <View
+                className={`asset-ai-switch ${form.useCustomCopywriting ? 'active' : ''}`}
+                onClick={() => setForm(prev => ({ ...prev, useCustomCopywriting: !prev.useCustomCopywriting }))}
+              >
+                <View className={`asset-ai-switch-dot ${form.useCustomCopywriting ? 'active' : ''}`} />
+              </View>
+            </View>
+            <View className="asset-ai-toggle-row" style={{ marginTop: '8px', marginBottom: '8px' }}>
+              <View className="asset-ai-toggle-left">
+                <Sparkles size={14} color="#8B5CF6" />
+                <Text className="asset-ai-toggle-label">
+                  {form.useCustomCopywriting ? '自定义文案' : 'AI生成文案'}
+                </Text>
+              </View>
+              <Text className="section-hint" style={{ fontSize: '12px' }}>
+                {form.useCustomCopywriting ? '分身将使用您输入的文案' : '分身接单时AI自动生成'}
+              </Text>
+            </View>
+            {form.useCustomCopywriting && (
+              <View>
+                <View className="textarea-wrapper">
+                  <Textarea
+                    className="desc-textarea"
+                    style={{ height: '200px' }}
+                    placeholder="请输入文案内容，分身将直接使用此文案发布..."
+                    value={form.customCopywriting}
+                    onInput={e => setForm(prev => ({ ...prev, customCopywriting: e.detail.value }))}
+                    maxlength={5000}
+                  />
+                </View>
+                <View className="desc-footer">
+                  <View className="ai-hint">
+                    <Lightbulb size={12} color="#8B5CF6" />
+                    <Text className="ai-hint-text">每个分身将直接使用此文案，不再AI生成</Text>
+                  </View>
+                  <Text className="char-count">{form.customCopywriting.length}/5000</Text>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
         {/* 任务描述 */}
         <View className="section">
           <View className="section-header">
@@ -1278,6 +1307,39 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
             </View>
           </View>
         )}
+
+        {/* 接单超时设置 */}
+        <View className="section">
+          <View className="section-header">
+            <View className="section-title-row">
+              <View className="title-dot" />
+              <Text className="section-title">接单超时</Text>
+            </View>
+            <View className="timeout-unit">
+              <Text className="timeout-unit-text">分钟</Text>
+            </View>
+          </View>
+          <View className="timeout-input-section">
+            <Input
+              type="number"
+              className="timeout-input"
+              placeholder="不填则不限时"
+              value={customTimeout}
+              onInput={(e: any) => {
+                const value = e.detail.value
+                setCustomTimeout(value)
+                if (value && value.trim() !== '') {
+                  const numValue = parseInt(value)
+                  if (numValue >= 1 && numValue <= 43200) {
+                    setForm(prev => ({ ...prev, acceptTimeout: numValue }))
+                  }
+                }
+              }}
+            />
+            <Text className="timeout-hint">超时未接单将自动取消订单，不填则不限时</Text>
+          </View>
+        </View>
+
         {/* 素材上传（可选） */}
         {selectedType?.contentType != 'text' && (<View className="section">
           <View className="section-header">

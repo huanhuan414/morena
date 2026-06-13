@@ -117,6 +117,7 @@ export const users = pgTable("users", {
 	invitedBy: varchar("invited_by", { length: 36 }),
 	balance: numeric({ precision: 10, scale:  2 }).default('0'),
 	totalEarnings: numeric("total_earnings", { precision: 10, scale:  2 }).default('0'),
+	silenceUntil: timestamp("silence_until", { withTimezone: true, mode: 'string' }),
 }, (table) => [
 	index("users_level_idx").using("btree", table.level.asc().nullsLast().op("int4_ops")),
 	index("users_openid_idx").using("btree", table.openid.asc().nullsLast().op("text_ops")),
@@ -307,6 +308,9 @@ export const orders = pgTable("orders", {
 	targetAudience: text("target_audience"),
 	expectedQuantity: integer("expected_quantity").default(1),
 	deadline: timestamp({ withTimezone: true, mode: 'string' }),
+	isDeleted: integer("is_deleted").default(0).notNull(),
+	deletedAt: timestamp("deleted_at", { withTimezone: true, mode: 'string' }),
+	acceptTimeout: integer("accept_timeout"), // 接单超时时间（分钟），默认为空表示不限时
 }, (table) => [
 	index("orders_avatar_id_idx").using("btree", table.avatarId.asc().nullsLast().op("text_ops")),
 	index("orders_created_at_idx").using("btree", table.createdAt.asc().nullsLast().op("timestamptz_ops")),
@@ -810,9 +814,11 @@ export const orderDispatchRequests = pgTable("order_dispatch_requests", {
 	avatarId: uuid("avatar_id").notNull(),
 	userId: uuid("user_id").notNull(),
 	status: varchar({ length: 20 }).default('pending').notNull(),
+	kickType: varchar("kick_type", { length: 20 }), // 'auto_timeout' | 'manual_kick' | NULL
 	score: integer().default(0),
 	matchReasons: text("match_reasons").array(),
 	expiresAt: timestamp("expires_at", { withTimezone: true, mode: 'string' }),
+	acceptTimeoutAt: timestamp("accept_timeout_at", { withTimezone: true, mode: 'string' }),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	generatedContent: text("generated_content"),
