@@ -48,6 +48,7 @@ interface PendingOrder {
   }
   preferredStyles?: string[]
   industryTags?: string[]
+  acceptTimeoutText?: string
 }
 
 // 内容类型配置
@@ -88,6 +89,9 @@ function getTimeLeft(deadline?: string) {
   if (hours < 24) return `${hours}小时`
   return `${Math.floor(hours / 24)}天${hours % 24}小时`
 }
+
+// 格式化收益显示
+
 
 // 解析 requirements JSON
 function safeParseRequirements(val: any): string[] {
@@ -201,6 +205,7 @@ export default function PendingOrderListPage() {
             deadline: item.deadline || '',
             priority: item.priority || 'normal',
             requirements: item.requirements || '',
+            acceptTimeoutText: item.acceptTimeoutText || '',
           }
         })
         setOrders(realOrders)
@@ -378,7 +383,7 @@ export default function PendingOrderListPage() {
             const PriorityIcon = priorityInfo.icon
             const timeLeft = getTimeLeft(order.deadline)
             const requirementList = safeParseRequirements(order.requirements)
-            const perUnitBudget = order.expectedEarnings.toFixed(1)
+            const perUnitBudget = order.expectedEarnings.toFixed(2)
 
             return (
               <View key={order.dispatchId} className="po-card">
@@ -441,15 +446,16 @@ export default function PendingOrderListPage() {
                       <Text className="po-reward-value">{perUnitBudget}</Text>
                       <Text className="po-reward-unit">/分身</Text>
                     </View>
-                    <Text className="po-reward-hint">共{order.expectedQuantity}个分身 · 总额¥{order.budget.toFixed(2)}</Text>
+                    {/* <Text className="po-reward-hint">到手{order.expectedEarnings} · 总额¥{order.budget.toFixed(2)}</Text> */}
+                    <Text className="po-reward-hint">到手¥{order.expectedEarnings} </Text>
                   </View>
                   <View className="po-reward-divider" />
                   <View className="po-reward-right">
                     <View className="po-reward-meta">
                       <Clock size={14} color="#6366F1" />
-                      <Text className="po-reward-meta-text">{ctInfo.effort}</Text>
+                      <Text className="po-reward-meta-text">{order.acceptTimeoutText || '—'}</Text>
                     </View>
-                    <Text className="po-reward-meta-sub">预计耗时</Text>
+                    <Text className="po-reward-meta-sub">接单倒计时</Text>
                   </View>
                 </View>
 
@@ -654,7 +660,9 @@ export default function PendingOrderListPage() {
                     ) : (
                       <>
                         <Sparkles size={16} color="#fff" />
-                        <Text className="po-btn-label po-btn-label-primary">接单赚¥{order.expectedEarnings.toFixed(2)}</Text>
+                        <Text className="po-btn-label po-btn-label-primary">
+                          接单赚{order.expectedEarnings}
+                        </Text>
                         <ChevronRight size={14} color="rgba(255,255,255,0.7)" />
                       </>
                     )}

@@ -227,8 +227,9 @@ const Index: React.FC = () => {
             platform: platformName,
             platformColor: getPlatformColor(platformName),
             title: item.title || '新订单',
-            budget: item.expectedEarnings ? `¥${item.expectedEarnings}` : (item.budget ? `¥${item.budget}` : '待定'),
-            deadline: '长期有效'
+            budget: item.expectedEarnings ? `¥${item.expectedEarnings}` : '待定',
+            deadline: '长期有效',
+            acceptTimeoutText: item.acceptTimeoutText || ''
           })
           setShowOrderModal(true)
         }
@@ -395,12 +396,8 @@ const Index: React.FC = () => {
   }
 
   const getPlatformName = (platform: string): string => {
-    const nameMap: Record<string, string> = {
-      'wechat': '微信', 'wechat_mp': '公众号', 'xiaohongshu': '小红书',
-      'douyin': '抖音', 'kuaishou': '快手', 'bilibili': 'B站',
-      'weibo': '微博', 'zhihu': '知乎',
-    }
-    return nameMap[platform] || platform
+    // 使用 publish-platform 中的 getPlatformLabel
+    return getPlatformLabel(platform)
   }
 
   const getPlatformColor = (platform: string) => {
@@ -1128,10 +1125,12 @@ const Index: React.FC = () => {
                   <Text className="order-modal-info-label">预算</Text>
                   <Text className="order-modal-info-value" style={{ color: '#F59E0B' }}>{orderModalData.budget}</Text>
                 </View>
-                <View className="order-modal-info-item">
-                  <Text className="order-modal-info-label">截止</Text>
-                  <Text className="order-modal-info-value" style={{ color: '#EF4444' }}>{orderModalData.deadline}</Text>
-                </View>
+                {orderModalData.acceptTimeoutText && (
+                  <View className="order-modal-info-item">
+                    <Text className="order-modal-info-label">接单截止</Text>
+                    <Text className="order-modal-info-value" style={{ color: '#EF4444' }}>{orderModalData.acceptTimeoutText}</Text>
+                  </View>
+                )}
               </View>
             </View>
 

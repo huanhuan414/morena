@@ -19,8 +19,134 @@ export class OrderTimeoutService {
 
   // 静默期时长（毫秒）：从环境变量读取，默认1天
   private readonly SILENCE_DURATION_MS = parseInt(process.env.ORDER_SILENCE_DURATION_MS || '86400000', 10);
+  
+  // 待接单超时时间（毫秒）：从环境变量读取，默认10分钟
+  private readonly ACCEPT_TIMEOUT_MS = parseInt(process.env.ORDER_ACCEPT_TIMEOUT_MS || '600000', 10);
 
   constructor(private readonly redisService: RedisService) {}
+
+  /**
+   * 每5分钟检查待接单超时
+   * 
+   * 条件：pending 状态 + accept_timeout_at 已过期（派单后超过指定时间未接单）
+   * 处理：释放名额 + 发送通知 + 自动重新派单给其他分身
+   */
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async handlePendingAcceptTimeouts() {
+    this.logger.log(' ====== 开始检查待接单超时（未接受派单） ===============')
+    let count = 0
+    try {
+      count = await this.checkPendingAcceptTimeouts()
+      if (count > 0) {
+        this.logger.log(`待接单超时处理完成: ${count} 个派单已释放`)
+      }
+    } catch (error) {
+      this.logger.error(`待接单超时定时任务执行失败: ${error.message}`)
+    }
+    return count
+  }
+
+  /**
+   * 检查待接单超时
+   * 查找条件：
+   *   - dispatch.status = 'pending'（还未接受）
+   *   - dispatch.accept_timeout_at < NOW()（超时截止时间已过）
+   * 处理：
+   *   1. 更新 dispatch 状态为 expired
+   *   2. 同步 Redis 计数器
+   *   3. 发送通知（不静默用户）
+   *   4. 自动重新派单给其他分身
+   */
+  private async checkPendingAcceptTimeouts(): Promise<number> {
+    const client = await getMySQLClient()
+
+    // 查找超时的待接单记录（pending 状态 + accept_timeout_at 已过期）
+    const dispatches = await client.query(
+      `SELECT od.id, od.order_id, od.avatar_id, od.user_id, od.accept_timeout_at, od.created_at as dispatch_created_at
+       FROM order_dispatch_requests od
+       WHERE od.status = 'pending'
+       AND od.accept_timeout_at IS NOT NULL
+       AND od.accept_timeout_at < NOW()`
+    )
+
+    if (!dispatches || dispatches.length === 0) {
+      this.logger.log('无待接单超时记录')
+      return 0
+    }
+
+    this.logger.log(`发现 ${dispatches.length} 个待接单超时（未接受派单）`)
+
+    for (const dispatch of dispatches) {
+      await this.handlePendingTimeout(dispatch)
+    }
+    return dispatches.length
+  }
+
+  /**
+   * 处理单个待接单超时
+   */
+  private async handlePendingTimeout(dispatch: any) {
+    const client = await getMySQLClient()
+    // 统一字段名
+    const orderId = dispatch.order_id || dispatch.orderId
+    const avatarId = dispatch.avatar_id || dispatch.avatarId
+    const userId = dispatch.user_id || dispatch.userId
+
+    try {
+      // 1. 更新 dispatch 状态为 expired
+      await client.query(
+        `UPDATE order_dispatch_requests SET status = 'expired', kick_type = 'pending_timeout', reject_reason = '接单超时，收到派单后未在规定时间内确认', updated_at = NOW() WHERE id = ? AND status = 'pending'`,
+        [dispatch.id]
+      )
+      this.logger.log(`[待接单超时] 派单记录已过期: dispatchId=${dispatch.id}`)
+
+       // 2. 取消对应的内容生成请求
+      const cgrResult = await client.query(
+        `UPDATE content_generation_requests SET status = 'cancelled', updated_at = NOW() WHERE order_id = ? AND avatar_id = ? AND status NOT IN ('completed', 'awaiting_acceptance', 'settled', 'rejected', 'expired', 'failed', 'cancelled')`,
+        [orderId, avatarId]
+      )
+  
+      // 2. 同步 Redis 计数器（已拒绝，所以需要减少计数）
+      try {
+        const redisKey = `order:accept:count:${orderId}`
+        await this.redisService.getClient().decr(redisKey)
+        this.logger.log(`[待接单超时] Redis DECR: key=${redisKey}`)
+      } catch (err) {
+        this.logger.warn(`[待接单超时] Redis DECR失败(可忽略): ${err.message}`)
+      }
+
+      // 3. 发送通知
+      let avatarName = '分身'
+      let orderTitle = '订单'
+      try {
+        const avatar = await client.query('SELECT name FROM avatars WHERE id = ?', [avatarId])
+        avatarName = (avatar as any[])?.[0]?.name || '分身'
+      } catch (e) { this.logger.warn(`[待接单超时] 获取分身名失败: ${e.message}`) }
+      try {
+        const order = await client.query('SELECT title FROM orders WHERE id = ?', [orderId])
+        orderTitle = (order as any[])?.[0]?.title || '订单'
+      } catch (e) { this.logger.warn(`[待接单超时] 获取订单名失败: ${e.message}`) }
+
+      try {
+        const notificationService = new NotificationService()
+        await notificationService.createNotification({
+          user_id: userId,
+          type: 'pending_timeout',
+          title: '派单超时未接受，名额已释放',
+          content: `您在订单"${orderTitle}"中未在规定时间内接受派单，名额已释放给其他分身。`,
+          metadata: { orderId, avatarId, avatarName }
+        })
+        this.logger.log(`[待接单超时] 通知发送成功: userId=${userId}`)
+      } catch (err) {
+        this.logger.warn(`[待接单超时] 通知发送失败: ${err.message}`)
+      }
+
+      this.logger.log(`[待接单超时] 完成: dispatchId=${dispatch.id}, userId=${userId}`)
+    } catch (error) {
+      this.logger.error(`[待接单超时] 失败: ${error.message}`)
+    }
+  }
+
 
   /**
    * 每分钟检查接单超时

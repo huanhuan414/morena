@@ -181,12 +181,13 @@ export class OrderDispatchService {
     // 关键修复：用 INNER JOIN 确保只返回分身仍然存在的记录（LEFT JOIN 会导致已删分身仍显示）
     const requestRows = await db.query(
       `SELECT r.id as dispatch_id, r.order_id, r.avatar_id, r.status as dispatch_status,
-              r.expires_at, r.created_at as dispatch_created_at,
+              r.expires_at, r.created_at as dispatch_created_at,r.accept_timeout_at,
               o.title, o.description, o.content_type, o.platforms, o.budget, o.base_amount,
               o.status as order_status, o.quantity_per_avatar, o.expected_quantity,
               o.created_at as order_created_at, o.target_audience, o.deadline,
               o.priority, o.requirements,
               o.preferred_styles, o.industry_tags,
+              o.custom_base_price,
               a.name as avatar_name, a.content_styles, a.niche_tags, a.skills
        FROM order_dispatch_requests r
        INNER JOIN avatars a ON r.avatar_id = a.id AND a.status = 'active'
@@ -194,6 +195,26 @@ export class OrderDispatchService {
        WHERE r.user_id = ? AND r.status = 'pending'
        ORDER BY r.created_at DESC`, [userId])
     const requests = requestRows || []
+
+    // 获取用户的平台费率
+    let platformFeeRate = 0.20 // 默认20%
+    try {
+      const feeRows = await db.query(
+        `SELECT u.id as user_id, COALESCE(sp.platform_fee_rate, 0.20) as platform_fee_rate
+         FROM users u
+         LEFT JOIN user_subscriptions us ON u.id = us.user_id AND us.status = 'active'
+         LEFT JOIN subscription_plans sp ON us.plan_id = sp.id
+         WHERE u.id = ?
+         ORDER BY us.created_at DESC
+         LIMIT 1`,
+        [userId]
+      )
+      if (feeRows && feeRows.length > 0) {
+        platformFeeRate = Number(feeRows[0].platformFeeRate || feeRows[0].platform_fee_rate || 0.20)
+      }
+    } catch (err) {
+      console.warn('[getUserPendingRequests] 获取用户费率失败，使用默认20%:', err)
+    }
 
     // 批量获取所有相关分身的技能（从 avatar_skills 表）
     const avatarIds = [...new Set(requests.map((r: any) => r.avatar_id).filter(Boolean))]
@@ -210,21 +231,54 @@ export class OrderDispatchService {
       }
     }
 
-    // 计算每个请求的匹配度 + 预期收益
+    // 计算每个请求的匹配度 + 预期收益 + 待接单倒计时
     return requests.map(req => {
       // 注入 avatar_skills 表的技能数据
       req._skillsFromTable = skillsMap.get(req.avatarId) || []
       const { score, details } = this.calculateMatchScore(req, req)
       const baseAmount = Number(req.base_amount || req.baseAmount || req.budget || 0)
       const expectedQuantity = Number(req.expectedQuantity || req.expected_quantity || 1)
-      const expectedEarnings = expectedQuantity > 0 ? Math.round(baseAmount / expectedQuantity * 100) / 100 : baseAmount
+      const customBasePrice = Number(req.custom_base_price || req.customBasePrice || 0)
+      const expectedEarnings = Number((customBasePrice * (1 - platformFeeRate)).toFixed(2))
+      
+ 
+      // 计算待接单倒计时文本（兼容下划线和驼峰）
+      const acceptTimeoutAt = req.accept_timeout_at || req.acceptTimeoutAt
+      const acceptTimeoutText = this.calculateAcceptTimeoutText(acceptTimeoutAt)
+      
       return {
         ...req,
         matchScore: score,
         matchDetails: details,
         expectedEarnings,
+        platformFeeRate,
+        acceptTimeoutText,
       }
     })
+  }
+
+  /**
+   * 计算待接单倒计时文本
+   */
+  private calculateAcceptTimeoutText(acceptTimeoutAt: any): string | null {
+    if (!acceptTimeoutAt) return null
+    
+    const timeoutTime = new Date(acceptTimeoutAt).getTime()
+    const now = Date.now()
+    const remaining = timeoutTime - now
+    
+    if (remaining <= 0) return '已超时'
+    
+    if (remaining < 60 * 1000) {
+      return `剩${Math.round(remaining / 1000)}秒`
+    } else if (remaining < 60 * 60 * 1000) {
+      const minutes = Math.floor(remaining / (60 * 1000))
+      const seconds = Math.round((remaining % (60 * 1000)) / 1000)
+      return `剩${minutes}分${seconds}秒`
+    } else {
+      const hours = Math.floor(remaining / (60 * 60 * 1000))
+      return `剩${hours}小时`
+    }
   }
 
   /**
@@ -1087,6 +1141,10 @@ async getExecutionProgress(orderId: string) {
     const avatarMap = new Map(avatarRows.map(a => [a.id, a]))
     let smsSentCount = 0
     const avatarIds: string[] = []
+    
+    // 获取待接单超时时间配置（毫秒）
+    const acceptTimeoutMs = parseInt(process.env.ORDER_ACCEPT_TIMEOUT_MS || '600000', 10)
+    const acceptTimeoutAt = new Date(Date.now() + acceptTimeoutMs)
 
     // 为每个分身创建派单记录
     for (const avatarId of allAvatarIds) {
@@ -1122,7 +1180,7 @@ async getExecutionProgress(orderId: string) {
         user_id: avatarUserId,
         platform: 'manual',
         status: autoAccept ? 'accepted' : 'pending',
-        // expires_at: expiresAt,
+        accept_timeout_at: acceptTimeoutAt,
         created_at: new Date(),
         updated_at: new Date()
       })
