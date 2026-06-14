@@ -10,6 +10,19 @@ import {
 import { getStatusBarHeight } from '@/utils/safe-area'
 import './index.css'
 
+// 内容类型配置（从后端加载）
+const CONTENT_TYPE_LABELS: Record<string, string> = {
+  'text': '纯文案',
+  'simple': '简单任务',
+  'video': '短视频',
+  'image': '图文笔记',
+}
+
+interface ContentTypeConfig {
+  contentType: string
+  label: string
+}
+
 interface Avatar {
   id: string
   name: string
@@ -26,6 +39,8 @@ interface Avatar {
   platforms?: string[]
   contentTypes?: string[]
   location?: string
+  niches?: string[]
+  province?: string
 }
 
 interface OrderInfo {
@@ -50,7 +65,30 @@ export default function OrderMatchingPage() {
   const [dispatching, setDispatching] = useState(false)
   const [step, setStep] = useState(1)
   const [filterType, setFilterType] = useState<'all' | 'exact' | 'region' | 'other'>('all')
+  const [contentTypes, setContentTypes] = useState<ContentTypeConfig[]>([])
   const pollTimerRef = useRef<any>(null)
+
+  // 加载内容类型配置
+  useEffect(() => {
+    const fetchContentTypes = async () => {
+      try {
+        const res = await Network.request({ url: '/api/order/price-config' })
+        if (res.data?.code === 200 && Array.isArray(res.data.data)) {
+          setContentTypes(res.data.data)
+        }
+      } catch (e) {
+        console.error('获取内容类型配置失败:', e)
+      }
+    }
+    fetchContentTypes()
+  }, [])
+
+  // 获取内容类型标签
+  const getContentTypeLabel = (contentType: string) => {
+    const config = contentTypes.find(ct => ct.contentType === contentType)
+    if (config?.label) return config.label
+    return CONTENT_TYPE_LABELS[contentType] || contentType
+  }
 
   // 分类统计
   const regionMatchCount = recommendations.filter(a => a.matchType === 'region').length
@@ -221,14 +259,6 @@ export default function OrderMatchingPage() {
           // 地址标签（省份）- 使用后端返回的 avatarProvince
           const province = item.avatarProvince || ''
 
-          // 调试日志
-          console.log('[OrderMatching] 分身数据:', {
-            name: item.name,
-            niches,
-            province,
-            avatarProvince: item.avatarProvince,
-            personality: item.personality
-          })
 
           return {
             id: item.id,
@@ -312,17 +342,18 @@ export default function OrderMatchingPage() {
   const dispatchToAll = async () => {
     // 优先使用用户手动选中的分身，否则使用推荐的前N个（N=订单要求数量）
     const requiredCount = order?.avatarCount || order?.requiredAvatars || recommendations.length
-    let avatarsToDispatch: Avatar[]
 
-    if (selectedIds.size > 0) {
-      // 用户手动选择了分身，只分配选中的
-      avatarsToDispatch = recommendations.filter(a => selectedIds.has(a.id))
-    } else {
-      // 没有手动选择，按匹配度取前N个
-      avatarsToDispatch = recommendations.slice(0, requiredCount)
-    }
+    // 手动选择的分身数量不能超过要求数量
+    const selectedAvatarIds = Array.from(selectedIds).slice(0, requiredCount)
 
-    if (avatarsToDispatch.length === 0) {
+    // 计算差额：从推荐列表中过滤掉已选择的，取差额数量
+    const additionalAvatarIds = recommendations
+      .filter(a => !selectedIds.has(a.id))
+      .slice(0, Math.max(0, requiredCount - selectedAvatarIds.length))
+      .map(a => a.id)
+
+    const totalAvatarCount = selectedAvatarIds.length + additionalAvatarIds.length
+    if (totalAvatarCount === 0) {
       showToast({ title: '请先选择分身', icon: 'none' })
       return
     }
@@ -331,66 +362,33 @@ export default function OrderMatchingPage() {
     showLoading({ title: '分配并通知中...' })
 
     try {
-      let successCount = 0
-      let smsSent = false
-
-      if (selectedIds.size > 0) {
-        // 用户手动选择了分身，逐个分配选中的
-        for (const avatarId of selectedIds) {
-          try {
-            const res = await Network.request({
-              url: `/api/order-dispatch/${orderId}/dispatch-avatar`,
-              method: 'POST',
-              data: { avatarId }
-            })
-            if (res.data?.code === 200) {
-              successCount++
-            } else {
-              const msg = res.data?.message || '分配失败'
-              showToast({ title: msg, icon: 'none' })
-              break
-            }
-          } catch (e: any) {
-            const errMsg = e?.response?.data?.message || e?.message || '分配失败'
-            showToast({ title: errMsg, icon: 'none' })
-            break
-          }
+      const res = await Network.request({
+        url: `/api/order-dispatch/${orderId}/dispatch-specified`,
+        method: 'POST',
+        data: {
+          selectedIds: selectedAvatarIds,
+          additionalIds: additionalAvatarIds
         }
-      } else {
-        // 没有手动选择，使用 dispatch-all
-        const res = await Network.request({
-          url: `/api/order-dispatch/${orderId}/dispatch-all`,
-          method: 'POST',
-          dedupKey: `order-dispatch:dispatch-all:${orderId}`,
-        })
-        if (res.data?.code === 200) {
-          const result = res.data.data || {}
-          if (result.reason) {
-            showToast({ title: result.reason, icon: 'none' })
-          } else {
-            successCount = result.count || avatarsToDispatch.length
-            smsSent = result.smsSentCount > 0
-          }
-        } else {
-          showToast({ title: res.data?.message || '分配失败', icon: 'none' })
-        }
-      }
+      })
 
       hideLoading()
 
-      if (successCount > 0) {
+      if (res.data?.code === 200) {
+        const result = res.data.data || {}
+        const smsText = result.smsSentCount > 0 ? `，${result.smsSentCount}已发送短信` : ''
         showToast({
-          title: `已分配${successCount}个分身${smsSent ? '，已发送短信' : ''}`,
+          title: `已分配${result.count || 0}个分身${smsText}`,
           icon: 'success'
         })
         setStep(3)
       } else {
-        showToast({ title: '分配失败', icon: 'none' })
+        showToast({ title: res.data?.message || '分配失败', icon: 'none' })
       }
-    } catch (error) {
+    } catch (error: any) {
       hideLoading()
+      const errMsg = error?.response?.data?.message || error?.message || '分配失败'
       console.error('分配失败:', error)
-      showToast({ title: '分配失败', icon: 'none' })
+      showToast({ title: errMsg, icon: 'none' })
     } finally {
       setDispatching(false)
     }
@@ -478,7 +476,7 @@ export default function OrderMatchingPage() {
             <View className="order-tags">
               {order.contentType && (
                 <View className="tag tag-primary">
-                  <Text className="tag-text">{order.contentType}</Text>
+                  <Text className="tag-text">{getContentTypeLabel(order.contentType)}</Text>
                 </View>
               )}
               <View className="tag">
@@ -802,19 +800,22 @@ export default function OrderMatchingPage() {
                       <Text className="meta-dot">·</Text>
                       <Text className="meta-item">{getPersonalityName(avatar.personality)}</Text>
                     </View>
-                    {/* 领域标签和地址标签 */}
-                    <View className="avatar-tags">
-                      {(avatar as any).niches && (avatar as any).niches.length > 0 && (
+                    {/* 领域标签 */}
+                    {(avatar as any).niches && (avatar as any).niches.length > 0 && (
+                      <View className="avatar-tags block">
                         <View className="tag-badge niche">
                           <Text className="tag-text">{(avatar as Avatar & { niches?: string[] }).niches?.[0]}</Text>
                         </View>
-                      )}
-                      {(avatar as any).province && (
+                      </View>
+                    )}
+                    {/* 地址标签 */}
+                    {(avatar as any).province && (
+                      <View className="avatar-tags block">
                         <View className="tag-badge location">
                           <Text className="tag-text">{(avatar as Avatar & { province?: string }).province}</Text>
                         </View>
-                      )}
-                    </View>
+                      </View>
+                    )}
                   </View>
                   {/* 匹配度 */}
                   <View className="match-score">
@@ -868,7 +869,7 @@ export default function OrderMatchingPage() {
             className="done-btn"
             onClick={() => Taro.navigateBack()}
           >
-            <Text className="btn-text">完成</Text>
+            <Text className="btn-text">返回</Text>
           </Button>
         </View>
       )}

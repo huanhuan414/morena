@@ -827,9 +827,7 @@ export class OrderService {
       WHERE (
         o.is_paid = 1
         AND o.is_deleted = 0
-        AND o.status IN ('open', 'pending_dispatch', 'pending', 'in_progress',
-                         'awaiting_acceptance', 'submitted', 'auto_cancelled',
-                         'pending_acceptance', 'created', 'assigned', 'pending_payment')
+        AND o.status IN ('pending', 'in_progress','awaiting_acceptance', 'submitted','pending_acceptance')
         AND NOT EXISTS (
           SELECT 1 FROM order_assets oa
           WHERE oa.order_id COLLATE utf8mb4_general_ci = o.id AND oa.status NOT IN ('ready')
@@ -865,7 +863,7 @@ export class OrderService {
        ) a_latest ON a_latest.user_id = o.user_id
        LEFT JOIN (
          SELECT order_id, 
-                COUNT(DISTINCT CASE WHEN status IN ('accepted', 'in_progress', 'completed') THEN avatar_id END) as accept_count,
+                COUNT(DISTINCT CASE WHEN status IN ('pending','accepted', 'in_progress', 'completed') THEN avatar_id END) as accept_count,
                 COUNT(DISTINCT CASE WHEN status = 'pending' THEN avatar_id END) as pending_count
          FROM order_dispatch_requests
          GROUP BY order_id
@@ -1153,10 +1151,10 @@ export class OrderService {
 
     // 写入DB → snake_case，status必须使用orders表ENUM允许的值
     // ENUM: pending, pending_acceptance, pending_payment, accepted, in_progress, ...
-    // 支付成功后 → pending（待接单/待处理）
+    // 支付成功后 → pending_dispatch（待派单），点"匹配分身"后才改为 pending
     await db.query(
       'UPDATE orders SET is_paid = 1, status = ?, updated_at = ? WHERE id = ?',
-      ['pending', new Date(), orderId]
+      ['pending_dispatch', new Date(), orderId]
     )
 
     // 读取DB返回值 → camelCase (order.userId)

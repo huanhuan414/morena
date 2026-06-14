@@ -41,9 +41,10 @@ const STATUS_CONFIG: Record<string, {
   phase: number
 }> = {
   pending_payment: { label: '待支付', color: '#F59E0B', bgColor: '#FFFBEB', icon: Wallet, phase: 0 },
-  pending: { label: '匹配中', color: '#7C3AED', bgColor: '#F5F3FF', icon: Loader, phase: 1 },
-  awaiting_acceptance: { label: '等待接单', color: '#6366F1', bgColor: '#EEF2FF', icon: Users, phase: 1 },
-  pending_acceptance: { label: '等待接单', color: '#6366F1', bgColor: '#EEF2FF', icon: Users, phase: 1 },
+  pending_dispatch: { label: '匹配中', color: '#F59E0B', bgColor: '#FFFBEB', icon: Loader, phase: 0 },
+  pending: { label: '待接单', color: '#7C3AED', bgColor: '#F5F3FF', icon: Loader, phase: 1 },
+  awaiting_acceptance: { label: '待验收', color: '#6366F1', bgColor: '#EEF2FF', icon: Users, phase: 1 },
+  pending_acceptance: { label: '待接单', color: '#6366F1', bgColor: '#EEF2FF', icon: Users, phase: 1 },
   accepted: { label: '已接单', color: '#10B981', bgColor: '#ECFDF5', icon: CircleCheck, phase: 2 },
   in_progress: { label: '制作中', color: '#10B981', bgColor: '#ECFDF5', icon: Loader, phase: 2 },
   content_generated: { label: '已生成', color: '#8B5CF6', bgColor: '#F5F3FF', icon: FileText, phase: 2 },
@@ -70,7 +71,7 @@ const STATUS_TABS = [
 
 function isStatusInTab(status: string, tabKey: string): boolean {
   if (tabKey === 'all') return true
-  if (tabKey === 'active') return ['pending', 'awaiting_acceptance', 'pending_acceptance', 'accepted', 'in_progress', 'content_generated', 'submitted', 'published', 'revision_requested'].includes(status)
+  if (tabKey === 'active') return ['pending_dispatch', 'pending', 'awaiting_acceptance', 'pending_acceptance', 'accepted', 'in_progress', 'content_generated', 'submitted', 'published', 'revision_requested'].includes(status)
   if (tabKey === 'pending_payment') return status === 'pending_payment'
   if (tabKey === 'completed') return status === 'completed'
   if (tabKey === 'closed') return ['cancelled', 'auto_cancelled', 'timeout', 'expired', 'publish_failed', 'publish_timeout'].includes(status)

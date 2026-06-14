@@ -275,6 +275,26 @@ export class OrderDispatchController {
   }
 
   /**
+   * 分配指定分身（手动选择 + 自动补充）
+   * @param orderId 订单ID
+   * @param selectedIds 手动选择的分身ID列表
+   * @param additionalIds 自动补充的分身ID列表
+   */
+  @Post(':orderId/dispatch-specified')
+  async dispatchSpecifiedAvatars(
+    @Param('orderId') orderId: string,
+    @Body('selectedIds') selectedIds: string[] = [],
+    @Body('additionalIds') additionalIds: string[] = []
+  ) {
+    const result = await this.dispatchService.dispatchSpecifiedAvatars(orderId, selectedIds, additionalIds)
+    return {
+      code: 200,
+      data: result,
+      message: `已分配给 ${result.count} 个分身`
+    }
+  }
+
+  /**
    * 发送短信通知给分身
    */
   @Post(':orderId/notify')

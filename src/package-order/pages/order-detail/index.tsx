@@ -43,9 +43,10 @@ const CONTENT_TYPE_MAP: Record<string, { label: string; icon: any }> = {
 // ===== 状态配置 =====
 const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; phase: number; desc: string }> = {
   pending_payment: { label: '待支付', color: '#F59E0B', bgColor: '#FEF3C7', phase: 0, desc: '请尽快完成支付，超时订单将自动取消' },
-  pending: { label: '匹配中', color: '#7C3AED', bgColor: '#F5F3FF', phase: 1, desc: '系统正在为你匹配合适的分身' },
-  awaiting_acceptance: { label: '等待接单', color: '#6366F1', bgColor: '#EEF2FF', phase: 1, desc: '分身正在确认接单' },
-  pending_acceptance: { label: '等待接单', color: '#6366F1', bgColor: '#EEF2FF', phase: 1, desc: '分身正在确认接单' },
+  pending_dispatch: { label: '匹配中', color: '#F59E0B', bgColor: '#FFFBEB', phase: 0, desc: '系统正在为你匹配合适的分身' },
+  pending: { label: '待接单', color: '#7C3AED', bgColor: '#F5F3FF', phase: 1, desc: '分身正在确认接单' },
+  awaiting_acceptance: { label: '待接单', color: '#6366F1', bgColor: '#EEF2FF', phase: 1, desc: '分身正在确认接单' },
+  pending_acceptance: { label: '待接单', color: '#6366F1', bgColor: '#EEF2FF', phase: 1, desc: '分身正在确认接单' },
   accepted: { label: '已接单', color: '#10B981', bgColor: '#ECFDF5', phase: 2, desc: '分身已接单，正在制作内容' },
   in_progress: { label: '制作中', color: '#10B981', bgColor: '#ECFDF5', phase: 2, desc: '分身正在创作内容' },
   content_generated: { label: '已生成', color: '#8B5CF6', bgColor: '#F5F3FF', phase: 2, desc: '内容已生成，等待发布' },
@@ -441,7 +442,7 @@ export default function OrderDetailPage() {
   const rejectedCount = order.summaryStats.rejectedAvatars
 
   // 去匹配：已支付但还没有分配分身
-  const isNeedMatching = order.status === 'pending' && totalAvatars === 0
+  const isNeedMatching = order.status === 'pending_dispatch' && totalAvatars === 0
 
   return (
     <View className="od-page">

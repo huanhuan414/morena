@@ -497,6 +497,14 @@
   margin-top: 8rpx;
 }
 
+/* 标签单独一行（打破父容器flex布局） */
+.avatar-tags.block {
+  display: block;
+  width: 100%;
+  flex-basis: 100%;
+  flex-shrink: 0;
+}
+
 .tag-badge {
   display: flex;
   align-items: center;

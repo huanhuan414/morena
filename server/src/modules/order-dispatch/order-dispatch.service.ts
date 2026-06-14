@@ -190,7 +190,7 @@ export class OrderDispatchService {
               a.name as avatar_name, a.content_styles, a.niche_tags, a.skills
        FROM order_dispatch_requests r
        INNER JOIN avatars a ON r.avatar_id = a.id AND a.status = 'active'
-       INNER JOIN orders o ON r.order_id = o.id AND o.status IN ('pending', 'pending_payment', 'awaiting_acceptance', 'pending_acceptance', 'accepted', 'in_progress')
+       INNER JOIN orders o ON r.order_id = o.id AND o.status IN ('pending', 'in_progress','awaiting_acceptance', 'submitted','pending_acceptance') and o.is_deleted = 0
        WHERE r.user_id = ? AND r.status = 'pending'
        ORDER BY r.created_at DESC`, [userId])
     const requests = requestRows || []
@@ -694,7 +694,7 @@ async getExecutionProgress(orderId: string) {
     
     // 查询已接单数量
     const acceptedRows = await db.query(
-      `SELECT COUNT(*) as count FROM order_dispatch_requests WHERE order_id = ? AND status IN ('accepted', 'completed')`,
+      `SELECT COUNT(1) as count FROM order_dispatch_requests WHERE order_id = ? AND status IN ('pending','accepted', 'completed')`,
       [orderId]
     ) as any[]
     const acceptedCount = Number(acceptedRows?.[0]?.count || 0)
@@ -1045,6 +1045,190 @@ async getExecutionProgress(orderId: string) {
     // 注意：不做DB同步补偿。并发时DB事务延迟会导致补偿覆盖INCR/DECR的正确结果
     
     return { count: avatars.length, avatarIds, smsSentCount }
+  }
+
+  /**
+   * 分配指定分身（手动选择 + 自动补充）
+   * @param orderId 订单ID
+   * @param selectedIds 手动选择的分身ID列表
+   * @param additionalIds 自动补充的分身ID列表
+   */
+  async dispatchSpecifiedAvatars(orderId: string, selectedIds: string[] = [], additionalIds: string[] = []) {
+    const db = getMySQLClient()
+    
+    // 合并所有要分配的分身ID
+    const allAvatarIds = [...new Set([...selectedIds, ...additionalIds])]
+    
+    if (allAvatarIds.length === 0) {
+      return { count: 0, avatarIds: [], smsSentCount: 0, reason: '未指定分身' }
+    }
+    
+    // 查询订单信息
+    const orderRows = await db.query('SELECT * FROM orders WHERE id = ? AND is_deleted = 0', [orderId])
+    const order = orderRows?.[0]
+    
+    if (!order) {
+      return { count: 0, avatarIds: [], smsSentCount: 0, reason: '订单不存在' }
+    }
+    
+    // 查询这些分身是否存在且开启托管
+    const avatarRows = await db.query(
+      `SELECT a.*, u.phone AS user_phone 
+       FROM avatars a 
+       LEFT JOIN users u ON a.user_id = u.id 
+       WHERE a.id IN (?) AND a.status = 'active'`,
+      [allAvatarIds]
+    )
+    
+    if (avatarRows.length === 0) {
+      return { count: 0, avatarIds: [], smsSentCount: 0, reason: '未找到有效的分身' }
+    }
+    
+    const avatarMap = new Map(avatarRows.map(a => [a.id, a]))
+    let smsSentCount = 0
+    const avatarIds: string[] = []
+
+    // 为每个分身创建派单记录
+    for (const avatarId of allAvatarIds) {
+      const avatar = avatarMap.get(avatarId)
+      if (!avatar) {
+        console.warn(`[dispatchSpecifiedAvatars] 分身 ${avatarId} 不存在或未开启托管，跳过`)
+        continue
+      }
+      
+      // 检查是否已有派单记录
+      const existingDispatchRows = await db.query(
+        `SELECT id FROM order_dispatch_requests
+         WHERE order_id = ? AND avatar_id = ?
+           AND status IN ('pending', 'accepted', 'completed')
+         LIMIT 1`,
+        [orderId, avatarId]
+      )
+      if (existingDispatchRows && existingDispatchRows.length > 0) {
+        console.warn(`[dispatchSpecifiedAvatars] 分身 ${avatarId} 已有派单记录，跳过`)
+        continue
+      }
+      
+      // 判断是否自动接单
+      const avatarUserId = avatar.userId || avatar.user_id
+      const autoAccept = false
+      
+      // 创建派单记录
+      const id = crypto.randomUUID()
+      const insertResult = await db.insert('order_dispatch_requests', {
+        id,
+        order_id: orderId,
+        avatar_id: avatarId,
+        user_id: avatarUserId,
+        platform: 'manual',
+        status: autoAccept ? 'accepted' : 'pending',
+        // expires_at: expiresAt,
+        created_at: new Date(),
+        updated_at: new Date()
+      })
+      
+      if (insertResult.error) {
+        console.error(`[dispatchSpecifiedAvatars] 创建派发记录失败:`, insertResult.error)
+        continue
+      }
+      
+      avatarIds.push(avatarId)
+      
+      // autoAccept分身直接accepted，需要同步INCR Redis计数器
+      // if (autoAccept) {
+      try {
+        const redisKey = `order:accept:count:${orderId}`
+        await this.redisService.getClient().incr(redisKey)
+      } catch (redisErr) {
+        console.warn(`[dispatchSpecifiedAvatars] autoAccept Redis INCR失败(可忽略): ${(redisErr as Error).message}`)
+      }
+      // }
+      
+      // 记录事件
+      this.eventService.recordEvent({
+        orderId,
+        dispatchId: id,
+        avatarId,
+        userId: avatarUserId,
+        eventType: autoAccept ? 'accepted' : 'dispatched',
+        source: 'manual_select',
+        avatarName: avatar.name,
+        eventData: { autoAccept, from: selectedIds.includes(avatarId) ? 'manual' : 'auto' },
+      }).catch(err => console.warn('[事件] dispatched 记录失败:', err.message))
+      
+      // 发送短信通知
+      const userPhone = avatar.userPhone || avatar.phone || avatar.user_phone
+      if (userPhone) {
+        const smsContent = autoAccept 
+          ? `【自动接单】${order?.title || '内容创作'}`
+          : `【待确认】${order?.title || '内容创作'}`
+        
+        try {
+          const smsResult = await this.smsService.sendSms(
+            userPhone,
+            'SMS_505555078',
+            { name: avatar.name }
+          )
+          
+          if (smsResult) {
+            smsSentCount++
+          }
+        } catch (err) {
+          console.error(`[SMS] 发送给 ${avatar.name} 失败:`, err)
+        }
+        
+        // 创建分身通知记录
+        const notifId = crypto.randomUUID()
+        await db.insert('avatar_notifications', {
+          id: notifId,
+          avatar_id: avatarId,
+          notification_type: autoAccept ? 'order_auto_accepted' : 'order_assigned',
+          title: autoAccept ? '订单已自动接单' : '新订单待确认',
+          content: smsContent,
+          is_read: 0,
+          data: JSON.stringify({ orderId, autoAccept }),
+          created_at: new Date()
+        })
+      }
+    }
+    
+    // 为用户创建通知
+    const orderUserId = order.userId || order.user_id
+    if (avatarIds.length > 0 && orderUserId) {
+      try {
+        await this.notificationService.createNotification({
+          user_id: orderUserId,
+          type: 'order_dispatched',
+          title: '订单已分配',
+          content: `已将订单"${order.title || '内容创作'}"分配给 ${avatarIds.length} 个分身，已发送短信通知。`,
+          metadata: {
+            orderId,
+            avatarIds,
+            count: avatarIds.length
+          }
+        })
+      } catch (err) {
+        console.error('[dispatchSpecifiedAvatars] 创建用户通知失败:', err)
+      }
+    }
+    
+    // 派单成功后更新订单状态为 pending
+    if (avatarIds.length > 0) {
+      try {
+        await db.update('orders', { status: 'pending' }, { id: orderId })
+        this.logger.log(`[dispatchSpecifiedAvatars] 订单 ${orderId} 状态已更新为 pending`)
+      } catch (err) {
+        console.error('[dispatchSpecifiedAvatars] 更新订单状态失败:', err)
+      }
+    }
+    
+    return { 
+      count: avatarIds.length, 
+      avatarIds, 
+      smsSentCount,
+      selectedCount: selectedIds.length,
+      additionalCount: additionalIds.length
+    }
   }
 
   /**
