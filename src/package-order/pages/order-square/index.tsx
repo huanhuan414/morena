@@ -215,6 +215,7 @@ const Index: React.FC = () => {
           platform: canonicalizePlatform(o.primaryPlatform || o.platforms?.[0] || o.platform),
           platforms: Array.isArray(o.platforms) ? o.platforms : (o.platform ? [o.platform] : []),
           budget: Number(o.budget || o.price || 0),
+          customBasePrice: Number(o.customBasePrice || o.custom_base_price),
           avatarCountRaw: Number(o.avatarCount || o.avatar_count || 0),
           estimatedEarning: Number(o.expectedEarnings || o.expected_earnings || 0),
           deliveryDays: o.deliveryDays || o.delivery_days || 3,
@@ -265,6 +266,12 @@ const Index: React.FC = () => {
     setAcceptingOrderIds(prev => ({ ...prev, [orderId]: true }))
 
     try {
+      const avatarRes = await Network.request({ url: '/api/avatar' })
+      if (avatarRes.data?.code !== 200 || !avatarRes.data?.data?.length) {
+        Taro.showToast({ title: '请先创建分身', icon: 'none' })
+        return
+      }
+      let avatars = avatarRes.data.data
       // 1. 调用后端接口检查名额是否已满
       const quotaRes = await Network.request({
         url: `/api/order-dispatch/${orderId}/quota`,
@@ -310,12 +317,7 @@ const Index: React.FC = () => {
         return
       }
 
-      const avatarRes = await Network.request({ url: '/api/avatar' })
-      if (avatarRes.data?.code !== 200 || !avatarRes.data?.data?.length) {
-        Taro.showToast({ title: '请先创建分身', icon: 'none' })
-        return
-      }
-      let avatars = avatarRes.data.data
+
 
       // 检查订单区域限制
       if (orderInfo?.acceptRegions && orderInfo.acceptRegions.length > 0) {
@@ -791,7 +793,7 @@ const Index: React.FC = () => {
                         onClick={(e) => {
                           e.stopPropagation()
                           if (!order.isAcceptedByMe && !acceptingOrderIds[order.id]) {
-                            handleAcceptOrder(order.id)
+                            handleAcceptOrder(order.id, order)
                           }
                         }}
                       >
