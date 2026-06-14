@@ -170,7 +170,7 @@ export class OrderProcessingController {
       }
     } catch (error: any) {
       return {
-        code: 403,
+        code: 400,  // 改为 400 业务错误
         data: null,
         message: error.message || '反馈提交失败'
       }
@@ -199,7 +199,7 @@ export class OrderProcessingController {
       }
     } catch (error: any) {
       return {
-        code: 403,
+        code: 400,  // 改为 400 业务错误，避免前端误判为需要重新登录
         data: null,
         message: error.message || '验收失败'
       }
@@ -325,7 +325,7 @@ export class OrderProcessingController {
       }
     } catch (error: any) {
       return {
-        code: 403,
+        code: 400,  // 改为 400 业务错误
         data: null,
         message: error.message || '发起修改失败'
       }

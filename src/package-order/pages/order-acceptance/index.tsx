@@ -159,6 +159,11 @@ export default function OrderAcceptance() {
 
   const handleApprove = async () => {
     if (!selectedAvatar) return
+    
+    // 防重复点击
+    if ((handleApprove as any).isLoading) return;
+    (handleApprove as any).isLoading = true
+    
     try {
       const requestId = selectedAvatar.requestId
       if (!requestId) {
@@ -185,6 +190,8 @@ export default function OrderAcceptance() {
     } catch (error) {
       console.error('验收失败:', error)
       showToast({ title: '验收失败，请重试', icon: 'none' })
+    } finally {
+      (handleApprove as any).isLoading = false
     }
   }
 

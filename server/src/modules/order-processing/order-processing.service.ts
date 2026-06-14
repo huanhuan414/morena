@@ -804,7 +804,7 @@ export class OrderProcessingService {
       }
 
       const [existingEarning] = await db.query(
-        `SELECT id FROM earnings WHERE order_id = ? AND avatar_id = ? AND type = 'order_reward' LIMIT 1`,
+        `SELECT id FROM earnings WHERE order_id = ? AND avatar_id = ?  LIMIT 1`,
         [orderId, avatarId]
       ) as any[]
       if (existingEarning && existingEarning.length > 0) {
@@ -889,6 +889,12 @@ export class OrderProcessingService {
       this.logger.log(`[结算] 分身结算成功: orderId=${orderId}, avatarId=${avatarId}, userId=${userId}, amount=${feeAmount}`)
     } catch (error: any) {
       this.logger.error(`[结算] 分身结算失败: orderId=${orderId}, avatarId=${avatarId}, error=${error.message}`)
+      
+      // 友好错误提示
+      if (error.message && error.message.includes('Duplicate entry')) {
+        throw new Error('该订单已结算，无需重复验收')
+      }
+      
       throw error // 抛出异常，让验收流程中断
     }
   }

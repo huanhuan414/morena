@@ -1126,27 +1126,6 @@ export class OrderService {
       `UPDATE orders SET is_deleted = 1, deleted_at = NOW(), updated_at = NOW() WHERE id = ?`,
       [orderId]
     )
-    // 同时删除关联表的关联数据（逻辑删除）
-    await db.query(
-      `UPDATE order_dispatch_requests SET is_deleted = 1, deleted_at = NOW() WHERE order_id = ?`,
-      [orderId]
-    )
-    await db.query(
-      `UPDATE content_generation_requests SET is_deleted = 1, deleted_at = NOW() WHERE order_id = ?`,
-      [orderId]
-    )
-    await db.query(
-      `UPDATE order_assets SET is_deleted = 1, deleted_at = NOW() WHERE order_id = ?`,
-      [orderId]
-    )
-    await db.query(
-      `UPDATE order_results SET is_deleted = 1, deleted_at = NOW() WHERE order_id = ?`,
-      [orderId]
-    )
-    await db.query(
-      `UPDATE order_events SET is_deleted = 1, deleted_at = NOW() WHERE order_id = ?`,
-      [orderId]
-    )
     // 清理Redis接单计数器
     try {
       const redisClient = this.redisService?.getClient()
