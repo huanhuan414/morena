@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { View, Text, Image, ScrollView, Picker } from '@tarojs/components'
-import Taro, { useLoad } from '@tarojs/taro'
+import Taro, { useLoad, getSetting, openSetting } from '@tarojs/taro'
 import { Input } from '@/components/ui/input'
 import { Network } from '@/network'
+import { reverseGeocodeFromMiniProgram } from '@/utils/amap'
 import {
   ArrowLeft,
   Camera,
@@ -276,29 +277,69 @@ export default function AvatarCreate() {
     return age > 0 ? `${age}岁` : ''
   }
 
-  // 选择位置
-  const handleGetLocation = () => {
-    // updateFormData('latitude', 31.2304)
-    // updateFormData('longitude', 121.4737)
-    // updateFormData('location', '上海市黄浦区')
-    Taro.chooseLocation({
-      success: (res) => {
-        updateFormData('latitude', res.latitude)
-        updateFormData('longitude', res.longitude)
-        updateFormData('location', res.address || res.name)
-      },
-      fail: (err: any) => {
-        console.error('选择位置失败:', err)
-        const errMsg = err?.errMsg || err?.message || ''
-        if (errMsg && !errMsg.includes('cancel')) {
-          Taro.showModal({
-            title: '选择位置失败',
-            content: '请确保已授权位置权限',
-            showCancel: false,
+  // 选择位置（直接定位，不弹地图搜索）
+  const handleGetLocation = async () => {
+    try {
+      // 显示加载中
+      Taro.showLoading({ title: '定位中...' })
+      // 先检查定位权限
+      const settingRes = await getSetting()
+
+      if (!settingRes.authSetting['scope.userLocation']) {
+        // 未授权，尝试请求授权
+        try {
+          await Taro.getLocation({ type: 'gcj02' })
+        } catch (err: any) {
+          Taro.hideLoading()
+          console.error('[定位] 请求授权失败:', err)
+          const modalRes = await Taro.showModal({
+            title: '定位权限',
+            content: '需要定位权限来获取分身位置，请在设置中开启定位权限',
+            confirmText: '去设置',
+            cancelText: '取消'
           })
+          if (modalRes.confirm) {
+            await openSetting()
+          }
+          return
         }
-      },
-    })
+      }
+      // 获取当前位置
+      const locationRes = await Taro.getLocation({ type: 'gcj02' })
+      const { latitude, longitude } = locationRes
+      // 逆地理编码获取地址
+      const addressInfo = await reverseGeocodeFromMiniProgram(latitude, longitude)
+      // 组装地址（优先使用高德返回的格式化地址）
+      const fullAddress = addressInfo.province + addressInfo.city + addressInfo.district + addressInfo.street
+      // 更新表单
+      updateFormData('latitude', latitude)
+      updateFormData('longitude', longitude)
+      updateFormData('location', fullAddress)
+
+      Taro.hideLoading()
+      Taro.showToast({ title: '定位成功', icon: 'success' })
+    } catch (err: any) {
+      Taro.hideLoading()
+      console.error('[定位] 定位失败:', err)
+      const errMsg = err?.errMsg || err?.message || ''
+
+      // 用户取消，不提示
+      if (errMsg.includes('cancel')) {
+        return
+      }
+
+      // 定位权限问题（系统未开启 或 用户拒绝授权）
+      const modalRes = await Taro.showModal({
+        title: '定位权限',
+        content: '需要定位权限来获取分身位置，请在设置中开启定位权限',
+        confirmText: '去设置',
+        cancelText: '取消'
+      })
+
+      if (modalRes.confirm) {
+        await openSetting()
+      }
+    }
   }
 
   // 图片上传

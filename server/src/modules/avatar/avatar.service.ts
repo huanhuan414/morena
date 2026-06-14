@@ -1251,4 +1251,11 @@ export class AvatarService {
       throw err
     }
   }
+
+  /**
+   * 逆地理编码：将经纬度转换为地址
+   */
+  async reverseGeocode(latitude: number, longitude: number) {
+    return this.reverseGeocodingService.reverseGeocode(latitude, longitude)
+  }
 }

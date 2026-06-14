@@ -395,4 +395,24 @@ export class AvatarController {
       return { code: 500, msg: err.message || '发布失败', data: null }
     }
   }
+
+  /**
+   * 逆地理编码：根据经纬度获取地址
+   * Query: lat=纬度&lon=经度
+   */
+  @Get('geocode/reverse')
+  async reverseGeocode(@Query('lat') lat: string, @Query('lon') lon: string) {
+    try {
+      const latitude = parseFloat(lat)
+      const longitude = parseFloat(lon)
+      if (isNaN(latitude) || isNaN(longitude)) {
+        return { code: 400, msg: '无效的坐标', data: null }
+      }
+      const result = await this.avatarService.reverseGeocode(latitude, longitude)
+      return { code: 200, msg: 'success', data: result }
+    } catch (err) {
+      console.error('逆地理编码失败:', err)
+      return { code: 500, msg: err.message || '服务器错误', data: null }
+    }
+  }
 }

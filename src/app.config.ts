@@ -133,6 +133,7 @@ export default defineAppConfig({
       desc: '你的位置信息将用于定位分身当前位置，展示附近的动态和内容',
     },
   },
+  requiredPrivateInfos: ['getLocation'],
   tabBar: {
     color: '#9CA3AF',
     selectedColor: '#7B3FE4',

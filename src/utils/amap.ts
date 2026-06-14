@@ -3,8 +3,11 @@
  *
  * 使用说明：
  * 1. 后端服务调用：使用 AMAP_WEB_SERVICE_KEY
- * 2. 小程序直接调用：使用 AMAP_MINIPROGRAM_KEY
+ * 2. 小程序直接调用：通过后端API
  */
+
+import Taro from '@tarojs/taro'
+import { Network } from '@/network'
 
 export const AMAP_CONFIG = {
   // Web服务Key（后端服务器调用使用）
@@ -18,8 +21,8 @@ export const AMAP_CONFIG = {
 }
 
 /**
- * 前端直接调用高德逆地理编码API
- * 注意：此方法仅用于微信小程序端，需要在 app.json 中配置允许的域名
+ * 通过后端API进行逆地理编码
+ * 微信小程序无法直接调用高德API，需要通过后端代理
  *
  * @param latitude 纬度
  * @param longitude 经度
@@ -27,40 +30,31 @@ export const AMAP_CONFIG = {
  */
 export async function reverseGeocodeFromMiniProgram(latitude: number, longitude: number) {
   try {
-    const url = `${AMAP_CONFIG.BASE_URL}/v3/geocode/regeo?key=${AMAP_CONFIG.MINIPROGRAM_KEY}&location=${longitude},${latitude}&extensions=all&output=json`
+    // 调用后端API进行逆地理编码
+    const response = await Network.request({
+      url: `/api/avatar/geocode/reverse?lat=${latitude}&lon=${longitude}`,
+      method: 'GET',
+    })
 
-    const response = await fetch(url)
-
-    if (!response.ok) {
-      throw new Error(`逆地理编码请求失败: ${response.statusText}`)
+    const data = response.data
+    if (data.code !== 200) {
+      throw new Error(data.msg || '逆地理编码失败')
     }
 
-    const data = await response.json()
-
-    if (data.status !== '1') {
-      throw new Error(`逆地理编码API返回错误: ${data.info}`)
-    }
-
-    const regeocode = data.regeocode
-    const addressComponent = regeocode.addressComponent || {}
-
+    const addressInfo = data.data
     return {
-      formattedAddress: regeocode.formatted_address || '',
-      country: addressComponent.country || '',
-      province: addressComponent.province || '',
-      city: addressComponent.city || '',
-      district: addressComponent.district || '',
-      street: addressComponent.township || '',
-      streetNumber: addressComponent.streetNumber?.street || '',
-      adcode: addressComponent.adcode || '',
-      pois: regeocode.pois?.map((poi: any) => ({
-        name: poi.name,
-        address: poi.address,
-        distance: poi.distance
-      })) || []
+      formattedAddress: addressInfo.formatted_address || addressInfo.full_location_text || '',
+      country: addressInfo.country || '',
+      province: addressInfo.province || '',
+      city: addressInfo.city || '',
+      district: addressInfo.district || '',
+      street: addressInfo.street || '',
+      streetNumber: addressInfo.streetNumber || '',
+      adcode: addressInfo.adcode || '',
+      pois: addressInfo.pois || []
     }
   } catch (error) {
-    console.error('[前端逆地理编码] 失败:', error)
+    console.error('[逆地理编码] 通过后端API失败:', error)
     throw error
   }
 }
