@@ -470,7 +470,7 @@
   justify-content: center;
 }
 
-.timeout-picker-content {
+.region-picker-content {
   width: 100%;
   max-height: 80vh;
   background: #fff;
@@ -479,11 +479,6 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-}
-
-.timeout-picker-scroll {
-  flex: 1;
-  max-height: 60vh;
 }
 
 .region-picker-header {

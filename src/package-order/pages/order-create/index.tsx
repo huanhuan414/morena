@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Taro from '@tarojs/taro'
-import { View, Text, ScrollView, Image, Video, Picker } from '@tarojs/components'
+import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -45,19 +45,6 @@ const PLATFORM_OPTIONS = PLATFORM_UI_ORDER
 
 export default function OrderCreate() {
   const [contentTypes, setContentTypes] = useState<any[]>([])
-  // 接单超时选项
-  const ACCEPT_TIMEOUT_OPTIONS = [
-    { value: 5, label: '5 分钟' },
-    { value: 10, label: '10 分钟' },
-    { value: 15, label: '15 分钟' },
-    { value: 30, label: '30 分钟' },
-    { value: 60, label: '1 小时' },
-    { value: 120, label: '2 小时' },
-    { value: 1440, label: '1 天' },
-    { value: 2880, label: '2 天' },
-    { value: 4320, label: '3 天' },
-  ]
-
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -79,9 +66,7 @@ export default function OrderCreate() {
     customBasePrice: 0, // 图文类型自定义基础单价
   })
   const [, setCustomBasePriceInput] = useState('') // 输入框显示值
-  const [showTimeoutPicker, setShowTimeoutPicker] = useState(false)
   const [customTimeout, setCustomTimeout] = useState('')
-  const [timeoutPickerValue, setTimeoutPickerValue] = useState('30') // Picker 绑定值
   const [uploadedAssets, setUploadedAssets] = useState<{ id: string; url: string; type: 'image' | 'video'; filename: string; size: number; mimeType: string }[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [zipProgress, setZipProgress] = useState<{ status: string; message: string; totalFiles: number; processedFiles: number } | null>(null)
