@@ -75,6 +75,23 @@ const Index: React.FC = () => {
   })
   const loadUserFromStorage = useUserStore(state => state.loadUserFromStorage)
 
+  // 静默时间状态
+  const [silenceUntil, setSilenceUntil] = useState<string | null>(null)
+
+  // 格式化静默时间
+  const formatSilenceDuration = (ms: number) => {
+    if (ms < 60 * 1000) {
+      return `${Math.round(ms / 1000)}秒`
+    } else if (ms < 60 * 60 * 1000) {
+      return `${Math.round(ms / (60 * 1000))}分钟`
+    } else if (ms < 24 * 60 * 60 * 1000) {
+      return `${Math.round(ms / (60 * 60 * 1000))}小时`
+    } else {
+      const days = Math.round(ms / (24 * 60 * 60 * 1000))
+      return `${days}天`
+    }
+  }
+
   // 获取抽成比例范围
   const fetchFeeRateRange = useCallback(async () => {
     try {
@@ -443,6 +460,10 @@ const Index: React.FC = () => {
         setTotalEarnings(Number(d.totalEarnings || 0))
         setPendingOrders(d.pendingOrders || 0)
         setGeneratedContents(d.generatedContents || 0)
+        // 获取静默信息
+        if (d.silenceUntil) {
+          setSilenceUntil(d.silenceUntil)
+        }
       }
     } catch (err) {
       console.error('获取统计数据失败:', err)
@@ -647,6 +668,15 @@ const Index: React.FC = () => {
                 <Sparkles size={22} color="rgba(255,255,255,0.9)" />
                 <Text className="subtitle">{getValueProp()}</Text>
               </View>
+              {/* 静默时间显示 */}
+              {silenceUntil && new Date(silenceUntil).getTime() > Date.now() && (() => {
+                const remainingMs = new Date(silenceUntil).getTime() - Date.now()
+                return (
+                  <View className="silence-badge">
+                    <Text className="silence-badge-text">静默中 · {formatSilenceDuration(remainingMs)}不能接单</Text>
+                  </View>
+                )
+              })()}
             </View>
           </View>
           <View className="header-right">

@@ -62,6 +62,24 @@
   font-size: 26rpx;
   color: rgba(255,255,255,0.85);
 }
+
+/* 静默徽章 */
+.silence-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 8rpx;
+  padding: 6rpx 16rpx;
+  background: rgba(220, 38, 38, 0.9);
+  border-radius: 20rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.3);
+}
+
+.silence-badge-text {
+  font-size: 22rpx;
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
 .header-right {
   display: flex;
   flex-direction: row;
