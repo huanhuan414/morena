@@ -245,6 +245,21 @@
   color: var(--text-secondary);
 }
 
+.user-id-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.user-silence-badge {
+  font-size: 20rpx;
+  padding: 4rpx 12rpx;
+  background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
+  color: #DC2626;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+}
+
 .user-subscription-row {
   display: flex;
   align-items: center;

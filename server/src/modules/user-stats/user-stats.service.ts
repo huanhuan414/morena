@@ -96,7 +96,6 @@ export class UserStatsService {
       
       // 4. 统计累计收益（只从 earnings 表计算，status='pending' 或 'settled'，考虑抽成）
       userResult = await db.queryOne('users', { id: userId }) as any
-      
       // 与收益中心保持一致：使用 pool.query 查询收益记录，然后逐笔计算（每笔都四舍五入到2位小数）
       const pool = getPool()
       const [earningsRows] = await pool.query(
@@ -223,7 +222,8 @@ export class UserStatsService {
       avatar: userResult?.avatar || '',
       referralCode,
       invitedCount,
-      totalWorkHours
+      totalWorkHours,
+      silenceUntil: userResult?.silenceUntil || userResult?.silence_until || null
     }
     } catch (error) {
       // 数据库不可用，使用内存缓存

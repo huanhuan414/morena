@@ -12,6 +12,21 @@ import '@/styles/variables.css'
 import logoImage from '@/static/logo.jpg'
 import './index.css'
 
+// 格式化静默时间
+const formatSilenceDuration = (ms: number) => {
+  if (ms < 60 * 1000) {
+    return `${Math.round(ms / 1000)}秒`
+  } else if (ms < 60 * 60 * 1000) {
+    return `${Math.round(ms / (60 * 1000))}分钟`
+  } else if (ms < 24 * 60 * 60 * 1000) {
+    const hours = Math.round(ms / (60 * 60 * 1000))
+    return `${hours}小时`
+  } else {
+    const days = Math.round(ms / (24 * 60 * 60 * 1000))
+    return `${days}天`
+  }
+}
+
 interface UserStats {
   avatarCount: number
   totalEarnings: number
@@ -70,6 +85,7 @@ export default function ProfilePage() {
   const [statusBarHeight] = useState(getStatusBarHeight())
   const [unreadCount, setUnreadCount] = useState(0)
   const [userSubscription, setUserSubscription] = useState<UserSubscription | null>(null)
+  const [silenceUntil, setSilenceUntil] = useState<string | null>(null) // 用户静默截止时间
 
   useDidShow(() => {
     fetchStats()
@@ -97,6 +113,11 @@ export default function ProfilePage() {
       })
       setCoinBalance(coinData.balance || 0)
       setUserSubscription(subscriptionData)
+
+      // 从 overview 接口获取静默信息
+      if (data.silenceUntil) {
+        setSilenceUntil(data.silenceUntil)
+      }
     } catch (error) {
       console.error('获取统计失败:', error)
     }
@@ -163,7 +184,17 @@ export default function ProfilePage() {
                 </View>
                 <View className="user-text-info">
                   <Text className="user-name">{userInfo?.nickname}</Text>
-                  <Text className="user-id">ID: {userInfo?.id?.slice(-8)}</Text>
+                  <View className="user-id-row">
+                    <Text className="user-id">ID: {userInfo?.id?.slice(-8)}</Text>
+                    {silenceUntil && new Date(silenceUntil).getTime() > Date.now() && (() => {
+                      const remainingMs = new Date(silenceUntil).getTime() - Date.now()
+                      return (
+                        <Text className="user-silence-badge">
+                          静默{formatSilenceDuration(remainingMs)}
+                        </Text>
+                      )
+                    })()}
+                  </View>
                   <View className="user-subscription-row">
                     <Crown size={14} color={userSubscription?.status === 'active' ? '#7B3FE4' : '#999'} />
                     <Text className="user-subscription-text">
