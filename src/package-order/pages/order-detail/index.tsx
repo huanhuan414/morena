@@ -690,12 +690,13 @@ export default function OrderDetailPage() {
                 submitted: { label: '待验收', color: '#8B5CF6', icon: '🔍' },
                 publishing: { label: '发布中', color: '#6366F1', icon: '📤' },
                 published: { label: '已发布', color: '#059669', icon: '📡' },
-                awaiting_acceptance: { label: '待验收', color: '#EF4444', icon: '🔍' },
+                awaiting_acceptance: { label: '待验收', color: '#8B5CF6', icon: '🔍' },
                 feedback_submitted: { label: '已提交反馈', color: '#F97316', icon: '📋' },
                 completed: { label: '已验收', color: '#10B981', icon: '✅' },
                 rejected: { label: '已拒绝', color: '#EF4444', icon: '❌' },
                 expired: { label: '已过期', color: '#9CA3AF', icon: '⏰' },
                 cancelled: { label: '已过期', color: '#9CA3AF', icon: '⏰' },
+                revision_requested: { label: '待整改', color: '#F97316', icon: '📋' },
               }
               const cfg = statusConfig[avatarStatus] || statusConfig.pending
               const hasContent = ['preview', 'publishing', 'submitted', 'published', 'awaiting_acceptance', 'feedback_submitted', 'completed'].includes(avatarStatus)

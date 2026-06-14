@@ -1110,7 +1110,7 @@ async getExecutionProgress(orderId: string) {
     const orderRow: any = (orderRows as any[])?.[0]
     // db.query 内部会 convertKeysToCamel，所以 required_count → requiredCount
     requiredCount = Number(orderRow?.requiredCount || orderRow?.required_count || 1) || 1
-
+    const orderAcceptTimeout = orderRow?.acceptTimeout || orderRow?.accept_timeout || null // 接单超时（分钟）
     if (!orderRow) {
       throw new NotFoundException('订单不存在')
     }

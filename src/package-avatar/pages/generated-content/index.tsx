@@ -366,6 +366,11 @@ export default function GeneratedContentPage() {
           { key: 'feedback', label: '反馈', icon: MessageSquare, type: 'primary' },
           { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
         ]
+      case 'revision_requested':
+        return [
+          { key: 'feedback', label: '反馈', icon: MessageSquare, type: 'primary' },
+          { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
+        ]
       case 'awaiting_acceptance':
         return [
           { key: 'urge', label: '催验收', icon: Bell, type: 'primary' },
