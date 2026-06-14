@@ -1191,6 +1191,12 @@ async getExecutionProgress(orderId: string) {
         })
       }
     }
+     
+    // 更新订单状态为 pending
+     await db.query(
+      'UPDATE orders SET status = ?, updated_at = ? WHERE id = ?',
+      ['pending', new Date(), orderId]
+    )
     
     // 为用户创建通知
     const orderUserId = order.userId || order.user_id
@@ -1209,16 +1215,6 @@ async getExecutionProgress(orderId: string) {
         })
       } catch (err) {
         console.error('[dispatchSpecifiedAvatars] 创建用户通知失败:', err)
-      }
-    }
-    
-    // 派单成功后更新订单状态为 pending
-    if (avatarIds.length > 0) {
-      try {
-        await db.update('orders', { status: 'pending' }, { id: orderId })
-        this.logger.log(`[dispatchSpecifiedAvatars] 订单 ${orderId} 状态已更新为 pending`)
-      } catch (err) {
-        console.error('[dispatchSpecifiedAvatars] 更新订单状态失败:', err)
       }
     }
     
@@ -2345,7 +2341,9 @@ async getExecutionProgress(orderId: string) {
 
     // 2. 验证该分身确实已接单
     const dispatchRows = await db.query(
-      `SELECT id, status, accepted_at, updated_at, created_at, target_avatar_id, user_id FROM order_dispatch_requests WHERE order_id = ? AND (target_avatar_id = ? OR avatar_id = ?) AND status = 'accepted'`,
+      `SELECT id, status, accepted_at, updated_at, created_at, target_avatar_id, user_id 
+      FROM order_dispatch_requests WHERE order_id = ? AND (target_avatar_id = ? OR avatar_id = ?)
+      AND status in ( 'accepted', 'pending')`,
       [orderId, avatarId, avatarId]
     )
     const dispatch = dispatchRows?.[0]
@@ -2476,31 +2474,31 @@ async getExecutionProgress(orderId: string) {
 
     this.logger.log(`踢出分身: orderId=${orderId}, avatarId=${avatarId}`)
 
-    // 7. 检查是否有 pending 状态的分身可以自动接单
-    const pendingDispatches = await db.query(
-      `SELECT id, target_avatar_id FROM order_dispatch_requests WHERE order_id = ? AND status = 'pending' ORDER BY created_at ASC LIMIT 1`,
-      [orderId]
-    )
+    // // 7. 检查是否有 pending 状态的分身可以自动接单
+    // const pendingDispatches = await db.query(
+    //   `SELECT id, target_avatar_id FROM order_dispatch_requests WHERE order_id = ? AND status = 'pending' ORDER BY created_at ASC LIMIT 1`,
+    //   [orderId]
+    // )
 
-    let autoAcceptedAvatar = null
-    if (pendingDispatches?.length > 0) {
-      const pending = pendingDispatches[0]
-      // 将 pending 分身自动接单
-      await db.query(
-        `UPDATE order_dispatch_requests SET status = 'accepted', accepted_at = NOW(), updated_at = NOW() WHERE id = ?`,
-        [pending.id]
-      )
-      // 自动接单也需要 INCR Redis 计数器
-      try {
-        const afterIncr = await this.redisService.getClient().incr(redisKeyAccepted)
-        this.logger.log(`自动接单 Redis INCR: key=${redisKeyAccepted}, 计数=${afterIncr}`)
-        // 注意：不做DB同步补偿。并发时DB事务延迟会导致补偿覆盖INCR的正确结果
-      } catch (redisErr2) {
-        this.logger.warn(`自动接单 Redis INCR失败(可忽略): ${(redisErr2 as Error).message}`)
-      }
-      autoAcceptedAvatar = pending.targetAvatarId
-      this.logger.log(`自动接单: avatarId=${autoAcceptedAvatar}, orderId=${orderId}`)
-    }
+    // let autoAcceptedAvatar = null
+    // if (pendingDispatches?.length > 0) {
+    //   const pending = pendingDispatches[0]
+    //   // 将 pending 分身自动接单
+    //   await db.query(
+    //     `UPDATE order_dispatch_requests SET status = 'accepted', accepted_at = NOW(), updated_at = NOW() WHERE id = ?`,
+    //     [pending.id]
+    //   )
+    //   // 自动接单也需要 INCR Redis 计数器
+    //   try {
+    //     const afterIncr = await this.redisService.getClient().incr(redisKeyAccepted)
+    //     this.logger.log(`自动接单 Redis INCR: key=${redisKeyAccepted}, 计数=${afterIncr}`)
+    //     // 注意：不做DB同步补偿。并发时DB事务延迟会导致补偿覆盖INCR的正确结果
+    //   } catch (redisErr2) {
+    //     this.logger.warn(`自动接单 Redis INCR失败(可忽略): ${(redisErr2 as Error).message}`)
+    //   }
+    //   autoAcceptedAvatar = pending.targetAvatarId
+    //   this.logger.log(`自动接单: avatarId=${autoAcceptedAvatar}, orderId=${orderId}`)
+    // }
 
     return {
       success: true,
