@@ -33,7 +33,8 @@ export default function ReferralCenter() {
 
   useShareAppMessage(() => {
     return {
-      title: '真的！莫瑞娜邀请好友有现金+20%返利！',
+      // title: '真的！莫瑞娜邀请好友有现金+20%返利！',
+      title: '创建分身，即可永久免费接单，享邀请20%返利！',
       path: `/pages/login/index?inviteCode=${stats.referralCode}`,
       imageUrl: 'https://voic.51webjs.com/tos-cn-i-699z2ac540/user%2Fc90c11aa5dae2c830a32ab382a59071e.png~tplv-699z2ac540-image.png',
     }
@@ -60,7 +61,7 @@ export default function ReferralCenter() {
       const tierData = tierRes.data?.data || tierRes.data || {}
       console.log('[ReferralCenter] tierData:', tierData)
       console.log('[ReferralCenter] allTiers:', tierData.allTiers)
-      
+
       setTierInfo({
         totalInvites: tierData.totalInvites || 0,
         currentTier: tierData.currentTier || null,
@@ -147,8 +148,8 @@ export default function ReferralCenter() {
             <Copy size={14} color="#fff" />
             <Text className="ref-btn-text">复制邀请码</Text>
           </View>
-          <Button 
-            className="ref-btn-share" 
+          <Button
+            className="ref-btn-share"
             open-type="share"
             style={{
               background: 'transparent',
@@ -339,7 +340,7 @@ export default function ReferralCenter() {
           <Crown size={14} color="#7C3AED" />
           <Text className="ref-section-title">阶梯奖励</Text>
         </View>
-        
+
         {/* 表格头部 */}
         <View className="ref-tier-table-header">
           <View className="ref-tier-th">
@@ -352,7 +353,7 @@ export default function ReferralCenter() {
             <Text className="ref-tier-th-text">返佣</Text>
           </View>
         </View>
-        
+
         {/* 表格内容 */}
         <View className="ref-tier-table-body">
           {tierInfo.allTiers.map((tier, idx) => {
@@ -360,13 +361,13 @@ export default function ReferralCenter() {
             console.log('[ReferralCenter] min_invites:', tier.min_invites, 'max_invites:', tier.max_invites)
             console.log('[ReferralCenter] base_reward:', tier.base_reward, 'coins_reward:', tier.coins_reward)
             console.log('[ReferralCenter] commission_rate:', tier.commission_rate)
-            
+
             return (
               <View key={idx} className={`ref-tier-row ${tierInfo.currentTier?.tier_level === tier.tier_level ? 'active' : ''}`}>
                 <View className="ref-tier-td">
                   <Text className="ref-tier-td-text">
-                    {tier.max_invites === -1 
-                      ? `邀请≥${tier.min_invites}人` 
+                    {tier.max_invites === -1
+                      ? `邀请≥${tier.min_invites}人`
                       : `${tier.min_invites}人≤邀请<${tier.max_invites}人`}
                   </Text>
                 </View>
@@ -385,7 +386,7 @@ export default function ReferralCenter() {
             )
           })}
         </View>
-        
+
         {/* 表格说明 */}
         <View className="ref-tier-table-footer">
           <View className="ref-tier-footer-item">
@@ -409,7 +410,7 @@ export default function ReferralCenter() {
         </View>
       </View>
 
-{/* 最终活动奖励 */}
+      {/* 最终活动奖励 */}
       <View className="ref-final-rewards-card">
         <View className="ref-section-title-wrap">
           <Crown size={16} color="#F59E0B" />
@@ -434,7 +435,7 @@ export default function ReferralCenter() {
               <Text className="ref-final-th-text">最低门槛</Text>
             </View>
           </View>
-          
+
           {/* 表格内容 */}
           <View className="ref-final-table-body">
             {/* 第一名 */}
@@ -455,7 +456,7 @@ export default function ReferralCenter() {
                 <Text className="ref-final-td-text">≥100人</Text>
               </View>
             </View>
-            
+
             {/* 第二名 */}
             <View className="ref-final-row silver">
               <View className="ref-final-td">
@@ -474,7 +475,7 @@ export default function ReferralCenter() {
                 <Text className="ref-final-td-text">-</Text>
               </View>
             </View>
-            
+
             {/* 第三名 */}
             <View className="ref-final-row bronze">
               <View className="ref-final-td">
@@ -493,7 +494,7 @@ export default function ReferralCenter() {
                 <Text className="ref-final-td-text">-</Text>
               </View>
             </View>
-            
+
             {/* 第四-第10名 */}
             <View className="ref-final-row">
               <View className="ref-final-td">
@@ -512,7 +513,7 @@ export default function ReferralCenter() {
                 <Text className="ref-final-td-text">≥50人</Text>
               </View>
             </View>
-            
+
             {/* 第11-第20名 */}
             <View className="ref-final-row">
               <View className="ref-final-td">
@@ -531,7 +532,7 @@ export default function ReferralCenter() {
                 <Text className="ref-final-td-text">-</Text>
               </View>
             </View>
-            
+
             {/* 第21-第50名 */}
             <View className="ref-final-row">
               <View className="ref-final-td">
@@ -551,7 +552,7 @@ export default function ReferralCenter() {
               </View>
             </View>
           </View>
-          
+
           {/* 表格说明 */}
           <View className="ref-final-table-footer">
             <View className="ref-final-footer-item">
@@ -577,7 +578,7 @@ export default function ReferralCenter() {
           <Text className="ref-section-title">活动规则</Text>
         </View>
         <View className="ref-rules-list">
-          
+
           <View className="ref-rule-item">
             <View className="ref-rule-icon" style={{ background: '#8B5CF6' }}>
               <Gift size={12} color="#fff" />
