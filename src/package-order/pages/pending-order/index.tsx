@@ -49,6 +49,8 @@ interface PendingOrder {
   preferredStyles?: string[]
   industryTags?: string[]
   acceptTimeoutText?: string
+  acceptRegions?: string[]
+  avatarLocationText?: string
 }
 
 // 内容类型配置
@@ -206,6 +208,8 @@ export default function PendingOrderListPage() {
             priority: item.priority || 'normal',
             requirements: item.requirements || '',
             acceptTimeoutText: item.acceptTimeoutText || '',
+            acceptRegions: safeParseJSON(item.acceptRegions || item.accept_regions),
+            avatarLocationText: item.location_text || item.locationText || '',
           }
         })
         setOrders(realOrders)
@@ -225,6 +229,27 @@ export default function PendingOrderListPage() {
     if (accepting) return
     setAccepting(order.dispatchId)
     try {
+      // 1. 检查订单区域限制
+      if (order.acceptRegions && order.acceptRegions.length > 0) {
+        const locationText = order.avatarLocationText || ''
+        const parts = locationText.split(/[省市区县]/)
+        const avatarProvince = parts.length > 0 ? parts[0].trim() : ''
+        const isInRegion = avatarProvince && order.acceptRegions.some(region =>
+          avatarProvince.includes(region) || region.includes(avatarProvince)
+        )
+        if (!isInRegion) {
+          Taro.showModal({
+            title: '无法接单',
+            content: `该订单限制了接单区域：【${order.acceptRegions.join('、')}】\n您的分身地址【${avatarProvince || locationText}】不在这些区域内，无法接单`,
+            showCancel: false,
+            confirmText: '知道了'
+          })
+          setAccepting(null)
+          return
+        }
+      }
+
+      // 4. 调用接单接口
       const res = await Network.request({
         url: `/api/order-dispatch/avatar/${order.avatarId}/accept/${order.orderId}`,
         method: 'POST',
@@ -661,7 +686,7 @@ export default function PendingOrderListPage() {
                       <>
                         <Sparkles size={16} color="#fff" />
                         <Text className="po-btn-label po-btn-label-primary">
-                          接单赚{order.expectedEarnings}
+                          接单赚¥{order.expectedEarnings}
                         </Text>
                         <ChevronRight size={14} color="rgba(255,255,255,0.7)" />
                       </>

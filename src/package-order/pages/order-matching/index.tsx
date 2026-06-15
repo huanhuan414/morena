@@ -346,17 +346,16 @@ export default function OrderMatchingPage() {
     // 手动选择的分身数量不能超过要求数量
     const selectedAvatarIds = Array.from(selectedIds).slice(0, requiredCount)
 
+    // 若补差额的话，只补80%
+    const add_requiredCount = Math.floor(requiredCount * 0.8)
+
     // 计算差额：从推荐列表中过滤掉已选择的，取差额数量
     const additionalAvatarIds = recommendations
       .filter(a => !selectedIds.has(a.id))
-      .slice(0, Math.max(0, requiredCount - selectedAvatarIds.length))
+      .slice(0, Math.max(0, add_requiredCount - selectedAvatarIds.length))
       .map(a => a.id)
 
-    const totalAvatarCount = selectedAvatarIds.length + additionalAvatarIds.length
-    if (totalAvatarCount === 0) {
-      showToast({ title: '请先选择分身', icon: 'none' })
-      return
-    }
+    // const totalAvatarCount = selectedAvatarIds.length + additionalAvatarIds.length
 
     setDispatching(true)
     showLoading({ title: '分配并通知中...' })
@@ -540,7 +539,7 @@ export default function OrderMatchingPage() {
         )}
 
         {/* 空状态 */}
-        {recommendations.length === 0 && !loading && (
+        {/* {recommendations.length === 0 && !loading && (
           <View className="empty-state">
             <Sparkles size={64} color="rgba(139, 92, 246, 0.3)" />
             <Text className="block empty-title">暂无推荐分身</Text>
@@ -552,17 +551,17 @@ export default function OrderMatchingPage() {
               <Text className="empty-btn-text">创建分身</Text>
             </Button>
           </View>
-        )}
+        )} */}
 
         {/* 分类分组展示 */}
         {recommendations.length > 0 && step < 3 && (
           <>
-            {/* 区域匹配组 */}
-            {(filterType === 'all' || filterType === 'region') && regionMatchCount > 0 && (
+            {/* 匹配组 */}
+            {regionMatchCount > 0 && (
               <View className="match-group">
                 <View className="mgrp-header">
                   <View className="mgrp-badge region">
-                    <Text className="mgrp-badge-text">区域匹配</Text>
+                    {/* <Text className="mgrp-badge-text">区域匹配</Text> */}
                   </View>
                   <Text className="mgrp-count">{regionMatchCount}个分身</Text>
                 </View>
@@ -612,108 +611,6 @@ export default function OrderMatchingPage() {
                             {avatar.province && (
                               <View className="tag-badge location">
                                 <Text className="tag-text">{avatar.province}</Text>
-                              </View>
-                            )}
-                          </View>
-                        </View>
-                        {/* 匹配度 */}
-                        <View className="match-score">
-                          <View className="score-ring">
-                            <Text className="score-value" style={{ color: getMatchColor(avatar.completionRate || 0) }}>
-                              {avatar.completionRate || 85}%
-                            </Text>
-                          </View>
-                          <Text className="score-label">匹配度</Text>
-                        </View>
-                      </View>
-                      {/* 统计信息 */}
-                      <View className="avatar-stats">
-                        <View className="stat-item">
-                          <TrendingUp size={14} color="#22c55e" />
-                          <Text className="stat-value">{avatar.completionRate || 0}%</Text>
-                          <Text className="stat-label">完成率</Text>
-                        </View>
-                        <View className="stat-divider" />
-                        <View className="stat-item">
-                          <Star size={14} color="#f59e0b" />
-                          <Text className="stat-value">{avatar.avgRating || 4.0}</Text>
-                          <Text className="stat-label">平均评分</Text>
-                        </View>
-                        <View className="stat-divider" />
-                        <View className="stat-item">
-                          <Trophy size={14} color="#8B5CF6" />
-                          <Text className="stat-value">{avatar.completedTasks || 0}</Text>
-                          <Text className="stat-label">已完成</Text>
-                        </View>
-                      </View>
-                      {/* 匹配理由 */}
-                      {avatar.matchReason && (
-                        <View className="match-reason">
-                          <ThumbsUp size={12} color="#22c55e" />
-                          <Text className="reason-text">{avatar.matchReason}</Text>
-                        </View>
-                      )}
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {/* 随机补充组 */}
-            {(filterType === 'all' || filterType === 'other') && otherMatchCount > 0 && (
-              <View className="match-group">
-                <View className="mgrp-header">
-                  <View className="mgrp-badge other">
-                    <Text className="mgrp-badge-text">随机补充</Text>
-                  </View>
-                  <Text className="mgrp-count">{otherMatchCount}个分身</Text>
-                </View>
-                <View className="avatars-list">
-                  {recommendations.filter(a => a.matchType === 'other').map((avatar, index) => (
-                    <View
-                      key={avatar.id}
-                      className={`avatar-card ${selectedIds.has(avatar.id) ? 'selected' : ''}`}
-                      onClick={() => toggleSelect(avatar.id)}
-                      style={{ animationDelay: `${index * 0.08}s` }}
-                    >
-                      {/* 选择状态 */}
-                      <View className="card-checkbox">
-                        <View className={`checkbox ${selectedIds.has(avatar.id) ? 'checked' : ''}`}>
-                          {selectedIds.has(avatar.id) && <Check size={14} color="#fff" />}
-                        </View>
-                      </View>
-                      {/* 分身信息 */}
-                      <View className="avatar-info">
-                        <View className="avatar-avatar">
-                          {avatar.avatarUrl && avatar.avatarUrl.trim() ? (
-                            <Image
-                              src={avatar.avatarUrl}
-                              className="avatar-img"
-                              mode="aspectFill"
-                            />
-                          ) : (
-                            <View className="avatar-placeholder">
-                              <Sparkles size={28} color="#8B5CF6" />
-                            </View>
-                          )}
-                        </View>
-                        <View className="avatar-details">
-                          <Text className="avatar-name">{avatar.name}</Text>
-                          <View className="avatar-meta">
-                            <Text className="meta-item">Lv.{avatar.level}</Text>
-                            <Text className="meta-dot">·</Text>
-                            <Text className="meta-item">{getPersonalityName(avatar.personality)}</Text>
-                          </View>
-                          {/* 领域标签和地址标签 */}
-                          <View className="avatar-tags">
-                            {(avatar as any).niches && (avatar as any).niches.length > 0 && (
-                              <View className="tag-badge niche">
-                                <Text className="tag-text">{(avatar as Avatar & { niches?: string[] }).niches?.[0]}</Text>
-                              </View>
-                            )}
-                            {(avatar as any).province && (
-                              <View className="tag-badge location">
-                                <Text className="tag-text">{(avatar as any).province}</Text>
                               </View>
                             )}
                           </View>
@@ -834,7 +731,7 @@ export default function OrderMatchingPage() {
       </ScrollView>
 
       {/* 底部操作栏 - 分配 + 通知 */}
-      {step < 3 && recommendations.length > 0 && (
+      {step < 3 && (
         <View className="action-bar">
           <View className="select-hint">
             <Text className="hint-text">

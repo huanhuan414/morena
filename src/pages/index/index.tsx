@@ -551,17 +551,70 @@ const Index: React.FC = () => {
   }
 
   const handleOrderAccept = async () => {
-    if (orderModalData?.id) {
-      const orderId = orderModalData.id
-      await handleAcceptOrder(orderId, orderModalData)
-      setShowOrderModal(false)
-      const newDismissed = new Set(dismissedOrderIds)
-      newDismissed.add(orderId)
-      setDismissedOrderIds(newDismissed)
-      try {
-        Taro.setStorageSync('dismissed_order_ids', JSON.stringify([...newDismissed]))
-      } catch { }
-      Taro.navigateTo({ url: `/package-order/pages/order-content-creation/index?orderId=${orderId}` })
+    if (!orderModalData?.id || !orderModalData?.avatarId) return
+
+    const orderId = orderModalData.id
+    const avatarId = orderModalData.avatarId
+
+    try {
+      // 1. 检查订单区域限制
+      if (orderModalData.acceptRegions && orderModalData.acceptRegions.length > 0) {
+        const locationText = orderModalData.locationText || ''
+        const parts = locationText.split(/[省市区县]/)
+        const avatarProvince = parts.length > 0 ? parts[0].trim() : ''
+        const isInRegion = avatarProvince && orderModalData.acceptRegions.some(region =>
+          avatarProvince.includes(region) || region.includes(avatarProvince)
+        )
+        if (!isInRegion) {
+          Taro.showModal({
+            title: '无法接单',
+            content: `该订单限制了接单区域：【${orderModalData.acceptRegions.join('、')}】\n您的分身地址【${avatarProvince || locationText}】不在这些区域内，无法接单`,
+            showCancel: false,
+            confirmText: '知道了'
+          })
+          return
+        }
+      }
+
+      // 2. 调用接单接口
+      const res = await Network.request({
+        url: `/api/order-dispatch/avatar/${avatarId}/accept/${orderId}`,
+        method: 'POST',
+      })
+
+      if (res.data?.code === 200) {
+        Taro.showToast({ title: '接单成功，正在生成内容', icon: 'success' })
+        const result = res.data?.data || {}
+        const nextRequestId = result.requestId || ''
+        const nextAvatarId = result.avatarId || avatarId
+        const nextOrderId = result.orderId || orderId
+
+        const query = [
+          `orderId=${encodeURIComponent(nextOrderId)}`,
+          `avatarId=${encodeURIComponent(nextAvatarId)}`,
+          nextRequestId ? `requestId=${encodeURIComponent(nextRequestId)}` : '',
+        ].filter(Boolean).join('&')
+
+        setTimeout(() => {
+          Taro.navigateTo({
+            url: `/package-order/pages/order-processing/index?${query}`
+          })
+        }, 500)
+
+        // 关闭弹窗并记录已忽略
+        setShowOrderModal(false)
+        const newDismissed = new Set(dismissedOrderIds)
+        newDismissed.add(orderId)
+        setDismissedOrderIds(newDismissed)
+        try {
+          Taro.setStorageSync('dismissed_order_ids', JSON.stringify([...newDismissed]))
+        } catch { }
+      } else {
+        Taro.showToast({ title: res.data?.msg || '接单失败', icon: 'none' })
+      }
+    } catch (error: any) {
+      console.error('[新订单通知] 接单失败:', error)
+      Taro.showToast({ title: '接单失败，请重试', icon: 'none' })
     }
   }
 

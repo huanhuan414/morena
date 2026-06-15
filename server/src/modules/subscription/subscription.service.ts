@@ -442,26 +442,34 @@ export class SubscriptionService {
 
     const db = getMySQLClient()
     
-    // 查询用户的会员优先级
+    // 查询用户的会员优先级（取最新一条订阅记录）
     const rows = await db.query(
-      `SELECT u.id as user_id, COALESCE(sp.order_priority, 1) as order_priority
+      `SELECT u.id as user_id, COALESCE(sp.order_priority, 0) as order_priority
        FROM users u
-       LEFT JOIN user_subscriptions us ON u.id = us.user_id AND us.status = 'active'
+       LEFT JOIN (
+         SELECT us.* FROM user_subscriptions us
+         INNER JOIN (
+           SELECT user_id, MAX(created_at) as latest_time
+           FROM user_subscriptions
+           WHERE status = 'active' AND user_id IN (?)
+           GROUP BY user_id
+         ) latest ON us.user_id = latest.user_id AND us.created_at = latest.latest_time
+       ) us ON u.id = us.user_id
        LEFT JOIN subscription_plans sp ON us.plan_id = sp.id
        WHERE u.id IN (?)`,
-      [userIds]
+      [userIds, userIds]
     ) as any[]
 
     for (const row of rows || []) {
       const userId = row.userId || row.user_id
-      const priority = Number(row.orderPriority || row.order_priority || 1)
+      const priority = Number(row.orderPriority || row.order_priority || 0)
       result.set(userId, priority)
     }
 
-    // 未查询到的用户默认优先级为 1
+    // 未查询到的用户默认优先级为 0
     for (const userId of userIds) {
       if (!result.has(userId)) {
-        result.set(userId, 1)
+        result.set(userId, 0)
       }
     }
 
