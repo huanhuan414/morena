@@ -610,7 +610,7 @@ const Index: React.FC = () => {
           Taro.setStorageSync('dismissed_order_ids', JSON.stringify([...newDismissed]))
         } catch { }
       } else {
-        Taro.showToast({ title: res.data?.msg || '接单失败', icon: 'none' })
+        Taro.showToast({ title: res.data?.message || '接单失败', icon: 'none' })
       }
     } catch (error: any) {
       console.error('[新订单通知] 接单失败:', error)

@@ -73,6 +73,7 @@ export default function OrderAcceptance() {
   const [rejectReason, setRejectReason] = useState('')
   const [selectedReasonIdx, setSelectedReasonIdx] = useState(-1)
   const [silenceDurationMs, setSilenceDurationMs] = useState(86400000)  // 默认24小时（毫秒）
+  const [isSilence, setIsSilence] = useState(false)  // 是否静默
 
   // 格式化静默时间显示（根据配置的毫秒数动态计算单位）
   const formatSilenceDuration = (ms: number) => {
@@ -159,11 +160,11 @@ export default function OrderAcceptance() {
 
   const handleApprove = async () => {
     if (!selectedAvatar) return
-    
+
     // 防重复点击
     if ((handleApprove as any).isLoading) return;
     (handleApprove as any).isLoading = true
-    
+
     try {
       const requestId = selectedAvatar.requestId
       if (!requestId) {
@@ -211,15 +212,24 @@ export default function OrderAcceptance() {
     const publishFeedback = selectedAvatar.publishFeedback || {}
     const revisionHistory = publishFeedback.revisionHistory || []
     const isSecondReject = revisionHistory.length >= 1  // 已有1次驳回记录，这次是第2次
-
-    // 第2次驳回需要确认
-    if (isSecondReject) {
+    console.log('isSilence', isSilence)
+    // 如果选择静默，则走二次驳回条件（直接静默）
+    if (isSilence) {
+      const modalRes = await Taro.showModal({
+        title: '确认驳回',
+        content: `驳回后该接单者将被静默${formatSilenceDuration(silenceDurationMs)}，期间无法接单。确定要驳回吗？`,
+        confirmText: '确认驳回',
+        cancelText: '取消',
+      })
+      if (!modalRes.confirm) return
+    } else if (isSecondReject) {
       const modalRes = await Taro.showModal({
         title: '确认最终驳回',
         content: `这是第2次驳回，驳回后该接单者将被静默${formatSilenceDuration(silenceDurationMs)}，期间无法接单。确定要驳回吗？`,
         confirmText: '确认驳回',
         cancelText: '取消',
       })
+
       if (!modalRes.confirm) return
     }
 
@@ -229,16 +239,21 @@ export default function OrderAcceptance() {
         showToast({ title: '缺少请求ID，无法驳回', icon: 'none' })
         return
       }
+      // 根据 isSilence 决定是否静默
       const res = await Network.request({
         url: `/api/order-processing/revision/${requestId}`,
         method: 'POST',
-        data: { feedback: { rejectReason: finalReason, status: 'revision_requested' } }
+        data: {
+          feedback: { rejectReason: finalReason, status: 'revision_requested' },
+          silence: isSilence,
+        }
       })
       if (res.data?.code === 200) {
         showToast({ title: '已驳回', icon: 'success' })
         setShowReject(false)
         setRejectReason('')
         setSelectedReasonIdx(-1)
+        setIsSilence(false)
         setSelectedAvatar(null)
         fetchAvatars()
       }
@@ -722,6 +737,25 @@ export default function OrderAcceptance() {
                 </View>
                 <Text className="block od-modal-title">驳回修改</Text>
                 <Text className="block od-modal-desc">请选择驳回原因，方便分身修改</Text>
+                {/* 静默选项 */}
+                <View
+                  style={{ marginBottom: '10px', padding: '8px 10px', backgroundColor: isSilence ? '#FEF3C7' : '#F3F4F6', borderRadius: '6px', border: `1px solid ${isSilence ? '#FCD34D' : '#E5E7EB'}` }}
+                  onClick={() => setIsSilence(!isSilence)}
+                >
+                  <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={{
+                      width: '16px', height: '16px', borderRadius: '4px',
+                      backgroundColor: isSilence ? '#F59E0B' : 'transparent',
+                      border: isSilence ? 'none' : '2px solid #D1D5DB',
+                      marginRight: '8px', flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}
+                    >
+                      {isSilence && <Text style={{ color: '#fff', fontSize: '10px', fontWeight: 'bold' }}>✓</Text>}
+                    </View>
+                    <Text style={{ fontSize: '13px', color: isSilence ? '#92400E' : '#6B7280', fontWeight: '500' }}>同时静默该接单者（{formatSilenceDuration(silenceDurationMs)}）</Text>
+                  </View>
+                </View>
                 <View style={{ maxHeight: '320px', overflowY: 'auto' }}>
                   {REJECT_REASONS.map((reason, idx) => (
                     <View

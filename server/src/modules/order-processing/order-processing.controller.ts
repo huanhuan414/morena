@@ -311,13 +311,14 @@ export class OrderProcessingController {
   async requestRevision(
     @Param('id') id: string,
     @Body('feedback') feedback: Record<string, any>,
+    @Body('silence') silence: boolean,
     @Headers('x-user-id') currentUserId: string
   ) {
     try {
       // 校验：只有发单方可以请求修改
       await this.processingService.verifyOrderOwner(id, currentUserId)
 
-      const result = await this.processingService.requestRevision(id, feedback || {})
+      const result = await this.processingService.requestRevision(id, feedback || {}, silence)
       return {
         code: 200,
         data: result,

@@ -2001,9 +2001,9 @@ async getExecutionProgress(orderId: string) {
         await conn.rollback()
       } catch {}
       // 事务失败，回滚Redis占位
-      if (!wasAlreadyAccepted) {
-        await this.redisService.getClient().decr(redisKeyAccepted)
-      }
+      // if (!wasAlreadyAccepted) {
+      //   await this.redisService.getClient().decr(redisKeyAccepted)
+      // }
       throw error
     } finally {
       conn.release()

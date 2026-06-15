@@ -274,7 +274,7 @@ export default function PendingOrderListPage() {
         // 从列表移除
         setOrders(prev => prev.filter(o => o.dispatchId !== order.dispatchId))
       } else {
-        Taro.showToast({ title: res.data?.msg || '接单失败', icon: 'none' })
+        Taro.showToast({ title: res.data?.message || '接单失败', icon: 'none' })
       }
     } catch (error: any) {
       console.error('[待接订单] 接单失败:', error)

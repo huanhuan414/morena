@@ -911,7 +911,7 @@ export class OrderProcessingService {
   /**
    * 驳回订单（拒绝，可重新生成一次）
    */
-  async requestRevision(identifier: string, feedback: Record<string, any>): Promise<any> {
+  async requestRevision(identifier: string, feedback: Record<string, any>, silence: boolean): Promise<any> {
     const current = await this.findRecordByIdentifier(identifier)
     if (!current) return null
 
@@ -954,9 +954,11 @@ export class OrderProcessingService {
     })
     mergedFeedback.revisionHistory = revisionHistory
     mergedFeedback.rejectReason = feedback.rejectReason || ''
-
-    const isFinalRejection = revisionCount >= 2
-
+    let isFinalRejection = revisionCount >= 2
+    if (silence) { 
+      isFinalRejection = true
+    }
+ 
     const record = await this.updateRecordByIdentifier(identifier, {
       status: isFinalRejection ? 'rejected' : 'revision_requested',
       revision_count: revisionCount,
@@ -970,11 +972,13 @@ export class OrderProcessingService {
     setCache(normalized.orderId, normalized)
 
     const db = getMySQLClient()
+    
     if (normalized.orderId && normalized.avatarId) {
       // 首次驳回：dispatch保持accepted（分身仍可重新生成，ENUM无revision_requested值）
       // 最终驳回：dispatch改为rejected（释放名额）
       const dispatchStatus = isFinalRejection ? 'rejected' : 'accepted'
       const kickType = isFinalRejection ? 'final_rejection' : null
+      
       await db.query(
         `UPDATE order_dispatch_requests SET status = ?, reject_reason = ?, kick_type = ?, updated_at = NOW() WHERE order_id = ? AND avatar_id = ?`,
         [dispatchStatus, feedback.rejectReason || '', kickType, normalized.orderId, normalized.avatarId]
