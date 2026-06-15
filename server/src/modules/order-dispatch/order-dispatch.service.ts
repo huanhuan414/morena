@@ -1849,6 +1849,222 @@ async getExecutionProgress(orderId: string) {
   }
 
   /**
+   * 接单接口（使用已有的dispatchId，直接更新派单记录）
+   * 适用于已有派单记录的场景
+   */
+  async acceptOrderWithDispatch(avatarId: string, orderId: string, dispatchId: string) {
+    const db = getMySQLClient()
+    const pool = getPool()
+    let request: any = null
+    let actualAvatarId: string | undefined = avatarId
+    let requiredCount = 1
+    let wasAlreadyAccepted = false
+
+    const orderRows = await db.query(
+      `SELECT id, status, is_paid, accept_timeout,accept_regions,
+              GREATEST(COALESCE(NULLIF(avatar_count, 0), NULLIF(expected_quantity, 0), 1), 1) as required_count
+       FROM orders
+       WHERE id = ? AND is_deleted = 0`,
+      [orderId]
+    )
+    // =====================================================
+    // 第零阶段：区域限制检查
+    // =====================================================
+    // 获取订单的接单区域限制
+    const acceptRegionsStr = (orderRows as any[])?.[0]?.acceptRegions || (orderRows as any[])?.[0]?.accept_regions
+    const acceptRegions = this.safeParseJson<string[]>(acceptRegionsStr, [])
+
+    // 如果订单有区域限制，检查分身地址是否在限制区域内
+    if (acceptRegions.length > 0) {
+      const avatarRows = await db.query('SELECT location_text FROM avatars WHERE id = ?', [avatarId])
+      const avatarLocationText = (avatarRows as any[])?.[0]?.locationText || (avatarRows as any[])?.[0]?.location_text || ''
+      
+      // 提取省份（与前端逻辑一致：split(/[省市区县]/) 取第一个部分）
+      const parts = avatarLocationText.split(/[省市区县]/)
+      const avatarProvince = parts.length > 0 ? parts[0].trim() : ''
+
+      this.logger.log(`[acceptOrder] 区域检查: 分身省份=${avatarProvince}, 订单区域=${JSON.stringify(acceptRegions)}`)
+
+      // 检查分身省份是否在订单限制区域内
+      const isRegionMatched = acceptRegions.some(region => 
+        avatarProvince.includes(region) || region.includes(avatarProvince)
+      )
+
+      if (!isRegionMatched) {
+        throw new BadRequestException(`该订单限制了接单区域：${acceptRegions.join('、')}，您的分身地址不在这些区域内，无法接单`)
+      }
+    }
+
+    // 1.1 快速校验订单状态（不加锁，读最新数据即可）
+    
+    const orderRow: any = (orderRows as any[])?.[0]
+    // db.query 内部会 convertKeysToCamel，所以 required_count → requiredCount
+    requiredCount = Number(orderRow?.requiredCount || orderRow?.required_count || 1) || 1
+    const orderAcceptTimeout = orderRow?.acceptTimeout || orderRow?.accept_timeout || null // 接单超时（分钟）
+    if (!orderRow) {
+      throw new NotFoundException('订单不存在')
+    }
+    
+    const acceptablStatuses = ['pending', 'pending_payment', 'open', 'created', 'assigned', 'pending_acceptance', 'pending_dispatch', 'awaiting_acceptance', 'in_progress']
+    if (!acceptablStatuses.includes(orderRow.status)) {
+      throw new ConflictException(`订单已${orderRow.status === 'completed' ? '完成' : orderRow.status === 'cancelled' ? '取消' : '关闭'}, 无法接单`)
+    }
+    if (orderRow.status === 'pending_payment' && Number(orderRow.is_paid || 0) !== 1) {
+      throw new BadRequestException('订单未支付，无法接单')
+    }
+
+    // 独占模式校验：分身数不能超过可用素材数
+    let effectiveRequired = requiredCount
+    try {
+      const orderInfoRows = await db.query('SELECT asset_distribute_mode FROM orders WHERE id = ? AND is_deleted = 0', [orderId])
+      const orderDistributeMode = (orderInfoRows as any[])?.[0]?.assetDistributeMode || (orderInfoRows as any[])?.[0]?.asset_distribute_mode || 'shared'
+      if (orderDistributeMode === 'exclusive') {
+        const assetCountRows = await db.query(
+          `SELECT asset_type, COUNT(*) as cnt FROM order_assets WHERE order_id = ? AND status = 'ready' GROUP BY asset_type`,
+          [orderId]
+        )
+        const readyImageCount = (assetCountRows as any[])?.find((a: any) => a.assetType === 'image' || a.asset_type === 'image')?.cnt || 0
+        const readyVideoCount = (assetCountRows as any[])?.find((a: any) => a.assetType === 'video' || a.asset_type === 'video')?.cnt || 0
+        const maxAvatarsByAssets = readyImageCount + readyVideoCount
+        if (maxAvatarsByAssets > 0 && maxAvatarsByAssets < effectiveRequired) {
+          effectiveRequired = maxAvatarsByAssets
+          // 更新Redis中的required计数
+          await this.redisService.getClient().set(redisKeyRequired, String(effectiveRequired), 'EX', OrderDispatchService.REDIS_TTL_SECONDS)
+        }
+      }
+    } catch (err: any) {
+      console.warn(`[acceptOrder] 独占模式校验失败:`, err.message)
+    }
+
+    // =====================================================
+    // 第二阶段：数据库短事务（不锁orders行，仅操作dispatch_requests）
+    // =====================================================
+    const conn = await pool.getConnection()
+    try {
+      await conn.beginTransaction()
+      const [acceptRows2] = await conn.query(
+        `SELECT r.*, o.title as order_title, o.user_id as owner_user_id, o.description, o.platforms, o.budget, o.expected_quantity, o.quantity_per_avatar, o.target_audience
+          FROM order_dispatch_requests r
+          LEFT JOIN orders o ON r.order_id = o.id
+          WHERE r.id = ? AND r.status = 'pending'`,
+        [dispatchId]
+      )
+      request = (acceptRows2 as any[])?.[0]
+      if (request) request._isMatchedAvatar = true
+      if (!request) { 
+         throw new ConflictException(`未查询到该待接订单，请核查！`)
+      }
+      actualAvatarId = request.avatarId || request.avatar_id || avatarId
+      
+      // 静默期检查：用户在静默期内不能接单
+      const [silenceRows] = await conn.query(
+        `SELECT silence_until FROM users WHERE id = ?`,
+        [request.owner_user_id]
+      )
+      const silenceUntil = (silenceRows as any[])?.[0]?.silence_until || (silenceRows as any[])?.[0]?.silenceUntil
+      if (silenceUntil && new Date(silenceUntil) > new Date()) {
+        // 计算剩余静默时间并格式化
+        const remainingMs = new Date(silenceUntil).getTime() - Date.now()
+        let remainingText = ''
+        if (remainingMs < 60 * 1000) {
+          remainingText = `${Math.ceil(remainingMs / 1000)}秒`
+        } else if (remainingMs < 60 * 60 * 1000) {
+          remainingText = `${Math.ceil(remainingMs / (60 * 1000))}分钟`
+        } else if (remainingMs < 24 * 60 * 60 * 1000) {
+          remainingText = `${Math.ceil(remainingMs / (60 * 60 * 1000))}小时`
+        } else {
+          remainingText = `${Math.ceil(remainingMs / (24 * 60 * 60 * 1000))}天`
+        }
+        throw new ConflictException(`您目前处于静默期，${remainingText}后可恢复接单`)
+      }
+      // 计算接单超时截止时间
+      const acceptTimeoutAt = orderAcceptTimeout
+        ? new Date(Date.now() + orderAcceptTimeout * 60 * 1000)
+        : null
+
+      const [updateResult] = await conn.query(
+        `UPDATE order_dispatch_requests
+         SET status = 'accepted',
+             accepted_at = IFNULL(accepted_at, NOW()),
+             accept_timeout_at = ?,
+             responded_at = NOW(),
+             updated_at = NOW()
+         WHERE id = ? AND status = 'pending'`,
+        [acceptTimeoutAt, request.id]
+      )
+
+      await conn.commit()
+
+      // INCR已在事务前完成，无需再次更新Redis
+    } catch (error) {
+      try {
+        await conn.rollback()
+      } catch {}
+      // 事务失败，回滚Redis占位
+      if (!wasAlreadyAccepted) {
+        await this.redisService.getClient().decr(redisKeyAccepted)
+      }
+      throw error
+    } finally {
+      conn.release()
+    }
+
+    request.ownerUserId = request.ownerUserId || request.owner_user_id
+    request.orderTitle = request.orderTitle || request.order_title
+    
+    // 📌 记录事件：分身已接单
+    let acceptedAvatarName = '分身'
+    try {
+      const avatarInfo = await db.query('SELECT name FROM avatars WHERE id = ?', [actualAvatarId])
+      acceptedAvatarName = avatarInfo?.[0]?.name || '分身'
+    } catch {}
+    this.eventService.recordEvent({
+      orderId,
+      dispatchId: request.id,
+      avatarId: actualAvatarId,
+      userId: request.ownerUserId,
+      eventType: 'accepted',
+      source: 'avatar',
+      avatarName: acceptedAvatarName,
+      eventData: { respondedAt: new Date().toISOString() },
+    }).catch(err => console.warn('[事件] accepted 记录失败:', err.message))
+    
+    // 为订单所有者创建通知（分身接受了订单）
+    try {
+      await this.notificationService.createNotification({
+        user_id: request.ownerUserId,
+        type: 'avatar_accepted_order',
+        title: '分身已接受订单',
+        content: `分身"${request.avatar_name || '未知'}"已接受订单"${request.order_title || '内容创作'}"`,
+        metadata: {
+          avatarId: actualAvatarId,
+          orderId,
+          dispatchRequestId: request.id
+        }
+      })
+    } catch (err) {
+      console.error('[acceptOrder] 创建通知失败:', err)
+    }
+    
+    // 自动启动内容生成流程（异步执行，不阻塞返回）
+    const processingRecordBefore = await this.waitForProcessingRecord(orderId, actualAvatarId)
+    if (!processingRecordBefore && !wasAlreadyAccepted) {
+      this.startContentGeneration(orderId, actualAvatarId, request).catch(err => {
+        console.error('[acceptOrder] 启动内容生成失败:', err)
+      })
+    }
+
+    const processingRecord = processingRecordBefore || await this.waitForProcessingRecord(orderId, actualAvatarId)
+    
+    return {
+      success: true,
+      orderId,
+      avatarId: actualAvatarId,
+      dispatchId: request.id,
+      requestId: processingRecord?.id || processingRecord?.requestId || '',
+    }
+  }
+  /**
    * 分身婉拒订单
    */
   async declineOrder(dispatchId: string) {

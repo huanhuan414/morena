@@ -249,9 +249,9 @@ export default function PendingOrderListPage() {
         }
       }
 
-      // 4. 调用接单接口
+      // 4. 调用接单接口 dispatchId
       const res = await Network.request({
-        url: `/api/order-dispatch/avatar/${order.avatarId}/accept/${order.orderId}`,
+        url: `/api/order-dispatch/avatar/${order.avatarId}/accept/${order.orderId}/${order.dispatchId}`,
         method: 'POST',
       })
       if (res.data?.code === 200) {

@@ -578,7 +578,7 @@ const Index: React.FC = () => {
 
       // 2. 调用接单接口
       const res = await Network.request({
-        url: `/api/order-dispatch/avatar/${avatarId}/accept/${orderId}`,
+        url: `/api/order-dispatch/avatar/${avatarId}/accept/${orderId}/${orderModalData.dispatchId}`,
         method: 'POST',
       })
 

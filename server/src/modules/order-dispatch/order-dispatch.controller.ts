@@ -217,6 +217,20 @@ export class OrderDispatchController {
   }
 
   /**
+   * 接单接口（使用已有的dispatchId，直接更新派单记录）
+   * 适用于已有派单记录的场景
+   */
+  @Post('avatar/:avatarId/accept/:orderId/:dispatchId')
+  async acceptOrderWithDispatch(@Param('avatarId') avatarId: string, @Param('orderId') orderId: string, @Param('dispatchId') dispatchId: string) {
+    const result = await this.dispatchService.acceptOrderWithDispatch(avatarId, orderId, dispatchId)
+    return {
+      code: 200,
+      data: result,
+      message: '订单已接受'
+    }
+  }
+
+  /**
    * 分身婉拒订单
    */
   @Post('dispatch/:dispatchId/decline')
