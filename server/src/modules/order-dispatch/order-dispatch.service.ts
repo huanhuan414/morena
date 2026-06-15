@@ -2081,7 +2081,9 @@ async getExecutionProgress(orderId: string) {
     }
     
     const wasAccepted = request.status === 'accepted'
+    const wasPending = request.status === 'pending'
     const orderId = request.orderId
+    const avatarId = request.avatarId
 
     await db.updateWhere('order_dispatch_requests', { id: dispatchId }, {
       status: 'rejected',
@@ -2089,15 +2091,21 @@ async getExecutionProgress(orderId: string) {
       updated_at: new Date()
     })
     
-    // 释放Redis已接单计数器（仅之前是accepted状态才需要DECR）
-    if (wasAccepted) {
+    // 清理订单相关的Redis缓存（accepted或pending状态都需要清理，防止缓存残留导致名额检查错误）
+    if (wasAccepted || wasPending) {
       try {
-        const redisKey = `order:accept:count:${orderId}`
-        await this.redisService.getClient().decr(redisKey)
-        this.logger.log(`declineOrder Redis DECR: key=${redisKey}, orderId=${orderId}`)
-        // 注意：不做DB同步补偿。并发时DB事务延迟会导致补偿覆盖DECR的正确结果
+        const redis = this.redisService.getClient()
+        const cacheKeys = [
+          `order:accept:count:${orderId}`,
+          `order:accept:required:${orderId}`,
+          `order:accept:lock:${orderId}`,
+        ]
+        for (const key of cacheKeys) {
+          await redis.del(key)
+          this.logger.log(`declineOrder Redis DEL: ${key}`)
+        }
       } catch (redisErr) {
-        this.logger.warn(`declineOrder Redis DECR失败(可忽略): ${(redisErr as Error).message}`)
+        this.logger.warn(`declineOrder Redis缓存清理失败(可忽略): ${(redisErr as Error).message}`)
       }
     }
     

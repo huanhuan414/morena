@@ -194,7 +194,7 @@ export class OrderTimeoutService {
        WHERE od.status IN ('pending', 'accepted')
        AND od.accept_timeout_at IS NOT NULL
        AND od.accept_timeout_at < NOW()
-       AND (cg.id IS NULL OR cg.status NOT IN ('completed', 'awaiting_acceptance', 'settled', 'rejected', 'expired', 'failed', 'cancelled'))
+       AND (cg.id IS NULL OR cg.status NOT IN ('revision_requested','completed', 'awaiting_acceptance', 'settled', 'rejected', 'expired', 'failed', 'cancelled'))
        GROUP BY od.id`
     )
 
