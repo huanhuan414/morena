@@ -282,30 +282,9 @@ export default function AvatarCreate() {
     try {
       // 显示加载中
       Taro.showLoading({ title: '定位中...' })
-      // 先检查定位权限
-      const settingRes = await getSetting()
 
-      if (!settingRes.authSetting['scope.userLocation']) {
-        // 未授权，尝试请求授权
-        try {
-          await Taro.getLocation({ type: 'gcj02' })
-        } catch (err: any) {
-          Taro.hideLoading()
-          console.error('[定位] 请求授权失败:', err)
-          const modalRes = await Taro.showModal({
-            title: '定位权限',
-            content: '需要定位权限来获取分身位置，请在设置中开启定位权限',
-            confirmText: '去设置',
-            cancelText: '取消'
-          })
-          if (modalRes.confirm) {
-            await openSetting()
-          }
-          return
-        }
-      }
-      // 获取当前位置
-      const locationRes = await Taro.getLocation({ type: 'gcj02' })
+      // 使用模糊定位，无需特殊类目
+      const locationRes = await Taro.getFuzzyLocation({ type: 'gcj02' })
       const { latitude, longitude } = locationRes
       // 逆地理编码获取地址
       const addressInfo = await reverseGeocodeFromMiniProgram(latitude, longitude)
@@ -328,16 +307,24 @@ export default function AvatarCreate() {
         return
       }
 
-      // 定位权限问题（系统未开启 或 用户拒绝授权）
-      const modalRes = await Taro.showModal({
-        title: '定位权限',
-        content: '需要定位权限来获取分身位置，请在设置中开启定位权限',
-        confirmText: '去设置',
-        cancelText: '取消'
-      })
+      // 检查是否是权限被拒绝的情况
+      const settingRes = await getSetting()
+      const hasLocationAuth = settingRes.authSetting['scope.userFuzzyLocation']
 
-      if (modalRes.confirm) {
-        await openSetting()
+      if (hasLocationAuth === false) {
+        // 用户明确拒绝了权限，引导去设置
+        const modalRes = await Taro.showModal({
+          title: '定位权限',
+          content: '需要定位权限来获取分身位置，请在设置中开启定位权限',
+          confirmText: '去设置',
+          cancelText: '取消'
+        })
+        if (modalRes.confirm) {
+          await openSetting()
+        }
+      } else {
+        // 其他错误（如系统定位未开启、网络问题等）
+        Taro.showToast({ title: '定位失败，请检查系统定位是否开启', icon: 'none' })
       }
     }
   }

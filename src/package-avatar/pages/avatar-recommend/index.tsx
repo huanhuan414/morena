@@ -78,7 +78,7 @@ export default function AvatarRecommendPage() {
       // 1. 先获取用户位置
       let location = userLocation
       try {
-        const locationRes = await Taro.getLocation({
+        const locationRes = await Taro.getFuzzyLocation({
           type: 'wgs84'
         })
         location = {

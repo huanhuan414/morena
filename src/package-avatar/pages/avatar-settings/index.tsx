@@ -1,4 +1,4 @@
-import { useLoad, useRouter, navigateBack, showToast, showModal, navigateTo, getLocation, getSetting, openSetting } from '@tarojs/taro'
+import { useLoad, useRouter, navigateBack, showToast, showModal, navigateTo, getFuzzyLocation, getSetting, openSetting } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -37,12 +37,12 @@ interface AvatarSettings {
 export default function AvatarSettingsPage() {
   const router = useRouter()
   const { avatarId } = router.params
-  
+
   const [avatar, setAvatar] = useState<AvatarSettings | null>(null)
   const [editing, setEditing] = useState(false)
   const [editName, setEditName] = useState('')
   const [editPersonality, setEditPersonality] = useState('')
-  
+
   // 安全区域适配
   const [capsulePlaceholderWidth, setCapsulePlaceholderWidth] = useState(120)
 
@@ -50,7 +50,7 @@ export default function AvatarSettingsPage() {
     // 初始化安全区域信息
     const safeArea = getSafeArea()
     setCapsulePlaceholderWidth(safeArea.placeholderWidthRpx)
-    
+
     if (avatarId) {
       fetchAvatar()
     }
@@ -72,19 +72,19 @@ export default function AvatarSettingsPage() {
 
   const saveSettings = async (key: string, value: any) => {
     if (!avatar) return
-    
+
     try {
       const newConfig = {
         ...avatar.config,
         [key]: value
       }
-      
+
       const res = await Network.request({
         url: `/api/avatar/${avatarId}`,
         method: 'PUT',
         data: { config: newConfig }
       })
-      
+
       if (res.data?.code === 200) {
         setAvatar({ ...avatar, config: newConfig })
         showToast({ title: '已保存', icon: 'success', duration: 1000 })
@@ -100,7 +100,7 @@ export default function AvatarSettingsPage() {
       showToast({ title: '请输入名称', icon: 'none' })
       return
     }
-    
+
     try {
       const res = await Network.request({
         url: `/api/avatar/${avatarId}`,
@@ -110,7 +110,7 @@ export default function AvatarSettingsPage() {
           personality: editPersonality
         }
       })
-      
+
       if (res.data?.code === 200) {
         setAvatar({ ...avatar!, name: editName, personality: editPersonality })
         setEditing(false)
@@ -130,11 +130,11 @@ export default function AvatarSettingsPage() {
 
       // 先检查定位权限设置
       const settingRes = await getSetting()
-      
-      if (!settingRes.authSetting['scope.userLocation']) {
+
+      if (!settingRes.authSetting['scope.userFuzzyLocation']) {
         // 未授权，尝试请求授权
         try {
-          await getLocation({
+          await getFuzzyLocation({
             type: 'gcj02'
           })
         } catch (err) {
@@ -145,7 +145,7 @@ export default function AvatarSettingsPage() {
             confirmText: '去设置',
             cancelText: '取消'
           })
-          
+
           if (modalRes.confirm) {
             await openSetting()
           }
@@ -154,7 +154,7 @@ export default function AvatarSettingsPage() {
       }
 
       // 获取位置
-      const locationRes = await getLocation({
+      const locationRes = await getFuzzyLocation({
         type: 'gcj02'
       })
 
@@ -204,43 +204,43 @@ export default function AvatarSettingsPage() {
   }
 
   const settingItems = [
-    { 
-      key: 'voice_enabled', 
-      title: '语音回复', 
+    {
+      key: 'voice_enabled',
+      title: '语音回复',
       desc: '分身用语音回复你',
-      icon: Volume2, 
+      icon: Volume2,
       color: '#00f5ff',
       enabled: avatar?.config?.voice_enabled ?? false
     },
-    { 
-      key: 'notification_enabled', 
-      title: '消息通知', 
+    {
+      key: 'notification_enabled',
+      title: '消息通知',
       desc: '分身主动提醒你',
-      icon: Bell, 
+      icon: Bell,
       color: '#bf00ff',
       enabled: avatar?.config?.notification_enabled ?? true
     },
-    { 
-      key: 'night_mode', 
-      title: '夜间模式', 
+    {
+      key: 'night_mode',
+      title: '夜间模式',
       desc: '夜间自动降低活跃度',
-      icon: Moon, 
+      icon: Moon,
       color: '#6366f1',
       enabled: avatar?.config?.night_mode ?? true
     },
-    { 
-      key: 'auto_learning', 
-      title: '自动学习', 
+    {
+      key: 'auto_learning',
+      title: '自动学习',
       desc: '从对话中学习你的习惯',
-      icon: Zap, 
+      icon: Zap,
       color: '#00ff88',
       enabled: avatar?.config?.auto_learning ?? true
     },
-    { 
-      key: 'privacy_mode', 
-      title: '隐私模式', 
+    {
+      key: 'privacy_mode',
+      title: '隐私模式',
       desc: '增强对话隐私保护',
-      icon: Shield, 
+      icon: Shield,
       color: '#ff6b6b',
       enabled: avatar?.config?.privacy_mode ?? false
     }
@@ -265,8 +265,8 @@ export default function AvatarSettingsPage() {
           <View className="as-header-title-container">
             <Text className="as-header-title">分身设置</Text>
           </View>
-          <View 
-            className="as-action-btn" 
+          <View
+            className="as-action-btn"
             style={{ width: `${capsulePlaceholderWidth}rpx` }}
             onClick={() => editing ? saveProfile() : setEditing(true)}
           >
@@ -275,8 +275,8 @@ export default function AvatarSettingsPage() {
         </View>
       </View>
 
-      <ScrollView 
-        className="as-scroll" 
+      <ScrollView
+        className="as-scroll"
         scrollY
       >
         {/* 分身信息 */}
@@ -291,12 +291,12 @@ export default function AvatarSettingsPage() {
                 </View>
               )}
             </View>
-            
+
             {editing ? (
               <View className="as-edit-form">
                 <View className="as-edit-item">
                   <Text className="as-edit-label">名称</Text>
-                  <Input 
+                  <Input
                     className="as-edit-input"
                     value={editName}
                     onInput={e => setEditName(e.detail.value)}
@@ -305,7 +305,7 @@ export default function AvatarSettingsPage() {
                 </View>
                 <View className="as-edit-item">
                   <Text className="as-edit-label">性格</Text>
-                  <Textarea 
+                  <Textarea
                     className="as-edit-textarea"
                     value={editPersonality}
                     onInput={e => setEditPersonality(e.detail.value)}
@@ -384,8 +384,8 @@ export default function AvatarSettingsPage() {
         {/* 托管设置 */}
         <View className="as-section">
           <Text className="as-section-title">托管设置</Text>
-          
-          <View 
+
+          <View
             className="as-menu-item"
             onClick={() => navigateTo({ url: '/package-avatar/pages/avatar-manage/index' })}
           >
