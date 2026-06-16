@@ -51,6 +51,7 @@ const Index: React.FC = () => {
   const [generatedContents, setGeneratedContents] = useState(0)
   const [growthCampaign, setGrowthCampaign] = useState<any>(null)
   const [trackedCampaignId, setTrackedCampaignId] = useState('')
+  const [enabledMenuKeys, setEnabledMenuKeys] = useState<string[]>([])
   const { setAvatarId, isLoggedIn } = useUserStore(state => state)
 
   // 计算实际收益范围
@@ -497,6 +498,19 @@ const Index: React.FC = () => {
     }
   }
 
+  const fetchMenuConfig = async () => {
+    try {
+      const res = await Network.request({ url: '/api/menu-feature/enabled' })
+      if (res.data?.code === 200) {
+        setEnabledMenuKeys(res.data.data || [])
+      }
+    } catch (error) {
+      console.error('获取菜单配置失败:', error)
+      // 如果获取失败，默认显示所有菜单
+      setEnabledMenuKeys(['subscription_center', 'coin_center', 'earning_center', 'skill_square', 'order_publish', 'earnings_wall', 'about_us'])
+    }
+  }
+
   useDidShow(() => {
     loadUserFromStorage().then(() => {
       fetchStats()
@@ -504,6 +518,7 @@ const Index: React.FC = () => {
       fetchAssignedOrders()
       fetchOrders()
       fetchFeeRateRange()
+      fetchMenuConfig()
     }).catch(err => console.error('刷新数据失败:', err))
   })
 
@@ -802,8 +817,9 @@ const Index: React.FC = () => {
 
         {/* 核心数据区 */}
         <View className="stats-section">
+          {/* 收益高亮 - 仅当收益中心菜单启用时显示 */}
           {totalEarnings > 0 && (
-            <View className="earning-highlight" onClick={() => goToPage('/package-profile/pages/earning-center/index')}>
+            <View className="earning-highlight" onClick={() => (enabledMenuKeys.length === 0 || enabledMenuKeys.includes('earning_center')) && goToPage('/package-profile/pages/earning-center/index')}>
               <View className="earning-highlight-left">
                 <TrendingUp size={32} color="#10B981" />
                 <Text className="earning-highlight-label">累计收益</Text>
@@ -845,7 +861,10 @@ const Index: React.FC = () => {
                 {generatedContents > 0 ? '去发布' : '暂无内容'}
               </Text>
             </View>
-            <View className="stat-item" onClick={() => goToPage('/package-profile/pages/earning-center/index')}>
+            <View
+              className="stat-item"
+              onClick={() => (enabledMenuKeys.length === 0 || enabledMenuKeys.includes('earning_center')) && goToPage('/package-profile/pages/earning-center/index')}
+            >
               <View className="stat-icon-small" style={{ background: '#FDF2F8' }}>
                 <Coins size={28} color="#EC4899" />
               </View>

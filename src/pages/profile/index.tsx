@@ -221,10 +221,11 @@ export default function ProfilePage() {
                       <Text className="user-subscription-expire">至 {new Date(userSubscription.endDate).toLocaleDateString('zh-CN')}</Text>
                     )}
                   </View>
-                  <View className="user-coin-row" onClick={() => navigateTo({ url: '/package-coin/pages/index/index' })}>
-                    <Coins size={14} color="#F59E0B" />
-                    <Text className="user-coin-text">{coinBalance.toLocaleString()} 币</Text>
-                  </View>
+                  {enabledMenuKeys.length === 0 || enabledMenuKeys.includes('earning_center') ? (
+                    <View className="user-coin-row" onClick={() => navigateTo({ url: '/package-coin/pages/index/index' })}>
+                      <Coins size={14} color="#F59E0B" />
+                      <Text className="user-coin-text">{coinBalance.toLocaleString()} 币</Text>
+                    </View>) : null}
                 </View>
               </>
             ) : (
@@ -252,21 +253,23 @@ export default function ProfilePage() {
           </View>
         </View>
 
-        {/* 统计数据 */}
-        <View className="header-stats">
-          <View className="h-stat-item" onClick={() => Taro.switchTab({ url: '/pages/mind-chat/index' })}>
-            <Text className="h-stat-value">{stats.avatarCount}</Text>
-            <Text className="h-stat-label">AI分身</Text>
+        {/* 统计数据 - 仅当收益中心菜单启用时显示 */}
+        {enabledMenuKeys.length === 0 || enabledMenuKeys.includes('earning_center') ? (
+          <View className="header-stats">
+            <View className="h-stat-item" onClick={() => Taro.switchTab({ url: '/pages/mind-chat/index' })}>
+              <Text className="h-stat-value">{stats.avatarCount}</Text>
+              <Text className="h-stat-label">AI分身</Text>
+            </View>
+            <View className="h-stat-item" onClick={() => navigateTo({ url: '/package-profile/pages/earning-center/index' })}>
+              <Text className="h-stat-value">¥{stats.totalEarnings.toFixed(2)}</Text>
+              <Text className="h-stat-label">累计收益</Text>
+            </View>
+            <View className="h-stat-item" onClick={() => navigateTo({ url: '/package-profile/pages/earning-center/index' })}>
+              <Text className="h-stat-value">¥{stats.totalWithdraw.toFixed(2)}</Text>
+              <Text className="h-stat-label">累计提现</Text>
+            </View>
           </View>
-          <View className="h-stat-item" onClick={() => navigateTo({ url: '/package-profile/pages/earning-center/index' })}>
-            <Text className="h-stat-value">¥{stats.totalEarnings.toFixed(2)}</Text>
-            <Text className="h-stat-label">累计收益</Text>
-          </View>
-          <View className="h-stat-item" onClick={() => navigateTo({ url: '/package-profile/pages/earning-center/index' })}>
-            <Text className="h-stat-value">¥{stats.totalWithdraw.toFixed(2)}</Text>
-            <Text className="h-stat-label">累计提现</Text>
-          </View>
-        </View>
+        ) : null}
       </View>
 
       <ScrollView className="menu-scroll" scrollY>
