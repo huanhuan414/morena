@@ -44,15 +44,15 @@ interface UserSubscription {
   endDate: string
 }
 
-// 菜单项配置
+// 菜单项配置（定义基础菜单）
 const menuItems = [
-  { title: '订阅中心', icon: Crown, desc: '升级解锁更多功能', type: 'primary', path: '/package-avatar/pages/subscription/index', requireLogin: true },
-  { title: '币中心', icon: Coins, desc: '充值和交易记录', type: 'warning', path: '/package-coin/pages/index/index' },
-  { title: '收益中心', icon: Wallet, desc: '查看收益和提现', type: 'warning', path: '/package-profile/pages/earning-center/index', requireLogin: false },
-  { title: '技能广场', icon: Sparkles, desc: '解锁更多能力', type: 'success', path: '/package-skill/pages/skills-square/index', requireLogin: true },
-  { title: '我要发单', icon: FileText, desc: '发布和管理订单', type: 'info', path: '/package-order/pages/order-list/index', requireLogin: true },
-  { title: '工资墙', icon: Trophy, desc: '收益排行榜', type: 'primary', path: '/package-profile/pages/earnings-wall/index', requireLogin: false },
-  { title: '关于我们', icon: Info, desc: '版本 v1.0.0', type: 'default', path: '/package-profile/pages/about/index', requireLogin: false }
+  { title: '订阅中心', icon: Crown, desc: '升级解锁更多功能', type: 'primary', path: '/package-avatar/pages/subscription/index', requireLogin: true, key: 'subscription_center' },
+  { title: '币中心', icon: Coins, desc: '充值和交易记录', type: 'warning', path: '/package-coin/pages/index/index', requireLogin: true, key: 'coin_center' },
+  { title: '收益中心', icon: Wallet, desc: '查看收益和提现', type: 'warning', path: '/package-profile/pages/earning-center/index', requireLogin: true, key: 'earning_center' },
+  { title: '技能广场', icon: Sparkles, desc: '解锁更多能力', type: 'success', path: '/package-skill/pages/skills-square/index', requireLogin: true, key: 'skill_square' },
+  { title: '我要发单', icon: FileText, desc: '发布和管理订单', type: 'info', path: '/package-order/pages/order-list/index', requireLogin: true, key: 'order_publish' },
+  { title: '工资墙', icon: Trophy, desc: '收益排行榜', type: 'primary', path: '/package-profile/pages/earnings-wall/index', requireLogin: false, key: 'earnings_wall' },
+  { title: '关于我们', icon: Info, desc: '版本 v1.0.0', type: 'default', path: '/package-profile/pages/about/index', requireLogin: false, key: 'about_us' }
 ]
 
 const typeColorMap: Record<string, string> = {
@@ -61,7 +61,8 @@ const typeColorMap: Record<string, string> = {
   warning: '#F59E0B',
   danger: '#EF4444',
   info: '#3B82F6',
-  default: '#64748B'
+  default: '#64748B',
+  silver: '#9CA3AF'
 }
 
 const typeBgMap: Record<string, string> = {
@@ -70,7 +71,8 @@ const typeBgMap: Record<string, string> = {
   warning: '#FEF3C7',
   danger: '#FEE2E2',
   info: '#E0F2FE',
-  default: '#F1F5F9'
+  default: '#F1F5F9',
+  silver: '#F3F4F6'
 }
 
 export default function ProfilePage() {
@@ -86,11 +88,26 @@ export default function ProfilePage() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [userSubscription, setUserSubscription] = useState<UserSubscription | null>(null)
   const [silenceUntil, setSilenceUntil] = useState<string | null>(null) // 用户静默截止时间
+  const [enabledMenuKeys, setEnabledMenuKeys] = useState<string[]>([]) // 从后端获取的启用菜单key列表
 
   useDidShow(() => {
     fetchStats()
     fetchUnreadCount()
+    fetchMenuConfig()
   })
+
+  const fetchMenuConfig = async () => {
+    try {
+      const res = await Network.request({ url: '/api/menu-feature/enabled' })
+      if (res.data?.code === 200) {
+        setEnabledMenuKeys(res.data.data || [])
+      }
+    } catch (error) {
+      console.error('获取菜单配置失败:', error)
+      // 如果获取失败，默认显示所有菜单
+      setEnabledMenuKeys(menuItems.map(item => item.key))
+    }
+  }
 
   const fetchStats = async () => {
     try {
@@ -255,35 +272,37 @@ export default function ProfilePage() {
       <ScrollView className="menu-scroll" scrollY>
         {/* 功能菜单 */}
         <View className="menu-section">
-          {menuItems.map((item, idx) => {
-            const Icon = item.icon
-            const iconColor = typeColorMap[item.type]
-            const bgColor = typeBgMap[item.type]
-            const handleMenuClick = () => {
-              if (!item.path) return
-              if (item.requireLogin && !isLoggedIn) {
-                navigateTo({ url: `/pages/login/index?redirect=${encodeURIComponent(item.path)}` })
-                return
+          {menuItems
+            .filter(item => enabledMenuKeys.length === 0 || enabledMenuKeys.includes(item.key))
+            .map((item, idx) => {
+              const Icon = item.icon
+              const iconColor = typeColorMap[item.type]
+              const bgColor = typeBgMap[item.type]
+              const handleMenuClick = () => {
+                if (!item.path) return
+                if (item.requireLogin && !isLoggedIn) {
+                  navigateTo({ url: `/pages/login/index?redirect=${encodeURIComponent(item.path)}` })
+                  return
+                }
+                navigateTo({ url: item.path })
               }
-              navigateTo({ url: item.path })
-            }
-            return (
-              <View
-                key={idx}
-                className="menu-item"
-                onClick={handleMenuClick}
-              >
-                <View className="menu-icon-wrap" style={{ backgroundColor: bgColor }}>
-                  <Icon size={20} color={iconColor} />
+              return (
+                <View
+                  key={idx}
+                  className="menu-item"
+                  onClick={handleMenuClick}
+                >
+                  <View className="menu-icon-wrap" style={{ backgroundColor: bgColor }}>
+                    <Icon size={20} color={iconColor} />
+                  </View>
+                  <View className="menu-content">
+                    <Text className="menu-title">{item.title}</Text>
+                    <Text className="menu-desc">{item.desc}</Text>
+                  </View>
+                  <ChevronRight size={20} color="#cccccc" />
                 </View>
-                <View className="menu-content">
-                  <Text className="menu-title">{item.title}</Text>
-                  <Text className="menu-desc">{item.desc}</Text>
-                </View>
-                <ChevronRight size={20} color="#cccccc" />
-              </View>
-            )
-          })}
+              )
+            })}
         </View>
 
         {/* 退出按钮 - 仅登录后显示 */}
