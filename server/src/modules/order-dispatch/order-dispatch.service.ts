@@ -2649,7 +2649,8 @@ async getExecutionProgress(orderId: string) {
     if (!order) {
       return { success: false, message: '订单不存在' }
     }
-    if (order.userId !== operatorUserId) {
+    const orderUserId = order.user_id || order.userId
+    if (orderUserId !== operatorUserId) {
       return { success: false, message: '只有发单方可以踢出分身' }
     }
 
@@ -2816,8 +2817,7 @@ async getExecutionProgress(orderId: string) {
 
     return {
       success: true,
-      message: autoAcceptedAvatar ? '已踢出超时分身，等待中的分身已自动接单' : '已踢出超时分身，名额已释放',
-      autoAcceptedAvatar,
+      message: '已踢出超时分身，名额已释放',
     }
   }
 }
