@@ -764,6 +764,53 @@ export class SubscriptionService {
   }
 
   /**
+   * 获取奖励配置（从 reward_configs 表读取）
+   * 包括订阅送积分、首次登录奖励等
+   * @returns { subscriptionBonus, firstLoginBonus } 奖励配置
+   */
+  async getRewardConfigs(): Promise<{
+    subscriptionBonus: {
+      free: string
+      basic: string
+      pro: string
+      enterprise: string
+    }
+    firstLoginBonus: string
+  }> {
+    const db = getMySQLClient()
+    
+    // 查询订阅奖励配置
+    const bonusRows = await db.query(
+      `SELECT \`key\`, value 
+       FROM reward_configs 
+       WHERE \`key\` IN (?, ?, ?, ?) AND enabled = 1`,
+      ['basic_coin_reward', 'pro_coin_reward', 'enterprise_coin_reward', 'first_avatar_coin_reward']
+    ) as any[]
+
+    const config: Record<string, string> = {}
+    for (const row of bonusRows || []) {
+      const key = row.key || row['key']
+      const value = row.value || row['value']
+      if (key) {
+        config[key] = value
+      }
+    }
+
+    const result = {
+      subscriptionBonus: {
+        free: config['free_coin_reward'] || '0',
+        basic: config['basic_coin_reward'] || '100',
+        pro: config['pro_coin_reward'] || '300',
+        enterprise: config['enterprise_coin_reward'] || '500',
+      },
+      firstLoginBonus: config['first_avatar_coin_reward'] || '100',
+    }
+
+    console.log('[getRewardConfigs] 返回结果:', JSON.stringify(result))
+    return result
+  }
+
+  /**
    * 批量获取用户所有技能的使用情况
    * @param userId 用户ID
    * @param skillTypes 技能类型列表

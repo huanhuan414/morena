@@ -45,9 +45,11 @@ const COMPARISON_ITEMS = [
   { key: 'customAvatarAccept', label: '自定义分身接单', icon: Users, freeVal: false, basicVal: false, proVal: true, enterpriseVal: true },
   { key: 'maxAvatars', label: '分身数量', icon: Users, freeVal: '1个', basicVal: '3个', proVal: '10个', enterpriseVal: '不限' },
   { key: 'concurrentOrders', label: '同时接单', icon: Layers, freeVal: '1个', basicVal: '3个', proVal: '10个', enterpriseVal: '不限' },
+  { key: 'subscriptionPoints', label: '积分赠送(积分/月)', icon: Sparkles, freeVal: '0', basicVal: '100', proVal: '300', enterpriseVal: '500' },
+  { key: 'firstLoginBonus', label: '首次登录', icon: Zap, singleVal: '100' },
   // === 技能广场权益 ===
   { key: 'section_skill', label: '【技能广场权益】', icon: Bot, freeVal: '', basicVal: '', proVal: '', enterpriseVal: '', isSection: true },
-  { key: 'textGen', label: '文本生成', icon: Sparkles, freeVal: '不限', basicVal: '不限', proVal: '不限', enterpriseVal: '不限' },
+  // { key: 'textGen', label: '文本生成', icon: Sparkles, freeVal: '不限', basicVal: '不限', proVal: '不限', enterpriseVal: '不限' },
   { key: 'imageGen', label: '图片生成', icon: Palette, freeVal: '普通速度', basicVal: '普通速度', proVal: '⚡加速', enterpriseVal: '🚀超速' },
   { key: 'videoGen', label: '视频生成', icon: Sparkles, freeVal: '普通速度', basicVal: '普通速度', proVal: '⚡加速', enterpriseVal: '🚀超速' },
   { key: 'wechatMpArticle', label: '公众号文章', icon: Sparkles, freeVal: false, basicVal: '1篇/日', proVal: '3篇/日', enterpriseVal: '不限' },
@@ -71,6 +73,10 @@ export default function SubscriptionPage() {
   const [purchasing, setPurchasing] = useState(false)
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [discountInfo, setDiscountInfo] = useState<{ eligible: boolean; discountRate: number }>({ eligible: false, discountRate: 1.0 })
+  const [rewardConfig, setRewardConfig] = useState<{
+    subscriptionBonus: { free: string; basic: string; pro: string; enterprise: string }
+    firstLoginBonus: string
+  } | null>(null)
 
   useLoad(() => {
     const systemInfo = getSystemInfoSync()
@@ -78,6 +84,7 @@ export default function SubscriptionPage() {
     fetchPlans()
     fetchUserSubscription()
     fetchDiscountInfo()
+    fetchRewardConfig()
   })
 
   const fetchPlans = async () => {
@@ -115,6 +122,17 @@ export default function SubscriptionPage() {
       }
     } catch (error) {
       console.error('获取优惠信息失败:', error)
+    }
+  }
+
+  const fetchRewardConfig = async () => {
+    try {
+      const res = await Network.request({ url: '/api/subscription/reward-configs' })
+      if (res.data?.code === 200 && res.data.data) {
+        setRewardConfig(res.data.data)
+      }
+    } catch (error) {
+      console.error('获取奖励配置失败:', error)
     }
   }
 
@@ -190,6 +208,12 @@ export default function SubscriptionPage() {
   const getFeatureVal = (planId: string, item: typeof COMPARISON_ITEMS[0]) => {
     if ((item as any).isSection) return null
     const planKey = planId.replace('plan_', '') as 'free' | 'basic' | 'pro' | 'enterprise'
+
+    // 动态获取订阅送积分
+    if (item.key === 'subscriptionPoints' && rewardConfig) {
+      return rewardConfig.subscriptionBonus[planKey] || item.freeVal
+    }
+
     const valMap: Record<string, any> = {
       free: item.freeVal,
       basic: item.basicVal,
@@ -197,6 +221,14 @@ export default function SubscriptionPage() {
       enterprise: item.enterpriseVal,
     }
     return valMap[planKey]
+  }
+
+  // 获取单值（如首次登录）
+  const getSingleVal = (item: typeof COMPARISON_ITEMS[0]) => {
+    if (item.key === 'firstLoginBonus' && rewardConfig) {
+      return rewardConfig.firstLoginBonus || '100'
+    }
+    return (item as any).singleVal || ''
   }
 
   const renderVal = (val: any, isPro?: boolean) => {
@@ -492,6 +524,18 @@ export default function SubscriptionPage() {
                         </View>
                       )
                     }
+
+                    // 如果有 singleVal，渲染跨列居中显示
+                    if ((item as any).singleVal !== undefined || item.key === 'firstLoginBonus') {
+                      return (
+                        <View key={item.key} className={`sub-compare-body-row sub-compare-body-row-single ${idx % 2 === 0 ? 'sub-compare-row-even' : ''}`}>
+                          <View className="sub-compare-body-cell-single">
+                            {renderVal(getSingleVal(item))}
+                          </View>
+                        </View>
+                      )
+                    }
+
                     return (
                       <View key={item.key} className={`sub-compare-body-row ${idx % 2 === 0 ? 'sub-compare-row-even' : ''}`}>
                         {PLAN_COLUMNS.map(col => (

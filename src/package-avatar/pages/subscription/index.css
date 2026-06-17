@@ -539,6 +539,19 @@
   justify-content: center;
   padding: 8rpx 4rpx;
 }
+.sub-compare-body-row-single {
+  display: flex;
+  min-height: 72rpx;
+  border-bottom: 1rpx solid #f1f5f9;
+}
+.sub-compare-body-cell-single {
+  flex: 1;
+  min-width: 520rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8rpx 4rpx;
+}
 .sub-compare-val-text {
   font-size: 20rpx;
   color: #334155;

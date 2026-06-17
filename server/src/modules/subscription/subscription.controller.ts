@@ -160,6 +160,17 @@ export class SubscriptionController {
     return { code: 500, data: { allowed: false }, message: '校验失败' }
   }
 
+  @Get('reward-configs')
+  async getRewardConfigs() {
+    try {
+      const config = await this.subscriptionService.getRewardConfigs()
+      return { code: 200, data: config, message: '获取成功' }
+    } catch (e) {
+      console.error('[SubscriptionController] getRewardConfigs error:', e.message)
+      return { code: 500, data: null, message: '获取失败' }
+    }
+  }
+
   @Post('record-skill-usage')
   async recordSkillUsage(
     @Body('userId') userId: string,
