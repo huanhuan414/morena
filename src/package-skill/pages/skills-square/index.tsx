@@ -318,7 +318,7 @@ export default function SkillsSquare() {
                             {skillPrice > 0 && (
                               <View className="skill-tag skill-tag-price">
                                 <Coins size={10} color="#8B5CF6" />
-                                <Text className="block skill-tag-text-price">{skillPrice}币/次</Text>
+                                <Text className="block skill-tag-text-price">{skillPrice}积分/次</Text>
                               </View>
                             )}
                             <View className="skill-tag skill-tag-earn">

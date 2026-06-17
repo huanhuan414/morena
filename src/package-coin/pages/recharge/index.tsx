@@ -106,7 +106,7 @@ export default function RechargePage() {
 
         try {
           await Taro.requestPayment(requestPayParams)
-          Taro.showToast({ title: `充值成功，获得${payParams.totalCoins}币`, icon: 'success' })
+          Taro.showToast({ title: `充值成功，获得${payParams.totalCoins}积分`, icon: 'success' })
           setTimeout(() => {
             Taro.navigateBack()
           }, 1500)
@@ -152,7 +152,7 @@ export default function RechargePage() {
           </View>
           <View className="recharge-balance-info">
             <Text className="recharge-balance-label">当前余额</Text>
-            <Text className="recharge-balance-value">{balance.toLocaleString()} 币</Text>
+            <Text className="recharge-balance-value">{balance.toLocaleString()} 积分</Text>
           </View>
         </View>
 
@@ -175,12 +175,12 @@ export default function RechargePage() {
                 >
                   {hasBonus && (
                     <View className="recharge-package-badge">
-                      <Text className="recharge-package-badge-text">送{pkg.bonus}币</Text>
+                      <Text className="recharge-package-badge-text">送{pkg.bonus}积分</Text>
                     </View>
                   )}
                   <View className="recharge-package-coins">
                     <Text className="recharge-package-coins-value">{totalCoins}</Text>
-                    <Text className="recharge-package-coins-unit">币</Text>
+                    <Text className="recharge-package-coins-unit">积分</Text>
                   </View>
                   <View className="recharge-package-price">
                     <Text className="recharge-package-price-symbol">¥</Text>
@@ -201,17 +201,17 @@ export default function RechargePage() {
           <View className="recharge-summary-section">
             <View className="recharge-summary-row">
               <Text className="recharge-summary-label">充值数量</Text>
-              <Text className="recharge-summary-value">{selectedPkg.coins} 币</Text>
+              <Text className="recharge-summary-value">{selectedPkg.coins} 积分</Text>
             </View>
             {selectedPkg.bonus > 0 && (
               <View className="recharge-summary-row bonus">
                 <Text className="recharge-summary-label">赠送数量</Text>
-                <Text className="recharge-summary-value">+{selectedPkg.bonus} 币</Text>
+                <Text className="recharge-summary-value">+{selectedPkg.bonus} 积分</Text>
               </View>
             )}
             <View className="recharge-summary-row total">
               <Text className="recharge-summary-label">合计获得</Text>
-              <Text className="recharge-summary-value">{selectedPkg.coins + selectedPkg.bonus} 币</Text>
+              <Text className="recharge-summary-value">{selectedPkg.coins + selectedPkg.bonus} 积分</Text>
             </View>
           </View>
         )}

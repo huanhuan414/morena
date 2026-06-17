@@ -100,7 +100,7 @@ export default function CoinCenter() {
           <View className="coin-back-btn" onClick={() => Taro.navigateBack()}>
             <ArrowLeft size={20} color="#fff" />
           </View>
-          <Text className="coin-header-title">币中心</Text>
+          <Text className="coin-header-title">积分中心</Text>
           <View className="coin-header-right" />
         </View>
       </View>
@@ -114,7 +114,7 @@ export default function CoinCenter() {
             <Text className="coin-balance-label">我的余额</Text>
             <View className="coin-balance-value-row">
               <Text className="coin-balance-value">{balance.toLocaleString()}</Text>
-              <Text className="coin-balance-unit">币</Text>
+              <Text className="coin-balance-unit">积分</Text>
             </View>
           </View>
           <View className="coin-recharge-btn" onClick={() => Taro.navigateTo({ url: '/package-coin/pages/recharge/index' })}>
@@ -129,7 +129,7 @@ export default function CoinCenter() {
             </View>
             <View className="coin-menu-content">
               <Text className="coin-menu-title">充值</Text>
-              <Text className="coin-menu-desc">购买币，享受更多服务</Text>
+              <Text className="coin-menu-desc">购买积分，享受更多服务</Text>
             </View>
             <ChevronRight size={20} color="#9CA3AF" />
           </View>
@@ -185,8 +185,8 @@ export default function CoinCenter() {
             <Text className="coin-tips-title">使用说明</Text>
           </View>
           <View className="coin-tips-list">
-            <Text className="coin-tips-item">• 币可用于技能广场的所有技能生成</Text>
-            <Text className="coin-tips-item">• 不同技能消耗的币数量不同</Text>
+            <Text className="coin-tips-item">• 积分可用于技能广场的所有技能生成</Text>
+            <Text className="coin-tips-item">• 不同技能消耗的积分数量不同</Text>
             <Text className="coin-tips-item">• 充值越多，赠送越多</Text>
             <Text className="coin-tips-item">• 生成失败会自动退款</Text>
           </View>

@@ -47,7 +47,7 @@ interface UserSubscription {
 // 菜单项配置（定义基础菜单）
 const menuItems = [
   { title: '订阅中心', icon: Crown, desc: '升级解锁更多功能', type: 'primary', path: '/package-avatar/pages/subscription/index', requireLogin: true, key: 'subscription_center' },
-  { title: '币中心', icon: Coins, desc: '充值和交易记录', type: 'warning', path: '/package-coin/pages/index/index', requireLogin: true, key: 'coin_center' },
+  { title: '积分中心', icon: Coins, desc: '充值和交易记录', type: 'warning', path: '/package-coin/pages/index/index', requireLogin: true, key: 'coin_center' },
   { title: '收益中心', icon: Wallet, desc: '查看收益和提现', type: 'warning', path: '/package-profile/pages/earning-center/index', requireLogin: true, key: 'earning_center' },
   { title: '技能广场', icon: Sparkles, desc: '解锁更多能力', type: 'success', path: '/package-skill/pages/skills-square/index', requireLogin: true, key: 'skill_square' },
   { title: '我要发单', icon: FileText, desc: '发布和管理订单', type: 'info', path: '/package-order/pages/order-list/index', requireLogin: true, key: 'order_publish' },
@@ -224,7 +224,7 @@ export default function ProfilePage() {
                   {enabledMenuKeys.length === 0 || enabledMenuKeys.includes('earning_center') ? (
                     <View className="user-coin-row" onClick={() => navigateTo({ url: '/package-coin/pages/index/index' })}>
                       <Coins size={14} color="#F59E0B" />
-                      <Text className="user-coin-text">{coinBalance.toLocaleString()} 币</Text>
+                      <Text className="user-coin-text">{coinBalance.toLocaleString()} 积分</Text>
                     </View>) : null}
                 </View>
               </>
