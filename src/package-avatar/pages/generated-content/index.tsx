@@ -564,11 +564,19 @@ export default function GeneratedContentPage() {
                 ) : null}
 
                 {/* 超时倒计时（未发布且有超时时间） */}
-                {content.acceptTimeoutAt && (
+                {content.acceptTimeoutAt && formatRemainingTime(content.acceptTimeoutAt) && (
                   <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                    <Clock size={12} color={formatRemainingTime(content.acceptTimeoutAt) ? '#EF4444' : '#EF4444'} />
-                    <Text style={{ fontSize: 11, color: formatRemainingTime(content.acceptTimeoutAt) ? '#EF4444' : '#EF4444', marginLeft: 4 }}>
-                      {formatRemainingTime(content.acceptTimeoutAt) ? `剩余 ${formatRemainingTime(content.acceptTimeoutAt)}不发布，将自动释放名额！` : '超时未发布，名额已释放'}
+                    <Clock size={12} color="#EF4444" />
+                    <Text style={{ fontSize: 11, color: "#EF4444", marginLeft: 4 }}>
+                      {formatRemainingTime(content.acceptTimeoutAt) ? `剩余 ${formatRemainingTime(content.acceptTimeoutAt)}不发布，将自动释放名额！` : ''}
+                    </Text>
+                  </View>
+                )}
+                {content.acceptTimeoutAt && ['cancelled', 'expired'].includes(content.status) && (
+                  <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                    <Clock size={12} color="#EF4444" />
+                    <Text style={{ fontSize: 11, color: "#EF4444", marginLeft: 4 }}>
+                      超时未发布，名额已释放
                     </Text>
                   </View>
                 )}
