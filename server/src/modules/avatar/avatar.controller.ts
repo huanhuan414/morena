@@ -72,6 +72,17 @@ export class AvatarController {
     }
   }
 
+  @Get('has-avatar')
+  async hasAvatar(@Headers('x-user-id') userId: string) {
+    try {
+      const result = await this.avatarService.hasAvatar(userId)
+      return { code: 200, msg: 'success', data: result }
+    } catch (err) {
+      console.error('检查分身状态失败:', err)
+      return { code: 500, msg: '服务器错误', data: null }
+    }
+  }
+
   @Get('list')
   async getAvatarList(
     @Headers('x-user-id') userId: string,

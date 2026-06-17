@@ -117,7 +117,7 @@ export class AvatarService {
         console.log(`[AvatarService] 查询分身数量: userId=${effectiveUserId}`)
         
         const [countRows] = await db.query(
-          'SELECT COUNT(*) as cnt FROM avatars WHERE user_id = ? AND status = "active"',
+          'SELECT COUNT(1) as cnt FROM avatars WHERE user_id = ? AND status = "active"',
           [effectiveUserId]
         ) as any[]
         console.log(`[AvatarService] 查询结果原始:`, JSON.stringify(countRows))
@@ -194,9 +194,9 @@ export class AvatarService {
 
       let isFirstAvatar = false
       try {
-        const countResult = await db.query('SELECT COUNT(*) as count FROM avatars WHERE user_id = ?', [effectiveUserId || 'dev_user'])
+        const countResult = await db.query('SELECT COUNT(1) as count FROM avatars WHERE user_id = ? AND status = "active"', [effectiveUserId || 'dev_user'])
         const row = (countResult as any)?.data?.[0] || (Array.isArray(countResult) ? (countResult as any)[0] : null)
-        const count = Number(row?.count ?? row?.['COUNT(*)'] ?? 0)
+        const count = Number(row?.count ?? row?.['COUNT(1)'] ?? 0)
         isFirstAvatar = count === 0
       } catch {}
 
@@ -265,6 +265,11 @@ export class AvatarService {
         const cachedAvatars = sharedCache.get(cacheKey) || []
         cachedAvatars.unshift(newAvatar)
         sharedCache.set(cacheKey, cachedAvatars)
+
+        // 发放首次创建分身奖励
+        if (isFirstAvatar && effectiveUserId && !TEST_USER_IDS.includes(effectiveUserId)) {
+          await this.giftFirstAvatarReward(effectiveUserId)
+        }
 
         return { success: true, id: (result as any)?.data?.insertId, data: newAvatar }
       }
@@ -1257,5 +1262,101 @@ export class AvatarService {
    */
   async reverseGeocode(latitude: number, longitude: number) {
     return this.reverseGeocodingService.reverseGeocode(latitude, longitude)
+  }
+
+  /**
+   * 发放首次创建分身奖励
+   * @param userId - 用户ID
+   */
+  private async giftFirstAvatarReward(userId: string): Promise<void> {
+    console.log(`[AvatarService] giftFirstAvatarReward 开始执行首次送积分, userId=${userId}`)
+    const pool = getPool()
+    const connection = await pool.getConnection()
+    const db = getMySQLClient()
+    
+    try {
+      await connection.beginTransaction()
+      // 查询用户状态和余额
+      const [userRows] = await connection.query(
+        'SELECT first_avatar_gifted, coins FROM users WHERE id = ?',
+        [userId]
+      )
+      const user = (userRows as any[])?.[0]
+     
+      if (!user || user.first_avatar_gifted === 1) {
+        await connection.commit()
+        return
+      }
+      // 从配置表获取奖励金额
+      const [configRows] = await connection.query(
+        'SELECT value FROM reward_configs WHERE `key` = ? AND enabled = 1',
+        ['first_avatar_coin_reward']
+      )
+      const config = (configRows as any[])?.[0]
+      const rewardAmount = Number(config?.value || 100)
+      
+      const balanceBefore = Number(user.coins || 0)
+      const balanceAfter = balanceBefore + rewardAmount
+
+      // 更新用户余额和奖励状态
+      await connection.query(
+        'UPDATE users SET coins = coins + ?, first_avatar_gifted = 1 WHERE id = ?',
+        [rewardAmount, userId]
+      )
+
+      // 记录交易
+      const transactionId = `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      await connection.query(
+        `INSERT INTO coin_transactions (id, user_id, type, amount, balance_before, balance_after, description, created_at)
+         VALUES (?, ?, 'gift', ?, ?, ?, '首次创建分身奖励', NOW())`,
+        [transactionId, userId, rewardAmount, balanceBefore, balanceAfter]
+      )
+
+      await connection.commit()
+      console.log(`[AvatarService] 首次创建分身奖励发放成功: userId=${userId}, amount=${rewardAmount}`)
+    } catch (error) {
+      await connection.rollback()
+      console.error('[AvatarService] 发放首次创建分身奖励失败:', error.message)
+    } finally {
+      connection.release()
+    }
+  }
+
+  async hasAvatar(userId: string): Promise<{ hasAvatar: boolean; firstAvatarGifted: boolean }> {
+    if (!userId || TEST_USER_IDS.includes(userId)) {
+      return { hasAvatar: false, firstAvatarGifted: false }
+    }
+
+    const db = getMySQLClient()
+    
+    // 检查是否有分身
+    const avatarResult = await db.query(
+      `SELECT COUNT(1) as count FROM avatars WHERE user_id = ? and status = 'active'`,
+      [userId]
+    )
+    // 处理多种可能的返回格式
+    const avatarData = avatarResult?.data || (Array.isArray(avatarResult) ? avatarResult : [])
+    const avatarRow = avatarData[0]
+    const hasAvatar = Number(avatarRow?.count || 0) > 0
+
+    // 检查是否已领取首次创建分身奖励
+    const userResult = await db.query(
+      'SELECT first_avatar_gifted FROM users WHERE id = ?',
+      [userId]
+    )
+    // 处理多种可能的返回格式
+    const userData = userResult?.data || (Array.isArray(userResult) ? userResult : [])
+    const userRow = userData[0]
+    
+    // 检查 first_avatar_gifted 字段
+    let firstAvatarGifted = false
+    if (userRow) {
+      // 尝试不同的字段名格式
+      const giftedValue = userRow.first_avatar_gifted ?? userRow.firstAvatarGifted ?? userRow['first_avatar_gifted']
+      if (giftedValue !== null && giftedValue !== undefined) {
+        firstAvatarGifted = Number(giftedValue) === 1
+      }
+    }
+    return { hasAvatar, firstAvatarGifted }
   }
 }

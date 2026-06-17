@@ -65,6 +65,7 @@ const Login: React.FC = () => {
     } as any)
 
     Taro.showToast({ title: data.isNewUser ? '注册成功' : '登录成功', icon: 'success', duration: 1500 })
+
     setTimeout(() => {
       doNavigate()
     }, 1600)
@@ -146,7 +147,7 @@ const Login: React.FC = () => {
       // 获取设备ID
       let deviceId = ''
       try {
-        const deviceInfo = await Taro.getDeviceInfo()
+        const deviceInfo = await Taro.getDeviceInfo() as any
         deviceId = deviceInfo.deviceId || `${deviceInfo.brand}_${deviceInfo.model}_${Date.now()}`
       } catch (err) {
         deviceId = `unknown_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -264,7 +265,7 @@ const Login: React.FC = () => {
       // 获取设备ID
       let deviceId = ''
       try {
-        const deviceInfo = await Taro.getDeviceInfo()
+        const deviceInfo = await Taro.getDeviceInfo() as any
         deviceId = deviceInfo.deviceId || `${deviceInfo.brand}_${deviceInfo.model}_${Date.now()}`
       } catch (err) {
         deviceId = `unknown_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`

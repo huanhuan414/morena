@@ -52,7 +52,7 @@ const Index: React.FC = () => {
   const [growthCampaign, setGrowthCampaign] = useState<any>(null)
   const [trackedCampaignId, setTrackedCampaignId] = useState('')
   const [enabledMenuKeys, setEnabledMenuKeys] = useState<string[]>([])
-  const { setAvatarId, isLoggedIn } = useUserStore(state => state)
+  const { setAvatarId, isLoggedIn, userInfo } = useUserStore(state => state)
 
   // 计算实际收益范围
   const calcEarningRange = (customBasePrice: number) => {
@@ -519,8 +519,42 @@ const Index: React.FC = () => {
       fetchOrders()
       fetchFeeRateRange()
       fetchMenuConfig()
+      checkAvatarReminder()
     }).catch(err => console.error('刷新数据失败:', err))
   })
+
+  const checkAvatarReminder = async () => {
+    if (!isLoggedIn || !userInfo?.id) return
+
+    try {
+      // 检查用户是否有分身及是否已领取奖励
+      const res = await Network.request({
+        url: '/api/avatar/has-avatar',
+        method: 'GET'
+      })
+
+      if (res.data?.code === 200) {
+        const { hasAvatar, firstAvatarGifted } = res.data.data || {}
+
+        // 只有当用户没有分身且未领取过奖励时才弹窗提醒
+        if (!hasAvatar && !firstAvatarGifted) {
+          const modalRes = await Taro.showModal({
+            title: '创建分身送积分',
+            content: '创建你的第一个分身即可获得100积分奖励，快去试试吧~',
+            confirmText: '去创建',
+            cancelText: '稍后',
+            showCancel: true
+          })
+
+          if (modalRes.confirm) {
+            Taro.navigateTo({ url: '/package-avatar/pages/avatar-create/index' })
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[Index] 检查分身状态失败:', err)
+    }
+  }
 
   // 平台切换时重新获取订单
   useEffect(() => {
