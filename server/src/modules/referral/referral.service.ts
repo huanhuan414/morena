@@ -195,7 +195,7 @@ export class ReferralService {
     
     const offset = (page - 1) * pageSize
     const referrals = await db.query(
-      `SELECT * FROM referrals WHERE referrer_id = ? ORDER BY created_at DESC`,
+      `SELECT * FROM referrals WHERE referrer_id = ? AND status = 'completed' ORDER BY created_at DESC`,
       [userId]
     ) as any
 

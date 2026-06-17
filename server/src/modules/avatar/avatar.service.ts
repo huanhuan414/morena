@@ -7,6 +7,7 @@ import { getSharedCache } from '../../common/shared-cache'
 import { ReverseGeocodingService } from '../../services/reverse-geocoding.service'
 import { sharedMemoryAvatars } from '../user-stats/user-stats.service'
 import { SubscriptionService } from '../subscription/subscription.service'
+import { ReferralService } from '../referral/referral.service'
 
 // 测试用户ID列表
 const TEST_USER_IDS = ['dev_user', 'test_user', 'guest-user-id', 'anonymous']
@@ -16,6 +17,7 @@ export class AvatarService {
   constructor(
     @Inject(ReverseGeocodingService) private readonly reverseGeocodingService: ReverseGeocodingService,
     @Inject(SubscriptionService) private readonly subscriptionService: SubscriptionService,
+    @Inject(ReferralService) private readonly referralService: ReferralService,
   ) {}
   private avatarColumnsCache: Set<string> | null = null
 
@@ -269,6 +271,21 @@ export class AvatarService {
         // 发放首次创建分身奖励
         if (isFirstAvatar && effectiveUserId && !TEST_USER_IDS.includes(effectiveUserId)) {
           await this.giftFirstAvatarReward(effectiveUserId)
+        }
+
+        // 发放邀请奖励（如果用户是被邀请的）
+        if (effectiveUserId && !TEST_USER_IDS.includes(effectiveUserId)) {
+          try {
+            const db = getMySQLClient()
+            const userRecord = await db.queryOne('users', { id: effectiveUserId }) as any
+            const referrerId = userRecord?.referredBy || userRecord?.invitedBy
+            if (referrerId) {
+              console.log(`[AvatarService] 用户是被邀请的，发放邀请奖励: referrerId=${referrerId}, referredId=${effectiveUserId}`)
+              await this.referralService.distributeRewardAfterAvatarCreated(referrerId, effectiveUserId)
+            }
+          } catch (err: any) {
+            console.warn('[AvatarService] 邀请奖励发放失败:', err.message)
+          }
         }
 
         return { success: true, id: (result as any)?.data?.insertId, data: newAvatar }
