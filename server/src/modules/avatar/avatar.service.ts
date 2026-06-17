@@ -1325,7 +1325,7 @@ export class AvatarService {
       const transactionId = `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       await connection.query(
         `INSERT INTO coin_transactions (id, user_id, type, amount, balance_before, balance_after, description, created_at)
-         VALUES (?, ?, 'gift', ?, ?, ?, '首次创建分身奖励', NOW())`,
+         VALUES (?, ?, 'gift', ?, ?, ?, '首次登录分身创建赠送积分', NOW())`,
         [transactionId, userId, rewardAmount, balanceBefore, balanceAfter]
       )
 

@@ -539,8 +539,8 @@ const Index: React.FC = () => {
         // 只有当用户没有分身且未领取过奖励时才弹窗提醒
         if (!hasAvatar && !firstAvatarGifted) {
           const modalRes = await Taro.showModal({
-            title: '创建分身送积分',
-            content: '创建你的第一个分身即可获得100积分奖励，快去试试吧~',
+            title: '创建分身领取奖励！',
+            content: '完成分身创建，送100积分，解锁技能广场新玩法，享永久免费接单权益。',
             confirmText: '去创建',
             cancelText: '稍后',
             showCancel: true
