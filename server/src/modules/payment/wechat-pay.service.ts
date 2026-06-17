@@ -2,7 +2,7 @@ import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { getMySQLClient } from '../../storage/database/mysql-client';
+import { getMySQLClient, getPool } from '../../storage/database/mysql-client';
 import { ReferralService } from '../referral/referral.service';
 
 // 微信支付V3 API证书序列号
@@ -542,84 +542,150 @@ export class WechatPayService {
    */
   private async activateSubscription(order: any) {
     const db = getMySQLClient();
+    const pool = getPool();
+    const connection = await pool.getConnection();
+
     const metadata = typeof order.metadata === 'string' ? JSON.parse(order.metadata) : (order.metadata || {});
     const planId = metadata.planId || order.planId;
 
     this.logger.log(`激活订阅: userId=${order.userId}, planId=${planId}`);
 
-    const plans = await db.query(
-      `SELECT * FROM subscription_plans WHERE id = ?`,
-      [planId],
-    );
-
-    if (!plans || plans.length === 0) {
-      this.logger.error(`订阅计划不存在: ${planId}`);
-      return;
-    }
-
-    const plan = plans[0];
-    // 读取DB返回值 → camelCase (convertKeysToCamel自动转换)
-    const durationDays = plan.durationDays || 30;
-    const now = new Date();
-    const endDate = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
-    const maxAvatars = plan.maxAvatars || 1;
-    const canReceiveOrders = plan.canReceiveOrders || 0;
-
-    const existing = await db.query(
-      `SELECT * FROM user_subscriptions WHERE user_id = ? AND status = 'active' ORDER BY end_date DESC LIMIT 1`,
-      [order.userId],
-    );
-
-    if (existing && existing.length > 0) {
-      const currentEnd = new Date(existing[0].endDate);
-      const newEndDate = currentEnd > now
-        ? new Date(currentEnd.getTime() + durationDays * 24 * 60 * 60 * 1000)
-        : endDate;
-
-      await db.query(
-        `UPDATE user_subscriptions SET plan_id = ?, end_date = ?, max_avatars = ?, can_receive_orders = ?, updated_at = NOW() WHERE id = ?`,
-        [planId, newEndDate, maxAvatars, canReceiveOrders, existing[0].id],
-      );
-      this.logger.log(`续订成功: userId=${order.userId}, 新到期日=${newEndDate}`);
-    } else {
-      await db.query(
-        `INSERT INTO user_subscriptions (id, user_id, plan_id, status, start_date, end_date, max_avatars, can_receive_orders, created_at, updated_at)
-         VALUES (?, ?, ?, 'active', ?, ?, ?, ?, NOW(), NOW())`,
-        [
-          crypto.randomUUID(),
-          order.userId,
-          planId,
-          now,
-          endDate,
-          maxAvatars,
-          canReceiveOrders,
-        ],
-      );
-      this.logger.log(`新订阅激活: userId=${order.userId}, planId=${planId}, 到期日=${endDate}`);
-    }
-
-    // 集成返佣机制：检查用户是否是被邀请的用户
     try {
-      const referralResult = await db.query(
-        `SELECT * FROM referrals WHERE referred_id = ? AND status = 'completed'`,
+      await connection.beginTransaction();
+
+      const plans = await connection.query(
+        `SELECT * FROM subscription_plans WHERE id = ?`,
+        [planId],
+      );
+
+      if (!plans || (plans as any[]).length === 0) {
+        this.logger.error(`订阅计划不存在: ${planId}`);
+        await connection.rollback();
+        return;
+      }
+
+      const plan = (plans as any[])[0];
+      // 读取DB返回值 → camelCase (convertKeysToCamel自动转换)
+      const durationDays = plan.durationDays || 30;
+      const now = new Date();
+      const endDate = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
+      const maxAvatars = plan.maxAvatars || 1;
+      const canReceiveOrders = plan.canReceiveOrders || 0;
+
+
+      // 创建新订阅记录（每次购买都创建新记录）
+      const subscriptionId = crypto.randomUUID()
+      await connection.query(
+        'INSERT INTO user_subscriptions (id, user_id, plan_id, status, start_date, end_date, max_avatars, can_receive_orders, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())',
+        [subscriptionId, order.userId, planId, 'active', now, endDate, maxAvatars, canReceiveOrders]
+      );
+       // 记录是否是新订阅（用于续费到期时间）
+      const existing = await connection.query(
+        `SELECT * FROM user_subscriptions WHERE user_id = ? AND status = 'active' ORDER BY end_date DESC LIMIT 1`,
         [order.userId],
       ) as any[];
+     this.logger.log(`新订阅激活: userId=${order.userId}, planId=${planId}, 到期日=${endDate}`);
 
-      const referral = referralResult?.[0];
-      if (referral) {
-        const referrerId = referral.referrer_id || referral.referrerId;
-        const amount = Number(order.amount || 0);
+    
+      
 
-        this.logger.log(`检测到被邀请用户订阅，准备处理返佣: userId=${order.userId}, referrerId=${referrerId}, amount=${amount}`);
+    // 发放会员开通积分奖励（仅新订阅时发放）
 
-        // 记录返佣
-        if (this.referralService) {
-          await this.referralService.recordCommission(referrerId, order.userId, 'subscription', amount);
-          this.logger.log(`返佣已记录: referrerId=${referrerId}, amount=${amount}`);
+    await this.giveSubscriptionReward(connection, order.userId, planId);
+    await connection.commit();
+
+      // 集成返佣机制：检查用户是否是被邀请的用户（事务外执行）
+      try {
+        const referralResult = await db.query(
+          `SELECT * FROM referrals WHERE referred_id = ? AND status = 'completed'`,
+          [order.userId],
+        ) as any[];
+
+        const referral = referralResult?.[0];
+        if (referral) {
+          const referrerId = referral.referrer_id || referral.referrerId;
+          const amount = Number(order.amount || 0);
+
+          this.logger.log(`检测到被邀请用户订阅，准备处理返佣: userId=${order.userId}, referrerId=${referrerId}, amount=${amount}`);
+
+          // 记录返佣
+          if (this.referralService) {
+            await this.referralService.recordCommission(referrerId, order.userId, 'subscription', amount);
+            this.logger.log(`返佣已记录: referrerId=${referrerId}, amount=${amount}`);
+          }
         }
+      } catch (err) {
+        this.logger.error(`处理返佣失败: ${err.message}`, err.stack);
       }
     } catch (error) {
-      this.logger.error(`处理返佣失败: ${error.message}`, error.stack);
+      await connection.rollback();
+      this.logger.error(`订阅激活失败: ${error.message}`, error.stack);
+    } finally {
+      connection.release();
+    }
+  }
+
+  /**
+   * 发放会员开通积分奖励
+   */
+  private async giveSubscriptionReward(connection: any, userId: string, planId: string) {
+    try {
+      // 查询奖励配置
+      const rewardKeyMap: Record<string, string> = {
+        'plan_basic': 'basic_coin_reward',
+        'plan_pro': 'pro_coin_reward',
+        'plan_enterprise': 'enterprise_coin_reward',
+      }
+
+      const rewardKey = rewardKeyMap[planId];
+      if (!rewardKey) {
+        this.logger.log(`[giveSubscriptionReward] 无对应奖励配置: planId=${planId}`);
+        return;
+      }
+
+      const [configRows] = await connection.query(
+        'SELECT value FROM reward_configs WHERE `key` = ? AND enabled = 1',
+        [rewardKey],
+      ) as any[];
+
+      const config = (configRows as any[])?.[0];
+      if (!config) {
+        this.logger.log(`[giveSubscriptionReward] 奖励配置不存在或已禁用: ${rewardKey}`);
+        return;
+      }
+
+      const rewardAmount = Number(config.value || 0);
+      if (rewardAmount <= 0) {
+        this.logger.log(`[giveSubscriptionReward] 奖励积分为0: ${rewardKey}`);
+        return;
+      }
+
+      // 查询用户当前余额
+      const [balanceRows] = await connection.query(
+        `SELECT coins FROM users WHERE id = ?`,
+        [userId],
+      ) as any[];
+
+      const currentBalance = Number((balanceRows as any[])?.[0]?.coins || 0);
+      const newBalance = currentBalance + rewardAmount;
+
+      // 更新用户余额
+      await connection.query(
+        'UPDATE users SET coins = coins + ?, updated_at = NOW() WHERE id = ?',
+        [rewardAmount, userId],
+      );
+
+      // 记录交易
+      const transactionId = `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      await connection.query(
+        `INSERT INTO coin_transactions (id, user_id, type, amount, balance_before, balance_after, description, created_at)
+         VALUES (?, ?, 'gift', ?, ?, ?, ?, NOW())`,
+        [transactionId, userId, rewardAmount, currentBalance, newBalance, `开通会员赠送积分`],
+      );
+
+      this.logger.log(`[giveSubscriptionReward] 发放会员积分奖励成功: userId=${userId}, planId=${planId}, 奖励=${rewardAmount}, 新余额=${newBalance}`);
+    } catch (error) {
+      this.logger.error(`[giveSubscriptionReward] 发放会员积分奖励失败: ${error.message}`, error.stack);
     }
   }
 

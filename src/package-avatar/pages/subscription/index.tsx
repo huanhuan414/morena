@@ -60,7 +60,7 @@ const PLAN_COLUMNS = [
   { id: 'plan_free', name: '免费版', theme: 'free' },
   { id: 'plan_basic', name: '基础版', theme: 'basic' },
   { id: 'plan_pro', name: '专业版', theme: 'pro' },
-  { id: 'plan_enterprise', name: '进阶版', theme: 'enterprise' },
+  { id: 'plan_enterprise', name: '企业版', theme: 'enterprise' },
 ]
 
 export default function SubscriptionPage() {
@@ -228,7 +228,7 @@ export default function SubscriptionPage() {
   return (
     <View className="sub-page">
       {/* 紫蓝渐变头部 - 与首页一致 */}
-      <View className="sub-header" style={{ paddingTop: Taro.pxTransform(statusBarHeight + 36)}}>
+      <View className="sub-header" style={{ paddingTop: Taro.pxTransform(statusBarHeight + 36) }}>
         <View className="sub-header-bg" />
         <View className="sub-header-content">
           <View className="sub-nav-row">
