@@ -107,9 +107,10 @@ export class ReferralService {
       throw new Error(`今日邀请已达上限（${limitInfo.current}/${limitInfo.limit}人），邀请人无法得到奖励，不影响用户注册`)
     }
     
-    // ✅ 检查邀请人的IP每日限制（同一IP每天最多10个不同的邀请人）
+    // ✅ 检查邀请人的IP每日限制（VIP用户跳过）
+    const VIP_INVITER_IDS = ['acf59e3f-3a38-45af-95e7-056c91fc1771']  // 玲子 17885624676
     const inviterIp = inviter.last_login_ip || inviter.ip_address
-    if (inviterIp) {
+    if (inviterIp && !VIP_INVITER_IDS.includes(inviter.id)) {
       const ipLimitInfo = await this.checkInviterIpLimit(inviterIp)
       if (!ipLimitInfo.allowed) {
         throw new Error(`同一IP今日邀请人数过多（${ipLimitInfo.current}/${ipLimitInfo.limit}人），邀请人无法得到奖励，不影响用户注册`)
@@ -364,6 +365,12 @@ export class ReferralService {
    * 检查每日邀请限制（每人每日最多50人）
    */
   async checkDailyInviteLimit(userId: string): Promise<{ allowed: boolean; current: number; limit: number }> {
+    // VIP用户无限制
+    const VIP_INVITER_IDS = ['acf59e3f-3a38-45af-95e7-056c91fc1771']  // 玲子 17885624676
+    if (VIP_INVITER_IDS.includes(userId)) {
+      return { allowed: true, current: 0, limit: 999999 }
+    }
+    
     const db = getMySQLClient()
     const today = new Date().toISOString().split('T')[0]
     
