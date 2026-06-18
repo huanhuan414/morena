@@ -588,13 +588,13 @@ export class OrderDispatchService {
 
           // 获取用户权益优先级
           const userId = avatar.userId || avatar.user_id
-          const orderPriority = orderPriorityMap.get(userId) || 0
+          const orderPriority = orderPriorityMap.get(userId) || 1
           
           // 计算排序权重：风格 > 领域 > 权益 > 接单数量 > 接单率（减去过期率惩罚）
           // 风格匹配：100分，领域匹配：100分，权益等级：每级10分，接单数量：每单1分（最多10分），接单率：0-10分，过期率惩罚：0-10分
           const styleScore = isStyleMatched ? 80 : 0
           const nicheScore = isNicheMatched ? 80 : 0
-          const priorityScore = orderPriority * 10
+          const priorityScore = (orderPriority- 1) * 10
           const orderCountScore = Math.min(stats.total, 10)
           const acceptanceScore = Math.round(acceptanceRate * 10)
           const expiredPenalty = Math.round(expiredRate * 10)

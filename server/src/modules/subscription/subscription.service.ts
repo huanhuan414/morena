@@ -890,12 +890,18 @@ export class SubscriptionService {
       palm_reading: 'palm_daily_limit',
       palm: 'palm_daily_limit',
     }
-
+   
     const skillSpeedMap: Record<string, string> = {
       image_gen: 'image_speed',
       image: 'image_speed',
       video_gen: 'video_speed',
       video: 'video_speed',
+      content_writing: 'image_speed',
+      article: 'image_speed',
+      fashion_advice: 'image_speed',
+      clothing: 'image_speed',
+      palm_reading: 'image_speed',
+      palm: 'image_speed',
     }
 
     // 处理每个技能

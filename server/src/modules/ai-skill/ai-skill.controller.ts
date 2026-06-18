@@ -41,10 +41,10 @@ export class AiSkillController {
 
     try {
       // 检查每日使用次数限制
-      const limitCheck = await this.aiSkillService.checkDailyLimit(userId, body.skillType as SkillType);
-      if (limitCheck.remaining <= 0) {
-        return { code: 429, msg: `今日使用次数已达上限（${limitCheck.limit}次/天）`, data: { remaining: 0, limit: limitCheck.limit, used: limitCheck.used } };
-      }
+      // const limitCheck = await this.aiSkillService.checkDailyLimit(userId, body.skillType as SkillType);
+      // if (limitCheck.remaining <= 0) {
+      //   return { code: 429, msg: `今日使用次数已达上限（${limitCheck.limit}次/天）`, data: { remaining: 0, limit: limitCheck.limit, used: limitCheck.used } };
+      // }
 
       // 检查币余额是否充足
       const canConsume = await this.coinService.canConsume(userId, body.skillType);

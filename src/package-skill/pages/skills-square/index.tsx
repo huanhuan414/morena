@@ -360,7 +360,7 @@ export default function SkillsSquare() {
                               </Text>
                             </View>
                           )}
-                          {skillUsage[skill.id].dailyLimit !== 0 && (
+                          {/* {skillUsage[skill.id].dailyLimit !== 0 && (
                             <View className="skill-benefit-limit">
                               <Text className="block skill-benefit-limit-text" style={{ color: skillUsage[skill.id].remaining === 0 ? '#EF4444' : '#10B981' }}>
                                 今日 {skillUsage[skill.id].usedToday}/{skillUsage[skill.id].dailyLimit === -1 ? '不限' : skillUsage[skill.id].dailyLimit} 次
@@ -371,7 +371,7 @@ export default function SkillsSquare() {
                             <View className="skill-benefit-warning">
                               <Text className="block skill-benefit-warning-text">{skillUsage[skill.id].reason}</Text>
                             </View>
-                          )}
+                          )} */}
                         </View>
                       )}
 

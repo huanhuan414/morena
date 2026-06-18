@@ -131,13 +131,13 @@ export default function WechatMpArticle() {
 
     // 将 [IMG_N] 占位符替换为特殊标记，然后按段落拆分渲染
     const paragraphs = processedContent.split(/\n+/).filter(p => p.trim())
-    
+
     return (
       <View>
         {paragraphs.map((paragraph, pIdx) => {
           // 检查段落是否包含图片占位符
           const imgMatches = paragraph.match(/\[IMG_(\d+)\]/g)
-          
+
           if (!imgMatches) {
             // 纯文本段落 - 清理HTML标签
             const cleanText = paragraph
@@ -147,12 +147,12 @@ export default function WechatMpArticle() {
               .replace(/<[^>]*>/g, '')
               .replace(/#{1,3}\s/g, '')
               .trim()
-            
+
             if (!cleanText) return null
-            
+
             // 判断是否为标题（通常较短的加粗文本）
             const isHeading = paragraph.match(/<h[1-6]/) || (paragraph.match(/<strong>/) && cleanText.length < 30)
-            
+
             return (
               <Text
                 key={pIdx}
@@ -170,7 +170,7 @@ export default function WechatMpArticle() {
               </Text>
             )
           }
-          
+
           // 包含图片的段落 - 拆分为文本和图片交替渲染
           const parts = paragraph.split(/(\[IMG_\d+\])/g).filter(Boolean)
           return (
@@ -194,13 +194,13 @@ export default function WechatMpArticle() {
                   }
                   return null
                 }
-                
+
                 // 文本部分
                 const cleanText = part
                   .replace(/<[^>]*>/g, '')
                   .replace(/#{1,3}\s/g, '')
                   .trim()
-                
+
                 if (!cleanText) return null
                 return (
                   <Text
@@ -283,17 +283,17 @@ export default function WechatMpArticle() {
       return
     }
 
-    // 检查今日使用次数
-    try {
-      const limitRes = await Network.request({ url: '/api/ai-skill/usage-limit?skillType=wechat_mp_article' })
-      const limitData = limitRes.data?.data || limitRes.data
-      if (limitData && limitData.remaining <= 0) {
-        Taro.showToast({ title: '今日使用次数已达上限', icon: 'none' })
-        return
-      }
-    } catch {
-      // 查询失败不阻止生成
-    }
+    // // 检查今日使用次数
+    // try {
+    //   const limitRes = await Network.request({ url: '/api/ai-skill/usage-limit?skillType=wechat_mp_article' })
+    //   const limitData = limitRes.data?.data || limitRes.data
+    //   if (limitData && limitData.remaining <= 0) {
+    //     Taro.showToast({ title: '今日使用次数已达上限', icon: 'none' })
+    //     return
+    //   }
+    // } catch {
+    //   // 查询失败不阻止生成
+    // }
 
     setGenerating(true)
     setResult(null)
@@ -361,7 +361,18 @@ export default function WechatMpArticle() {
           setGenStatus('generating_text')
           setGenProgress('正在生成爆款文章...')
         } else if (status === 'generating_images') {
-          const imagesSoFar = meta.images || []
+          // 确保 images 是数组
+          let imagesSoFar = meta.images || []
+          if (typeof imagesSoFar === 'string') {
+            try {
+              imagesSoFar = JSON.parse(imagesSoFar)
+            } catch {
+              imagesSoFar = []
+            }
+          }
+          if (!Array.isArray(imagesSoFar)) {
+            imagesSoFar = []
+          }
           setGenImages(imagesSoFar)
           setGenStatus('generating_images')
           const current = imagesSoFar.length
@@ -371,9 +382,32 @@ export default function WechatMpArticle() {
           ctl.cancel()
           if (pollCtlRef.current === ctl) pollCtlRef.current = null
           setGenerating(false)
-          setGenStatus('completed')
-          setGenProgress('生成完成！')
-          const images = meta.images || record.article?.images || []
+
+          // 检查是否有部分图片生成失败
+          const imageGenFailed = meta?.imageGenFailed
+          const imagesGenerated = meta?.imagesGenerated || 0
+
+          if (imageGenFailed) {
+            setGenStatus('partial')
+            setGenProgress(`生成完成（${imagesGenerated}张图片）`)
+            Taro.showToast({ title: '部分配图生成失败，文章已生成', icon: 'none' })
+          } else {
+            setGenStatus('completed')
+            setGenProgress('生成完成！')
+          }
+
+          // 确保 images 是数组
+          let images = meta?.images || record.article?.images || []
+          if (typeof images === 'string') {
+            try {
+              images = JSON.parse(images)
+            } catch {
+              images = []
+            }
+          }
+          if (!Array.isArray(images)) {
+            images = []
+          }
           setGenImages(images)
           if (record.article) {
             setResult({
@@ -728,7 +762,7 @@ export default function WechatMpArticle() {
                   </View>
                 </Button>
               )}
-              {!generating && !result && usageInfo?.remaining === 0 && (
+              {/* {!generating && !result && usageInfo?.remaining === 0 && (
                 <View className="mt-2 flex justify-center">
                   <Text className="block text-xs text-orange-500">今日使用次数已用完，订阅用户每日可使用3次</Text>
                 </View>
@@ -737,7 +771,7 @@ export default function WechatMpArticle() {
                 <View className="mt-2 flex justify-center">
                   <Text className="block text-xs text-gray-400">今日剩余 {usageInfo?.remaining} 次使用机会</Text>
                 </View>
-              )}
+              )} */}
             </View>
 
             {/* 生成中进度提示 */}
@@ -833,11 +867,11 @@ export default function WechatMpArticle() {
                             <View
                               style={{
                                 width: '6px', height: '6px', borderRadius: '50%', marginRight: '6px', flexShrink: 0,
-                                backgroundColor: item.status === 'completed' ? '#10B981' : item.status === 'failed' ? '#EF4444' : '#F59E0B',
+                                backgroundColor: item.status === 'completed' ? '#10B981' : item.status === 'partial' ? '#F59E0B' : item.status === 'failed' ? '#EF4444' : '#F59E0B',
                               }}
                             />
                             <Text className="block text-xs" style={{ color: '#999999' }}>
-                              {item.status === 'completed' ? '已完成' : item.status === 'failed' ? '失败' : '生成中'}
+                              {item.status === 'completed' ? '已完成' : item.status === 'partial' ? '部分成功' : item.status === 'failed' ? '失败' : '生成中'}
                             </Text>
                           </View>
                           <Text className="block text-xs mt-1" style={{ color: '#cccccc' }}>{item.createdAt}</Text>

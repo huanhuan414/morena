@@ -80,12 +80,13 @@ export class AiSkillService {
         articleContent = llmResult.content;
 
         // 文章生成成功后立即保存到 metadata，并更新状态
+        // 注意：初始化 images 字段为空数组（如果用户没上传图片，后续会填充）
         await pool.query(
           `UPDATE ai_skill_records SET 
             status = 'generating_images',
-            metadata = JSON_SET(COALESCE(metadata, '{}'), '$.progress', '文章生成成功，正在生成配图...', '$.articleTitle', ?, '$.articleContent', ?),
+            metadata = JSON_SET(COALESCE(metadata, '{}'), '$.progress', '文章生成成功，正在生成配图...', '$.articleTitle', ?, '$.articleContent', ?, '$.images', ?),
             updated_at = NOW() WHERE id = ?`,
-          [articleTitle, articleContent, recordId],
+          [articleTitle, articleContent, JSON.stringify(inputImageUrls), recordId],
         );
       } catch (err: any) {
         throw new Error(`文章生成失败: ${err.message}`);
@@ -94,6 +95,8 @@ export class AiSkillService {
       // Step 3: 根据图片数量决定策略
       let imageUrls: string[] = [...inputImageUrls];
       let needGenerate = 0;
+      let imageGenFailed = false;
+      let failedImages: string[] = [];
 
       if (inputCount === 0) {
         needGenerate = 3;
@@ -106,27 +109,50 @@ export class AiSkillService {
         const imageContexts = this.extractImageContexts(articleContent, inputCount + needGenerate);
         // 逐张生成配图，每生成一张就保存到 metadata
         for (let i = 0; i < needGenerate; i++) {
-          try {
-            const imgIndex = inputCount + i + 1; // 当前图片在文章中的序号
-            const context = imageContexts[imgIndex - 1] || inputText || articleTitle;
-            const imagePrompt = `微信公众号文章配图，与以下内容紧密相关：${context}，风格：高端简约商务，宽幅横版，高质量插图`;
-            const url = await this.callGenerationsApi(imagePrompt, '1536x1024');
-            imageUrls.push(url);
-
-            // 每生成一张图就更新 metadata，前端可以逐步看到图片
-            const currentImageUrls = imageUrls.filter(Boolean);
-            await pool.query(
-              `UPDATE ai_skill_records SET 
-                metadata = JSON_SET(COALESCE(metadata, '{}'), '$.progress', ?, '$.images', ?),
-                updated_at = NOW() WHERE id = ?`,
-              [
-                `配图生成中(${currentImageUrls.length}/${inputCount + needGenerate})...`,
-                JSON.stringify(currentImageUrls),
-                recordId,
-              ],
-            );
-          } catch (err: any) {
-            console.error(`[AiSkillService] 生成配图${i + 1}失败:`, err.message);
+          const imgIndex = inputCount + i + 1;
+          const context = imageContexts[imgIndex - 1] || inputText || articleTitle;
+          const imagePrompt = `微信公众号文章配图，与以下内容紧密相关：${context}，风格：高端简约商务，宽幅横版，高质量插图`;
+          
+          let success = false;
+          
+          // 重试机制：最多重试 3 次
+          for (let retry = 0; retry < 3 && !success; retry++) {
+            try {
+              if (retry > 0) {
+                console.log(`[AiSkillService] 配图${i + 1}重试第 ${retry + 1} 次...`);
+                await new Promise(r => setTimeout(r, 2000 * (retry + 1))); // 递增延迟
+              }
+              
+              console.log(`[AiSkillService] 正在生成配图${i + 1}...`);
+              const url = await this.callGenerationsApi(imagePrompt, '1536x1024');
+              console.log(`[AiSkillService] 配图${i + 1}生成成功: ${url?.slice(0, 80)}...`);
+              imageUrls.push(url);
+              success = true;
+              
+              // 每生成一张图就更新 metadata
+              const currentImageUrls = imageUrls.filter(Boolean);
+              await pool.query(
+                `UPDATE ai_skill_records SET 
+                  metadata = JSON_SET(COALESCE(metadata, '{}'), '$.progress', ?, '$.images', ?),
+                  updated_at = NOW() WHERE id = ?`,
+                [
+                  `配图生成中(${currentImageUrls.length}/${inputCount + needGenerate})...`,
+                  JSON.stringify(currentImageUrls),
+                  recordId,
+                ],
+              );
+            } catch (err: any) {
+              console.error(`[AiSkillService] 生成配图${i + 1}失败 (重试${retry + 1}):`, err.message, err.stack);
+            }
+          }
+          
+          // 如果 3 次都失败
+          if (!success) {
+            imageGenFailed = true;
+            failedImages.push(`第${i + 1}张`);
+            console.warn(`[AiSkillService] 配图${i + 1}生成失败，已重试3次`);
+            // 占位符保留，后续可以手动补充
+            imageUrls.push(null as any);
           }
         }
       }
@@ -155,19 +181,31 @@ export class AiSkillService {
       // Step 5: 保存结果
       // 对于文章类型，result_image_url 存文章内容，images 存图片URL列表
       // 扩展：用 result_image_url 存第一张图片，额外字段存文章
-      const firstImage = imageUrls.length > 0 ? imageUrls[0] : '';
+      const validImageUrls = imageUrls.filter(Boolean);
+      const firstImage = validImageUrls.length > 0 ? validImageUrls[0] : '';
+      
+      // 构建错误消息（如果有图片生成失败）
+      let errorMsg = articleTitle;
+      if (imageGenFailed) {
+        errorMsg = `[部分配图生成失败]${articleTitle}`;
+        console.log(`[AiSkillService] 图片生成部分失败: ${failedImages.join(', ')}`);
+      }
+      
       await pool.query(
         `UPDATE ai_skill_records SET
           result_image_url = ?,
           input_text = ?,
           status = 'completed',
           error_message = ?,
+          metadata = JSON_SET(COALESCE(metadata, '{}'), '$.imagesGenerated', ?, '$.imageGenFailed', ?),
           updated_at = NOW()
         WHERE id = ?`,
         [
           firstImage,
-          JSON.stringify({ title: articleTitle, content: processedContent, images: imageUrls, inputText: inputText || '' }),
-          articleTitle,
+          JSON.stringify({ title: articleTitle, content: processedContent, images: validImageUrls, inputText: inputText || '' }),
+          errorMsg,
+          validImageUrls.length,
+          imageGenFailed,
           recordId,
         ],
       );
