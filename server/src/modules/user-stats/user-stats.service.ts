@@ -48,6 +48,7 @@ export class UserStatsService {
     let db: any = null
     try {
       db = getMySQLClient()
+      console.log('[UserStats] 数据库连接成功')
       
       // 1. 获取用户所有活跃分身（只查需要的字段，避免读取 photo_analysis 等大字段）
       const dbAvatars = await db.query(
@@ -95,7 +96,9 @@ export class UserStatsService {
       }
       
       // 4. 统计累计收益（只从 earnings 表计算，status='pending' 或 'settled'，考虑抽成）
+      console.log('[UserStats] 查询用户信息, userId:', userId)
       userResult = await db.queryOne('users', { id: userId }) as any
+      console.log('[UserStats] 查询结果:', userResult)
       // 与收益中心保持一致：使用 pool.query 查询收益记录，然后逐笔计算（每笔都四舍五入到2位小数）
       const pool = getPool()
       const [earningsRows] = await pool.query(
@@ -116,20 +119,16 @@ export class UserStatsService {
         const referralResult = await db.queryWhere('referrals', `referrer_id = '${userId}' AND status = 'completed'`) as any[]
         invitedCount = referralResult?.length || 0
 
-        if (userResult?.referral_code || userResult?.referralCode) {
-          referralCode = userResult.referral_code || userResult.referralCode
-        } else {
-          const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-          referralCode = ''
-          for (let i = 0; i < 6; i++) {
-            referralCode += chars.charAt(Math.floor(Math.random() * chars.length))
-          }
-          await db.updateWhere('users', { id: userId }, {
-            referral_code: referralCode,
-            updated_at: new Date()
-          })
+        // mysql-client 的 convertKeysToCamel 会将 referral_code 转换为 referralCode
+        console.log('[UserStats] 获取邀请码 userId:', userId, 'referralCode:', userResult?.referralCode)
+        if (userResult?.referralCode) {
+          referralCode = userResult.referralCode
+          console.log('[UserStats] 使用现有邀请码:', referralCode)
         }
-      } catch (e) {}
+        // 不再自动生成新邀请码，让用户主动申请
+      } catch (e) {
+        console.error('[UserStats] 邀请码处理错误:', e)
+      }
       
       // 6. 统计分身总工作时长（只统计有效完成的任务，每个任务约30分钟）
       if (avatarIds.length > 0) {
@@ -227,6 +226,7 @@ export class UserStatsService {
     }
     } catch (error) {
       // 数据库不可用，使用内存缓存
+      console.error('[UserStats] 数据库查询失败:', error)
       avatarList = sharedMemoryAvatars.get(userId) || []
       avatarCount = avatarList.length
       

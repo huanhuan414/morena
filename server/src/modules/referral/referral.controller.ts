@@ -14,7 +14,9 @@ export class ReferralController {
   async getReferralCode(@Headers('x-user-id') userId: string) {
     try {
       if (this.referralService) {
+        console.log('[ReferralController] getReferralCode userId:', userId)
         const code = await this.referralService.generateReferralCode(userId)
+        console.log('[ReferralController] getReferralCode 返回:', code)
         return { code: 200, data: { referralCode: code }, message: '获取成功' }
       }
     } catch (e) {

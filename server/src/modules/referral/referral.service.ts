@@ -16,19 +16,13 @@ export class ReferralService {
     
     const user = await db.queryOne('users', { id: userId }) as any
     
-    if (user?.referral_code || user?.referralCode) {
-      const existingCode = user.referral_code || user.referralCode
-      return existingCode
+    // mysql-client 的 convertKeysToCamel 会将 referral_code 转换为 referralCode
+    if (user?.referralCode) {
+      return user.referralCode
     }
     
-    const code = this.generateUniqueCode()
-    
-    await db.updateWhere('users', { id: userId }, {
-      referral_code: code,
-      updated_at: new Date()
-    })
-    
-    return code
+    // 不再自动生成新邀请码，让用户主动申请
+    return ''
   }
 
   /**
