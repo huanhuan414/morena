@@ -361,18 +361,7 @@ export default function WechatMpArticle() {
           setGenStatus('generating_text')
           setGenProgress('正在生成爆款文章...')
         } else if (status === 'generating_images') {
-          // 确保 images 是数组
-          let imagesSoFar = meta.images || []
-          if (typeof imagesSoFar === 'string') {
-            try {
-              imagesSoFar = JSON.parse(imagesSoFar)
-            } catch {
-              imagesSoFar = []
-            }
-          }
-          if (!Array.isArray(imagesSoFar)) {
-            imagesSoFar = []
-          }
+          const imagesSoFar = meta.images || []
           setGenImages(imagesSoFar)
           setGenStatus('generating_images')
           const current = imagesSoFar.length
@@ -382,32 +371,9 @@ export default function WechatMpArticle() {
           ctl.cancel()
           if (pollCtlRef.current === ctl) pollCtlRef.current = null
           setGenerating(false)
-
-          // 检查是否有部分图片生成失败
-          const imageGenFailed = meta?.imageGenFailed
-          const imagesGenerated = meta?.imagesGenerated || 0
-
-          if (imageGenFailed) {
-            setGenStatus('partial')
-            setGenProgress(`生成完成（${imagesGenerated}张图片）`)
-            Taro.showToast({ title: '部分配图生成失败，文章已生成', icon: 'none' })
-          } else {
-            setGenStatus('completed')
-            setGenProgress('生成完成！')
-          }
-
-          // 确保 images 是数组
-          let images = meta?.images || record.article?.images || []
-          if (typeof images === 'string') {
-            try {
-              images = JSON.parse(images)
-            } catch {
-              images = []
-            }
-          }
-          if (!Array.isArray(images)) {
-            images = []
-          }
+          setGenStatus('completed')
+          setGenProgress('生成完成！')
+          const images = meta.images || record.article?.images || []
           setGenImages(images)
           if (record.article) {
             setResult({
@@ -867,11 +833,11 @@ export default function WechatMpArticle() {
                             <View
                               style={{
                                 width: '6px', height: '6px', borderRadius: '50%', marginRight: '6px', flexShrink: 0,
-                                backgroundColor: item.status === 'completed' ? '#10B981' : item.status === 'partial' ? '#F59E0B' : item.status === 'failed' ? '#EF4444' : '#F59E0B',
+                                backgroundColor: item.status === 'completed' ? '#10B981' : item.status === 'failed' ? '#EF4444' : '#F59E0B',
                               }}
                             />
                             <Text className="block text-xs" style={{ color: '#999999' }}>
-                              {item.status === 'completed' ? '已完成' : item.status === 'partial' ? '部分成功' : item.status === 'failed' ? '失败' : '生成中'}
+                              {item.status === 'completed' ? '已完成' : item.status === 'failed' ? '失败' : '生成中'}
                             </Text>
                           </View>
                           <Text className="block text-xs mt-1" style={{ color: '#cccccc' }}>{item.createdAt}</Text>
