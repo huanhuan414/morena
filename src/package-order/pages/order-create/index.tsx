@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Taro from '@tarojs/taro'
-import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
+import { View, Text, ScrollView, Image, Video, Input as TaroInput } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -78,6 +78,8 @@ export default function OrderCreate() {
   const [showRegionPicker, setShowRegionPicker] = useState(false)
   const [showAcceptanceTimeoutModal, setShowAcceptanceTimeoutModal] = useState(false)
   const [customAcceptanceInput, setCustomAcceptanceInput] = useState('')
+  const [scrollTop, setScrollTop] = useState(0)
+  const scrollViewRef = useRef<any>(null)
   const aiPollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // 审核时间选项
@@ -93,6 +95,18 @@ export default function OrderCreate() {
   const aiPollUnsubRef = useRef<null | (() => void)>(null)
   const repayInFlightRef = useRef(false)
   const statusBarHeight = getStatusBarHeight()
+
+  // 弹窗关闭后恢复滚动位置
+  useEffect(() => {
+    if (!showAcceptanceTimeoutModal && scrollViewRef.current) {
+      // 使用 setTimeout 确保 DOM 更新完成后再恢复滚动
+      setTimeout(() => {
+        if (scrollViewRef.current) {
+          scrollViewRef.current.scrollTop = scrollTop
+        }
+      }, 0)
+    }
+  }, [showAcceptanceTimeoutModal])
 
   const stopAiPolling = () => {
     if (aiPollUnsubRef.current) {
@@ -929,7 +943,14 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         </View>
       </View>
 
-      <ScrollView scrollY className="scroll-container">
+      <ScrollView
+        scrollY
+        className="scroll-container"
+        key="order-create-scroll"
+        scrollTop={scrollTop}
+        ref={scrollViewRef}
+        onScroll={(e) => setScrollTop(e.detail.scrollTop)}
+      >
         {/* 核心价值引导 - 3步出结果 */}
         <View className="value-guide">
           <View className="guide-step">
@@ -1789,7 +1810,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
               <View className="modal-custom-section">
                 <Text className="custom-label">自定义时间（小时）</Text>
                 <View className="custom-input-row">
-                  <Input
+                  <TaroInput
                     type="number"
                     className="custom-input"
                     placeholder="输入小时数"
@@ -1797,7 +1818,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                     onInput={(e: any) => {
                       const value = e.detail.value
                       // 过滤非数字字符，只保留数字
-                      const filteredValue = value.replace(/[^\d]/g, '')
+                      const filteredValue = String(value || '').replace(/[^\d]/g, '')
                       setCustomAcceptanceInput(filteredValue)
                       if (filteredValue && filteredValue.trim() !== '') {
                         const numValue = parseInt(filteredValue, 10)
