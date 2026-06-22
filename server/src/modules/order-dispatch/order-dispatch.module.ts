@@ -10,6 +10,7 @@ import { SmsModule } from '../sms/sms.module'
 import { ContentGenerationModule } from '../content-generation/content-generation.module'
 import { OrderProcessingModule } from '../order-processing/order-processing.module'
 import { OrderModule } from '../order/order.module'
+import { EarningModule } from '../earning/earning.module'
 
 @Module({
   imports: [
@@ -18,7 +19,8 @@ import { OrderModule } from '../order/order.module'
     SmsModule,
     ContentGenerationModule,
     OrderProcessingModule,
-    forwardRef(() => OrderModule)
+    forwardRef(() => OrderModule),
+    forwardRef(() => EarningModule)
   ],
   controllers: [OrderDispatchController],
   providers: [
