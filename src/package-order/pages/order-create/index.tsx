@@ -67,7 +67,6 @@ export default function OrderCreate() {
     customBasePrice: 0, // 图文类型自定义基础单价
   })
   const [, setCustomBasePriceInput] = useState('') // 输入框显示值
-  const [customTimeout, setCustomTimeout] = useState('')
   const [customAcceptanceTimeout, setCustomAcceptanceTimeout] = useState('')
   const [uploadedAssets, setUploadedAssets] = useState<{ id: string; url: string; type: 'image' | 'video'; filename: string; size: number; mimeType: string }[]>([])
   const [isUploading, setIsUploading] = useState(false)
@@ -78,6 +77,8 @@ export default function OrderCreate() {
   const [showRegionPicker, setShowRegionPicker] = useState(false)
   const [showAcceptanceTimeoutModal, setShowAcceptanceTimeoutModal] = useState(false)
   const [customAcceptanceInput, setCustomAcceptanceInput] = useState('')
+  const [showAcceptTimeoutModal, setShowAcceptTimeoutModal] = useState(false)
+  const [customAcceptTimeoutInput, setCustomAcceptTimeoutInput] = useState('')
   const [scrollTop, setScrollTop] = useState(0)
   const scrollViewRef = useRef<any>(null)
   const aiPollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -92,6 +93,33 @@ export default function OrderCreate() {
     { label: '5天', value: 120 },
     { label: '7天', value: 168 },
   ]
+
+  // 接单超时选项（分钟）
+  const ACCEPT_TIMEOUT_OPTIONS = [
+    { label: '不限时', value: 0 },
+    { label: '30分钟', value: 30 },
+    { label: '1小时', value: 60 },
+    { label: '2小时', value: 120 },
+    { label: '3小时', value: 180 },
+    { label: '4小时', value: 240 },
+    { label: '1天', value: 1440 },
+    { label: '2天', value: 2880 },
+    { label: '3天', value: 4320 },
+  ]
+
+  // 格式化接单超时显示
+  const formatAcceptTimeout = (minutes: number): string => {
+    if (minutes === 0) return '不限时'
+    if (minutes < 60) return `${minutes}分钟`
+    if (minutes < 1440) {
+      const hours = minutes / 60
+      return hours === Math.floor(hours) ? `${hours}小时` : `${hours}小时`
+    }
+    const days = Math.floor(minutes / 1440)
+    const remainingHours = Math.floor((minutes % 1440) / 60)
+    if (remainingHours === 0) return `${days}天`
+    return `${days}天${remainingHours}小时`
+  }
   const aiPollUnsubRef = useRef<null | (() => void)>(null)
   const repayInFlightRef = useRef(false)
   const statusBarHeight = getStatusBarHeight()
@@ -705,31 +733,18 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         ? NICHE_TAGS.find(n => n.key === form.preferredNiche)?.name || form.preferredNiche
         : ''
 
-      // 验证接单超时时间
-      let acceptTimeout: number | null = null
-      if (customTimeout && customTimeout.trim() !== '') {
-        const parsed = parseInt(customTimeout, 10)
-        if (Number.isNaN(parsed) || parsed < 1) {
-          Taro.showToast({ title: '“接单超时“请输入有效数字', icon: 'none' })
-          return
-        }
-        acceptTimeout = parsed
-      }
-
       // 验证审核时间（必选）
       if (form.acceptanceTimeout <= 0) {
         Taro.showToast({ title: '请选择审核时间', icon: 'none' })
         return
       }
-      const acceptanceTimeout = form.acceptanceTimeout
-
       const orderData = {
         title: form.title,
         description: form.description,
         content_type: backendContentType,
         accept_regions: form.acceptRegions,
-        accept_timeout: acceptTimeout,
-        acceptance_timeout: acceptanceTimeout,
+        accept_timeout: form.acceptTimeout,
+        acceptance_timeout: form.acceptanceTimeout,
         platforms: canonicalizePlatforms(form.platforms),
         preferred_style: form.preferredStyle,
         preferred_niche: form.preferredNiche,
@@ -1359,28 +1374,18 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
               <View className="title-dot" />
               <Text className="section-title">接单超时</Text>
             </View>
-            <View className="timeout-unit">
-              <Text className="timeout-unit-text">分钟</Text>
-            </View>
           </View>
-          <View className="timeout-input-section">
-            <Input
-              type="number"
-              className="timeout-input"
-              placeholder="不填则不限时"
-              value={customTimeout}
-              onInput={(e: any) => {
-                const value = e.detail.value
-                setCustomTimeout(value)
-                if (value && value.trim() !== '') {
-                  const numValue = parseInt(value)
-                  if (numValue >= 1 && numValue <= 43200) {
-                    setForm(prev => ({ ...prev, acceptTimeout: numValue }))
-                  }
-                }
-              }}
-            />
-            <Text className="timeout-hint">超时未接单将自动取消订单，不填则不限时</Text>
+          <View
+            className="timeout-select-section"
+            onClick={() => {
+              setCustomAcceptTimeoutInput(form.acceptTimeout ? String(form.acceptTimeout) : '')
+              setShowAcceptTimeoutModal(true)
+            }}
+          >
+            <Text className="timeout-value">
+              {formatAcceptTimeout(form.acceptTimeout)}
+            </Text>
+            <Text className="timeout-hint">超时未接单将自动取消订单</Text>
           </View>
         </View>
 
@@ -1844,6 +1849,99 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
               <View
                 className="modal-confirm-btn"
                 onClick={() => setShowAcceptanceTimeoutModal(false)}
+              >
+                <Text className="confirm-text">确定</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* 接单超时选择弹窗 */}
+      {showAcceptTimeoutModal && (
+        <View className="modal-mask" onClick={() => setShowAcceptTimeoutModal(false)}>
+          <View className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <View className="modal-header">
+              <Text className="modal-title">选择接单超时</Text>
+              <View className="modal-close" onClick={() => setShowAcceptTimeoutModal(false)}>
+              </View>
+            </View>
+
+            <View className="modal-body">
+              {/* 预设选项 */}
+              <View className="modal-options">
+                {ACCEPT_TIMEOUT_OPTIONS.map((option) => (
+                  <View
+                    key={option.value}
+                    className={`modal-option ${form.acceptTimeout === option.value ? 'active' : ''}`}
+                    onClick={() => {
+                      setForm(prev => ({ ...prev, acceptTimeout: option.value }))
+                      // 不限时为0，但输入框显示空
+                      setCustomAcceptTimeoutInput(option.value === 0 ? '' : String(option.value))
+                    }}
+                  >
+                    <Text className="option-label">{option.label}</Text>
+                    {form.acceptTimeout === option.value && (
+                      <Check size={16} color="#6366F1" />
+                    )}
+                  </View>
+                ))}
+              </View>
+
+              {/* 自定义输入 */}
+              <View className="modal-custom-section">
+                <Text className="custom-label">自定义时间（分钟）</Text>
+                <View className="custom-input-row">
+                  <TaroInput
+                    type="number"
+                    className="custom-input"
+                    placeholder="输入分钟数"
+                    value={customAcceptTimeoutInput}
+                    onInput={(e: any) => {
+                      const value = e.detail.value
+                      // 过滤非数字字符，只保留数字
+                      const filteredValue = String(value || '').replace(/[^\d]/g, '')
+                      setCustomAcceptTimeoutInput(filteredValue)
+                    }}
+                  />
+                  <Text className="custom-unit">分钟</Text>
+                </View>
+                <Text className="custom-hint">范围：30-4320分钟（3天），仅支持整数</Text>
+              </View>
+
+            </View>
+
+            <View className="modal-footer">
+              <View
+                className="modal-confirm-btn"
+                onClick={() => {
+                  // 校验输入值
+                  const inputStr = customAcceptTimeoutInput.trim()
+                  if (!inputStr) {
+                    // 输入为空，保持当前选择
+                    setShowAcceptTimeoutModal(false)
+                    return
+                  }
+                  const inputValue = parseInt(inputStr, 10)
+                  if (inputValue === 0) {
+                    // 输入0视为不限时
+                    setForm(prev => ({ ...prev, acceptTimeout: 0 }))
+                    setShowAcceptTimeoutModal(false)
+                  } else if (inputValue < 30) {
+                    Taro.showToast({ title: '最小30分钟', icon: 'none' })
+                    setCustomAcceptTimeoutInput('30')
+                    setForm(prev => ({ ...prev, acceptTimeout: 30 }))
+                    setShowAcceptTimeoutModal(false)
+                  } else if (inputValue > 4320) {
+                    Taro.showToast({ title: '最大3天', icon: 'none' })
+                    setCustomAcceptTimeoutInput('4320')
+                    setForm(prev => ({ ...prev, acceptTimeout: 4320 }))
+                    setShowAcceptTimeoutModal(false)
+                  } else {
+                    setForm(prev => ({ ...prev, acceptTimeout: inputValue }))
+                    setShowAcceptTimeoutModal(false)
+                  }
+                }}
               >
                 <Text className="confirm-text">确定</Text>
               </View>
