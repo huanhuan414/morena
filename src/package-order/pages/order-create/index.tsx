@@ -50,7 +50,8 @@ export default function OrderCreate() {
     description: '',
     contentType: 'text',
     acceptRegions: [] as string[], // 接单区域（省份列表）
-    acceptTimeout: 30, // 接单超时时间（分钟），默认 30 分钟
+    acceptTimeout: 0, // 接单超时时间（分钟），默认 30 分钟
+    acceptanceTimeout: 24, // 审核超时时间（小时），默认1天
     platform: '' as string,
     platforms: [] as string[],
     preferredStyle: '',
@@ -67,6 +68,7 @@ export default function OrderCreate() {
   })
   const [, setCustomBasePriceInput] = useState('') // 输入框显示值
   const [customTimeout, setCustomTimeout] = useState('')
+  const [customAcceptanceTimeout, setCustomAcceptanceTimeout] = useState('')
   const [uploadedAssets, setUploadedAssets] = useState<{ id: string; url: string; type: 'image' | 'video'; filename: string; size: number; mimeType: string }[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [zipProgress, setZipProgress] = useState<{ status: string; message: string; totalFiles: number; processedFiles: number } | null>(null)
@@ -74,7 +76,20 @@ export default function OrderCreate() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPlatformReq, setShowPlatformReq] = useState(false)
   const [showRegionPicker, setShowRegionPicker] = useState(false)
+  const [showAcceptanceTimeoutModal, setShowAcceptanceTimeoutModal] = useState(false)
+  const [customAcceptanceInput, setCustomAcceptanceInput] = useState('')
   const aiPollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // 审核时间选项
+  const ACCEPTANCE_TIMEOUT_OPTIONS = [
+    { label: '1h', value: 1 },
+    { label: '3h', value: 3 },
+    { label: '12h', value: 12 },
+    { label: '1天', value: 24 },
+    { label: '3天', value: 72 },
+    { label: '5天', value: 120 },
+    { label: '7天', value: 168 },
+  ]
   const aiPollUnsubRef = useRef<null | (() => void)>(null)
   const repayInFlightRef = useRef(false)
   const statusBarHeight = getStatusBarHeight()
@@ -687,12 +702,20 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         acceptTimeout = parsed
       }
 
+      // 验证审核时间（必选）
+      if (form.acceptanceTimeout <= 0) {
+        Taro.showToast({ title: '请选择审核时间', icon: 'none' })
+        return
+      }
+      const acceptanceTimeout = form.acceptanceTimeout
+
       const orderData = {
         title: form.title,
         description: form.description,
         content_type: backendContentType,
         accept_regions: form.acceptRegions,
         accept_timeout: acceptTimeout,
+        acceptance_timeout: acceptanceTimeout,
         platforms: canonicalizePlatforms(form.platforms),
         preferred_style: form.preferredStyle,
         preferred_niche: form.preferredNiche,
@@ -865,6 +888,21 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
       }
     } finally {
       repayInFlightRef.current = false
+    }
+  }
+
+  // 格式化审核时间显示
+  const formatAcceptanceTimeout = (hours: number): string => {
+    if (hours < 24) {
+      return `${hours}小时`
+    } else {
+      const days = Math.floor(hours / 24)
+      const remainingHours = hours % 24
+      if (remainingHours === 0) {
+        return `${days}天`
+      } else {
+        return `${days}天${remainingHours}小时`
+      }
     }
   }
 
@@ -1325,6 +1363,28 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           </View>
         </View>
 
+        {/* 审核时间设置 */}
+        <View className="section">
+          <View className="section-header">
+            <View className="section-title-row">
+              <View className="title-dot" />
+              <Text className="section-title">审核时间</Text>
+            </View>
+          </View>
+          <View
+            className="timeout-select-section"
+            onClick={() => {
+              setCustomAcceptanceInput(form.acceptanceTimeout ? String(form.acceptanceTimeout) : '')
+              setShowAcceptanceTimeoutModal(true)
+            }}
+          >
+            <Text className="timeout-value">
+              {formatAcceptanceTimeout(form.acceptanceTimeout)}
+            </Text>
+            <Text className="timeout-hint">超时未审核将自动审核并结算收益</Text>
+          </View>
+        </View>
+
         {/* 素材上传（可选） */}
         {selectedType?.contentType != 'text' && (<View className="section">
           <View className="section-header">
@@ -1694,6 +1754,82 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         {/* 底部间距 */}
         <View style={{ height: '140px' }} />
       </ScrollView>
+
+      {/* 审核时间选择弹窗 */}
+      {showAcceptanceTimeoutModal && (
+        <View className="modal-mask" onClick={() => setShowAcceptanceTimeoutModal(false)}>
+          <View className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <View className="modal-header">
+              <Text className="modal-title">选择审核时间</Text>
+              <View className="modal-close" onClick={() => setShowAcceptanceTimeoutModal(false)}>
+              </View>
+            </View>
+
+            <View className="modal-body">
+              {/* 预设选项 */}
+              <View className="modal-options">
+                {ACCEPTANCE_TIMEOUT_OPTIONS.map((option) => (
+                  <View
+                    key={option.value}
+                    className={`modal-option ${form.acceptanceTimeout === option.value ? 'active' : ''}`}
+                    onClick={() => {
+                      setForm(prev => ({ ...prev, acceptanceTimeout: option.value }))
+                      setCustomAcceptanceInput(String(option.value))
+                    }}
+                  >
+                    <Text className="option-label">{option.label}</Text>
+                    {form.acceptanceTimeout === option.value && (
+                      <Check size={16} color="#6366F1" />
+                    )}
+                  </View>
+                ))}
+              </View>
+
+              {/* 自定义输入 */}
+              <View className="modal-custom-section">
+                <Text className="custom-label">自定义时间（小时）</Text>
+                <View className="custom-input-row">
+                  <Input
+                    type="number"
+                    className="custom-input"
+                    placeholder="输入小时数"
+                    value={customAcceptanceInput}
+                    onInput={(e: any) => {
+                      const value = e.detail.value
+                      // 过滤非数字字符，只保留数字
+                      const filteredValue = value.replace(/[^\d]/g, '')
+                      setCustomAcceptanceInput(filteredValue)
+                      if (filteredValue && filteredValue.trim() !== '') {
+                        const numValue = parseInt(filteredValue, 10)
+                        if (!Number.isNaN(numValue) && numValue >= 1 && numValue <= 168) {
+                          setForm(prev => ({ ...prev, acceptanceTimeout: numValue }))
+                        } else if (!Number.isNaN(numValue) && numValue > 168) {
+                          setCustomAcceptanceInput('168')
+                          setForm(prev => ({ ...prev, acceptanceTimeout: 168 }))
+                        }
+                      } else {
+                        setForm(prev => ({ ...prev, acceptanceTimeout: 24 })) // 默认1天
+                      }
+                    }}
+                  />
+                  <Text className="custom-unit">小时</Text>
+                </View>
+                <Text className="custom-hint">范围：1-168小时（7天），仅支持整数</Text>
+              </View>
+
+            </View>
+
+            <View className="modal-footer">
+              <View
+                className="modal-confirm-btn"
+                onClick={() => setShowAcceptanceTimeoutModal(false)}
+              >
+                <Text className="confirm-text">确定</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* 底部提交按钮 */}
       <View className="submit-bar">

@@ -640,8 +640,31 @@ export class OrderProcessingService {
     const normalized = this.normalizeRecord(record)
     setCache(normalized.requestId, normalized)
     setCache(normalized.orderId, normalized)
+
+    // 设置验收超时截止时间
+    await this.setAcceptanceTimeout(normalized.orderId, normalized.avatarId)
+
     await this.syncOrderStatus(normalized.orderId)
     return normalized
+  }
+
+  /**
+   * 设置验收超时时间
+   */
+  private async setAcceptanceTimeout(orderId: string, avatarId: string): Promise<void> {
+    const db = getMySQLClient()
+    try {
+      // 使用 JOIN 一次性更新，避免额外查询
+      await db.query(
+        `UPDATE order_dispatch_requests d
+         JOIN orders o ON d.order_id = o.id
+         SET d.acceptance_timeout_at = DATE_ADD(NOW(), INTERVAL o.acceptance_timeout HOUR)
+         WHERE d.order_id = ? AND d.avatar_id = ? AND o.acceptance_timeout > 0`,
+        [orderId, avatarId]
+      )
+    } catch (error) {
+      this.logger.warn(`设置验收超时失败: orderId=${orderId}, avatarId=${avatarId}, error=${error.message}`)
+    }
   }
 
   async urgeAcceptance(identifier: string): Promise<any> {

@@ -35,6 +35,7 @@ export interface AvatarStatDto {
   createdAt: string
   updatedAt: string | null
   acceptedAt: string | null
+  acceptanceTimeoutAt: string | null  // 审核超时截止时间
 }
 
 export interface OrderSummaryStatsDto {
@@ -59,6 +60,8 @@ export interface OrderDetailDto {
   avatarCount: number
   avatarStats: AvatarStatDto[]
   summaryStats: OrderSummaryStatsDto
+  acceptTimeout: number  // 接单超时时间（分钟）
+  acceptanceTimeout: number  // 审核超时时间（小时）
 }
 
 export interface OrderProcessingData {
@@ -161,6 +164,7 @@ function normalizeAvatarStat(raw: any): AvatarStatDto {
     createdAt: source.createdAt || source.created_at || '',
     updatedAt: source.updatedAt || source.updated_at || null,
     acceptedAt: source.acceptedAt || source.accepted_at || null,
+    acceptanceTimeoutAt: source.acceptanceTimeoutAt || source.acceptance_timeout_at || null,
   }
 }
 
@@ -197,6 +201,8 @@ export function normalizeOrderDetail(raw: any): OrderDetailDto | null {
       pendingAvatars: toNumber(summarySource.pendingAvatars),
       rejectedAvatars: toNumber(summarySource.rejectedAvatars),
     },
+    acceptTimeout: toNumber(source.acceptTimeout ?? source.accept_timeout),
+    acceptanceTimeout: toNumber(source.acceptanceTimeout ?? source.acceptance_timeout),
   }
 }
 

@@ -335,6 +335,7 @@ export class OrderService {
       content_type: orderData.contentType || orderData.content_type || 'text',
       accept_regions: JSON.stringify(orderData.acceptRegions || orderData.accept_regions || []),
       accept_timeout: orderData.acceptTimeout || orderData.accept_timeout || null, // 接单超时时间（分钟），空表示不限时
+      acceptance_timeout: orderData.acceptanceTimeout || orderData.acceptance_timeout || 24, // 验收超时时间（小时），默认1天
       platforms: JSON.stringify(orderData.platforms || []),
       requirements: JSON.stringify(orderData.requirements || {}),
       // 添加 personality 字段，保存风格偏好和领域偏好
@@ -427,7 +428,7 @@ export class OrderService {
        platforms, requirements, budget, base_amount, content_amount, status, result, created_at, updated_at,
        completed_at, latitude, longitude, location_text, target_audience,
        expected_quantity, deadline, order_type, priority, assigned_to,
-       avatar_count, quantity_per_avatar, is_paid
+       avatar_count, quantity_per_avatar, is_paid, acceptance_timeout
        FROM orders WHERE id = ? AND is_deleted = 0`,
       [orderId]
     )
@@ -441,7 +442,7 @@ export class OrderService {
     // SQL别名 avatar_id → 返回值为 avatarId
     const avatarRows = await db.query(
       `SELECT odr.id, COALESCE(odr.avatar_id, odr.target_avatar_id) as avatar_id, odr.status, odr.platform, odr.reject_reason, odr.created_at, odr.accepted_at,
-              a.name as nickname, a.avatar_url, u.phone
+              odr.acceptance_timeout_at, a.name as nickname, a.avatar_url, u.phone
        FROM order_dispatch_requests odr
        LEFT JOIN avatars a ON COALESCE(odr.avatar_id, odr.target_avatar_id) = a.id
        LEFT JOIN users u ON a.user_id = u.id
@@ -492,7 +493,8 @@ export class OrderService {
         contentUpdatedAt: processing?.updatedAt ? new Date(processing.updatedAt).toISOString() : null,
         publishFeedback: this.safeParseJson(processing?.publishFeedback, {}),
         createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : new Date().toISOString(),
-        acceptedAt: row.acceptedAt ? new Date(row.acceptedAt).toISOString() : (row.updatedAt ? new Date(row.updatedAt).toISOString() : null)
+        acceptedAt: row.acceptedAt ? new Date(row.acceptedAt).toISOString() : (row.updatedAt ? new Date(row.updatedAt).toISOString() : null),
+        acceptanceTimeoutAt: row.acceptanceTimeoutAt ? new Date(row.acceptanceTimeoutAt).toISOString() : null
       }
     })
 

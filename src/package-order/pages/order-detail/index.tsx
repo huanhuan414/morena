@@ -171,6 +171,73 @@ export default function OrderDetailPage() {
   const [assetLoading, setAssetLoading] = useState(false)
   const pollingRef = useRef<any>(null)
   const statusBarHeight = getStatusBarHeight()
+  const [countdowns, setCountdowns] = useState<Record<string, { timeoutAt: string; display: string }>>({})  // 各分身的审核倒计时
+
+  // 计算倒计时
+  const calculateCountdown = (timeoutAt: string): string => {
+    if (!timeoutAt) return ''
+    const now = new Date().getTime()
+    const timeoutTime = new Date(timeoutAt).getTime()
+    const diff = timeoutTime - now
+
+    if (diff <= 0) {
+      return '已超时'
+    }
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+
+    if (days > 0) {
+      if (hours > 0) {
+        return `${days}天${hours}小时${minutes}分${seconds}秒`
+      }
+      return `${days}天${minutes}分${seconds}秒`
+    } else if (hours > 0) {
+      return `${hours}小时${minutes}分${seconds}秒`
+    } else if (minutes > 0) {
+      return `${minutes}分${seconds}秒`
+    } else {
+      return `${seconds}秒`
+    }
+  }
+
+  // 更新所有倒计时
+  const updateCountdowns = useCallback(() => {
+    if (!order?.avatarStats) return
+    const newCountdowns: Record<string, { timeoutAt: string; display: string }> = {}
+    order.avatarStats.forEach((avatar: any) => {
+      if (avatar.status === 'awaiting_acceptance' && avatar.acceptanceTimeoutAt) {
+        newCountdowns[avatar.avatarId] = {
+          timeoutAt: avatar.acceptanceTimeoutAt,
+          display: calculateCountdown(avatar.acceptanceTimeoutAt)
+        }
+      }
+    })
+    setCountdowns(newCountdowns)
+  }, [order])
+
+  // 启动倒计时定时器
+  useEffect(() => {
+    updateCountdowns()
+    const timer = setInterval(() => {
+      setCountdowns(prev => {
+        const newCountdowns: Record<string, { timeoutAt: string; display: string }> = {}
+        Object.keys(prev).forEach(avatarId => {
+          const item = prev[avatarId]
+          if (item?.timeoutAt) {
+            newCountdowns[avatarId] = {
+              timeoutAt: item.timeoutAt,
+              display: calculateCountdown(item.timeoutAt)
+            }
+          }
+        })
+        return newCountdowns
+      })
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [updateCountdowns])
 
   const orderId = Taro.getCurrentInstance().router?.params?.id
   const action = Taro.getCurrentInstance().router?.params?.action
@@ -552,6 +619,18 @@ export default function OrderDetailPage() {
               <Text className="block od-stat-label">创建时间</Text>
             </View>
           </View>
+          {/* 超时设置 */}
+          <View className="od-stats-row" style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #F3F4F6' }}>
+            <View className="od-stat-item">
+              <Text className="block od-stat-value" style={{ color: '#F59E0B' }}>{order.acceptTimeout}分钟</Text>
+              <Text className="block od-stat-label">接单超时</Text>
+            </View>
+            <View className="od-stat-divider" />
+            <View className="od-stat-item">
+              <Text className="block od-stat-value" style={{ color: '#8B5CF6' }}>{order.acceptanceTimeout}小时</Text>
+              <Text className="block od-stat-label">审核时间</Text>
+            </View>
+          </View>
         </View>
 
         {/* 素材池卡 */}
@@ -735,6 +814,24 @@ export default function OrderDetailPage() {
                       )}
                       {avatar.contentUpdatedAt && (
                         <Text className="block od-av-time">更新于 {formatTime(avatar.contentUpdatedAt)}</Text>
+                      )}
+                      {/* 审核时间提醒 */}
+                      {avatarStatus === 'awaiting_acceptance' && avatar.acceptanceTimeoutAt && (
+                        <View style={{ display: 'flex', alignItems: 'center', marginTop: '4px', color: '#F59E0B' }}>
+                          <Clock size={12} color="#F59E0B" />
+                          <Text className="block" style={{ fontSize: '12px', color: '#F59E0B', marginLeft: '4px' }}>
+                            审核截止: {formatTime(avatar.acceptanceTimeoutAt)}
+                          </Text>
+                        </View>
+                      )}
+                      {/* 审核倒计时 */}
+                      {avatarStatus === 'awaiting_acceptance' && countdowns[avatar.avatarId] && (
+                        <View style={{ display: 'flex', alignItems: 'center', marginTop: '4px' }}>
+                          <TriangleAlert size={12} color={countdowns[avatar.avatarId].display === '已超时' ? '#EF4444' : '#F59E0B'} />
+                          <Text className="block" style={{ fontSize: '12px', color: countdowns[avatar.avatarId].display === '已超时' ? '#EF4444' : '#F59E0B', marginLeft: '4px' }}>
+                            {countdowns[avatar.avatarId].display === '已超时' ? '审核超时，已自动验收' : `审核倒计时: ${countdowns[avatar.avatarId].display}`}
+                          </Text>
+                        </View>
                       )}
                     </View>
                     <View className="od-av-right">
