@@ -102,7 +102,7 @@ export class ReferralService {
     }
     
     // ✅ 检查邀请人的IP每日限制（VIP用户跳过）
-    const VIP_INVITER_IDS = ['acf59e3f-3a38-45af-95e7-056c91fc1771']  // 玲子 17885624676
+    const VIP_INVITER_IDS = ['acf59e3f-3a38-45af-95e7-056c91fc1771', '0f0fcfa8-9a0b-4168-898c-a55939ca62a1']  // 玲子 17885624676, 青～甜 18200383164
     const inviterIp = inviter.last_login_ip || inviter.ip_address
     if (inviterIp && !VIP_INVITER_IDS.includes(inviter.id)) {
       const ipLimitInfo = await this.checkInviterIpLimit(inviterIp)
@@ -360,7 +360,7 @@ export class ReferralService {
    */
   async checkDailyInviteLimit(userId: string): Promise<{ allowed: boolean; current: number; limit: number }> {
     // VIP用户无限制
-    const VIP_INVITER_IDS = ['acf59e3f-3a38-45af-95e7-056c91fc1771']  // 玲子 17885624676
+    const VIP_INVITER_IDS = ['acf59e3f-3a38-45af-95e7-056c91fc1771', '0f0fcfa8-9a0b-4168-898c-a55939ca62a1']  // 玲子 17885624676, 青～甜 18200383164
     if (VIP_INVITER_IDS.includes(userId)) {
       return { allowed: true, current: 0, limit: 999999 }
     }
