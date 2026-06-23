@@ -4,8 +4,10 @@ import { getMySQLClient } from '../../storage/database/mysql-client'
 import { getCache, setCache } from '../../common/shared-cache'
 import { OrderService } from '../order/order.service'
 import { NotificationService } from '../notification/notification.service'
+import { WechatSubscribeMessageService } from '../notification/wechat-subscribe-message.service'
 import { normalizeFulfillmentStatus } from '../order/order-status'
 import { RedisService } from '../redis/redis.service'
+import { console } from 'inspector'
 
 const URGE_ACCEPTANCE_COOLDOWN_MS = 60 * 60 * 1000
 const lastUrgeAcceptanceAt = new Map<string, number>()
@@ -20,7 +22,9 @@ export class OrderProcessingService {
     @Inject(forwardRef(() => OrderService))
     private readonly orderService: OrderService,
     @Inject(RedisService)
-    private readonly redisService: RedisService
+    private readonly redisService: RedisService,
+    @Inject(WechatSubscribeMessageService)
+    private readonly wechatSubscribeService: WechatSubscribeMessageService
   ) {}
 
   /**
@@ -623,8 +627,12 @@ export class OrderProcessingService {
   }
 
   async submitFeedback(identifier: string, feedback: Record<string, any>): Promise<any> {
+  
     const current = await this.findRecordByIdentifier(identifier)
-    if (!current) return null
+    if (!current) {
+      return null
+    }
+    
     const existingFeedback = this.parseJsonObject<Record<string, any>>(
       current.publishFeedback || current.publish_feedback,
       {}
@@ -645,6 +653,16 @@ export class OrderProcessingService {
     await this.setAcceptanceTimeout(normalized.orderId, normalized.avatarId)
 
     await this.syncOrderStatus(normalized.orderId)
+
+    // 发送订阅消息通知发单方（传递已有的数据，避免重复查询）
+    this.sendFeedbackSubscribeMessage({
+      orderId: normalized.orderId,
+      avatarId: normalized.avatarId,
+      userId: normalized.userId,
+    }).catch(err => {
+      this.logger.warn(`发送反馈订阅消息失败: ${err.message}`)
+    })
+
     return normalized
   }
 
@@ -664,6 +682,72 @@ export class OrderProcessingService {
       )
     } catch (error) {
       this.logger.warn(`设置验收超时失败: orderId=${orderId}, avatarId=${avatarId}, error=${error.message}`)
+    }
+  }
+
+  /**
+   * 发送反馈提交的订阅消息给发单方
+   */
+  private async sendFeedbackSubscribeMessage(params: {
+    orderId: string
+    avatarId: string
+    userId?: string
+  }): Promise<void> {
+    const db = getMySQLClient()
+    try {
+      // 使用 JOIN 一次性查询订单、用户和分身信息，避免多次查询
+      const query = `
+        SELECT 
+          o.id AS order_id, 
+          o.title AS order_title, 
+          o.acceptance_timeout,
+          u.openid,
+          a.name AS avatar_name
+        FROM orders o
+        LEFT JOIN users u ON o.user_id = u.id
+        LEFT JOIN avatars a ON a.id = ?
+        WHERE o.id = ?
+      `
+      
+      const result = await db.query(query, [params.avatarId, params.orderId])
+      const data = result?.[0]
+      
+      if (!data) {
+        this.logger.warn(`查询订单/用户/分身信息失败: orderId=${params.orderId}, avatarId=${params.avatarId}`)
+        return
+      }
+
+      const openid = data.openid
+      if (!openid) {
+        this.logger.warn(`发单方无openid，跳过订阅消息: orderId=${params.orderId}`)
+        return
+      }
+
+      const orderTitle = data.orderTitle || data.order_title
+      const avatarName = data.avatarName || data.avatar_name
+
+      // 计算验收超时时间提示
+      let acceptanceTimeoutHint = '请尽快验收'
+      const acceptanceTimeout = data.acceptance_timeout || data.acceptanceTimeout
+      if (acceptanceTimeout && acceptanceTimeout > 0) {
+        if (acceptanceTimeout < 24) {
+          acceptanceTimeoutHint = `${acceptanceTimeout}小时内验收，否则自动验收`
+        } else {
+          acceptanceTimeoutHint = `${Math.ceil(acceptanceTimeout / 24)}天内验收，否则自动验收`
+        }
+      }
+
+      const page = `package-order/pages/order-detail/index?id=${params.orderId}`
+
+      await this.wechatSubscribeService.sendFeedbackNotification({
+        toUserOpenid: openid,
+        orderTitle,
+        avatarName,
+        page,
+        acceptanceTimeoutHint,
+      })
+    } catch (error: any) {
+      this.logger.error(`发送反馈订阅消息异常: orderId=${params.orderId}, error=${error.message}`)
     }
   }
 
@@ -1001,10 +1085,22 @@ export class OrderProcessingService {
       // 最终驳回：dispatch改为rejected（释放名额）
       const dispatchStatus = isFinalRejection ? 'rejected' : 'accepted'
       const kickType = isFinalRejection ? 'final_rejection' : null
+
+      // 驳回时重置接单超时时间（超时后也自动释放）
+      // 从订单表读取 accept_timeout（分钟），计算新的 accept_timeout_at
+      const [orderRows] = await db.query(
+        `SELECT accept_timeout FROM orders WHERE id = ?`,
+        [normalized.orderId]
+      ) as any[]
+      const acceptTimeoutMinutes = orderRows?.[0]?.accept_timeout
+      const newAcceptTimeoutAt = acceptTimeoutMinutes
+        ? new Date(Date.now() + Number(acceptTimeoutMinutes) * 60 * 1000)
+        : null
+      console.log(`[驳回] acceptTimeoutMinutes=${acceptTimeoutMinutes}, newAcceptTimeoutAt=${newAcceptTimeoutAt}`)
       
       await db.query(
-        `UPDATE order_dispatch_requests SET status = ?, reject_reason = ?, kick_type = ?, updated_at = NOW() WHERE order_id = ? AND avatar_id = ?`,
-        [dispatchStatus, feedback.rejectReason || '', kickType, normalized.orderId, normalized.avatarId]
+        `UPDATE order_dispatch_requests SET status = ?, reject_reason = ?, kick_type = ?, accept_timeout_at = ?, updated_at = NOW() WHERE order_id = ? AND avatar_id = ?`,
+        [dispatchStatus, feedback.rejectReason || '', kickType, newAcceptTimeoutAt, normalized.orderId, normalized.avatarId]
       )
       this.logger.log(`[驳回] 已更新派单记录状态: orderId=${normalized.orderId}, avatarId=${normalized.avatarId}, dispatchStatus=${dispatchStatus}`)
 

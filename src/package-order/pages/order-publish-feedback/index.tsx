@@ -6,6 +6,7 @@ import { Network } from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import { ArrowLeft, ImagePlus, Eye, X, Send, Link, ShieldCheck, ShieldAlert, Loader, Video, Play } from 'lucide-react-taro'
 import { canonicalizePlatform, canonicalizePlatforms, getPlatformLabel, getPlatformMeta } from '@/constants/publish-platform'
+import { WX_SUBSCRIBE_TEMPLATES } from '@/constants/wechat'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
 import './index.css'
 
@@ -413,6 +414,16 @@ export default function OrderPublishFeedback() {
       })
       return next
     })()
+
+    // 请求订阅消息授权（不阻塞提交流程）
+    try {
+      const tmplIds = [WX_SUBSCRIBE_TEMPLATES.FEEDBACK]
+        ; (Taro as any).requestSubscribeMessage({
+          tmplIds,
+          success: () => { },
+          fail: () => { },
+        })
+    } catch { }
 
     setSubmitting(true)
     try {

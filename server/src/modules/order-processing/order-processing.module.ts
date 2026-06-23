@@ -7,9 +7,10 @@ import { ContentGenerationModule } from '../content-generation/content-generatio
 import { AvatarAgentModule } from '../avatar-agent/avatar-agent.module'
 import { TikHubModule } from '../tikhub/tikhub.module'
 import { OrderModule } from '../order/order.module'
+import { NotificationModule } from '../notification/notification.module'
 
 @Module({
-  imports: [ContentGenerationModule, AvatarAgentModule, TikHubModule, forwardRef(() => OrderModule)],
+  imports: [ContentGenerationModule, AvatarAgentModule, TikHubModule, forwardRef(() => OrderModule), NotificationModule],
   controllers: [OrderProcessingController],
   providers: [OrderProcessingService, LinkValidationService],
   exports: [OrderProcessingService]

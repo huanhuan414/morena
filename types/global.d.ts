@@ -26,6 +26,8 @@ declare namespace NodeJS {
      * @see https://taro-docs.jd.com/docs/next/env-mode-config#特殊环境变量-taro_app_id
      */
     TARO_APP_ID: string
+    /** 微信小程序订阅消息模板ID - 反馈提交通知 */
+    TARO_APP_WX_SUBSCRIBE_TEMPLATE_FEEDBACK: string
   }
 }
 
