@@ -322,9 +322,28 @@ export default function AvatarCreate() {
         if (modalRes.confirm) {
           await openSetting()
         }
+      } else if (
+        // 系统定位未开启（各平台错误信息）
+        // Android: getFuzzyLocation:fail:ERROR_NOCELL&WIFI_LOCATIONSWITCHOFF
+        // iOS: getFuzzyLocation:fail system permission denied
+        // 部分安卓老机型: getFuzzyLocation:fail:system permission denied
+        // HarmonyOS: getFuzzyLocation:fail:BussinessError 3301100: The location switch is off.
+        errMsg.includes('LOCATIONSWITCHOFF') ||
+        errMsg.includes('system permission') ||
+        errMsg.includes('location off') ||
+        errMsg.includes('switch is off')
+      ) {
+        Taro.showModal({
+          title: '开启定位服务',
+          content: '请先在手机系统中开启定位服务（GPS），然后重试',
+          showCancel: false,
+          confirmText: '我知道了'
+        })
+      } else if (errMsg.includes('timeout')) {
+        Taro.showToast({ title: '定位超时，请重试', icon: 'none' })
       } else {
-        // 其他错误（如系统定位未开启、网络问题等）
-        Taro.showToast({ title: '定位失败，请检查系统定位是否开启', icon: 'none' })
+        // 其他未知错误
+        Taro.showToast({ title: '定位失败，请重试', icon: 'none' })
       }
     }
   }
