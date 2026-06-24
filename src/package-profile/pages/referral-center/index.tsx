@@ -1,9 +1,9 @@
 // @ts-nocheck
-import { View, Text, Button } from '@tarojs/components'
+import { View, Text, Button, Image } from '@tarojs/components'
 import Taro, { useDidShow, useShareAppMessage } from '@tarojs/taro'
 import { useState } from 'react'
 import { Network } from '@/network'
-import { Copy, Share2, Gift, Users, ArrowLeft, Sparkles, User, TrendingUp, Coins, Crown, Clock, Star, ChevronRight, Zap, Target, Medal, Info, DollarSign, Shield } from 'lucide-react-taro'
+import { Copy, Share2, Gift, Users, ArrowLeft, Sparkles, User, TrendingUp, Coins, Crown, Clock, Star, ChevronRight, Zap, Target, Medal, Info, DollarSign, Shield, X, Download, Image as ImageIcon } from 'lucide-react-taro'
 import './index.css'
 
 export default function ReferralCenter() {
@@ -30,6 +30,9 @@ export default function ReferralCenter() {
     limit: 10,
   })
   const [referralList, setReferralList] = useState([])
+  const [showImageModal, setShowImageModal] = useState(false)
+  const [posterImageUrl, setPosterImageUrl] = useState('')
+  const [isGenerating, setIsGenerating] = useState(false)
 
   useShareAppMessage(() => {
     return {
@@ -94,6 +97,68 @@ export default function ReferralCenter() {
     Taro.setClipboardData({
       data: stats.referralCode,
       success: () => Taro.showToast({ title: '邀请码已复制', icon: 'success' }),
+    })
+  }
+
+  const handleGenerateImage = async () => {
+    if (!stats.referralCode) {
+      Taro.showToast({ title: '邀请码生成中，请稍后再试', icon: 'none' })
+      return
+    }
+
+    setIsGenerating(true)
+    try {
+      // 生成小程序二维码链接
+      const qrCodeUrl = `pages/login/index?inviteCode=${stats.referralCode}`
+
+      const res = await Network.request({
+        url: '/api/referral/qrcode',
+        method: 'POST',
+        data: {
+          content: qrCodeUrl,
+        },
+      })
+
+      if (res.data && res.data.data && res.data.data.imageUrl) {
+        setPosterImageUrl(res.data.data.imageUrl)
+        setShowImageModal(true)
+      } else {
+        Taro.showToast({ title: '生成图片失败', icon: 'none' })
+      }
+    } catch (error) {
+      console.error('[ReferralCenter] generate image error:', error)
+      Taro.showToast({ title: '生成图片失败', icon: 'none' })
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const handleDownloadImage = () => {
+    if (!posterImageUrl) return
+
+    Taro.showLoading({ title: '保存中...' })
+    Taro.downloadFile({
+      url: posterImageUrl,
+      success: (res) => {
+        if (res.statusCode === 200) {
+          Taro.saveImageToPhotosAlbum({
+            filePath: res.tempFilePath,
+            success: () => {
+              Taro.hideLoading()
+              Taro.showToast({ title: '保存成功', icon: 'success' })
+              setShowImageModal(false)
+            },
+            fail: () => {
+              Taro.hideLoading()
+              Taro.showToast({ title: '保存失败，请检查相册权限', icon: 'none' })
+            },
+          })
+        }
+      },
+      fail: () => {
+        Taro.hideLoading()
+        Taro.showToast({ title: '下载失败', icon: 'none' })
+      },
     })
   }
 
@@ -162,6 +227,12 @@ export default function ReferralCenter() {
             <Share2 size={14} color="#7C3AED" />
             <Text className="ref-btn-text-purple">分享给好友</Text>
           </Button>
+        </View>
+        <View className="ref-code-actions-row2">
+          <View className="ref-btn-generate" onClick={handleGenerateImage}>
+            <ImageIcon size={14} color="#fff" />
+            <Text className="ref-btn-text-white">{isGenerating ? '生成中...' : '生成图片'}</Text>
+          </View>
         </View>
       </View>
 
@@ -605,6 +676,37 @@ export default function ReferralCenter() {
           </View>
         </View>
       </View>
+
+      {/* 图片预览弹窗 */}
+      {showImageModal && (
+        <View className="ref-image-modal" onClick={() => setShowImageModal(false)}>
+          <View className="ref-image-modal-content" onClick={(e) => e.stopPropagation()}>
+            <View className="ref-image-modal-header">
+              <Text className="ref-image-modal-title">邀请海报</Text>
+              <View className="ref-image-modal-close" onClick={() => setShowImageModal(false)}>
+                <X size={20} color="#9CA3AF" />
+              </View>
+            </View>
+            <View className="ref-image-modal-body">
+              <Image
+                className="ref-poster-image"
+                src={posterImageUrl}
+                mode="widthFix"
+                onClick={() => setShowImageModal(false)}
+              />
+            </View>
+            <View className="ref-image-modal-footer">
+              <View className="ref-modal-btn-cancel" onClick={() => setShowImageModal(false)}>
+                <Text className="ref-modal-btn-text">取消</Text>
+              </View>
+              <View className="ref-modal-btn-download" onClick={handleDownloadImage}>
+                <Download size={14} color="#fff" />
+                <Text className="ref-modal-btn-text-white">保存图片</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   )
 }

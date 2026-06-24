@@ -2,11 +2,17 @@
 import { Injectable, Inject } from '@nestjs/common'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { EarningService } from '../earning/earning.service'
+import { WechatSubscribeMessageService } from '../notification/wechat-subscribe-message.service'
 import * as crypto from 'crypto'
+import { UploadService } from '../upload/upload.service'
 
 @Injectable()
 export class ReferralService {
-  constructor(@Inject(EarningService) private readonly earningService: EarningService) {}
+  constructor(
+    @Inject(EarningService) private readonly earningService: EarningService,
+    @Inject(UploadService) private readonly uploadService: UploadService,
+    @Inject(WechatSubscribeMessageService) private readonly wechatService: WechatSubscribeMessageService
+  ) {}
 
   /**
    * 生成邀请码
@@ -747,5 +753,121 @@ export class ReferralService {
     }
     
     console.log(`[ReferralService] 被邀请人创建分身，已发放奖励给用户 ${referrerId}`)
+  }
+
+  /**
+   * 生成小程序码（使用微信官方API）
+   * @param content 小程序页面路径（如 pages/login/index?inviteCode=ABC123）
+   * @returns 图片URL
+   */
+  async generateQrcodeWithLogo(content: string): Promise<string> {
+    console.log('[ReferralService] generateQrcodeWithLogo content:', content)
+    
+    try {
+      // 解析页面路径和参数
+      // content 格式: pages/login/index?inviteCode=ABC123
+      const [pagePath, queryStr] = content.split('?')
+      const page = pagePath || 'pages/login/index'
+      
+      // 从参数中提取邀请码
+      let scene = ''
+      if (queryStr) {
+        const params = new URLSearchParams(queryStr)
+        const inviteCode = params.get('inviteCode') || params.get('referralCode')
+        if (inviteCode) {
+          scene = inviteCode  // 邀请码最多6个字符，符合scene限制（32字符）
+        }
+      }
+      
+      console.log('[ReferralService] page:', page, 'scene:', scene)
+      
+      // 调用生成小程序码，支持token失效时重试
+      return await this.generateMiniProgramCode(page, scene)
+    } catch (error) {
+      console.error('[ReferralService] generateQrcodeWithLogo error:', error)
+      throw new Error('生成小程序码失败')
+    }
+  }
+
+  /**
+   * 根据环境变量确定小程序版本
+   * @returns 'develop' | 'trial' | 'release'
+   */
+  private getEnvVersion(): 'develop' | 'trial' | 'release' {
+    const nodeEnv = process.env.NODE_ENV || 'development'
+    
+    const envMap: Record<string, 'develop' | 'trial' | 'release'> = {
+      'development': 'develop',  // 开发版
+      'test': 'trial',          // 体验版
+      'production': 'release',  // 正式版
+    }
+    
+    return envMap[nodeEnv] || 'release'  // 默认正式版
+  }
+
+  /**
+   * 生成小程序码（内部方法，支持token失效重试）
+   */
+  private async generateMiniProgramCode(page: string, scene: string, retryCount: number = 0): Promise<string> {
+    try {
+      // 获取微信 access_token
+      const accessToken = await this.wechatService.getAccessToken()
+      console.log('[ReferralService] access_token获取成功')
+      
+      // 根据环境变量确定小程序版本
+      const envVersion = this.getEnvVersion()
+      console.log('[ReferralService] 小程序版本:', envVersion)
+      
+      // 调用微信官方API生成小程序码
+      const url = `https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token=${accessToken}`
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scene: scene || 'default',
+          page: page,
+          width: 430,
+          auto_color: false,
+          line_color: { r: 31, g: 41, b: 55 },  // #1F2937
+          is_hyaline: false,  // 不透明背景
+          env_version: envVersion,  // 根据环境选择版本
+        })
+      })
+      
+      // 检查响应类型
+      const contentType = response.headers.get('content-type')
+      console.log('[ReferralService] response content-type:', contentType)
+      
+      if (contentType && contentType.includes('application/json')) {
+        // 返回了错误信息
+        const errorData = await response.json() as any
+        console.error('[ReferralService] 微信API返回错误:', errorData)
+        
+        // 如果是access_token失效错误，强制刷新并重试
+        if (errorData.errcode === 40001 && retryCount < 2) {
+          console.log('[ReferralService] access_token失效，强制刷新并重试')
+          await this.wechatService.forceRefreshAccessToken()
+          return this.generateMiniProgramCode(page, scene, retryCount + 1)
+        }
+        
+        throw new Error(`微信API错误: ${errorData.errmsg || '未知错误'}`)
+      }
+      
+      // 获取图片二进制数据
+      const imageBuffer = Buffer.from(await response.arrayBuffer())
+      console.log('[ReferralService] 小程序码生成成功，大小:', imageBuffer.length)
+      
+      // 上传到存储服务
+      const fileName = `referral-qrcode/${crypto.randomUUID()}.png`
+      const imageUrl = await this.uploadService.uploadBuffer(imageBuffer, fileName)
+      
+      console.log('[ReferralService] 小程序码图片上传成功:', imageUrl)
+      
+      return imageUrl
+    } catch (error) {
+      console.error('[ReferralService] generateMiniProgramCode error:', error)
+      throw error
+    }
   }
 }

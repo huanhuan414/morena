@@ -5,9 +5,11 @@ import { ReferralService } from './referral.service'
 import { ReferralMigrationService } from './referral-migration.service'
 import { ReferralScheduleService } from './referral-schedule.service'
 import { EarningModule } from '../earning/earning.module'
+import { UploadModule } from '../upload/upload.module'
+import { NotificationModule } from '../notification/notification.module'
 
 @Module({
-  imports: [EarningModule],
+  imports: [EarningModule, UploadModule, NotificationModule],
   controllers: [ReferralController],
   providers: [ReferralService, ReferralMigrationService, ReferralScheduleService],
   exports: [ReferralService]

@@ -293,6 +293,9 @@ importers:
       puppeteer:
         specifier: ^24.40.0
         version: 24.40.0(typescript@5.9.3)
+      qrcode:
+        specifier: ^1.5.4
+        version: 1.5.4
       rxjs:
         specifier: ^7.8.1
         version: 7.8.2

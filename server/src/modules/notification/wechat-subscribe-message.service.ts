@@ -117,6 +117,29 @@ export class WechatSubscribeMessageService {
   }
 
   /**
+   * 强制刷新 access_token（清除缓存后重新获取）
+   */
+  async forceRefreshAccessToken(): Promise<string> {
+    this.logger.log('强制刷新微信access_token')
+    
+    // 清除内存缓存
+    this.accessToken = ''
+    this.tokenExpiresAt = 0
+    
+    // 清除 Redis 缓存
+    try {
+      await this.redisService.getClient().del(WX_ACCESS_TOKEN_KEY)
+      await this.redisService.getClient().del(WX_ACCESS_TOKEN_EXPIRES_KEY)
+      this.logger.log('Redis缓存已清除')
+    } catch (err) {
+      this.logger.warn(`Redis清除缓存失败: ${err.message}`)
+    }
+    
+    // 获取新的 token
+    return this.fetchAccessToken()
+  }
+
+  /**
    * 发送订阅消息
    * @param toUser 接收者的openid
    * @param templateId 模板ID

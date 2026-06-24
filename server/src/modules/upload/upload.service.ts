@@ -90,6 +90,24 @@ export class UploadService {
   }
 
   /**
+   * 上传Buffer数据为图片
+   * @param buffer 图片Buffer
+   * @param fileName 文件名
+   * @returns 图片URL
+   */
+  async uploadBuffer(buffer: Buffer, fileName: string): Promise<string> {
+    this.logger.log(`[UploadService] 上传Buffer图片: ${fileName}, 大小: ${buffer.length} bytes`)
+    try {
+      const url = await this.storageService.uploadImageFromBuffer(buffer, fileName)
+      this.logger.log(`[UploadService] Buffer图片上传成功: ${url.substring(0, 60)}`)
+      return url
+    } catch (error) {
+      this.logger.error('[UploadService] Buffer图片上传失败:', error)
+      throw new Error(`图片上传失败: ${error.message}`)
+    }
+  }
+
+  /**
    * 上传视频 - 使用对象存储（veImageX不支持视频）
    */
   async uploadVideo(file: Express.Multer.File): Promise<{ url: string }> {

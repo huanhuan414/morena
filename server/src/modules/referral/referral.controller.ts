@@ -223,4 +223,23 @@ export class ReferralController {
     }
     return { code: 200, data: { eligible: false, discountRate: 0 }, message: '获取成功' }
   }
+
+  /**
+   * 生成邀请二维码图片
+   * @param content 二维码内容（小程序页面路径）
+   */
+  @Post('qrcode')
+  async generateQrcode(@Body('content') content: string) {
+    console.log('[ReferralController] generateQrcode content:', content)
+    try {
+      if (this.referralService) {
+        const imageUrl = await this.referralService.generateQrcodeWithLogo(content)
+        return { code: 200, data: { imageUrl }, message: '生成成功' }
+      }
+    } catch (e) {
+      console.error('[ReferralController] generateQrcode error:', e.message)
+      return { code: 500, data: null, message: e.message || '生成失败' }
+    }
+    return { code: 500, data: null, message: '服务暂不可用' }
+  }
 }

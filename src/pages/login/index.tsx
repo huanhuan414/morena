@@ -31,7 +31,50 @@ const Login: React.FC = () => {
 
   useEffect(() => {
     const instance = Taro.getCurrentInstance()
-    const inviteCode = instance?.router?.params?.inviteCode || instance?.router?.params?.referralCode || ''
+    // 支持多种参数来源：
+    // 1. URL参数 inviteCode/referralCode（分享链接方式）
+    // 2. scene参数（小程序码扫描方式）- 需要通过 Taro.getLaunchOptionsSync() 获取
+    let inviteCode = instance?.router?.params?.inviteCode || instance?.router?.params?.referralCode || ''
+    console.log('[Login] URL参数 inviteCode:', inviteCode)
+
+    // 如果没有URL参数，尝试从scene参数获取（小程序码扫描）
+    if (!inviteCode) {
+      try {
+        // 使用Taro API获取启动参数（小程序码扫描时的参数）
+        const launchOptions = Taro.getLaunchOptionsSync?.() as any
+        // console.log('[Login] launchOptions:', launchOptions)
+
+        const query = launchOptions?.query || {}
+        // console.log('[Login] query:', query)
+
+        const scene = String(query.scene || '')
+        // console.log('[Login] scene:', scene)
+
+        if (scene && scene !== 'undefined' && scene !== 'null') {
+          // 微信小程序码的scene参数可能会被URL编码，需要解码
+          let decodedScene = scene
+          try {
+            decodedScene = decodeURIComponent(scene)
+          } catch (e) {
+            // 解码失败，使用原始值
+          }
+          console.log('[Login] decodedScene:', decodedScene)
+
+          // scene可能直接是邀请码，也可能是 query string 格式
+          if (decodedScene.includes('=')) {
+            const params = new URLSearchParams(decodedScene)
+            inviteCode = params.get('inviteCode') || params.get('referralCode') || decodedScene
+          } else {
+            // 直接就是邀请码
+            inviteCode = decodedScene
+          }
+          console.log('[Login] 从scene获取的 inviteCode:', inviteCode)
+        }
+      } catch (e) {
+        console.warn('[Login] 获取scene参数失败:', e)
+      }
+    }
+
     if (inviteCode) {
       setReferralCode(inviteCode.toUpperCase())
       setWechatReferralCode(inviteCode.toUpperCase())
