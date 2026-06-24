@@ -9,6 +9,7 @@ import {
   Zap, Package
 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
+import { WX_SUBSCRIBE_TEMPLATES } from '@/constants/wechat'
 import './index.css'
 
 // ===== 平台名称映射 =====
@@ -220,6 +221,23 @@ export default function OrderListPage() {
   }, [])
 
   const handleCreate = useCallback(() => {
+    // 请求订阅消息授权（一次性订阅，用于接收任务完成通知）
+    console.log('开始请求订阅消息授权')
+      ; (Taro as any).requestSubscribeMessage({
+        tmplIds: [WX_SUBSCRIBE_TEMPLATES.FEEDBACK],
+        success: (subscribeRes: any) => {
+          const status = subscribeRes[WX_SUBSCRIBE_TEMPLATES.FEEDBACK]
+          console.log('模板消息状态:', status)
+          if (status === 'accept') {
+            Taro.showToast({ title: '订阅成功', icon: 'success', duration: 1500 })
+          }
+        },
+        fail: (err) => {
+          console.error('订阅消息授权失败:', err)
+          // 用户未授权或其他错误，不影响跳转
+        },
+      })
+    // 跳转创建订单页面
     Taro.navigateTo({ url: '/package-order/pages/order-create/index' })
   }, [])
 

@@ -34,15 +34,17 @@ export class WechatSubscribeMessageService {
    * 获取微信小程序 access_token
    * 1. 先从 Redis 获取（多实例共享）
    * 2. 内存缓存作为 fallback
-   * 3. 过期前5分钟自动刷新，支持失败重试
+   * 3. 过期前60秒自动刷新，避免使用即将过期的token
    */
   async getAccessToken(): Promise<string> {
+    const EXPIRY_BUFFER = 60 * 1000 // 提前60秒刷新
+
     // 检查 Redis 缓存
     try {
       const cachedToken = await this.redisService.getClient().get(WX_ACCESS_TOKEN_KEY)
       const cachedExpires = await this.redisService.getClient().get(WX_ACCESS_TOKEN_EXPIRES_KEY)
 
-      if (cachedToken && cachedExpires && Date.now() < parseInt(cachedExpires, 10)) {
+      if (cachedToken && cachedExpires && Date.now() + EXPIRY_BUFFER < parseInt(cachedExpires, 10)) {
         return cachedToken
       }
     } catch (err) {
@@ -50,7 +52,7 @@ export class WechatSubscribeMessageService {
     }
 
     // 检查内存缓存
-    if (this.accessToken && Date.now() < this.tokenExpiresAt) {
+    if (this.accessToken && Date.now() + EXPIRY_BUFFER < this.tokenExpiresAt) {
       return this.accessToken
     }
 
@@ -65,18 +67,16 @@ export class WechatSubscribeMessageService {
     for (let i = 0; i < maxRetries; i++) {
       try {
         const token = await this.fetchAccessToken()
-        this.logger.log(`微信access_token刷新成功`)
+        // 移除日志：this.logger.log(`微信access_token刷新成功`)
         return token
       } catch (error: any) {
         this.logger.warn(`获取access_token失败 (${i + 1}/${maxRetries}): ${error.message}`)
         if (i < maxRetries - 1) {
-          // 重试前等待 1 秒
           await new Promise(resolve => setTimeout(resolve, 1000))
         }
       }
     }
 
-    // 所有重试都失败，尝试使用即将过期的 token（如果有）
     if (this.accessToken) {
       this.logger.warn('access_token刷新失败，使用内存中即将过期的token')
       return this.accessToken
@@ -151,7 +151,7 @@ export class WechatSubscribeMessageService {
     templateId: string
     page?: string
     data: Record<string, { value: string }>
-  }): Promise<boolean> {
+  }, retryCount: number = 0): Promise<boolean> {
     try {
       this.logger.log(`准备发送订阅消息: toUser=${params.toUser}, templateId=${params.templateId}`)
       
@@ -160,9 +160,6 @@ export class WechatSubscribeMessageService {
       
       const url = `https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token=${token}`
 
-      // 小程序版本类型：developer(开发版)、trial(体验版)、formal(正式版)
-      // 可通过 WX_MINIPROGRAM_STATE 环境变量明确指定
-      // 根据 NODE_ENV 映射：development=developer, test=trial, production=formal
       const stateMap: Record<string, string> = {
         development: 'developer',
         test: 'trial',
@@ -179,8 +176,6 @@ export class WechatSubscribeMessageService {
         lang: 'zh_CN'
       }
 
-      this.logger.log(`发送订阅消息请求: ${JSON.stringify(body)}`)
-      
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -194,7 +189,13 @@ export class WechatSubscribeMessageService {
         return true
       }
 
-      // 43101 = 用户拒绝接收消息，不报错
+      // 40001 = access_token失效，强制刷新并重试
+      if (result.errcode === 40001 && retryCount < 2) {
+        this.logger.warn(`access_token失效，强制刷新并重试 (${retryCount + 1}/2)`)
+        await this.forceRefreshAccessToken()
+        return this.sendSubscribeMessage(params, retryCount + 1)
+      }
+
       if (result.errcode === 43101) {
         this.logger.warn(`用户未订阅该模板消息: toUser=${params.toUser}, templateId=${params.templateId}`)
         return false
@@ -233,7 +234,7 @@ export class WechatSubscribeMessageService {
       templateId: this.feedbackTemplateId,
       page: params.page,
       data: {
-        thing2: { value: this.truncate(`${params.avatarName}已完成${params.orderTitle}订单，请尽快验收`, 20) },
+        thing2: { value: this.truncate(`[${params.avatarName}]已完成[${params.orderTitle}]订单，请尽快验收`, 20) },
         phrase1: { value: '待验收' },
         thing4: { value: this.truncate(params.acceptanceTimeoutHint, 20) },
       }
