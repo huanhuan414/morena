@@ -1079,7 +1079,6 @@ export class OrderProcessingService {
     setCache(normalized.orderId, normalized)
 
     const db = getMySQLClient()
-    
     if (normalized.orderId && normalized.avatarId) {
       // 首次驳回：dispatch保持accepted（分身仍可重新生成，ENUM无revision_requested值）
       // 最终驳回：dispatch改为rejected（释放名额）
@@ -1088,21 +1087,23 @@ export class OrderProcessingService {
 
       // 驳回时重置接单超时时间（超时后也自动释放）
       // 从订单表读取 accept_timeout（分钟），计算新的 accept_timeout_at
-      const [orderRows] = await db.query(
+      // 注意: db.query() 内部已解构 [rows] 并转换键为 camelCase，返回值就是行数组，不需要再解构
+      const orderRows = await db.query(
         `SELECT accept_timeout FROM orders WHERE id = ?`,
         [normalized.orderId]
       ) as any[]
-      const acceptTimeoutMinutes = orderRows?.[0]?.accept_timeout
+      this.logger.log('[驳回xxxxx] 获取订单接单超时: orderRows=' + JSON.stringify(orderRows))
+      const acceptTimeoutMinutes = orderRows?.[0]?.acceptTimeout || orderRows?.[0]?.accept_timeout
       const newAcceptTimeoutAt = acceptTimeoutMinutes
         ? new Date(Date.now() + Number(acceptTimeoutMinutes) * 60 * 1000)
         : null
-      console.log(`[驳回] acceptTimeoutMinutes=${acceptTimeoutMinutes}, newAcceptTimeoutAt=${newAcceptTimeoutAt}`)
+      this.logger.log(`[驳回xxxxx] acceptTimeoutMinutes=${acceptTimeoutMinutes}, newAcceptTimeoutAt=${newAcceptTimeoutAt}`)
       
       await db.query(
         `UPDATE order_dispatch_requests SET status = ?, reject_reason = ?, kick_type = ?, accept_timeout_at = ?, updated_at = NOW() WHERE order_id = ? AND avatar_id = ?`,
         [dispatchStatus, feedback.rejectReason || '', kickType, newAcceptTimeoutAt, normalized.orderId, normalized.avatarId]
       )
-      this.logger.log(`[驳回] 已更新派单记录状态: orderId=${normalized.orderId}, avatarId=${normalized.avatarId}, dispatchStatus=${dispatchStatus}`)
+      this.logger.log(`[驳回xxxxx] 已更新派单记录状态: orderId=${normalized.orderId}, avatarId=${normalized.avatarId}, dispatchStatus=${dispatchStatus}`)
 
       // 最终驳回：释放Redis名额（用DECR，不用SET）
       if (isFinalRejection) {

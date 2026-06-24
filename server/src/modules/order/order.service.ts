@@ -238,7 +238,8 @@ export class OrderService {
       if (completedDispatchCount >= requiredAvatarCount) {
         newStatus = 'completed'
       } else if (hasRevisionRequested) {
-        newStatus = 'revision_requested'
+        // 驳回后分身需重新生成内容，orders 表 ENUM 无 revision_requested，映射为 in_progress
+        newStatus = 'in_progress'
       } else if (allContentAwaitingAcceptance) {
         newStatus = 'awaiting_acceptance'
       } else if (allContentSubmitted) {
@@ -287,9 +288,8 @@ export class OrderService {
     'pending_dispatch': ['pending_acceptance', 'cancelled'],
     'pending_acceptance': ['in_progress', 'rejected', 'cancelled'],
     'in_progress': ['submitted', 'cancelled'],
-    'submitted': ['awaiting_acceptance', 'revision_requested'],
-    'awaiting_acceptance': ['completed', 'revision_requested'],
-    'revision_requested': ['in_progress'],
+    'submitted': ['awaiting_acceptance', 'in_progress'],
+    'awaiting_acceptance': ['completed', 'in_progress'],
     'completed': [],
     'cancelled': [],
     'rejected': []

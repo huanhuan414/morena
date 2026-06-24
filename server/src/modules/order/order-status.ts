@@ -21,7 +21,6 @@ export type OrderStatus =
   | 'in_progress'
   | 'submitted'
   | 'awaiting_acceptance'
-  | 'revision_requested'
   | 'completed'
   | 'cancelled'
   | 'rejected'
@@ -148,7 +147,7 @@ export function deriveOrderStatusFromWorkflowDetailed(input: {
     anyAwaitingAcceptance,
   }
 
-  if (hasRevisionRequested) return { status: 'revision_requested', reason: 'REVISION_REQUESTED', signals }
+  if (hasRevisionRequested) return { status: 'in_progress', reason: 'REVISION_REQUESTED', signals }
   if (allSettled && allDispatchCompleted) return { status: 'completed', reason: 'ALL_SETTLED_AND_DISPATCH_DONE', signals }
   if (allAwaitingAcceptance) return { status: 'awaiting_acceptance', reason: 'ALL_AWAITING_ACCEPTANCE', signals }
   if (anyPublishedOrSettled && !anyAwaitingAcceptance && !hasPendingDispatch) return { status: 'submitted', reason: 'PUBLISHED_WAITING_FEEDBACK', signals }
