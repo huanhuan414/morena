@@ -780,11 +780,11 @@ export class ReferralService {
   }
 
   /**
-   * 生成小程序码（使用微信官方API）并合成到海报模板上
+   * 生成小程序码（使用微信官方API）并返回给前端合成
    * @param content 小程序页面路径（如 pages/login/index?inviteCode=ABC123）
-   * @returns 合成后的海报图片URL
+   * @returns { qrcodeBase64, posterTemplateUrl }
    */
-  async generateQrcodeWithLogo(content: string): Promise<string> {
+  async generateQrcodeWithLogo(content: string): Promise<{ qrcodeBase64: string; posterTemplateUrl: string }> {
     console.log('[ReferralService] generateQrcodeWithLogo content:', content)
     
     try {
@@ -806,10 +806,15 @@ export class ReferralService {
       console.log('[ReferralService] page:', page, 'scene:', scene)
       
       // 调用生成小程序码，支持token失效时重试
-      const qrcodeUrl = await this.generateMiniProgramCode(page, scene)
+      const qrcodeBuffer = await this.generateMiniProgramCodeBuffer(page, scene)
       
-      // 将二维码合成到海报模板上
-      return await this.composeQrcodeToPoster(qrcodeUrl)
+      // 海报模板 URL（存储在 TOS 对象存储）
+      const posterTemplateUrl = `https://${process.env.VOLCENGINE_IMAGE_DOMAIN}/tos-cn-i-${process.env.VOLCENGINE_IMAGE_SERVICE_ID}/user%2F92714377ef894089af3a1ebcfb71989b.png~tplv-${process.env.VOLCENGINE_IMAGE_SERVICE_ID}-image.png`
+      // 返回小程序码base64和海报模板URL，由前端合成
+      return {
+        qrcodeBase64: `data:image/png;base64,${qrcodeBuffer.toString('base64')}`,
+        posterTemplateUrl
+      }
     } catch (error) {
       console.error('[ReferralService] generateQrcodeWithLogo error:', error)
       throw new Error('生成小程序码失败')
@@ -924,6 +929,21 @@ export class ReferralService {
    * 生成小程序码（内部方法，支持token失效重试）
    */
   private async generateMiniProgramCode(page: string, scene: string, retryCount: number = 0): Promise<string> {
+    const buffer = await this.generateMiniProgramCodeBuffer(page, scene, retryCount)
+    
+    // 上传到存储服务
+    const fileName = `referral-qrcode/${crypto.randomUUID()}.png`
+    const imageUrl = await this.uploadService.uploadBuffer(buffer, fileName)
+    
+    console.log('[ReferralService] 小程序码图片上传成功:', imageUrl)
+    
+    return imageUrl
+  }
+
+  /**
+   * 生成小程序码（返回buffer，不上传）
+   */
+  private async generateMiniProgramCodeBuffer(page: string, scene: string, retryCount: number = 0): Promise<Buffer> {
     try {
       // 获取微信 access_token
       const accessToken = await this.wechatService.getAccessToken()
@@ -973,15 +993,9 @@ export class ReferralService {
       const imageBuffer = Buffer.from(await response.arrayBuffer())
       console.log('[ReferralService] 小程序码生成成功，大小:', imageBuffer.length)
       
-      // 上传到存储服务
-      const fileName = `referral-qrcode/${crypto.randomUUID()}.png`
-      const imageUrl = await this.uploadService.uploadBuffer(imageBuffer, fileName)
-      
-      console.log('[ReferralService] 小程序码图片上传成功:', imageUrl)
-      
-      return imageUrl
+      return imageBuffer
     } catch (error) {
-      console.error('[ReferralService] generateMiniProgramCode error:', error)
+      console.error('[ReferralService] generateMiniProgramCodeBuffer error:', error)
       throw error
     }
   }

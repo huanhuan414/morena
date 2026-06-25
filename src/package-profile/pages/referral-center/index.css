@@ -1038,13 +1038,13 @@
   padding: 40rpx;
 }
 .ref-image-modal-content {
-  width: 100%;
-  max-width: 600rpx;
+  width: 85%;
   background: #fff;
   border-radius: 24rpx;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  max-height: 85vh;
 }
 .ref-image-modal-header {
   display: flex;
@@ -1056,8 +1056,8 @@
 }
 .ref-image-modal-title {
   font-size: 32rpx;
-  font-weight: 700;
-  color: #1F2937;
+  font-weight: 600;
+  color: #1f2937;
 }
 .ref-image-modal-close {
   width: 48rpx;
@@ -1065,21 +1065,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 24rpx;
-  background: #F3F4F6;
+}
+.ref-image-modal-close-icon {
+  font-size: 36rpx;
+  color: #9ca3af;
 }
 .ref-image-modal-body {
-  flex: 1;
-  padding: 32rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #F9FAFB;
+  padding: 0;
+  background: #fff;
+  overflow: hidden;
 }
 .ref-poster-image {
   width: 100%;
-  max-width: 500rpx;
-  border-radius: 16rpx;
 }
 .ref-image-modal-footer {
   display: flex;

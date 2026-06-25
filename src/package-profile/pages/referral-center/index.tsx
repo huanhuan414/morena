@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { View, Text, Button, Image } from '@tarojs/components'
+import { View, Text, Button, Image, Canvas } from '@tarojs/components'
 import Taro, { useDidShow, useShareAppMessage } from '@tarojs/taro'
 import { useState } from 'react'
 import { Network } from '@/network'
@@ -119,9 +119,9 @@ export default function ReferralCenter() {
         },
       })
 
-      if (res.data && res.data.data && res.data.data.imageUrl) {
-        setPosterImageUrl(res.data.data.imageUrl)
-        setShowImageModal(true)
+      if (res.data && res.data.data && res.data.data.qrcodeBase64 && res.data.data.posterTemplateUrl) {
+        // 前端合成海报
+        await composePoster(res.data.data.qrcodeBase64, res.data.data.posterTemplateUrl)
       } else {
         Taro.showToast({ title: '生成图片失败', icon: 'none' })
       }
@@ -133,31 +133,150 @@ export default function ReferralCenter() {
     }
   }
 
+  // 前端合成海报
+  const composePoster = async (qrcodeBase64: string, posterTemplateUrl: string) => {
+    try {
+      Taro.showLoading({ title: '生成海报中...' })
+
+      try {
+        const fs = Taro.getFileSystemManager()
+        const files = fs.readdirSync(Taro.env.USER_DATA_PATH)
+        files.forEach(file => {
+          try { fs.unlinkSync(`${Taro.env.USER_DATA_PATH}/${file}`) } catch (e) { /* 忽略 */ }
+        })
+      } catch (e) { /* 忽略 */ }
+
+      const posterRes = await Taro.downloadFile({ url: posterTemplateUrl })
+      if (posterRes.statusCode !== 200) {
+        throw new Error('海报模板下载失败')
+      }
+      // console.log('[ReferralCenter] poster downloaded:', posterRes.tempFilePath)
+
+      const posterInfo = await Taro.getImageInfo({ src: posterRes.tempFilePath })
+      const posterWidth = posterInfo.width
+      const posterHeight = posterInfo.height
+      // console.log('[ReferralCenter] poster size:', posterWidth, 'x', posterHeight)
+
+      const qrcodeTempPath = await saveBase64Image(qrcodeBase64)
+      // console.log('[ReferralCenter] qrcode saved:', qrcodeTempPath)
+
+      const canvasId = 'posterCanvas'
+      const ctx = Taro.createCanvasContext(canvasId)
+
+      const canvasWidth = 750
+      const canvasHeight = 1334
+      const scale = Math.min(canvasWidth / posterWidth, canvasHeight / posterHeight, 1)
+      const drawWidth = Math.round(posterWidth * scale)
+      const drawHeight = Math.round(posterHeight * scale)
+      const offsetX = Math.round((canvasWidth - drawWidth) / 2)
+      const offsetY = Math.round((canvasHeight - drawHeight) / 2)
+
+      ctx.fillStyle = '#FFFFFF'
+      ctx.fillRect(0, 0, canvasWidth, canvasHeight)
+
+      ctx.drawImage(posterRes.tempFilePath, offsetX, offsetY, drawWidth, drawHeight)
+
+      const qrcodeSize = Math.round(drawWidth * 0.28)
+      const qrcodeX = offsetX + Math.round((drawWidth - qrcodeSize) / 2)
+      const qrcodeY = offsetY + Math.round((drawHeight - qrcodeSize - drawHeight * 0.06))
+      const borderPadding = Math.round(6 * scale)
+
+      ctx.fillStyle = '#FFFFFF'
+      const bgSize = qrcodeSize + borderPadding * 2
+      const bgX = qrcodeX - borderPadding
+      const bgY = qrcodeY - borderPadding
+      const borderRadius = Math.round(qrcodeSize * 0.08) + borderPadding
+
+      ctx.beginPath()
+      ctx.moveTo(bgX + borderRadius, bgY)
+      ctx.lineTo(bgX + bgSize - borderRadius, bgY)
+      ctx.quadraticCurveTo(bgX + bgSize, bgY, bgX + bgSize, bgY + borderRadius)
+      ctx.lineTo(bgX + bgSize, bgY + bgSize - borderRadius)
+      ctx.quadraticCurveTo(bgX + bgSize, bgY + bgSize, bgX + bgSize - borderRadius, bgY + bgSize)
+      ctx.lineTo(bgX + borderRadius, bgY + bgSize)
+      ctx.quadraticCurveTo(bgX, bgY + bgSize, bgX, bgY + bgSize - borderRadius)
+      ctx.lineTo(bgX, bgY + borderRadius)
+      ctx.quadraticCurveTo(bgX, bgY, bgX + borderRadius, bgY)
+      ctx.closePath()
+      ctx.fill()
+
+      ctx.drawImage(qrcodeTempPath, qrcodeX, qrcodeY, qrcodeSize, qrcodeSize)
+
+      ctx.draw(false, () => {
+        setTimeout(() => {
+          Taro.canvasToTempFilePath({
+            canvasId,
+            x: offsetX,
+            y: offsetY,
+            width: drawWidth,
+            height: drawHeight,
+            destWidth: posterWidth,
+            destHeight: posterHeight,
+            fileType: 'jpg',
+            quality: 0.85,
+            success: (res) => {
+              console.log('[ReferralCenter] canvasToTempFilePath success:', res.tempFilePath)
+              Taro.hideLoading()
+              setPosterImageUrl(res.tempFilePath)
+              setShowImageModal(true)
+            },
+            fail: (err) => {
+              Taro.hideLoading()
+              console.error('[ReferralCenter] canvasToTempFilePath error:', err)
+              Taro.showToast({ title: '生成海报失败', icon: 'none' })
+            }
+          })
+        }, 500)
+      })
+    } catch (error) {
+      Taro.hideLoading()
+      console.error('[ReferralCenter] composePoster error:', error)
+      Taro.showToast({ title: '生成海报失败', icon: 'none' })
+    }
+  }
+
+  // 将base64图片保存为临时文件
+  // 使用固定文件名 + 写入前先删除旧文件，避免 USER_DATA_PATH 容量超限
+  const saveBase64Image = (base64: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const base64Data = base64.replace(/^data:image\/\w+;base64,/, '')
+      const filePath = `${Taro.env.USER_DATA_PATH}/qrcode_temp.png`
+      const fs = Taro.getFileSystemManager()
+      // 写入前先尝试删除旧文件，释放配额
+      try {
+        fs.unlinkSync(filePath)
+      } catch (e) {
+        // 文件不存在，忽略
+      }
+      fs.writeFile({
+        filePath,
+        data: base64Data,
+        encoding: 'base64',
+        success: () => resolve(filePath),
+        fail: (err) => reject(err)
+      })
+    })
+  }
+
   const handleDownloadImage = () => {
     if (!posterImageUrl) return
 
     Taro.showLoading({ title: '保存中...' })
-    Taro.downloadFile({
-      url: posterImageUrl,
-      success: (res) => {
-        if (res.statusCode === 200) {
-          Taro.saveImageToPhotosAlbum({
-            filePath: res.tempFilePath,
-            success: () => {
-              Taro.hideLoading()
-              Taro.showToast({ title: '保存成功', icon: 'success' })
-              setShowImageModal(false)
-            },
-            fail: () => {
-              Taro.hideLoading()
-              Taro.showToast({ title: '保存失败，请检查相册权限', icon: 'none' })
-            },
-          })
-        }
+    // posterImageUrl 已经是临时文件路径，直接保存到相册
+    Taro.saveImageToPhotosAlbum({
+      filePath: posterImageUrl,
+      success: () => {
+        Taro.hideLoading()
+        Taro.showToast({ title: '保存成功', icon: 'success' })
+        // 清理海报临时文件，释放 USER_DATA_PATH 空间
+        try {
+          Taro.getFileSystemManager().unlinkSync(posterImageUrl)
+        } catch (e) { /* 忽略 */ }
+        setShowImageModal(false)
       },
       fail: () => {
         Taro.hideLoading()
-        Taro.showToast({ title: '下载失败', icon: 'none' })
+        Taro.showToast({ title: '保存失败，请检查相册权限', icon: 'none' })
       },
     })
   }
@@ -673,11 +792,12 @@ export default function ReferralCenter() {
       </View>
 
       {/* 图片预览弹窗 */}
-      {showImageModal && (
+      {showImageModal && posterImageUrl && (
         <View className="ref-image-modal" onClick={() => setShowImageModal(false)}>
           <View className="ref-image-modal-content" onClick={(e) => e.stopPropagation()}>
             <View className="ref-image-modal-body">
               <Image
+                key={posterImageUrl}
                 className="ref-poster-image"
                 src={posterImageUrl}
                 mode="widthFix"
@@ -695,6 +815,12 @@ export default function ReferralCenter() {
           </View>
         </View>
       )}
+
+      {/* 隐藏的canvas用于合成海报 */}
+      <Canvas
+        canvasId="posterCanvas"
+        style={{ position: 'fixed', left: '-9999px', top: '-9999px', width: '750px', height: '1334px' }}
+      />
     </View>
   )
 }

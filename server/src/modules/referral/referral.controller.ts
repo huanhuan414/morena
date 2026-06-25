@@ -225,16 +225,16 @@ export class ReferralController {
   }
 
   /**
-   * 生成邀请二维码图片
+   * 生成邀请二维码图片（返回小程序码base64和海报模板URL，由前端合成）
    * @param content 二维码内容（小程序页面路径）
    */
   @Post('qrcode')
   async generateQrcode(@Body('content') content: string) {
-    console.log('[ReferralController] generateQrcode content:', content)
+    // console.log('[ReferralController] generateQrcode content:', content)
     try {
       if (this.referralService) {
-        const imageUrl = await this.referralService.generateQrcodeWithLogo(content)
-        return { code: 200, data: { imageUrl }, message: '生成成功' }
+        const result = await this.referralService.generateQrcodeWithLogo(content)
+        return { code: 200, data: result, message: '生成成功' }
       }
     } catch (e) {
       console.error('[ReferralController] generateQrcode error:', e.message)
