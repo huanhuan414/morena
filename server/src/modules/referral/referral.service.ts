@@ -5,6 +5,7 @@ import { EarningService } from '../earning/earning.service'
 import { WechatSubscribeMessageService } from '../notification/wechat-subscribe-message.service'
 import * as crypto from 'crypto'
 import { UploadService } from '../upload/upload.service'
+import * as sharp from 'sharp'
 
 @Injectable()
 export class ReferralService {
@@ -756,9 +757,9 @@ export class ReferralService {
   }
 
   /**
-   * 生成小程序码（使用微信官方API）
+   * 生成小程序码（使用微信官方API）并合成到海报模板上
    * @param content 小程序页面路径（如 pages/login/index?inviteCode=ABC123）
-   * @returns 图片URL
+   * @returns 合成后的海报图片URL
    */
   async generateQrcodeWithLogo(content: string): Promise<string> {
     console.log('[ReferralService] generateQrcodeWithLogo content:', content)
@@ -782,10 +783,101 @@ export class ReferralService {
       console.log('[ReferralService] page:', page, 'scene:', scene)
       
       // 调用生成小程序码，支持token失效时重试
-      return await this.generateMiniProgramCode(page, scene)
+      const qrcodeUrl = await this.generateMiniProgramCode(page, scene)
+      
+      // 将二维码合成到海报模板上
+      return await this.composeQrcodeToPoster(qrcodeUrl)
     } catch (error) {
       console.error('[ReferralService] generateQrcodeWithLogo error:', error)
       throw new Error('生成小程序码失败')
+    }
+  }
+
+  /**
+   * 将二维码合成到海报模板上
+   * @param qrcodeUrl 二维码图片URL
+   * @returns 合成后的海报图片URL
+   */
+  private async composeQrcodeToPoster(qrcodeUrl: string): Promise<string> {
+    console.log('[ReferralService] composeQrcodeToPoster qrcodeUrl:', qrcodeUrl)
+    
+    try {
+      // 海报模板 URL（存储在 TOS 对象存储）
+      const posterTemplateUrl = 'https://voic.51webjs.com/tos-cn-i-699z2ac540/user%2F92714377ef894089af3a1ebcfb71989b.png~tplv-699z2ac540-image.png'
+      
+      // 从 TOS 下载海报模板
+      const posterResponse = await fetch(posterTemplateUrl)
+      const posterBuffer = Buffer.from(await posterResponse.arrayBuffer())
+      console.log('[ReferralService] 海报模板下载成功，大小:', posterBuffer.length)
+      
+      // 下载二维码图片
+      const qrcodeResponse = await fetch(qrcodeUrl)
+      const qrcodeBuffer = Buffer.from(await qrcodeResponse.arrayBuffer())
+      console.log('[ReferralService] 二维码图片下载成功，大小:', qrcodeBuffer.length)
+      
+      // 获取海报尺寸
+      const posterMetadata = await sharp(posterBuffer).metadata()
+      const posterWidth = posterMetadata.width || 750
+      const posterHeight = posterMetadata.height || 1100
+      console.log('[ReferralService] 海报尺寸:', posterWidth, 'x', posterHeight)
+      
+      // 二维码位置和大小配置（覆盖海报底部中间的二维码位置）
+      const qrcodeSize = Math.min(posterWidth * 0.28, posterWidth * 0.5)  // 二维码大小约为海报宽度的28%
+      const qrcodeX = (posterWidth - qrcodeSize) / 2  // 水平居中
+      const qrcodeY = posterHeight - qrcodeSize - posterHeight * 0.06  // 距离底部约6%
+      const borderRadius = Math.round(qrcodeSize * 0.08)  // 圆角半径（8%）
+      
+      console.log('[ReferralService] 二维码位置: x=', qrcodeX, 'y=', qrcodeY, 'size=', qrcodeSize, '圆角=', borderRadius)
+      
+      // 先调整二维码尺寸
+      const resizedQrcode = await sharp(qrcodeBuffer)
+        .resize(Math.round(qrcodeSize), Math.round(qrcodeSize))
+        .toBuffer()
+      
+      // 创建带圆角的完整二维码图片
+      // 步骤1: 创建圆角白色背景（比二维码稍大一点，留出边框）
+      const borderPadding = 6
+      const bgSize = Math.round(qrcodeSize + borderPadding * 2)
+      const bgBorderRadius = borderRadius + borderPadding
+      
+      const whiteBgSvg = `<svg width="${bgSize}" height="${bgSize}" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="${bgSize}" height="${bgSize}" rx="${bgBorderRadius}" ry="${bgBorderRadius}" fill="white"/>
+      </svg>`
+      const whiteBgBuffer = await sharp(Buffer.from(whiteBgSvg))
+        .resize(bgSize, bgSize)
+        .toBuffer()
+      
+      // 步骤2: 将二维码叠加到白色背景上（居中放置）
+      const qrcodeWithBg = await sharp(whiteBgBuffer)
+        .composite([{
+          input: resizedQrcode,
+          top: borderPadding,
+          left: borderPadding
+        }])
+        .toBuffer()
+      
+      // 最终合成到海报上
+      const compositeBuffer = await sharp(posterBuffer)
+        .composite([{
+          input: qrcodeWithBg,
+          top: Math.round(qrcodeY - borderPadding),
+          left: Math.round(qrcodeX - borderPadding),
+        }])
+        .toBuffer()
+      
+      console.log('[ReferralService] 图片合成成功，大小:', compositeBuffer.length)
+      
+      // 上传合成后的图片
+      const fileName = `referral-poster/${crypto.randomUUID()}.png`
+      const imageUrl = await this.uploadService.uploadBuffer(compositeBuffer, fileName)
+      
+      console.log('[ReferralService] 合成海报上传成功:', imageUrl)
+      
+      return imageUrl
+    } catch (error) {
+      console.error('[ReferralService] composeQrcodeToPoster error:', error)
+      // 如果合成失败，返回原始二维码URL作为降级方案
+      return qrcodeUrl
     }
   }
 
@@ -830,7 +922,7 @@ export class ReferralService {
           width: 430,
           auto_color: false,
           line_color: { r: 31, g: 41, b: 55 },  // #1F2937
-          is_hyaline: false,  // 不透明背景
+          is_hyaline: true,  // 不透明背景
           env_version: envVersion,  // 根据环境选择版本
         })
       })

@@ -3,7 +3,7 @@ import { View, Text, Button, Image } from '@tarojs/components'
 import Taro, { useDidShow, useShareAppMessage } from '@tarojs/taro'
 import { useState } from 'react'
 import { Network } from '@/network'
-import { Copy, Share2, Gift, Users, ArrowLeft, Sparkles, User, TrendingUp, Coins, Crown, Clock, Star, ChevronRight, Zap, Target, Medal, Info, DollarSign, Shield, X, Download, Image as ImageIcon } from 'lucide-react-taro'
+import { Copy, Share2, Gift, Users, ArrowLeft, Sparkles, User, TrendingUp, Coins, Crown, Clock, Star, ChevronRight, Zap, Target, Medal, Info, DollarSign, Shield, X, Download, Image as ImageIcon, QrCode } from 'lucide-react-taro'
 import './index.css'
 
 export default function ReferralCenter() {
@@ -230,8 +230,8 @@ export default function ReferralCenter() {
         </View>
         <View className="ref-code-actions-row2">
           <View className="ref-btn-generate" onClick={handleGenerateImage}>
-            <ImageIcon size={14} color="#fff" />
-            <Text className="ref-btn-text-white">{isGenerating ? '生成中...' : '生成图片'}</Text>
+            <QrCode size={14} color="#fff" />
+            <Text className="ref-btn-text-white">{isGenerating ? '海报生成中...' : '邀请海报'}</Text>
           </View>
         </View>
       </View>
@@ -428,11 +428,6 @@ export default function ReferralCenter() {
         {/* 表格内容 */}
         <View className="ref-tier-table-body">
           {tierInfo.allTiers.map((tier, idx) => {
-            console.log('[ReferralCenter] 渲染阶梯:', idx, tier)
-            console.log('[ReferralCenter] min_invites:', tier.min_invites, 'max_invites:', tier.max_invites)
-            console.log('[ReferralCenter] base_reward:', tier.base_reward, 'coins_reward:', tier.coins_reward)
-            console.log('[ReferralCenter] commission_rate:', tier.commission_rate)
-
             return (
               <View key={idx} className={`ref-tier-row ${tierInfo.currentTier?.tier_level === tier.tier_level ? 'active' : ''}`}>
                 <View className="ref-tier-td">
@@ -681,18 +676,11 @@ export default function ReferralCenter() {
       {showImageModal && (
         <View className="ref-image-modal" onClick={() => setShowImageModal(false)}>
           <View className="ref-image-modal-content" onClick={(e) => e.stopPropagation()}>
-            <View className="ref-image-modal-header">
-              <Text className="ref-image-modal-title">邀请海报</Text>
-              <View className="ref-image-modal-close" onClick={() => setShowImageModal(false)}>
-                <X size={20} color="#9CA3AF" />
-              </View>
-            </View>
             <View className="ref-image-modal-body">
               <Image
                 className="ref-poster-image"
                 src={posterImageUrl}
                 mode="widthFix"
-                onClick={() => setShowImageModal(false)}
               />
             </View>
             <View className="ref-image-modal-footer">
