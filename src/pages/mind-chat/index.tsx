@@ -642,7 +642,13 @@ const MindChat: React.FC = () => {
           {activeTab === 'my' && (
             <View
               className="add-button"
-              onClick={() => Taro.navigateTo({ url: '/package-avatar/pages/avatar-create/index' })}
+              onClick={() => {
+                if (!isLoggedIn) {
+                  Taro.navigateTo({ url: '/pages/login/index?redirect=' + encodeURIComponent('/package-avatar/pages/avatar-create/index') })
+                  return
+                }
+                Taro.navigateTo({ url: '/package-avatar/pages/avatar-create/index' })
+              }}
             >
               <Plus size={18} color="#ffffff" />
               <Text className="add-button-text">新建</Text>
