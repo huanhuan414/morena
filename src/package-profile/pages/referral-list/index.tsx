@@ -25,25 +25,25 @@ export default function ReferralList() {
 
   const loadReferralData = async (pageNum, isRefresh) => {
     if (loading) return
-    
+
     setLoading(true)
-    
+
     try {
       // 加载邀请列表
-      const listRes = await Network.request({ 
+      const listRes = await Network.request({
         url: '/api/referral/list',
         data: { page: pageNum, pageSize }
       })
       const listData = listRes.data?.data || listRes.data || {}
       const newList = listData.items || listData.list || []
       const totalCount = listData.total || 0
-      
+
       if (isRefresh) {
         setReferralList(newList)
       } else {
         setReferralList(prev => [...prev, ...newList])
       }
-      
+
       setTotal(totalCount)
       setPage(pageNum)
       setHasMore(newList.length >= pageSize)
@@ -125,9 +125,9 @@ export default function ReferralList() {
       </View>
 
       {/* 邀请记录列表 */}
-      <ScrollView 
-        className="list-content" 
-        scrollY 
+      <ScrollView
+        className="list-content"
+        scrollY
         onScrollToLower={handleScrollToLower}
         lowerThreshold={100}
       >
@@ -153,7 +153,7 @@ export default function ReferralList() {
                     <Text className="list-card-time">邀请时间：{formatTime(item.invite_time || item.created_at)}</Text>
                   </View>
                 </View>
-                
+
                 {/* 卡片内容 */}
                 {item.has_commission && item.commission_records && item.commission_records.length > 0 ? (
                   <View className="list-card-content">
@@ -174,7 +174,7 @@ export default function ReferralList() {
                       {item.commission_records.map((record, ridx) => (
                         <View key={ridx} className="list-card-record-item">
                           <Text className="list-card-record-text">
-                            • {record.consumption_type === 'subscription' ? '充值会员' : '充值币'} {record.consumption_amount}元 → 返佣{record.commission_amount}元
+                            • {record.consumption_type === 'subscription' ? '充值会员' : '充值积分'} {record.consumption_amount}元 → 返佣{record.commission_amount}元
                           </Text>
                           <Text className="list-card-record-time">
                             （{formatTime(record.commission_time)}）
@@ -205,20 +205,20 @@ export default function ReferralList() {
                     {/* 充值提示 */}
                     <View className="list-card-empty">
                       <Text className="list-card-empty-text">好友充值后可获得返佣</Text>
-                      <Text className="list-card-empty-hint">充值会员或币，您可获得返佣奖励</Text>
+                      <Text className="list-card-empty-hint">充值会员或积分，您可获得返佣奖励</Text>
                     </View>
                   </View>
                 )}
               </View>
             ))}
-            
+
             {/* 加载状态 */}
             {loading && (
               <View className="list-loading">
                 <Text className="list-loading-text">加载中...</Text>
               </View>
             )}
-            
+
             {/* 没有更多 */}
             {!hasMore && referralList.length > 0 && (
               <View className="list-no-more">

@@ -192,7 +192,7 @@ export class AiSkillService {
             Number(record.coin_consumed),
             `${SKILL_NAMES[record.skill_type] || record.skill_type}生成失败退款`
           );
-          console.log(`[AiSkillService] 已退款 ${record.coin_consumed} 币给用户 ${record.user_id}`);
+          console.log(`[AiSkillService] 已退款 ${record.coin_consumed} 积分给用户 ${record.user_id}`);
         }
       } catch (refundError: any) {
         console.error(`[AiSkillService] 退款失败, recordId=${recordId}:`, refundError.message);
@@ -549,7 +549,7 @@ ${imageHint}
             Number(record.coin_consumed),
             `${SKILL_NAMES[record.skill_type] || record.skill_type}生成失败退款`
           );
-          console.log(`[AiSkillService] 已退款 ${record.coin_consumed} 币给用户 ${record.user_id}`);
+          console.log(`[AiSkillService] 已退款 ${record.coin_consumed} 积分给用户 ${record.user_id}`);
         }
       } catch (refundError: any) {
         console.error(`[AiSkillService] 退款失败, recordId=${recordId}:`, refundError.message);

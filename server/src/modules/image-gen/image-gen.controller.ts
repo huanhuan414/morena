@@ -63,23 +63,23 @@ export class ImageGenController {
         };
       }
 
-      // 检查币余额是否充足
+      // 检查积分余额是否充足
       const canConsume = await this.coinService.canConsume(userId, skillType);
       if (!canConsume.canConsume) {
         return { 
           code: 402, 
-          msg: `币余额不足，当前 ${canConsume.balance} 币，需要 ${canConsume.price} 币`, 
+          msg: `积分余额不足，当前 ${canConsume.balance} 积分，需要 ${canConsume.price} 积分`, 
           data: { balance: canConsume.balance, price: canConsume.price } 
         };
       }
 
-      // 扣币
+      // 扣积分
       let consumeResult: any = null;
       try {
         consumeResult = await this.coinService.consume(userId, skillType);
       } catch (coinError: any) {
-        console.error('[ImageGenController] 扣币失败:', coinError.message);
-        return { code: 402, msg: coinError.message || '扣币失败', data: null };
+        console.error('[ImageGenController] 扣积分失败:', coinError.message);
+        return { code: 402, msg: coinError.message || '扣积分失败', data: null };
       }
 
       // 生成图片

@@ -329,7 +329,7 @@ export class PaymentController {
   @HttpCode(HttpStatus.OK)
   async createCoinRechargePayment(@Body() body: any) {
     const { userId, openid, packageId } = body;
-    this.logger.log(`创建币充值支付 - userId: ${userId}, packageId: ${packageId}, openid: ${openid ? '***' : 'missing'}`);
+    this.logger.log(`创建积分充值支付 - userId: ${userId}, packageId: ${packageId}, openid: ${openid ? '***' : 'missing'}`);
 
     if (!userId || !packageId) {
       return { code: 400, msg: '缺少必要参数: userId, packageId', data: null };
@@ -357,12 +357,12 @@ export class PaymentController {
         userId,
         openid,
         planId: packageId,
-        description: `充值${pkg.coins}币${pkg.bonus > 0 ? `+赠送${pkg.bonus}币` : ''} - Morena AI`,
+        description: `充值${pkg.coins}积分${pkg.bonus > 0 ? `+赠送${pkg.bonus}积分` : ''} - Morena AI`,
         amount: Number(pkg.price),
         orderType: 'coin_recharge',
       });
 
-      this.logger.log(`币充值订单创建成功: orderId=${result.orderId}, coins=${totalCoins}`);
+      this.logger.log(`积分充值订单创建成功: orderId=${result.orderId}, coins=${totalCoins}`);
 
       return {
         code: 200,
@@ -381,7 +381,7 @@ export class PaymentController {
         },
       };
     } catch (error) {
-      this.logger.error(`创建币充值订单失败: ${error.message}`, error.stack);
+      this.logger.error(`创建积分充值订单失败: ${error.message}`, error.stack);
       return { code: 500, msg: `创建订单失败: ${error.message}`, data: null };
     }
   }

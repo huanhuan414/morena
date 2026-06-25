@@ -38,7 +38,7 @@ const SKILL_TYPE_TO_ID_MAP: Record<string, string> = {
 @Injectable()
 export class CoinService {
   /**
-   * 获取用户币余额
+   * 获取用户积分余额
    */
   async getBalance(userId: string): Promise<number> {
     const db = getMySQLClient()
@@ -74,7 +74,7 @@ export class CoinService {
   }
 
   /**
-   * 消费扣币
+   * 消费扣积分
    * @param userId 用户ID
    * @param skillType 技能类型
    * @param customAmount 自定义金额（可选，默认从数据库读取技能价格）
@@ -114,7 +114,7 @@ export class CoinService {
       const balanceBefore = Number(user.coins || 0)
       
       if (balanceBefore < amount) {
-        throw new BadRequestException(`币余额不足，当前余额 ${balanceBefore} 币，需要 ${amount} 币`)
+        throw new BadRequestException(`积分余额不足，当前余额 ${balanceBefore} 积分，需要 ${amount} 积分`)
       }
 
       const balanceAfter = balanceBefore - amount
@@ -135,7 +135,7 @@ export class CoinService {
           balanceBefore,
           balanceAfter,
           skillType,
-          `使用${SKILL_NAMES[skillType] || skillType}消费 ${amount} 币`
+          `使用${SKILL_NAMES[skillType] || skillType}消费 ${amount} 积分`
         ]
       )
 
@@ -157,7 +157,7 @@ export class CoinService {
   }
 
   /**
-   * 赠送币（新用户注册、活动奖励等）
+   * 赠送积分（新用户注册、活动奖励等）
    */
   async gift(
     userId: string,
@@ -221,7 +221,7 @@ export class CoinService {
   }
 
   /**
-   * 获取币交易记录
+   * 获取积分交易记录
    */
   async getTransactions(
     userId: string,
@@ -269,7 +269,7 @@ export class CoinService {
   }
 
   /**
-   * 检查是否有足够币消费
+   * 检查是否有足够积分消费
    */
   async canConsume(userId: string, skillType: string): Promise<{
     canConsume: boolean
@@ -410,7 +410,7 @@ export class CoinService {
       await connection.query(
         `INSERT INTO coin_transactions (id, user_id, type, amount, balance_before, balance_after, description, created_at)
          VALUES (?, ?, 'recharge', ?, ?, ?, ?, NOW())`,
-        [txId, record.user_id, totalCoins, balanceBefore, balanceAfter, `充值${record.coins}币${record.bonus > 0 ? `，赠送${record.bonus}币` : ''}`]
+        [txId, record.user_id, totalCoins, balanceBefore, balanceAfter, `充值${record.coins}积分${record.bonus > 0 ? `，赠送${record.bonus}积分` : ''}`]
       )
 
       await connection.commit()

@@ -328,7 +328,7 @@ export default function ReferralCenter() {
             </View>
             <View className="ref-step-content">
               <Text className="ref-step-title">好友充值</Text>
-              <Text className="ref-step-desc">好友充值会员或币，您获得返佣</Text>
+              <Text className="ref-step-desc">好友充值会员或积分，您获得返佣</Text>
             </View>
           </View>
         </View>
@@ -372,7 +372,7 @@ export default function ReferralCenter() {
                       {item.commission_records.map((record, ridx) => (
                         <View key={ridx} className="ref-card-record-item">
                           <Text className="ref-card-record-text">
-                            • {record.consumption_type === 'subscription' ? '充值会员' : '充值币'} {record.consumption_amount}元 → 返佣{record.commission_amount}元
+                            • {record.consumption_type === 'subscription' ? '充值会员' : '充值积分'} {record.consumption_amount}元 → 返佣{record.commission_amount}元
                           </Text>
                           <Text className="ref-card-record-time">
                             （{formatTime(record.commission_time)}）
@@ -465,7 +465,7 @@ export default function ReferralCenter() {
             <View className="ref-tier-footer-icon">
               <Target size={12} color="#10B981" />
             </View>
-            <Text className="ref-tier-footer-text">返佣触发：受邀用户充值会员或币</Text>
+            <Text className="ref-tier-footer-text">返佣触发：受邀用户充值会员或积分</Text>
           </View>
           <View className="ref-tier-footer-item">
             <View className="ref-tier-footer-icon">
@@ -655,7 +655,7 @@ export default function ReferralCenter() {
             <View className="ref-rule-icon" style={{ background: '#F59E0B' }}>
               <Coins size={12} color="#fff" />
             </View>
-            <Text className="ref-rule-text">好友充值会员或币，您获得返佣奖励</Text>
+            <Text className="ref-rule-text">好友充值会员或积分，您获得返佣奖励</Text>
           </View>
           <View className="ref-rule-item">
             <View className="ref-rule-icon" style={{ background: '#3B82F6' }}>

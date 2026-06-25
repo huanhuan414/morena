@@ -695,11 +695,11 @@ export class WechatPayService {
       const userId = order.userId || order.user_id;
       
       if (!packageId || !userId) {
-        this.logger.error('币充值回调: packageId或userId为空');
+        this.logger.error('积分充值回调: packageId或userId为空');
         return;
       }
 
-      this.logger.log(`激活币充值: userId=${userId}, packageId=${packageId}`);
+      this.logger.log(`激活积分充值: userId=${userId}, packageId=${packageId}`);
 
       const db = getMySQLClient();
       const packages = await db.query(
@@ -739,10 +739,10 @@ export class WechatPayService {
       await db.query(
         `INSERT INTO coin_transactions (id, user_id, type, amount, balance_before, balance_after, description, created_at)
          VALUES (?, ?, 'recharge', ?, ?, ?, ?, NOW())`,
-        [txId, userId, totalCoins, balanceBefore, balanceAfter, `充值${pkg.coins}币${pkg.bonus > 0 ? `，赠送${pkg.bonus}币` : ''}`]
+        [txId, userId, totalCoins, balanceBefore, balanceAfter, `充值${pkg.coins}积分${pkg.bonus > 0 ? `，赠送${pkg.bonus}积分` : ''}`]
       );
 
-      this.logger.log(`✅ 币充值成功: userId=${userId}, 充值${totalCoins}币, 余额${balanceBefore}→${balanceAfter}`);
+      this.logger.log(`✅ 积分充值成功: userId=${userId}, 充值${totalCoins}积分, 余额${balanceBefore}→${balanceAfter}`);
 
       // 集成返佣机制：检查用户是否是被邀请的用户
       try {
@@ -777,7 +777,7 @@ export class WechatPayService {
         this.logger.error(`处理返佣失败: ${error.message}`, error.stack);
       }
     } catch (error) {
-      this.logger.error(`激活币充值失败: ${error.message}`, error.stack);
+      this.logger.error(`激活积分充值失败: ${error.message}`, error.stack);
     }
   }
 

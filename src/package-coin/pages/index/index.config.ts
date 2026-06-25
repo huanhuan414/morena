@@ -1,4 +1,4 @@
 export default {
-  navigationBarTitleText: '币中心',
+  navigationBarTitleText: '积分中心',
   navigationStyle: 'custom'
 }

@@ -43,7 +43,7 @@ export class VideoGenController {
       if (!canConsume.canConsume) {
         return { 
           code: 402, 
-          msg: `币余额不足，当前 ${canConsume.balance} 币，需要 ${canConsume.price} 币`, 
+          msg: `积分余额不足，当前 ${canConsume.balance} 积分，需要 ${canConsume.price} 积分`, 
           data: { balance: canConsume.balance, price: canConsume.price } 
         };
       }
@@ -52,8 +52,8 @@ export class VideoGenController {
       try {
         consumeResult = await this.coinService.consume(userId, skillType);
       } catch (coinError: any) {
-        console.error('[VideoGenController] 扣币失败:', coinError.message);
-        return { code: 402, msg: coinError.message || '扣币失败', data: null };
+        console.error('[VideoGenController] 扣积分失败:', coinError.message);
+        return { code: 402, msg: coinError.message || '扣积分失败', data: null };
       }
 
       try {
