@@ -84,7 +84,7 @@ export class ReferralController {
           page ? parseInt(page) : 1,
           pageSize ? parseInt(pageSize) : 1000
         )
-        console.log('[ReferralController] getReferralList result:', result)
+        // console.log('[ReferralController] getReferralList result:', result)
         return { code: 200, data: result, message: '获取成功' }
       } else {
         console.log('[ReferralController] this.referralService is null or undefined')

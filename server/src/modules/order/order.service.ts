@@ -428,7 +428,7 @@ export class OrderService {
        platforms, requirements, budget, base_amount, content_amount, status, result, created_at, updated_at,
        completed_at, latitude, longitude, location_text, target_audience,
        expected_quantity, deadline, order_type, priority, assigned_to,
-       avatar_count, quantity_per_avatar, is_paid, acceptance_timeout
+       avatar_count, quantity_per_avatar, is_paid, acceptance_timeout, accept_timeout
        FROM orders WHERE id = ? AND is_deleted = 0`,
       [orderId]
     )

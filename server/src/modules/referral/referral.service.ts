@@ -307,11 +307,11 @@ export class ReferralService {
       [userId]
     ) as any[]
 
-    console.log('[ReferralService] 查询结果:', result)
-    console.log('[ReferralService] 查询结果类型:', typeof result, '是否数组:', Array.isArray(result))
+    // console.log('[ReferralService] 查询结果:', result)
+    // console.log('[ReferralService] 查询结果类型:', typeof result, '是否数组:', Array.isArray(result))
     console.log('[ReferralService] 查询结果长度:', result?.length)
-    console.log('[ReferralService] 查询结果第一项:', result?.[0])
-    console.log('[ReferralService] 查询结果第一项类型:', typeof result?.[0])
+    // console.log('[ReferralService] 查询结果第一项:', result?.[0])
+    // console.log('[ReferralService] 查询结果第一项类型:', typeof result?.[0])
 
     const totalInvites = Number(result?.[0]?.totalInvites || result?.[0]?.total_invites || 0)
     console.log('[ReferralService] 邀请总数:', totalInvites, '用户ID:', userId)
@@ -321,7 +321,7 @@ export class ReferralService {
       `SELECT * FROM referral_tiers ORDER BY tier_level ASC`
     ) as any[]
 
-    console.log('[ReferralService] 从数据库查询的阶梯数据:', tiers)
+    // console.log('[ReferralService] 从数据库查询的阶梯数据:', tiers)
 
     // 转换字段名（兼容camelCase和snake_case格式）
     const formattedTiers = (tiers || []).map(tier => ({
@@ -337,7 +337,7 @@ export class ReferralService {
       updated_at: tier.updated_at ?? tier.updatedAt
     }))
 
-    console.log('[ReferralService] 格式化后的阶梯数据:', formattedTiers)
+    // console.log('[ReferralService] 格式化后的阶梯数据:', formattedTiers)
 
     // 找到当前阶梯
     let currentTier = formattedTiers?.[0] || null
@@ -525,17 +525,28 @@ export class ReferralService {
     
     // 发放现金奖励
     if (currentTier.base_reward > 0) {
+      // 查询抽成比例
+      const feeConfig = await db.query(
+        `SELECT value FROM reward_configs WHERE \`key\` = 'referral_bonus' AND enabled = 1`
+      ) as any[]
+      const feeConfigDb = feeConfig?.[0]
+      const feeRate = Number(feeConfigDb?.value || 0)
+      const feeAmount = Number((currentTier.base_reward * (1 - feeRate)).toFixed(2))
+      console.log(`[ReferralService] 邀请抽成比例: ${feeRate},抽成前值：${currentTier.base_reward},抽成值: ${feeAmount}`)
+      // 10. 更新用户余额
       await db.query(
-        `UPDATE users SET balance = balance + ?, total_earnings = total_earnings + ?, updated_at = NOW() WHERE id = ?`,
-        [currentTier.base_reward, currentTier.base_reward, referrerId]
+        `UPDATE users SET balance = COALESCE(balance, 0) + ?, total_earnings = COALESCE(total_earnings, 0) + ?, 
+          fee_balance = COALESCE(fee_balance, 0) + ?, fee_total_earnings = COALESCE(fee_total_earnings, 0) + ?,
+          updated_at = NOW() WHERE id = ?`,
+        [currentTier.base_reward, currentTier.base_reward, feeAmount, feeAmount, referrerId]
       )
-      
+
       // 记录收益
       await db.query(
         `INSERT INTO earnings
-         (id, user_id, type, amount, description, status, created_at)
-         VALUES (?, ?, 'referral_bonus', ?, '邀请好友奖励', 'settled', NOW())`,
-        [crypto.randomUUID(), referrerId, currentTier.base_reward]
+         (id, user_id, type, amount, description, status, created_at, fee_rate, fee_amount)
+         VALUES (?, ?, 'referral_bonus', ?, '邀请好友奖励', 'settled', NOW(), ?, ?)`,
+        [crypto.randomUUID(), referrerId, currentTier.base_reward, feeRate, feeAmount]
       )
     }
     
@@ -605,18 +616,30 @@ export class ReferralService {
       [commissionId, referrerId, referredId, consumptionType, consumptionAmount, commissionRate, commissionAmount]
     )
     
-    // 立即发放返佣金额到用户balance字段
+    // 查询抽成比例
+    const feeConfig = await db.query(
+      `SELECT value FROM reward_configs WHERE \`key\` = 'referral_commission' AND enabled = 1`
+    ) as any[]
+    const feeConfigDb = feeConfig?.[0]
+    const feeRate = Number(feeConfigDb?.value || 0)  // 默认抽成比例 O
+    const feeAmount = Number((commissionAmount * (1 - feeRate)).toFixed(2))
+    console.log(`[ReferralService] 返佣抽成比例: ${feeRate},抽成前值: ${commissionAmount},抽成值: ${feeAmount}`)
+      
+
+    // 立即发放返佣金额到用户balance字段 更新用户余额
     await db.query(
-      `UPDATE users SET balance = balance + ?, total_earnings = total_earnings + ?, updated_at = NOW() WHERE id = ?`,
-      [commissionAmount, commissionAmount, referrerId]
+      `UPDATE users SET balance = COALESCE(balance, 0) + ?, total_earnings = COALESCE(total_earnings, 0) + ?, 
+        fee_balance = COALESCE(fee_balance, 0) + ?, fee_total_earnings = COALESCE(fee_total_earnings, 0) + ?,
+        updated_at = NOW() WHERE id = ?`,
+      [commissionAmount, commissionAmount, feeAmount, feeAmount, referrerId]
     )
     
     // 记录收益到earnings表
     await db.query(
       `INSERT INTO earnings
-       (id, user_id, type, amount, description, status, created_at)
-       VALUES (?, ?, 'referral_commission', ?, '邀请返佣', 'settled', NOW())`,
-      [crypto.randomUUID(), referrerId, commissionAmount]
+       (id, user_id, type, amount, description, status, created_at, fee_rate, fee_amount)
+       VALUES (?, ?, 'referral_commission', ?, '邀请返佣', 'settled', NOW(), ?, ?)`,
+      [crypto.randomUUID(), referrerId, commissionAmount, feeRate, feeAmount]
     )
     
     console.log(`[ReferralService] 已发放返佣: 用户${referrerId}获得${commissionAmount}元返佣`)
