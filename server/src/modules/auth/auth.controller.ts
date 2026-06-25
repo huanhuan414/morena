@@ -54,13 +54,14 @@ export class AuthController {
     @Body('nickname') nickname?: string,
     @Body('referral_code') referralCode?: string,
     @Body('device_id') deviceId?: string,
+    @Body('wechat_code') wechatCode?: string,
     @Req() request?: Request,
   ) {
     // 获取客户端IP
     const ipAddress = request ? this.getClientIp(request) : 'unknown'
 
     const result = await this.authService.phoneLogin(
-      phone, code, nickname, referralCode, deviceId, ipAddress
+      phone, code, nickname, referralCode, deviceId, ipAddress, wechatCode
     )
     return {
       code: 200,

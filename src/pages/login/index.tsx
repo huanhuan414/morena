@@ -187,6 +187,17 @@ const Login: React.FC = () => {
 
     setLoading(true)
     try {
+      // 获取微信code用于获取真实openid（可选）
+      let wechatCode = ''
+      try {
+        const wxLoginRes = await Taro.login()
+        if (wxLoginRes.code) {
+          wechatCode = wxLoginRes.code
+        }
+      } catch (wxErr) {
+        console.warn('[Login] 获取微信code失败:', wxErr)
+      }
+
       // 获取设备ID
       let deviceId = ''
       try {
@@ -199,6 +210,9 @@ const Login: React.FC = () => {
       const loginData: Record<string, string> = { phone, code, device_id: deviceId }
       if (referralCode.trim()) {
         loginData.referral_code = referralCode.trim()
+      }
+      if (wechatCode) {
+        loginData.wechat_code = wechatCode
       }
 
       const res = await Network.request({

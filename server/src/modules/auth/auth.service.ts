@@ -170,6 +170,7 @@ export class AuthService {
     referralCode?: string,
     deviceId?: string,
     ipAddress?: string,
+    wechatCode?: string,
   ): Promise<{
     user: any;
     isNewUser: boolean;
@@ -209,21 +210,55 @@ export class AuthService {
     }
 
     this.codeCache.delete(phone);
+    
+    // 从微信获取真实openid（可选）
+    let openid: string | null = null;
+    if (wechatCode) {
+      try {
+        const wxAppId = process.env.WX_APP_ID;
+        const wxAppSecret = process.env.WX_APP_SECRET;
+        if (wxAppId && wxAppSecret) {
+          const wxUrl = `https://api.weixin.qq.com/sns/jscode2session?appid=${wxAppId}&secret=${wxAppSecret}&js_code=${wechatCode}&grant_type=authorization_code`;
+          const wxResponse = await fetch(wxUrl);
+          const wxData = await wxResponse.json();
+          if (!wxData.errcode) {
+            openid = wxData.openid;
+          }
+        }
+      } catch (e) {
+        console.error('[AuthService] phoneLogin 获取微信openid失败:', e);
+      }
+    }
+
     const db = getMySQLClient();
     const result = await db.query("users", { phone });
     const existingUser = Array.isArray(result)
       ? result[0]
       : (result as any)?.data?.[0];
     if (existingUser) {
-      // 更新最后登录IP
+      const updateData: Record<string, any> = {};
+      // 如果获取到了微信openid，且与现有openid不同，则更新
+      if (openid && existingUser.openid !== openid) {
+        updateData.openid = openid;
+      }
       if (ipAddress) {
+        updateData.last_login_ip = ipAddress;
+        updateData.updated_at = getBeijingTimeString();
+      }
+      if (Object.keys(updateData).length > 0) {
         try {
-          await db.updateWhere('users', { id: existingUser.id }, {
-            last_login_ip: ipAddress,
-            updated_at: getBeijingTimeString()
-          })
+          await db.updateWhere('users', { id: existingUser.id }, updateData);
+          const updatedResult = await db.query("users", { id: existingUser.id });
+          const updatedUser = Array.isArray(updatedResult)
+            ? updatedResult[0]
+            : (updatedResult as any)?.data?.[0];
+          return {
+            user: updatedUser || existingUser,
+            isNewUser: false,
+            token: this.generateToken(existingUser.id),
+          };
         } catch (err) {
-          console.error('[AuthService] 更新登录IP失败:', err)
+          console.error('[AuthService] 更新用户信息失败:', err);
         }
       }
       return {
@@ -237,7 +272,7 @@ export class AuthService {
     const newUserData = {
       id: userId,
       phone,
-      openid: `phone_${phone}`,
+      openid: openid || `phone_${phone}`,
       nickname: nickname || `用户${phone.slice(-4)}`,
       avatar: "",
       level: 1,
@@ -373,70 +408,16 @@ export class AuthService {
 
       const db = getMySQLClient();
       
-      // 1. 先用 openid 查找用户（优先使用 openid）
-      const openidResult = await db.query("users", { openid });
-      const userByOpenid = Array.isArray(openidResult)
-        ? openidResult[0]
-        : (openidResult as any)?.data?.[0];
-      
-      if (userByOpenid) {
-        // 找到用户，检查手机号是否需要更新
-        const updateData: Record<string, any> = {};
-        if (phone && !userByOpenid.phone) {
-          updateData.phone = phone;
-        }
-        if (nickname && !userByOpenid.nickname) {
-          updateData.nickname = nickname;
-        }
-        if (avatar && !userByOpenid.avatar) {
-          updateData.avatar = avatar;
-        }
-        if (ipAddress) {
-          updateData.last_login_ip = ipAddress;
-        }
-        if (Object.keys(updateData).length > 0) {
-          await db.update("users", userByOpenid.id, updateData);
-          const updatedResult = await db.query("users", { id: userByOpenid.id });
-          const updatedUser = Array.isArray(updatedResult)
-            ? updatedResult[0]
-            : (updatedResult as any)?.data?.[0];
-          return {
-            user: updatedUser || userByOpenid,
-            isNewUser: false,
-            token: this.generateToken(userByOpenid.id),
-          };
-        }
-        // 即使没有其他更新，也要更新登录IP
-        if (ipAddress) {
-          try {
-            await db.updateWhere('users', { id: userByOpenid.id }, {
-              last_login_ip: ipAddress,
-              updated_at: new Date()
-            })
-          } catch (err) {
-            console.error('[AuthService] 更新登录IP失败:', err)
-          }
-        }
-        return {
-          user: userByOpenid,
-          isNewUser: false,
-          token: this.generateToken(userByOpenid.id),
-        };
-      }
-      
-      // 2. openid 不存在，再用手机号查找（兼容老数据）
+      // 1. 优先按手机号查找用户
       const userByPhoneResult = await db.query("users", { phone });
       const userByPhone = Array.isArray(userByPhoneResult)
         ? userByPhoneResult[0]
         : (userByPhoneResult as any)?.data?.[0];
       
       if (userByPhone) {
-        // 找到用户，检查 openid 是否需要更新
         const updateData: Record<string, any> = {};
-        // 只有当 openid 为空或临时值时才更新，避免覆盖其他微信号的 openid
-        if (!userByPhone.openid || userByPhone.openid.startsWith("phone_") || 
-          userByPhone.openid.startsWith("auto_")|| 
-          userByPhone.openid.startsWith("orphan_")) {
+        // 如果当前openid与微信返回的openid不同，更新openid
+        if (userByPhone.openid !== openid) {
           updateData.openid = openid;
         }
         if (nickname && !userByPhone.nickname) {
@@ -460,7 +441,6 @@ export class AuthService {
             token: this.generateToken(userByPhone.id),
           };
         }
-        // 即使没有其他更新，也要更新登录IP
         if (ipAddress) {
           try {
             await db.updateWhere('users', { id: userByPhone.id }, {
