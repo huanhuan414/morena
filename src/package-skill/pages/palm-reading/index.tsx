@@ -254,12 +254,15 @@ export default function PalmReadingPage() {
           >
             <ArrowLeft size={18} color="#ffffff" />
           </View>
-          <Text className="text-lg font-bold text-white">看手相</Text>
+          <Text className="text-lg font-bold text-white">掌纹趣味测评</Text>
         </View>
 
         {/* 描述 */}
         <Text className="block text-sm text-white leading-relaxed" style={{ opacity: 0.8, textAlign: 'center' }}>
-          上传手掌照片，AI 为您生成专属掌相分析图
+          上传手掌照片，AI 为您生成专属掌纹分析图
+        </Text>
+        <Text className="block text-sm text-white leading-relaxed" style={{ opacity: 0.8, textAlign: 'center' }}>
+          分析图仅提供娱乐参考，请勿作为决策依据
         </Text>
       </View>
 
@@ -372,7 +375,7 @@ export default function PalmReadingPage() {
                 <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
                   <Sparkles size={16} color="#ffffff" style={{ marginRight: '6px' }} />
                   <Text style={{ color: '#ffffff', fontWeight: '600', fontSize: '15px' }}>
-                    {generating ? 'AI 正在解读掌纹...' : '开始解读掌相'}
+                    {generating ? 'AI 生成中...' : '开始生成图片'}
                   </Text>
                 </View>
               </Button>
@@ -385,7 +388,7 @@ export default function PalmReadingPage() {
                   <View style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: PRIMARY_FAINT, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
                     <Sparkles size={28} color={PRIMARY} />
                   </View>
-                  <Text className="block text-sm font-semibold" style={{ color: PRIMARY }}>AI 正在解读您的掌纹</Text>
+                  <Text className="block text-sm font-semibold" style={{ color: PRIMARY }}>AI 正在生成您的掌纹分析图</Text>
                   <Text className="block text-xs mt-2" style={{ color: '#999999' }}>图片已上传，正在生成分析图...</Text>
                   <Text className="block text-xs mt-1" style={{ color: '#cccccc' }}>预计需要 15-60 秒，请勿离开页面</Text>
                 </CardContent>
@@ -416,10 +419,10 @@ export default function PalmReadingPage() {
                 <CardContent style={{ padding: '16px' }}>
                   <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: '12px' }}>
                     <View style={{ width: '4px', height: '16px', borderRadius: '2px', backgroundColor: PRIMARY, marginRight: '8px' }} />
-                    <Text className="block text-sm font-semibold" style={{ color: '#1A1A2E' }}>掌相解读结果</Text>
+                    <Text className="block text-sm font-semibold" style={{ color: '#1A1A2E' }}>掌纹生成结果</Text>
                   </View>
 
-                  {/* 原图 vs 解读结果 对比 */}
+                  {/* 原图 vs 生成结果 对比 */}
                   <View style={{ display: 'flex', flexDirection: 'row', gap: '8px', marginBottom: '12px' }}>
                     <View style={{ flex: 1 }}>
                       <View style={{ borderRadius: '8px', overflow: 'hidden' }}>
@@ -441,7 +444,7 @@ export default function PalmReadingPage() {
                           onClick={() => handlePreviewImage(resultImageUrl)}
                         />
                       </View>
-                      <Text className="block text-xs text-center mt-1" style={{ color: PRIMARY }}>掌相解读</Text>
+                      <Text className="block text-xs text-center mt-1" style={{ color: PRIMARY }}>掌纹分析图</Text>
                     </View>
                   </View>
 
@@ -504,7 +507,7 @@ export default function PalmReadingPage() {
                   <View style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: PRIMARY_FAINT, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
                     <Hand size={28} color={PRIMARY_BORDER} />
                   </View>
-                  <Text className="block text-sm" style={{ color: '#999999' }}>暂无解读记录</Text>
+                  <Text className="block text-sm" style={{ color: '#999999' }}>暂无生成记录</Text>
                   <Text className="block text-xs mt-1" style={{ color: '#cccccc' }}>上传手掌照片开始体验</Text>
                   <View style={{ marginTop: '16px' }}>
                     <Button size="sm" style={{ backgroundColor: PRIMARY, borderRadius: '20px', paddingLeft: '24px', paddingRight: '24px' }} onClick={() => setActiveTab('generate')}>
@@ -533,7 +536,7 @@ export default function PalmReadingPage() {
                         )}
                         {/* 信息区 */}
                         <View style={{ flex: 1, marginLeft: '12px', marginRight: '8px', overflow: 'hidden' }}>
-                          <Text className="block text-sm font-medium" style={{ color: '#333333' }}>掌相解读</Text>
+                          <Text className="block text-sm font-medium" style={{ color: '#333333' }}>掌纹分析图</Text>
                           <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginTop: '4px' }}>
                             <View
                               style={{
