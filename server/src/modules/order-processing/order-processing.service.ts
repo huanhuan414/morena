@@ -880,7 +880,8 @@ export class OrderProcessingService {
 
     if (normalized.orderId && normalized.avatarId) {
       await db.query(
-        `UPDATE order_dispatch_requests SET status = 'completed', updated_at = NOW() WHERE order_id = ? AND avatar_id = ?`,
+        `UPDATE order_dispatch_requests SET status = 'completed', updated_at = NOW(), acceptance_timeout_at = NULL
+         WHERE order_id = ? AND avatar_id = ?`,
         [normalized.orderId, normalized.avatarId]
       )
       this.logger.log(`[验收] 已更新派单记录状态: orderId=${normalized.orderId}, avatarId=${normalized.avatarId}`)

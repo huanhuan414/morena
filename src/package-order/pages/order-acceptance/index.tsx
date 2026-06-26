@@ -125,7 +125,7 @@ export default function OrderAcceptance() {
   const calculateCountdown = (timeoutAt: string): string => {
     if (!timeoutAt) return ''
     const now = new Date().getTime()
-    const timeoutTime = new Date(timeoutAt).getTime()
+    const timeoutTime = new Date(timeoutAt).getTime() + 90 * 1000 // 加 90 秒缓冲
     const diff = timeoutTime - now
 
     if (diff <= 0) {

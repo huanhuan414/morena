@@ -129,10 +129,11 @@ const EVENT_LABELS: Record<string, string> = {
   timeout: '派单超时',
 }
 
-function formatTime(dateStr: string): string {
+function formatTime(dateStr: string, addSeconds = 0): string {
   if (!dateStr) return ''
   try {
-    const d = new Date(dateStr)
+    const timestamp = new Date(dateStr).getTime() + addSeconds * 1000
+    const d = new Date(timestamp)
     const pad = (n: number) => String(n).padStart(2, '0')
     return `${d.getMonth() + 1}月${d.getDate()}日 ${pad(d.getHours())}:${pad(d.getMinutes())}`
   } catch { return '' }
@@ -177,7 +178,7 @@ export default function OrderDetailPage() {
   const calculateCountdown = (timeoutAt: string): string => {
     if (!timeoutAt) return ''
     const now = new Date().getTime()
-    const timeoutTime = new Date(timeoutAt).getTime()
+    const timeoutTime = new Date(timeoutAt).getTime() + 90 * 1000 // 加 90 秒缓冲
     const diff = timeoutTime - now
 
     if (diff <= 0) {
@@ -820,16 +821,25 @@ export default function OrderDetailPage() {
                         <View style={{ display: 'flex', alignItems: 'center', marginTop: '4px', color: '#F59E0B' }}>
                           <Clock size={12} color="#F59E0B" />
                           <Text className="block" style={{ fontSize: '12px', color: '#F59E0B', marginLeft: '4px' }}>
-                            审核截止: {formatTime(avatar.acceptanceTimeoutAt)}
+                            审核截止: {formatTime(avatar.acceptanceTimeoutAt, 90)}
                           </Text>
                         </View>
                       )}
                       {/* 审核倒计时 */}
                       {avatarStatus === 'awaiting_acceptance' && countdowns[avatar.avatarId] && (
                         <View style={{ display: 'flex', alignItems: 'center', marginTop: '4px' }}>
-                          <TriangleAlert size={12} color={countdowns[avatar.avatarId].display === '已超时' ? '#EF4444' : '#F59E0B'} />
-                          <Text className="block" style={{ fontSize: '12px', color: countdowns[avatar.avatarId].display === '已超时' ? '#EF4444' : '#F59E0B', marginLeft: '4px' }}>
-                            {countdowns[avatar.avatarId].display === '已超时' ? '审核超时，已自动验收' : `审核倒计时: ${countdowns[avatar.avatarId].display}`}
+                          <TriangleAlert size={12} color="#F59E0B" />
+                          <Text className="block" style={{ fontSize: '12px', color: "#F59E0B", marginLeft: '4px' }}>
+                            {`审核倒计时: ${countdowns[avatar.avatarId].display}`}
+                          </Text>
+                        </View>
+                      )}
+                      {/* 审核超时 */}
+                      {['completed', 'settled'].includes(avatarStatus) && avatar.acceptanceTimeoutAt && (
+                        <View style={{ display: 'flex', alignItems: 'center', marginTop: '4px' }}>
+                          <TriangleAlert size={12} color="#EF4444" />
+                          <Text className="block" style={{ fontSize: '12px', color: '#EF4444', marginLeft: '4px' }}>
+                            审核超时，已自动验收
                           </Text>
                         </View>
                       )}

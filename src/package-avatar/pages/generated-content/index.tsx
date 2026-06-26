@@ -564,7 +564,7 @@ export default function GeneratedContentPage() {
                 ) : null}
 
                 {/* 超时倒计时（未发布且有超时时间） */}
-                {content.acceptTimeoutAt && formatRemainingTime(content.acceptTimeoutAt) && !['awaiting_acceptance'].includes(content.status) && (
+                {content.acceptTimeoutAt && formatRemainingTime(content.acceptTimeoutAt) && !['awaiting_acceptance', 'settled'].includes(content.status) && (
                   <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
                     <Clock size={12} color="#EF4444" />
                     <Text style={{ fontSize: 11, color: "#EF4444", marginLeft: 4 }}>
