@@ -32,7 +32,7 @@ export class WithdrawService {
 
     // 1. 检查用户 openid
     const [userRows] = await pool.query(
-      `SELECT id, openid, nickname, balance, frozen_balance FROM users WHERE id = ?`,
+      `SELECT id, openid, nickname, fee_balance, fee_total_earnings, frozen_balance FROM users WHERE id = ?`,
       [userId]
     ) as any[];
 
@@ -77,35 +77,8 @@ export class WithdrawService {
       throw new Error(`提现金额必须是${MULTIPLE}的倍数`);
     }
 
-    // 3. 计算可提现余额
-    const [settledEarnings] = await pool.query(
-      `SELECT amount, fee_rate FROM earnings WHERE user_id = ? AND status = 'settled'`,
-      [userId]
-    ) as any[];
-
-    const calcActualAmount = (amount: number, feeRate: number) => {
-      return Number((amount * (1 - (feeRate || 0))).toFixed(2));
-    };
-
-    const settledAmount = (settledEarnings || []).reduce((sum: number, e: any) => {
-      return sum + calcActualAmount(Number(e.amount), Number(e.fee_rate || 0));
-    }, 0);
-
-    // 4. 查询提现记录表中的金额
-    const [withdrawStats] = await pool.query(
-      `SELECT 
-         SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END) as completedWithdraw,
-         SUM(CASE WHEN status IN ('processing', 'pending','confirming') THEN amount ELSE 0 END) as settlingWithdraw
-       FROM withdraw_logs WHERE user_id = ?`,
-      [userId]
-    ) as any[];
-
-    const completedWithdraw = Number(withdrawStats?.[0]?.completedWithdraw) || 0;
-    const settlingWithdraw = Number(withdrawStats?.[0]?.settlingWithdraw) || 0;
-
-    // 可提现余额 = settled状态收益 - (已结算 + 结算中金额)
-    const availableBalance = Number((settledAmount - completedWithdraw - settlingWithdraw).toFixed(2));
-
+    // 可提现余额
+    const availableBalance = user.fee_balance 
     if (amount > availableBalance) {
       throw new Error(`可提现余额不足，当前可提现: ${availableBalance.toFixed(2)}元`);
     }
