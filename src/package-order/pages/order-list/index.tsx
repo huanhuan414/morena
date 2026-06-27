@@ -229,7 +229,11 @@ export default function OrderListPage() {
           const status = subscribeRes[WX_SUBSCRIBE_TEMPLATES.FEEDBACK]
           console.log('模板消息状态:', status)
           if (status === 'accept') {
-            Taro.showToast({ title: '订阅成功', icon: 'success', duration: 1500 })
+            const hasSubscribed = Taro.getStorageSync('hasSubscribedFeedback')
+            if (!hasSubscribed) {
+              Taro.showToast({ title: '订阅成功', icon: 'success', duration: 1500 })
+              Taro.setStorageSync('hasSubscribedFeedback', true)
+            }
           }
         },
         fail: (err) => {

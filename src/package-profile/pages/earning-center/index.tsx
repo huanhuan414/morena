@@ -35,6 +35,8 @@ export default function EarningCenterPage() {
   const [showWithdrawModal, setShowWithdrawModal] = useState(false)
   const [withdrawAmount, setWithdrawAmount] = useState('')
   const [withdrawLoading, setWithdrawLoading] = useState(false)
+  const [confirmLoading, setConfirmLoading] = useState(false)
+  const [confirmingWithdraw, setConfirmingWithdraw] = useState<{ outTradeNo: string; amount: number; createdAt: string; mchId: string; appId: string; adminDomain: string } | null>(null)
 
   useLoad(() => {
     const systemInfo = Taro.getSystemInfoSync()
@@ -45,6 +47,8 @@ export default function EarningCenterPage() {
     fetchOverview()
     fetchRecords()
     fetchWithdrawRecords()
+    fetchConfirmingWithdraw()
+    checkActiveWithdraw()
   })
 
   const fetchOverview = async () => {
@@ -77,15 +81,35 @@ export default function EarningCenterPage() {
     try {
       const res = await Network.request({ url: '/api/withdraw/list' })
       if (res.data?.code === 200) {
-        // 过滤掉失败的记录
-        const allRecords = res.data?.data?.list || []
-        const filteredRecords = allRecords.filter(
-          (record: any) => record.status !== 'failed'
-        )
-        setWithdrawRecords(filteredRecords)
+        setWithdrawRecords(res.data?.data?.list || [])
       }
     } catch (error) {
       console.error('获取提现记录失败:', error)
+    }
+  }
+
+  // 查询是否有进行中的提现，决定默认tab
+  const checkActiveWithdraw = async () => {
+    try {
+      const res = await Network.request({ url: '/api/withdraw/has-active' })
+      if (res.data?.code === 200 && res.data?.data?.hasActive) {
+        setActiveTab('withdraw')
+      }
+    } catch {
+      // 查询失败不影响，保持默认tab
+    }
+  }
+
+  const fetchConfirmingWithdraw = async () => {
+    try {
+      const res = await Network.request({ url: '/api/withdraw/confirming' })
+      if (res.data?.code === 200 && res.data?.data) {
+        setConfirmingWithdraw(res.data.data)
+      } else {
+        setConfirmingWithdraw(null)
+      }
+    } catch {
+      setConfirmingWithdraw(null)
     }
   }
 
@@ -108,8 +132,10 @@ export default function EarningCenterPage() {
     const statusMap: Record<string, { label: string; color: string }> = {
       pending: { label: '待审核', color: '#ffaa00' },
       processing: { label: '审核中', color: '#00f5ff' },
-      completed: { label: '已到账', color: '#4ade80' },
-      rejected: { label: '已驳回', color: '#ff6b6b' }
+      completed: { label: '已提现', color: '#4ade80' },
+      rejected: { label: '已驳回', color: '#ff6b6b' },
+      confirming: { label: '审核已通过', color: '#4ade80' },
+      failed: { label: '失败', color: '#ff6b6b' }
     }
     return statusMap[status] || { label: status, color: '#fff' }
   }
@@ -157,10 +183,11 @@ export default function EarningCenterPage() {
       })
 
       if (res.data?.code === 200) {
-        showToast({ title: res.data?.msg || '提现申请已提交，请等待审核', icon: 'success', duration: 3000 })
+        showToast({ title: '提现申请已提交，预计一周内审核完成，需再来确认收款', icon: 'none', duration: 8000 })
         setShowWithdrawModal(false)
+        setActiveTab('withdraw')
         fetchOverview()
-        fetchRecords()
+        fetchWithdrawRecords()
       } else {
         showToast({ title: res.data?.msg || '提现失败', icon: 'none' })
       }
@@ -199,6 +226,59 @@ export default function EarningCenterPage() {
     return true
   }
 
+  const handleConfirmWithdraw = async () => {
+    if (!confirmingWithdraw) return
+    setConfirmLoading(true)
+    try {
+      const { outTradeNo, mchId, appId, adminDomain } = confirmingWithdraw
+
+      // 1. 获取 package_info
+      showToast({ title: '获取授权信息中...', icon: 'loading', duration: 2000 })
+
+      const packageRes = await Network.request({
+        url: `${adminDomain}/admin/commission/withdraw/package_info?out_trade_no=${outTradeNo}`,
+        method: 'GET',
+      })
+
+      if (!packageRes?.data?.package_info) {
+        console.error('获取package_info失败:', packageRes)
+        showToast({ title: '获取授权信息失败', icon: 'none', duration: 3000 })
+        setConfirmLoading(false)
+        return
+      }
+
+      const packageInfo = packageRes.data.package_info
+
+      // 2. 调用微信授权收款
+      await (Taro as any).requestMerchantTransfer({
+        mchId,
+        appId,
+        package: packageInfo,
+        success: () => {
+          showToast({ title: '授权成功，转账即将到账', icon: 'success', duration: 3000 })
+          setConfirmingWithdraw(null)
+          fetchWithdrawRecords()
+          fetchOverview()
+        },
+        fail: (err: any) => {
+          console.error('授权收款失败:', err)
+          if (err.errMsg && err.errMsg.includes('开发者工具')) {
+            showToast({ title: '请在真机上测试授权功能', icon: 'none', duration: 3000 })
+          } else {
+            showToast({ title: '授权失败，请稍后重试', icon: 'none', duration: 3000 })
+          }
+        },
+        complete: () => {
+          setConfirmLoading(false)
+        }
+      })
+    } catch (error) {
+      console.error('确认提现失败:', error)
+      showToast({ title: '确认提现失败', icon: 'none' })
+      setConfirmLoading(false)
+    }
+  }
+
   const handleWithdrawAll = () => {
     const balance = toNumber(overview.balance)
     const referralCount = toNumber(overview.referralCount)
@@ -224,9 +304,9 @@ export default function EarningCenterPage() {
   const getTypeInfo = (type: string) => {
     const typeMap: Record<string, { label: string; icon: string; color: string }> = {
       order_reward: { label: '订单收益', icon: '💰', color: '#00ff88' },
-      // order_income: { label: '订单收益', icon: '💰', color: '#00ff88' },
+      referral_commission: { label: '邀请返佣', icon: '💰', color: '#00ff88' },
       referral_bonus: { label: '邀请奖励', icon: '🎁', color: '#a78bfa' },
-      // withdrawal: { label: '提现', icon: '💸', color: '#ff6b6b' }
+      activity_reward: { label: '活动奖励', icon: '💸', color: '#ff6b6b' }
     }
     return typeMap[type] || { label: type, icon: '💵', color: '#fff' }
   }
@@ -322,9 +402,33 @@ export default function EarningCenterPage() {
           <View className="action-btns">
             <Button className="withdraw-btn" onClick={handleWithdraw}>
               <ArrowDownToLine size={18} color="#fff" />
-              <Text className="btn-text">立即提现</Text>
+              <Text className="btn-text">申请提现</Text>
             </Button>
           </View>
+
+          {/* 待确认提现卡片 */}
+          {confirmingWithdraw && (
+            <View className="confirm-withdraw-card">
+              <View className="confirm-card-info">
+                <View className="confirm-card-row">
+                  <Text className="confirm-card-label">提现金额</Text>
+                  <Text className="confirm-card-amount">¥{confirmingWithdraw.amount}</Text>
+                </View>
+                <View className="confirm-card-row">
+                  <Text className="confirm-card-label">申请时间</Text>
+                  <Text className="confirm-card-time">{formatTime(confirmingWithdraw.createdAt)}</Text>
+                </View>
+                <View className="confirm-card-row">
+                  <Text className="confirm-card-label">状态</Text>
+                  <Text className="confirm-card-status">申请已通过</Text>
+                </View>
+
+              </View>
+              <Button className="confirm-card-btn" onClick={handleConfirmWithdraw} disabled={confirmLoading}>
+                {confirmLoading ? '提现中...' : '立即提现'}
+              </Button>
+            </View>
+          )}
         </View>
       </View>
 
@@ -371,7 +475,7 @@ export default function EarningCenterPage() {
                           <Text>{typeInfo.icon}</Text>
                         </View>
                         <View className="record-info">
-                          <Text className="record-desc">{record.description || typeInfo.label}</Text>
+                          <Text className="record-desc">{typeInfo.label || record.description}</Text>
                           {/* 显示计算式：原始金额 × (1 - 抽成比例) = 实际金额 */}
                           <Text className="record-fee-formula">
                             接单¥{formatNum(record.amount)} × (1-平台{Math.round(record.feeRate * 100)}%) = ¥{formatNum(record.feeAmount)}

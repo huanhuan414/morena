@@ -110,6 +110,53 @@ export class WithdrawController {
   }
 
   /**
+   * 获取用户待确认的提现记录（status=confirming）
+   * GET /api/withdraw/confirming
+   */
+  @Get('confirming')
+  async getConfirmingWithdraw(@Headers('x-user-id') userId: string) {
+    if (!userId) {
+      return { code: 400, msg: '缺少用户ID', data: null };
+    }
+
+    try {
+      const result = await this.withdrawService.getConfirmingWithdraw(userId);
+      return {
+        code: 200,
+        msg: '查询成功',
+        data: result ? {
+          ...result,
+          mchId: process.env.WECHAT_PAY_MCHID || '1634466761',
+          appId: process.env.WX_APP_ID || 'wxfcd0d7ba0294417d',
+          adminDomain: process.env.PROJECT_DOMAIN_ADMIN || 'https://mrladmin.51webjs.com',
+        } : null,
+      };
+    } catch (error: any) {
+      this.logger.error(`查询待确认提现失败: ${error.message}`);
+      return { code: 500, msg: error.message, data: null };
+    }
+  }
+
+  /**
+   * 查询用户是否有进行中的提现（pending/processing/confirming）
+   * GET /api/withdraw/has-active
+   */
+  @Get('has-active')
+  async hasActiveWithdraw(@Headers('x-user-id') userId: string) {
+    if (!userId) {
+      return { code: 400, msg: '缺少用户ID', data: null };
+    }
+
+    try {
+      const hasActive = await this.withdrawService.hasActiveWithdraw(userId);
+      return { code: 200, msg: '查询成功', data: { hasActive } };
+    } catch (error: any) {
+      this.logger.error(`查询进行中提现失败: ${error.message}`);
+      return { code: 500, msg: error.message, data: null };
+    }
+  }
+
+  /**
    * 获取用户提现记录
    * GET /api/withdraw/list?page=1&pageSize=20
    */

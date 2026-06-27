@@ -32,7 +32,7 @@ export class WithdrawService {
 
     // 1. 检查用户 openid
     const [userRows] = await pool.query(
-      `SELECT id, openid, nickname FROM users WHERE id = ?`,
+      `SELECT id, openid, nickname, balance, frozen_balance FROM users WHERE id = ?`,
       [userId]
     ) as any[];
 
@@ -95,7 +95,7 @@ export class WithdrawService {
     const [withdrawStats] = await pool.query(
       `SELECT 
          SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END) as completedWithdraw,
-         SUM(CASE WHEN status IN ('processing', 'pending') THEN amount ELSE 0 END) as settlingWithdraw
+         SUM(CASE WHEN status IN ('processing', 'pending','confirming') THEN amount ELSE 0 END) as settlingWithdraw
        FROM withdraw_logs WHERE user_id = ?`,
       [userId]
     ) as any[];
@@ -112,7 +112,7 @@ export class WithdrawService {
 
     // 5. 检查是否有正在处理中的提现
     const [pendingWithdraws] = await pool.query(
-      `SELECT id FROM withdraw_logs WHERE user_id = ? AND status IN ('pending', 'processing')`,
+      `SELECT id FROM withdraw_logs WHERE user_id = ? AND status IN ('pending', 'processing','confirming')`,
       [userId]
     ) as any[];
 
@@ -128,6 +128,12 @@ export class WithdrawService {
       `INSERT INTO withdraw_logs (id, user_id, amount, out_trade_no, status, created_at)
        VALUES (?, ?, ?, ?, 'pending', NOW())`,
       [withdrawLogId, userId, amount, outTradeNo]
+    );
+
+    // 7. fee_balance 扣减，frozen_balance 增加
+    await pool.query(
+      `UPDATE users SET fee_balance = fee_balance - ?, frozen_balance = frozen_balance + ?, updated_at = NOW() WHERE id = ?`,
+      [amount, amount, userId]
     );
 
     this.logger.log(`提现申请创建成功: userId=${userId}, amount=${amount}, withdrawLogId=${withdrawLogId}`);
@@ -523,5 +529,47 @@ export class WithdrawService {
       page,
       pageSize,
     };
+  }
+
+  /**
+   * 获取用户待确认的提现记录（status=confirming）
+   * 按 created_at 降序取第一条（即最早创建的）
+   */
+  async getConfirmingWithdraw(userId: string) {
+    const pool = getPool();
+
+    const [records] = await pool.query(
+      `SELECT id, out_trade_no, amount, status, created_at 
+       FROM withdraw_logs 
+       WHERE user_id = ? AND status = 'confirming' 
+       ORDER BY created_at ASC 
+       LIMIT 1`,
+      [userId]
+    ) as any[];
+
+    if (!records || records.length === 0) {
+      return null;
+    }
+
+    const record = records[0];
+    return {
+      id: record.id,
+      outTradeNo: record.out_trade_no,
+      amount: Number(record.amount),
+      status: record.status,
+      createdAt: record.created_at,
+    };
+  }
+
+  /**
+   * 查询用户是否有进行中的提现（pending/processing/confirming）
+   */
+  async hasActiveWithdraw(userId: string): Promise<boolean> {
+    const pool = getPool();
+    const [rows] = await pool.query(
+      `SELECT 1 FROM withdraw_logs WHERE user_id = ? AND status IN ('pending', 'processing', 'confirming') LIMIT 1`,
+      [userId]
+    ) as any[];
+    return Array.isArray(rows) && rows.length > 0;
   }
 }

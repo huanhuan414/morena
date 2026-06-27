@@ -358,35 +358,26 @@ export class AvatarService {
         const pool = getPool()
         const today = new Date()
         today.setHours(0, 0, 0, 0)
-        
+
         const idList = avatarIds.map(id => `'${id}'`).join(', ')
-        
-        // 与首页和收益中心保持一致：先查询每条收益记录，然后逐笔计算（每笔都四舍五入到2位小数）
+
+        // 查询每个分身的总收益和今日收益（直接用 fee_amount，SQL 聚合计算）
         const [earningsRows] = await pool.query(
-          `SELECT avatar_id, amount, fee_rate, created_at
+          `SELECT 
+             avatar_id,
+             COALESCE(SUM(fee_amount), 0) as total,
+             COALESCE(SUM(CASE WHEN created_at >= ? THEN fee_amount ELSE 0 END), 0) as today
            FROM earnings 
-           WHERE avatar_id IN (${idList}) AND status IN ('settled')`,
-          []
+           WHERE avatar_id IN (${idList})
+           GROUP BY avatar_id`,
+          [today]
         ) as any[]
-        
-        // 按分身分组，逐笔计算每笔收益（四舍五入到2位小数）
-        const avatarEarningsMap: Record<string, any[]> = {}
-        for (const e of earningsRows || []) {
-          const avatarId = e.avatar_id
-          if (!avatarEarningsMap[avatarId]) {
-            avatarEarningsMap[avatarId] = []
+
+        for (const row of earningsRows || []) {
+          earningsMap[row.avatar_id] = {
+            total: Number(row.total),
+            today: Number(row.today)
           }
-          const actualAmount = Number((Number(e.amount) * (1 - Number(e.fee_rate || 0))).toFixed(2))
-          const isToday = new Date(e.created_at) >= today
-          avatarEarningsMap[avatarId].push({ total: actualAmount, today: isToday ? actualAmount : 0 })
-        }
-        
-        // 合并计算每个分身的总收益和今日收益
-        for (const avatarId of Object.keys(avatarEarningsMap)) {
-          const earningsList = avatarEarningsMap[avatarId]
-          const total = earningsList.reduce((sum, e) => sum + e.total, 0)
-          const todayTotal = earningsList.reduce((sum, e) => sum + e.today, 0)
-          earningsMap[avatarId] = { total, today: todayTotal }
         }
       } catch (error) {
         console.warn('[AvatarService] 查询收益失败:', error)

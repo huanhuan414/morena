@@ -95,24 +95,11 @@ export class UserStatsService {
         }
       }
       
-      // 4. 统计累计收益（只从 earnings 表计算，status='pending' 或 'settled'，考虑抽成）
+      // 4. 统计累计收益：直接从 users.fee_total_earnings 读取（与收益中心保持一致）
       console.log('[UserStats] 查询用户信息, userId:', userId)
       userResult = await db.queryOne('users', { id: userId }) as any
-      console.log('[UserStats] 查询结果:', userResult)
-      // 与收益中心保持一致：使用 pool.query 查询收益记录，然后逐笔计算（每笔都四舍五入到2位小数）
-      const pool = getPool()
-      const [earningsRows] = await pool.query(
-        `SELECT amount, fee_rate FROM earnings 
-         WHERE user_id = ? AND status IN ('settled')`,
-        [userId]
-      ) as any[]
-      
-      // 计算累计收益，每笔记录都先四舍五入到2位小数（与收益中心calcActualAmount一致）
-      totalEarnings = (earningsRows || []).reduce((sum: number, e: any) => {
-        const actualAmount = Number((Number(e.amount) * (1 - Number(e.fee_rate || 0))).toFixed(2))
-        // console.log('[UserStats] 收益记录: amount=', e.amount, ', fee_rate=', e.fee_rate || e.feeRate, ', actual=', actualAmount)
-        return sum + actualAmount
-      }, 0)
+      // console.log('[UserStats] 查询结果:', userResult)
+      totalEarnings = Number(userResult?.feeTotalEarnings) || 0
       
       // 5. 获取用户邀请码和邀请人数
       try {
@@ -166,22 +153,17 @@ export class UserStatsService {
         ) as any[]
         const statsMap = new Map(statsResult.map((r: any) => [r.avatarId || r.avatar_id, r]))
 
-        // 与首页和收益中心保持一致：先查询每条收益记录，然后逐笔计算（每笔都四舍五入到2位小数）
+        // 查询每个分身的收益合计（直接用 fee_amount）
+        const pool = getPool()
         const [earnRows] = await pool.query(
-          `SELECT avatar_id, amount, fee_rate
+          `SELECT avatar_id, COALESCE(SUM(fee_amount), 0) as totalEarnings
            FROM earnings
-           WHERE avatar_id IN (${avatarIdList}) AND status IN ('settled')`,
+           WHERE avatar_id IN (${avatarIdList}) AND status IN ('settled')
+           GROUP BY avatar_id`,
           []
         ) as any[]
-        
-        // 按分身分组，逐笔计算每笔收益（四舍五入到2位小数）
-        const avatarEarningsMap: Record<string, number> = {}
-        for (const e of earnRows || []) {
-          const avatarId = e.avatar_id
-          const actualAmount = Number((Number(e.amount) * (1 - Number(e.fee_rate || 0))).toFixed(2))
-          avatarEarningsMap[avatarId] = (avatarEarningsMap[avatarId] || 0) + actualAmount
-        }
-        const earnMap = new Map(Object.entries(avatarEarningsMap).map(([id, total]) => [id, total]))
+
+        const earnMap = new Map((earnRows || []).map((r: any) => [r.avatar_id, Number(r.totalEarnings)]))
 
         for (const a of avatarList) {
           const stats = statsMap.get(a.id)
