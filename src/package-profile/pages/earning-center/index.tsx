@@ -36,6 +36,7 @@ export default function EarningCenterPage() {
   const [withdrawAmount, setWithdrawAmount] = useState('')
   const [withdrawLoading, setWithdrawLoading] = useState(false)
   const [confirmLoading, setConfirmLoading] = useState(false)
+  const [confirmedTradeNos, setConfirmedTradeNos] = useState<Set<string>>(new Set())
   const [confirmingWithdraw, setConfirmingWithdraw] = useState<{ outTradeNo: string; amount: number; createdAt: string; mchId: string; appId: string; adminDomain: string } | null>(null)
 
   useLoad(() => {
@@ -104,7 +105,13 @@ export default function EarningCenterPage() {
     try {
       const res = await Network.request({ url: '/api/withdraw/confirming' })
       if (res.data?.code === 200 && res.data?.data) {
-        setConfirmingWithdraw(res.data.data)
+        // 过滤掉前端已确认但后端异步未更新完的订单
+        const data = res.data.data
+        if (data.outTradeNo && confirmedTradeNos.has(data.outTradeNo)) {
+          setConfirmingWithdraw(null)
+        } else {
+          setConfirmingWithdraw(data)
+        }
       } else {
         setConfirmingWithdraw(null)
       }
@@ -256,9 +263,13 @@ export default function EarningCenterPage() {
         package: packageInfo,
         success: () => {
           showToast({ title: '授权成功，转账即将到账', icon: 'success', duration: 3000 })
+          setConfirmedTradeNos(prev => new Set(prev).add(outTradeNo))
           setConfirmingWithdraw(null)
-          fetchWithdrawRecords()
-          fetchOverview()
+          // 延迟3秒等后端异步更新状态后再刷新数据
+          setTimeout(() => {
+            fetchWithdrawRecords()
+            fetchOverview()
+          }, 4000)
         },
         fail: (err: any) => {
           console.error('授权收款失败:', err)
