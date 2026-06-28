@@ -190,7 +190,7 @@ export default function EarningCenterPage() {
       })
 
       if (res.data?.code === 200) {
-        showToast({ title: '提现申请已提交，预计一周内审核完成，需再来确认收款', icon: 'none', duration: 8000 })
+        Taro.showModal({ title: '提示', content: '提现申请已提交，预计一周内审核完成，需再来确认收款', showCancel: false, confirmText: '我知道了' })
         setShowWithdrawModal(false)
         setActiveTab('withdraw')
         fetchOverview()
