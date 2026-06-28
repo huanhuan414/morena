@@ -269,7 +269,7 @@ export default function EarningCenterPage() {
           setTimeout(() => {
             fetchWithdrawRecords()
             fetchOverview()
-          }, 4000)
+          }, 3000)
         },
         fail: (err: any) => {
           console.error('授权收款失败:', err)
