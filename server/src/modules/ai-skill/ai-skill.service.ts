@@ -117,11 +117,12 @@ export class AiSkillService {
             const currentImageUrls = imageUrls.filter(Boolean);
             await pool.query(
               `UPDATE ai_skill_records SET 
-                metadata = JSON_SET(COALESCE(metadata, '{}'), '$.progress', ?, '$.images', ?),
+                metadata = JSON_SET(COALESCE(metadata, '{}'), '$.progress', ?, '$.images', ?, '$.totalImages', ?),
                 updated_at = NOW() WHERE id = ?`,
               [
                 `配图生成中(${currentImageUrls.length}/${inputCount + needGenerate})...`,
                 JSON.stringify(currentImageUrls),
+                inputCount + needGenerate,
                 recordId,
               ],
             );
@@ -756,7 +757,7 @@ ${imageHint}
         status: r.status,
         errorMessage: r.error_message || r.errorMessage,
         createdAt: r.created_at || r.createdAt,
-        metadata: typeof r.metadata === 'string' ? JSON.parse(r.metadata) : (r.metadata || null),
+        metadata: typeof r.metadata === 'string' ? this.parseMetadata(r.metadata) : (r.metadata || null),
         // 公众号文章类型，解析 article 数据
         article: r.skill_type === 'wechat_mp_article' && r.input_text ? this.parseArticleData(r.input_text) : null,
       })),
@@ -792,7 +793,7 @@ ${imageHint}
       status: r.status,
       errorMessage: r.error_message || r.errorMessage,
       createdAt: r.created_at || r.createdAt,
-      metadata: typeof r.metadata === 'string' ? JSON.parse(r.metadata) : (r.metadata || null),
+      metadata: typeof r.metadata === 'string' ? this.parseMetadata(r.metadata) : (r.metadata || null),
       article: r.skill_type === 'wechat_mp_article' && r.input_text ? this.parseArticleData(r.input_text) : null,
     };
   }
@@ -802,14 +803,39 @@ ${imageHint}
    */
   private parseArticleData(rawInputText: string): { title: string; content: string; images: string[]; inputText: string } | null {
     try {
-      // input_text 在完成时被存为 JSON 字符串
       if (rawInputText.startsWith('{')) {
-        return JSON.parse(rawInputText);
+        const article = JSON.parse(rawInputText);
+        if (article.images && typeof article.images === 'string') {
+          try {
+            article.images = JSON.parse(article.images);
+          } catch (e) {
+            article.images = [];
+          }
+        }
+        return article;
       }
     } catch (e) {
-      // 解析失败返回 null
     }
     return null;
+  }
+
+  /**
+   * 解析 metadata，处理 images 字段可能被双重序列化的问题
+   */
+  private parseMetadata(rawMetadata: string): any {
+    try {
+      const metadata = JSON.parse(rawMetadata);
+      if (metadata.images && typeof metadata.images === 'string') {
+        try {
+          metadata.images = JSON.parse(metadata.images);
+        } catch (e) {
+          metadata.images = [];
+        }
+      }
+      return metadata;
+    } catch (e) {
+      return {};
+    }
   }
 
   /**

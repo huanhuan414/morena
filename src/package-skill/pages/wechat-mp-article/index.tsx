@@ -90,8 +90,8 @@ export default function WechatMpArticle() {
         if (inProgress) {
           setGenerating(true)
           // 恢复已有的图片
-          if (inProgress.article?.images?.length) {
-            setGenImages(inProgress.article.images)
+          if (inProgress.article?.images) {
+            setGenImages(Array.isArray(inProgress.article.images) ? inProgress.article.images : [])
           }
           startPolling(inProgress.id)
         }
@@ -361,7 +361,7 @@ export default function WechatMpArticle() {
           setGenStatus('generating_text')
           setGenProgress('正在生成爆款文章...')
         } else if (status === 'generating_images') {
-          const imagesSoFar = meta.images || []
+          const imagesSoFar = Array.isArray(meta.images) ? meta.images : []
           setGenImages(imagesSoFar)
           setGenStatus('generating_images')
           const current = imagesSoFar.length
@@ -373,7 +373,8 @@ export default function WechatMpArticle() {
           setGenerating(false)
           setGenStatus('completed')
           setGenProgress('生成完成！')
-          const images = meta.images || record.article?.images || []
+          const rawImages = meta.images || record.article?.images || []
+          const images = Array.isArray(rawImages) ? rawImages : []
           setGenImages(images)
           if (record.article) {
             setResult({
@@ -482,7 +483,7 @@ export default function WechatMpArticle() {
       setResult({
         title: item.article.title,
         content: item.article.content,
-        images: item.article.images || [],
+        images: Array.isArray(item.article.images) ? item.article.images : [],
       })
       setActiveTab('generate')
     } else if (item.status === 'generating') {
@@ -779,7 +780,7 @@ export default function WechatMpArticle() {
                 {/* 进度文字 */}
                 <Text className="block text-xs mt-3" style={{ color: '#999' }}>{genProgress}</Text>
                 {/* 已生成的图片预览 */}
-                {genImages.length > 0 && (
+                {Array.isArray(genImages) && genImages.length > 0 && (
                   <View style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
                     {genImages.map((url, idx) => (
                       <View key={idx} style={{ width: '80px', height: '80px', borderRadius: '8px', overflow: 'hidden', border: `1px solid ${PRIMARY_BORDER}` }}>
