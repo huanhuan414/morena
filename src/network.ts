@@ -189,6 +189,12 @@ const clearUserAuthStorage = () => {
   try {
     Taro.removeStorageSync('token')
     Taro.removeStorageSync('userInfo')
+    Taro.removeStorageSync('avatar_create_draft_v3')
+    Taro.removeStorageSync('mind_chat_focus_avatar')
+    Taro.removeStorageSync('onboarding_new_avatar_id')
+    Taro.removeStorageSync('isDarkMode')
+    Taro.removeStorageSync('hasSubscribedFeedback')
+    Taro.removeStorageSync('dismissed_order_ids')
   } catch {
     return
   }

@@ -80,7 +80,13 @@ export const useUserStore = create<UserState>((set, get) => ({
   logout: () => {
     removeStorageSync('token')
     removeStorageSync('userInfo')
-    set({ userInfo: null, token: '', isLoggedIn: false })
+    removeStorageSync('avatar_create_draft_v3')
+    removeStorageSync('mind_chat_focus_avatar')
+    removeStorageSync('onboarding_new_avatar_id')
+    removeStorageSync('isDarkMode')
+    removeStorageSync('hasSubscribedFeedback')
+    removeStorageSync('dismissed_order_ids')
+    set({ userInfo: null, token: '', isLoggedIn: false, avatarId: undefined, isDarkMode: false })
   },
 
   login: async (code: string) => {
