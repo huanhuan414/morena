@@ -883,9 +883,19 @@
   border-radius: 8rpx;
 }
 
+/* .withdraw-all-btn.disabled {
+  background: rgba(255, 255, 255, 0.08);
+} */
+
 .withdraw-all-text {
   font-size: 26rpx;
   color: #00ff88;
+}
+
+.withdraw-all-btn.disabled .withdraw-all-text {
+  /* color: var(--text-tertiary); */
+  color: #fb2424;
+  font-weight: 600;
 }
 
 /* 门槛说明样式 */
@@ -972,8 +982,9 @@
   color: #000;
 }
 
-.withdraw-confirm-btn[disabled] {
-  opacity: 0.6;
+.withdraw-confirm-btn.disabled {
+  background: #6b7280;
+  color: #ffffff;
 }
 
 /* Tab 切换样式 */

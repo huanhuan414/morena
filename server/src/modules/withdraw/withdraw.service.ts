@@ -49,32 +49,35 @@ export class WithdrawService {
 
     // 2. 检查提现金额规则
     // 查询推荐人数
-    const [referralRows] = await pool.query(
-      `SELECT COUNT(*) as referralCount FROM referrals WHERE referrer_id = ?`,
-      [userId]
-    ) as any[];
-    const referralCount = Number(referralRows?.[0]?.referralCount) || 0;
+    // const [referralRows] = await pool.query(
+    //   `SELECT COUNT(*) as referralCount FROM referrals WHERE referrer_id = ?`,
+    //   [userId]
+    // ) as any[];
+    // const referralCount = Number(referralRows?.[0]?.referralCount) || 0;
 
     // 判断提现门槛
-    const MIN_AMOUNT_NORMAL = 100; // 普通用户最低提现金额
-    const MIN_AMOUNT_VIP = 20;     // 推荐2人以上最低提现金额
-    const MULTIPLE = 20;            // 提现金额必须是20的倍数
+    // const MIN_AMOUNT_NORMAL = 100; // 普通用户最低提现金额
+    // const MIN_AMOUNT_VIP = 20;     // 推荐2人以上最低提现金额
+    // const MULTIPLE = 20;            // 提现金额必须是20的倍数
 
-    const minAmount = referralCount >= 2 ? MIN_AMOUNT_VIP : MIN_AMOUNT_NORMAL;
+    // const minAmount = referralCount >= 2 ? MIN_AMOUNT_VIP : MIN_AMOUNT_NORMAL;
 
     if (amount <= 0) {
       throw new Error('提现金额必须大于0');
     }
 
-    if (amount < minAmount) {
-      const condition = referralCount >= 2  
-        ? `已推荐2人及以上，可享最低提现${MIN_AMOUNT_VIP}元` 
-        : `还需推荐${2 - referralCount}人及以上可享低门槛，当前最低提现${MIN_AMOUNT_NORMAL}元`;
-      throw new Error(`提现金额不足，${condition}`);
-    }
+    // if (amount < minAmount) {
+    //   const condition = referralCount >= 2  
+    //     ? `已推荐2人及以上，可享最低提现${MIN_AMOUNT_VIP}元` 
+    //     : `还需推荐${2 - referralCount}人及以上可享低门槛，当前最低提现${MIN_AMOUNT_NORMAL}元`;
+    //   throw new Error(`提现金额不足，${condition}`);
+    // }
 
-    if (amount % MULTIPLE !== 0) {
-      throw new Error(`提现金额必须是${MULTIPLE}的倍数`);
+    // if (amount % MULTIPLE !== 0) {
+    //   throw new Error(`提现金额必须是${MULTIPLE}的倍数`);
+    // }
+    if (amount < 20) {
+      throw new Error(`提现金额不能小于20元`);
     }
 
     // 可提现余额

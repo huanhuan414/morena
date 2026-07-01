@@ -159,6 +159,7 @@ export default function EarningCenterPage() {
   }
 
   const handleWithdrawConfirm = async () => {
+    if (withdrawLoading) return
     const amount = Number(withdrawAmount)
     const balance = toNumber(overview.balance)
 
@@ -170,14 +171,18 @@ export default function EarningCenterPage() {
       showToast({ title: `余额不足，当前余额: ${balance.toFixed(2)}元`, icon: 'none' })
       return
     }
-
+    
     // 使用公共验证函数
-    if (!validateWithdrawAmount(amount)) {
-      return
-    }
+    // if (!validateWithdrawAmount(amount)) {
+    //   return
+    // }
     // 检查金额是否是20的倍数
-    if (amount % 20 !== 0) {
-      showToast({ title: '提现金额必须是20的倍数', icon: 'none' })
+    // if (amount % 20 !== 0) {
+    //   showToast({ title: '提现金额必须是20的倍数', icon: 'none' })
+    //   return
+    // }
+    if (amount < 20) {
+      showToast({ title: '提现金额不能小于20元', icon: 'none' })
       return
     }
 
@@ -291,24 +296,37 @@ export default function EarningCenterPage() {
   }
 
   const handleWithdrawAll = () => {
+    // const balance = toNumber(overview.balance)
+    // const referralCount = toNumber(overview.referralCount)
+    // const MIN_AMOUNT_VIP = 20
+    // const MULTIPLE = 20
+
+    // const minAmount = referralCount >= 2 ? MIN_AMOUNT_VIP : 100
+    // const maxMultiple = Math.floor(balance / MULTIPLE) * MULTIPLE
+
+    // if (maxMultiple < minAmount) {
+    //   showToast({
+    //     title: referralCount >= 2
+    //       ? `余额不足${minAmount}元，无法提现`
+    //       : `余额不足${minAmount}元，还需推荐${Math.max(0, 2 - referralCount)}人可享低门槛`,
+    //     icon: 'none'
+    //   })
+    //   return
+    // }
     const balance = toNumber(overview.balance)
-    const referralCount = toNumber(overview.referralCount)
-    const MIN_AMOUNT_VIP = 20
-    const MULTIPLE = 20
+    // const MIN_AMOUNT = 20
+    // const MULTIPLE = 20
 
-    const minAmount = referralCount >= 2 ? MIN_AMOUNT_VIP : 100
-    const maxMultiple = Math.floor(balance / MULTIPLE) * MULTIPLE
+    // const maxMultiple = Math.floor(balance / MULTIPLE) * MULTIPLE
 
-    if (maxMultiple < minAmount) {
-      showToast({
-        title: referralCount >= 2
-          ? `余额不足${minAmount}元，无法提现`
-          : `余额不足${minAmount}元，还需推荐${Math.max(0, 2 - referralCount)}人可享低门槛`,
-        icon: 'none'
-      })
-      return
-    }
-
+    // if (maxMultiple < MIN_AMOUNT) {
+    //   showToast({
+    //     title: `余额不足${MIN_AMOUNT}元，无法提现`,
+    //     icon: 'none'
+    //   })
+    //   return
+    // }
+    const maxMultiple = balance
     setWithdrawAmount(String(maxMultiple))
   }
 
@@ -378,9 +396,9 @@ export default function EarningCenterPage() {
           <View className="overview-main">
             <View className="balance-header">
               <Text className="overview-label">可提现余额</Text>
-              <View className="help-btn" onClick={() => setShowRuleModal(true)}>
+              {/* <View className="help-btn" onClick={() => setShowRuleModal(true)}>
                 <Info size={20} color="#fbbf24" />
-              </View>
+              </View> */}
             </View>
             <View className="balance-wrap">
               <Text className="currency">¥</Text>
@@ -581,12 +599,20 @@ export default function EarningCenterPage() {
                     onInput={(e) => setWithdrawAmount(e.detail.value)}
                   />
                 </View>
-                <View className="withdraw-all-btn" onClick={handleWithdrawAll}>
-                  <Text className="withdraw-all-text">全部提现</Text>
+                <View 
+                  className={`withdraw-all-btn ${toNumber(overview.balance) < 20 ? 'disabled' : ''}`} 
+                  onClick={() => toNumber(overview.balance) >= 20 && handleWithdrawAll()}
+                >
+                  <Text className="withdraw-all-text">
+                    {toNumber(overview.balance) < 20 
+                      ? `还差${(20 - toNumber(overview.balance)).toFixed(2)}元` 
+                      : '全部提现'
+                    }
+                  </Text>
                 </View>
 
                 {/* 门槛说明 */}
-                <View className="withdraw-threshold-tip">
+                {/* <View className="withdraw-threshold-tip">
                   <Text className="threshold-text">
                     {overview.referralCount >= 2
                       ? '✓ 已降低门槛，最低提现20元'
@@ -598,16 +624,16 @@ export default function EarningCenterPage() {
                       立即邀请
                     </View>
                   )}
-                </View>
+                </View> */}
               </View>
 
-              <View className="withdraw-tips">
+              {/* <View className="withdraw-tips">
                 <Text className="withdraw-tip-item">• 推荐2人及以上：最低提现20元</Text>
                 <Text className="withdraw-tip-item">• 未推荐2人：最低提现100元</Text>
                 <Text className="withdraw-tip-item">• 提现金额必须是20的倍数</Text>
-                {/* <Text className="withdraw-tip-item">• 提现将直接到微信零钱 </Text> */}
+                <Text className="withdraw-tip-item">• 提现将直接到微信零钱 </Text>
                 <Text className="withdraw-tip-item">• 预计一周内到账，提现成功后不可撤销</Text>
-              </View>
+              </View> */}
             </View>
 
             <View className="withdraw-modal-footer">
@@ -618,9 +644,9 @@ export default function EarningCenterPage() {
                 取消
               </Button>
               <Button
-                className="withdraw-confirm-btn"
+                className={`withdraw-confirm-btn ${withdrawLoading || toNumber(overview.balance) < 20 ? 'disabled' : ''}`}
                 onClick={handleWithdrawConfirm}
-                disabled={withdrawLoading}
+                disabled={withdrawLoading || toNumber(overview.balance) < 20}
               >
                 {withdrawLoading ? '处理中...' : '确认提现'}
               </Button>
