@@ -152,12 +152,13 @@ export class OrderTimeoutService {
   }
 
   /**
-   * 每5分钟检查待接单超时
+   * 每5分钟检查待接单超时--改成每分钟
    * 
    * 条件：pending 状态 + accept_timeout_at 已过期（派单后超过指定时间未接单）
    * 处理：释放名额 + 发送通知 + 自动重新派单给其他分身
    */
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  // @Cron(CronExpression.EVERY_5_MINUTES)
+  @Cron(CronExpression.EVERY_MINUTE)
   async handlePendingAcceptTimeouts() {
     this.logger.log(' ====== 开始检查待接单超时（未接受派单） ===============')
     let count = 0
