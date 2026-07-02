@@ -1023,14 +1023,14 @@ const MindChat: React.FC = () => {
                     </View>
 
                     {/* 操作 */}
-                    <View className="square-action-btn square-voice-btn" onClick={handleSquareVoice}>
+                    {/* <View className="square-action-btn square-voice-btn" onClick={handleSquareVoice}>
                       <Phone size={13} color="#6366f1" />
                       <Text className="square-action-text">通话</Text>
                     </View>
                     <View className="square-action-btn square-follow-btn" onClick={handleSquareConnect}>
                       <ChevronsRight size={13} color="#ffffff" />
                       <Text className="square-action-text-white">私聊</Text>
-                    </View>
+                    </View> */}
                   </View>
                 ))}
               </View>
