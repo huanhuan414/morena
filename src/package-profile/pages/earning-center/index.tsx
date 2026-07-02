@@ -148,11 +148,11 @@ export default function EarningCenterPage() {
   }
 
   const handleWithdraw = () => {
-    // const balance = toNumber(overview.balance)
-    // if (balance < 20) {
-    //   showToast({ title: '余额不足20元，无法提现', icon: 'none' })
-    //   return
-    // }
+    const balance = toNumber(overview.balance)
+    if (balance <= 0) {
+      showToast({ title: '没有可提现金额', icon: 'none' })
+      return
+    }
     // 打开提现弹窗
     setShowWithdrawModal(true)
     setWithdrawAmount('')
@@ -396,9 +396,9 @@ export default function EarningCenterPage() {
           <View className="overview-main">
             <View className="balance-header">
               <Text className="overview-label">可提现余额</Text>
-              {/* <View className="help-btn" onClick={() => setShowRuleModal(true)}>
+              <View className="help-btn" onClick={() => setShowRuleModal(true)}>
                 <Info size={20} color="#fbbf24" />
-              </View> */}
+              </View> 
             </View>
             <View className="balance-wrap">
               <Text className="currency">¥</Text>
@@ -667,7 +667,7 @@ export default function EarningCenterPage() {
             </View>
             <View className="rule-modal-body">
               {/* 用户当前状态 */}
-              <View className="rule-status-card">
+              {/* <View className="rule-status-card">
                 <Text className="rule-status-title">您的当前状态</Text>
                 <View className="rule-status-content">
                   <Text className="rule-status-label">已推荐好友：</Text>
@@ -684,35 +684,38 @@ export default function EarningCenterPage() {
                     {overview.referralCount >= 2 ? '20元起' : '100元起'}
                   </Text>
                 </View>
-              </View>
+              </View> */}
 
               <View className="rule-item">
                 <View className="rule-number">1</View>
                 <View className="rule-content">
-                  <Text className="rule-title">低门槛提现</Text>
-                  <Text className="rule-desc">推荐 <Text className="rule-highlight">2人及以上</Text> 好友注册，即可享受最低 <Text className="rule-highlight">20元</Text> 提现门槛</Text>
+                  <Text className="rule-desc">每日提现次数不限制</Text>
+                  {/* <Text className="rule-title">低门槛提现</Text> */}
+                  {/* <Text className="rule-desc">推荐 <Text className="rule-highlight">2人及以上</Text> 好友注册，即可享受最低 <Text className="rule-highlight">20元</Text> 提现门槛</Text> */}
                 </View>
               </View>
               <View className="rule-item">
                 <View className="rule-number">2</View>
                 <View className="rule-content">
-                  <Text className="rule-title">普通提现</Text>
-                  <Text className="rule-desc">未达到推荐要求，最低提现金额为 <Text className="rule-highlight">100元</Text></Text>
+                  <Text className="rule-desc">任何时间都可以申请提现</Text>
+                  {/* <Text className="rule-title">普通提现</Text> */}
+                  {/* <Text className="rule-desc">未达到推荐要求，最低提现金额为 <Text className="rule-highlight">100元</Text></Text> */}
                 </View>
               </View>
               <View className="rule-item">
                 <View className="rule-number">3</View>
                 <View className="rule-content">
+                  <Text className="rule-desc">审核预计一周，审核通过后点击提现立即到账</Text>
                   {/* <Text className="rule-title">提现倍数</Text> */}
-                  <Text className="rule-desc">提现金额必须是 <Text className="rule-highlight">20元</Text> 的倍数（如：20元、40元、60元...）</Text>
+                  {/* <Text className="rule-desc">提现金额必须是 <Text className="rule-highlight">20元</Text> 的倍数（如：20元、40元、60元...）</Text> */}
                 </View>
               </View>
-              <View className="rule-item">
+              {/* <View className="rule-item">
                 <View className="rule-number">4</View>
                 <View className="rule-content">
                   <Text className="rule-desc">预计 <Text className="rule-highlight">一周</Text> 内到账，提现成功后不可撤销</Text>
                 </View>
-              </View>
+              </View> */}
               {/* <View className="rule-item">
                 <View className="rule-number">4</View>
                 <View className="rule-content">
