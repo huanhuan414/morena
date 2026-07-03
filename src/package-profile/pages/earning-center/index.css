@@ -616,6 +616,41 @@
   color: #ffaa00;
 }
 
+/* Withdraw Rules Section */
+.withdraw-rules-section {
+  padding: 0 32rpx 24rpx;
+  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  animation-delay: 0.2s;
+}
+
+.withdraw-rules-card {
+  background: rgba(156, 163, 175, 0.08);
+  border-radius: var(--radius-lg);
+  padding: 24rpx;
+  border: 1rpx solid rgba(156, 163, 175, 0.15);
+}
+
+.withdraw-rules-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 16rpx;
+}
+
+.withdraw-rules-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.withdraw-rule-text {
+  font-size: 24rpx;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 0;
+  display: block;
+}
+
 /* Records Section */
 .records-section {
   flex: 1;

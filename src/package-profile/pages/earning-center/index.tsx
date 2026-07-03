@@ -13,6 +13,13 @@ import { formatNum, toNumber } from '@/utils/format'
 import { ArrowDownToLine, Sparkles, ArrowLeft, X, Info } from 'lucide-react-taro'
 import './index.css'
 
+const WITHDRAW_RULES = [
+  '1. 提现额度：最低20元可发起提现，单笔提现无上限。',
+  '2. 提现次数：账号每日提现次数无限制。',
+  '3. 申请时间：全天24小时均可提交提现申请。',
+  '4. 审核与到账：提交提现后平台合规审核周期最长7个工作日，审核通过后用户点立即提现后立即到账；若提现失败，资金原路退回可提现余额。'
+]
+
 export default function EarningCenterPage() {
   const [overview, setOverview] = useState<EarningOverview>({
     balance: 0,
@@ -461,6 +468,18 @@ export default function EarningCenterPage() {
         </View>
       </View>
 
+      {/* 提现规则区域 */}
+       {!confirmingWithdraw && (<View className="withdraw-rules-section">
+          <View className="withdraw-rules-card">
+            <View className="withdraw-rules-title">提现规则说明</View>
+            <View className="withdraw-rules-content">
+              {WITHDRAW_RULES.map((rule, index) => (
+                <Text key={index} className="withdraw-rule-text">{rule}</Text>
+              ))}
+            </View>
+          </View>
+        </View>)}
+
       {/* 收益明细/提现明细 */}
       <View className="records-section">
         <View className="section-header">
@@ -686,36 +705,19 @@ export default function EarningCenterPage() {
                 </View>
               </View> */}
 
-              <View className="rule-item">
-                <View className="rule-number">1</View>
-                <View className="rule-content">
-                  <Text className="rule-desc">每日提现次数不限制</Text>
-                  {/* <Text className="rule-title">低门槛提现</Text> */}
-                  {/* <Text className="rule-desc">推荐 <Text className="rule-highlight">2人及以上</Text> 好友注册，即可享受最低 <Text className="rule-highlight">20元</Text> 提现门槛</Text> */}
-                </View>
-              </View>
-              <View className="rule-item">
-                <View className="rule-number">2</View>
-                <View className="rule-content">
-                  <Text className="rule-desc">任何时间都可以申请提现</Text>
-                  {/* <Text className="rule-title">普通提现</Text> */}
-                  {/* <Text className="rule-desc">未达到推荐要求，最低提现金额为 <Text className="rule-highlight">100元</Text></Text> */}
-                </View>
-              </View>
-              <View className="rule-item">
-                <View className="rule-number">3</View>
-                <View className="rule-content">
-                  <Text className="rule-desc">审核预计一周，审核通过后点击提现立即到账</Text>
-                  {/* <Text className="rule-title">提现倍数</Text> */}
-                  {/* <Text className="rule-desc">提现金额必须是 <Text className="rule-highlight">20元</Text> 的倍数（如：20元、40元、60元...）</Text> */}
-                </View>
-              </View>
-              {/* <View className="rule-item">
-                <View className="rule-number">4</View>
-                <View className="rule-content">
-                  <Text className="rule-desc">预计 <Text className="rule-highlight">一周</Text> 内到账，提现成功后不可撤销</Text>
-                </View>
-              </View> */}
+              {WITHDRAW_RULES.map((rule) => {
+                const match = rule.match(/^(\d+)\.\s*(.*)$/)
+                const number = match ? match[1] : ''
+                const content = match ? match[2] : rule
+                return (
+                  <View key={number} className="rule-item">
+                    <View className="rule-number">{number}</View>
+                    <View className="rule-content">
+                      <Text className="rule-desc">{content}</Text>
+                    </View>
+                  </View>
+                )
+              })}
               {/* <View className="rule-item">
                 <View className="rule-number">4</View>
                 <View className="rule-content">
