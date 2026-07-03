@@ -1,1 +1,0 @@
-SELECT id, phone, balance, frozen_balance FROM users WHERE phone = '13043522122';
