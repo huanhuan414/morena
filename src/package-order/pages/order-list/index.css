@@ -209,6 +209,9 @@
   padding: 4rpx 16rpx;
   border-radius: 100rpx;
 }
+.ol-status-tag-draft {
+  cursor: pointer;
+}
 .ol-status-tag-text {
   font-size: 22rpx;
   font-weight: 500;

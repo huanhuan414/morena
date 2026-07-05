@@ -6,7 +6,7 @@ import {
   ArrowLeft, Plus, Loader, Users, ArrowUp,
   CircleCheck, CircleX, TriangleAlert,
   Wallet, FileText, Video, Trash2, CreditCard, Camera,
-  Zap, Package
+  Zap, Package, Pencil
 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import { WX_SUBSCRIBE_TEMPLATES } from '@/constants/wechat'
@@ -41,6 +41,7 @@ const STATUS_CONFIG: Record<string, {
   icon: any
   phase: number
 }> = {
+  draft: { label: '编辑', color: '#9CA3AF', bgColor: '#F9FAFB', icon: FileText, phase: -1 },
   pending_payment: { label: '待支付', color: '#F59E0B', bgColor: '#FFFBEB', icon: Wallet, phase: 0 },
   pending_dispatch: { label: '匹配中', color: '#F59E0B', bgColor: '#FFFBEB', icon: Loader, phase: 0 },
   pending: { label: '待接单', color: '#7C3AED', bgColor: '#F5F3FF', icon: Loader, phase: 1 },
@@ -216,6 +217,10 @@ export default function OrderListPage() {
     Taro.navigateTo({ url: `/package-order/pages/order-detail/index?id=${orderId}` })
   }, [])
 
+  const handleEdit = useCallback((orderId: string) => {
+    Taro.navigateTo({ url: `/package-order/pages/order-create-new/index?orderId=${orderId}` })
+  }, [])
+
   const handleBack = useCallback(() => {
     Taro.navigateBack({ delta: 1 })
   }, [])
@@ -243,6 +248,31 @@ export default function OrderListPage() {
       })
     // 跳转创建订单页面
     Taro.navigateTo({ url: '/package-order/pages/order-create/index' })
+  }, [])
+
+  const handleCreate2 = useCallback(() => {
+    // 请求订阅消息授权（一次性订阅，用于接收任务完成通知）
+    console.log('开始请求订阅消息授权')
+      ; (Taro as any).requestSubscribeMessage({
+        tmplIds: [WX_SUBSCRIBE_TEMPLATES.FEEDBACK],
+        success: (subscribeRes: any) => {
+          const status = subscribeRes[WX_SUBSCRIBE_TEMPLATES.FEEDBACK]
+          console.log('模板消息状态:', status)
+          if (status === 'accept') {
+            const hasSubscribed = Taro.getStorageSync('hasSubscribedFeedback')
+            if (!hasSubscribed) {
+              Taro.showToast({ title: '订阅成功', icon: 'success', duration: 1500 })
+              Taro.setStorageSync('hasSubscribedFeedback', true)
+            }
+          }
+        },
+        fail: (err) => {
+          console.error('订阅消息授权失败:', err)
+          // 用户未授权或其他错误，不影响跳转
+        },
+      })
+    // 跳转创建订单页面
+    Taro.navigateTo({ url: '/package-order/pages/order-create-new/index' })
   }, [])
 
   // 渲染进度条色段（使用normalize后的统一状态）
@@ -401,7 +431,9 @@ export default function OrderListPage() {
             const phaseText = getPhaseText(order)
             const isPayable = order.status === 'pending_payment'
             const isCancellable = ['pending_payment', 'pending'].includes(order.status)
-            const isDeletable = ['cancelled', 'auto_cancelled', 'timeout', 'expired', 'completed', 'pending_payment'].includes(order.status)
+            const isDeletable = ['cancelled', 'draft', 'auto_cancelled', 'timeout', 'expired', 'completed', 'pending_payment'].includes(order.status)
+            const isDraft = order.status === 'draft'
+
             const isAbnormal = ['publish_failed', 'publish_timeout'].includes(order.status)
             const budget = order.budget || order.totalPrice || 0
 
@@ -409,7 +441,16 @@ export default function OrderListPage() {
               <View key={order.id} className={`ol-card ${isAbnormal ? 'ol-card-abnormal' : ''}`} onClick={() => handleGoDetail(order.id)}>
                 {/* 卡片头部：状态标签 + 标题 */}
                 <View className="ol-card-top">
-                  <View className="ol-status-tag" style={{ backgroundColor: statusCfg.bgColor }}>
+                  <View
+                    className="ol-status-tag"
+                    style={{ backgroundColor: statusCfg.bgColor }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (order.status === 'draft') {
+                        handleEdit(order.id)
+                      }
+                    }}
+                  >
                     <StatusIcon size={12} color={statusCfg.color} />
                     <Text className="block ol-status-tag-text" style={{ color: statusCfg.color }}>{statusCfg.label}</Text>
                   </View>
@@ -463,20 +504,27 @@ export default function OrderListPage() {
                 </View>
 
                 {/* 操作按钮区 */}
-                {(isPayable || isCancellable || isDeletable) && (
+                {(isPayable || isCancellable || isDeletable || isDraft) && (
                   <View className="ol-card-actions" onClick={(e) => e.stopPropagation()}>
+                    {isDraft && (
+                      <View className="ol-action-btn ol-action-primary" onClick={() => handleEdit(order.id)}>
+                        <Pencil size={14} color="#fff" />
+                        <Text className="block ol-action-btn-text" style={{ color: '#fff' }}>编辑</Text>
+                      </View>
+                    )}
                     {isPayable && (
                       <View className="ol-action-btn ol-action-primary" onClick={() => handleGoToPay(order.id)}>
                         <CreditCard size={14} color="#fff" />
                         <Text className="block ol-action-btn-text" style={{ color: '#fff' }}>去支付</Text>
                       </View>
                     )}
+
                     {isCancellable && !isPayable && (
                       <View className="ol-action-btn ol-action-default" onClick={() => handleCancel(order.id)}>
                         <Text className="block ol-action-btn-text" style={{ color: '#7C3AED' }}>取消</Text>
                       </View>
                     )}
-                    {isDeletable && (
+                    {isDeletable && !isDraft && (
                       <View className="ol-action-btn ol-action-danger" onClick={() => handleDelete(order.id)}>
                         <Trash2 size={14} color="#EF4444" />
                         <Text className="block ol-action-btn-text" style={{ color: '#EF4444' }}>删除</Text>
@@ -499,8 +547,11 @@ export default function OrderListPage() {
           <Zap size={16} color="#fff" />
           <Text className="block ol-create-btn-text">发布新订单</Text>
         </View>
+        <View className="ol-create-btn" onClick={handleCreate2}>
+          <Zap size={16} color="#fff" />
+          <Text className="block ol-create-btn-text">发布新订单2</Text>
+        </View>
       </View>
-
       {showBackToTop && (
         <View className="back-to-top" onClick={scrollToTop}>
           <ArrowUp size={20} color="#fff" />

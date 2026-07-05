@@ -337,6 +337,7 @@ export class OrderService {
       accept_timeout: orderData.acceptTimeout || orderData.accept_timeout || null, // 接单超时时间（分钟），空表示不限时
       acceptance_timeout: orderData.acceptanceTimeout || orderData.acceptance_timeout || 24, // 验收超时时间（小时），默认1天
       platforms: JSON.stringify(orderData.platforms || []),
+      platform: orderData.platform || '',
       requirements: JSON.stringify(orderData.requirements || {}),
       // 添加 personality 字段，保存风格偏好和领域偏好
       personality: typeof orderData.personality === 'string' 
@@ -428,7 +429,7 @@ export class OrderService {
        platforms, requirements, budget, base_amount, content_amount, status, result, created_at, updated_at,
        completed_at, latitude, longitude, location_text, target_audience,
        expected_quantity, deadline, order_type, priority, assigned_to,
-       avatar_count, quantity_per_avatar, is_paid, acceptance_timeout, accept_timeout
+       avatar_count, quantity_per_avatar, is_paid, acceptance_timeout, accept_timeout, personality
        FROM orders WHERE id = ? AND is_deleted = 0`,
       [orderId]
     )
@@ -545,12 +546,17 @@ export class OrderService {
       acceptRegions: typeof order.acceptRegions === 'string' 
         ? JSON.parse(order.acceptRegions) 
         : (order.acceptRegions || []),
+      acceptTimeout: Number(order.acceptTimeout || order.accept_timeout) || 0,
+      acceptanceTimeout: Number(order.acceptanceTimeout || order.acceptance_timeout) || 24,
       platforms: typeof order.platforms === 'string' 
         ? JSON.parse(order.platforms) 
         : (order.platforms || []),
       requirements: typeof order.requirements === 'string' 
         ? JSON.parse(order.requirements) 
         : (order.requirements || {}),
+      personality: typeof order.personality === 'string'
+        ? JSON.parse(order.personality)
+        : (order.personality || {}),
       budget,
       expectedEarnings,
       status: order.status,
@@ -765,6 +771,7 @@ export class OrderService {
       content_type: 'content_type',
       contentType: 'content_type',
       platforms: 'platforms',
+      platform: 'platform',
       requirements: 'requirements',
       budget: 'budget',
       status: 'status',
@@ -786,17 +793,36 @@ export class OrderService {
       latitude: 'latitude',
       longitude: 'longitude',
       target_audience: 'target_audience',
-      targetAudience: 'target_audience'
+      targetAudience: 'target_audience',
+      accept_regions: 'accept_regions',
+      acceptRegions: 'accept_regions',
+      accept_timeout: 'accept_timeout',
+      acceptTimeout: 'accept_timeout',
+      acceptance_timeout: 'acceptance_timeout',
+      acceptanceTimeout: 'acceptance_timeout',
+      personality: 'personality',
+      preferred_styles: 'preferred_styles',
+      preferredStyles: 'preferred_styles',
+      industry_tags: 'industry_tags',
+      industryTags: 'industry_tags',
+      // 价格字段
+      base_price: 'base_amount',
+      basePrice: 'base_amount',
+      content_price: 'content_amount',
+      contentPrice: 'content_amount',
+      total_price: 'budget',
     }
 
     const normalized: Record<string, any> = {}
     for (const [key, value] of Object.entries(updateData || {})) {
       const dbField = fieldMap[key]
       if (!dbField) continue
-      if (dbField === 'platforms') {
+      if (dbField === 'platforms' || dbField === 'accept_regions') {
         normalized[dbField] = JSON.stringify(Array.isArray(value) ? value : this.safeParseJson<any[]>(value, []))
-      } else if (dbField === 'requirements' || dbField === 'result') {
+      } else if (dbField === 'requirements' || dbField === 'result' || dbField === 'personality') {
         normalized[dbField] = typeof value === 'string' ? value : JSON.stringify(value ?? {})
+      } else if (dbField === 'preferred_styles' || dbField === 'industry_tags') {
+        normalized[dbField] = JSON.stringify(Array.isArray(value) ? value : this.safeParseJson<any[]>(value, []))
       } else {
         normalized[dbField] = value
       }
