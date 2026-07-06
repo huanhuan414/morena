@@ -2147,6 +2147,115 @@ async getExecutionProgress(orderId: string) {
   /**
    * 启动内容生成流程（带重试和兜底）
    */
+  private normalizeMaterialItems(value: any, fallbackType: 'text' | 'image' | 'video'): any[] {
+    const parsed = this.safeParseJson<any[]>(value, [])
+    if (!Array.isArray(parsed)) return []
+    return parsed
+      .map((item: any) => {
+        if (typeof item === 'string') return { type: fallbackType, content: item }
+        if (!item || typeof item !== 'object') return null
+        const content = item.content || item.url || item.assetUrl || item.asset_url || ''
+        if (!content) return null
+        return { ...item, type: item.type || fallbackType, content }
+      })
+      .filter(Boolean)
+  }
+
+  private getMaterialMode(extValue: any): 'shared' | 'exclusive' {
+    const ext = this.safeParseJson<Record<string, any>>(extValue, {})
+    return ext?.distribute_mode === 'exclusive' || ext?.distributeMode === 'exclusive' ? 'exclusive' : 'shared'
+  }
+
+  private distributeMaterialItems(items: any[], slot: number, totalSlots: number, mode: 'shared' | 'exclusive'): any[] {
+    if (!Array.isArray(items) || items.length === 0) return []
+    if (mode !== 'exclusive') return items
+    const safeTotal = Math.max(Number(totalSlots) || 1, 1)
+    const safeSlot = Math.min(Math.max(Number(slot) || 0, 0), safeTotal - 1)
+    const start = Math.floor((safeSlot * items.length) / safeTotal)
+    const end = Math.floor(((safeSlot + 1) * items.length) / safeTotal)
+    return items.slice(start, end)
+  }
+
+  private async buildAssignedMaterials(orderId: string, slot: number, totalSlots: number): Promise<Record<string, any>> {
+    const db = getMySQLClient()
+    const rows = await db.query(
+      `SELECT text_mode, text_content, text_prompt, text_ext,
+              image_mode, image_list, image_prompt, image_ext,
+              video_mode, video_list, video_ext
+       FROM order_task_materials
+       WHERE order_id = ? AND status = 1
+       LIMIT 1`,
+      [orderId]
+    )
+    const material = rows?.[0]
+    if (!material) {
+      return {
+        text: { mode: 'shared', items: [], prompt: '' },
+        image: { mode: 'shared', items: [], prompt: '' },
+        video: { mode: 'shared', items: [], prompt: '' },
+      }
+    }
+
+    const textMode = this.getMaterialMode(material.textExt || material.text_ext)
+    const imageMode = this.getMaterialMode(material.imageExt || material.image_ext)
+    const videoMode = this.getMaterialMode(material.videoExt || material.video_ext)
+    const textItems = this.normalizeMaterialItems(material.textContent || material.text_content, 'text')
+    const imageItems = this.normalizeMaterialItems(material.imageList || material.image_list, 'image')
+    const videoItems = this.normalizeMaterialItems(material.videoList || material.video_list, 'video')
+
+    return {
+      text: {
+        mode: textMode,
+        sourceMode: material.textMode || material.text_mode || '',
+        items: this.distributeMaterialItems(textItems, slot, totalSlots, textMode),
+        prompt: material.textPrompt || material.text_prompt || '',
+      },
+      image: {
+        mode: imageMode,
+        sourceMode: material.imageMode || material.image_mode || '',
+        items: this.distributeMaterialItems(imageItems, slot, totalSlots, imageMode),
+        prompt: material.imagePrompt || material.image_prompt || '',
+      },
+      video: {
+        mode: videoMode,
+        sourceMode: material.videoMode || material.video_mode || '',
+        items: this.distributeMaterialItems(videoItems, slot, totalSlots, videoMode),
+        prompt: material.videoPrompt || material.video_prompt || '',
+      },
+    }
+  }
+
+  private async getMaterialSlotInfo(orderId: string, order: any, request: any): Promise<{ slot: number; totalSlots: number }> {
+    const db = getMySQLClient()
+    const totalSlots = Math.max(
+      Number(order?.avatarCount || order?.avatar_count || order?.expectedQuantity || order?.expected_quantity || 1) || 1,
+      1
+    )
+    const dispatchId = request?.id || request?.dispatchId || request?.dispatch_id
+    if (dispatchId) {
+      const rows = await db.query(
+        `SELECT id
+         FROM order_dispatch_requests
+         WHERE order_id = ? AND status IN ('accepted', 'completed')
+         ORDER BY accepted_at ASC, created_at ASC, id ASC`,
+        [orderId]
+      )
+      const index = (rows || []).findIndex((row: any) => String(row.id) === String(dispatchId))
+      if (index >= 0) {
+        return { slot: index, totalSlots }
+      }
+    }
+
+    const countRows = await db.query(
+      `SELECT COUNT(*) as count
+       FROM content_generation_requests
+       WHERE order_id = ? AND status NOT IN ('cancelled', 'failed', 'rejected', 'expired')`,
+      [orderId]
+    )
+    const fallbackSlot = Number(countRows?.[0]?.count || 0)
+    return { slot: Math.min(fallbackSlot, totalSlots - 1), totalSlots }
+  }
+
   async startContentGeneration(orderId: string, avatarId: string, request: any, requestId?: string) {
     const MAX_RETRIES = 3
     let lastError: any = null
@@ -2191,6 +2300,8 @@ async getExecutionProgress(orderId: string) {
 
     const platforms = order.platforms ? JSON.parse(order.platforms) : ['wechat']
     const normalizedPlatforms = platforms.map((p: string) => p === 'general' ? 'wechat' : p)
+    const materialSlotInfo = await this.getMaterialSlotInfo(orderId, order, request)
+    const assignedMaterials = await this.buildAssignedMaterials(orderId, materialSlotInfo.slot, materialSlotInfo.totalSlots)
 
     // 获取分身完整信息（技能、风格、领域、人设）
     let avatarName: string | undefined
@@ -2408,6 +2519,11 @@ async getExecutionProgress(orderId: string) {
       assignedVideoUrl,
       useCustomCopywriting,
       customCopywriting,
+      config: {
+        materialSlot: materialSlotInfo.slot,
+        materialTotalSlots: materialSlotInfo.totalSlots,
+        assignedMaterials,
+      },
     })
 
   }

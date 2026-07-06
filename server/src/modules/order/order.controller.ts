@@ -32,6 +32,21 @@ export class OrderController {
     return { code: 200, data: order, message: '更新成功' }
   }
 
+  @Post(':id/task-steps')
+  async saveTaskSteps(
+    @Param('id') orderId: string,
+    @Body() body: Record<string, any>
+  ) {
+    const result = await this.orderService.saveOrderTaskSteps(orderId, body?.steps || [])
+    return { code: 200, data: result, message: '保存成功' }
+  }
+
+  @Get(':id/task-steps')
+  async getTaskSteps(@Param('id') orderId: string) {
+    const result = await this.orderService.getOrderTaskSteps(orderId)
+    return { code: 200, data: result, message: '获取成功' }
+  }
+
   @Get('list')
   async list(
     @Headers('x-user-id') userId: string,

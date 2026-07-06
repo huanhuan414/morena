@@ -979,7 +979,7 @@
 }
 
 .counter-input-wrap {
-  min-width: 80rpx;
+  width: 105rpx;
   height: 52rpx;
   display: flex;
   align-items: center;
@@ -990,7 +990,7 @@
 }
 
 .counter-input {
-  width: 100%;
+  width: 100rpx;
   height: 52rpx;
   font-size: 32rpx;
   font-weight: 700;

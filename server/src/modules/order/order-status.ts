@@ -16,6 +16,7 @@ export type DispatchStatus = 'pending' | 'accepted' | 'rejected' | 'cancelled' |
 export type OrderStatus =
   | 'pending_payment'
   | 'open'
+  | 'pending_review'
   | 'pending_dispatch'
   | 'pending_acceptance'
   | 'in_progress'

@@ -11,6 +11,7 @@ type StepItem = {
   id: string
   group: string
   label: string
+  type: string
   description?: string
   data?: {
     url?: string
@@ -23,7 +24,9 @@ type StepItem = {
     materials?: { type: 'text' | 'image' | 'video'; content: string }[]
     distributeMode?: 'shared' | 'exclusive'
     useAiMaterial?: boolean
+    aiPrompt?: string
   }
+  extConfig?: Record<string, string>
 }
 
 const getStepsStorageKey = (orderId: string) => `order_steps_${orderId || 'draft'}`
@@ -71,6 +74,97 @@ export default function OrderStepPreview() {
       Taro.hideLoading()
       console.error('[图片上传] 错误:', e)
       Taro.showToast({ title: '上传失败', icon: 'none' })
+    }
+  }
+
+  const requestAlbumPermission = async () => {
+    try {
+      const res = await Taro.authorize({ scope: 'scope.writePhotosAlbum' })
+      return res?.errMsg === 'authorize:ok'
+    } catch {
+      return false
+    }
+  }
+
+  const handleSaveImage = async (imageUrl: string) => {
+    const hasPermission = await requestAlbumPermission()
+    if (!hasPermission) {
+      Taro.showModal({
+        title: '提示',
+        content: '需要相册权限才能保存图片，请前往设置开启',
+        showCancel: true,
+        success: (res) => {
+          if (res.confirm) {
+            Taro.openSetting()
+          }
+        }
+      })
+      return
+    }
+
+    Taro.showLoading({ title: '保存中...', mask: true })
+    try {
+      const res: any = await Network.downloadFile({ url: imageUrl })
+      if (res.statusCode === 200) {
+        Taro.saveImageToPhotosAlbum({
+          filePath: res.tempFilePath,
+          success: () => {
+            Taro.hideLoading()
+            Taro.showToast({ title: '已保存到相册', icon: 'success' })
+          },
+          fail: () => {
+            Taro.hideLoading()
+            Taro.showToast({ title: '保存失败', icon: 'none' })
+          }
+        })
+      } else {
+        Taro.hideLoading()
+        Taro.showToast({ title: '下载图片失败', icon: 'none' })
+      }
+    } catch {
+      Taro.hideLoading()
+      Taro.showToast({ title: '下载图片失败', icon: 'none' })
+    }
+  }
+
+  const handleSaveVideo = async (videoUrl: string) => {
+    const hasPermission = await requestAlbumPermission()
+    if (!hasPermission) {
+      Taro.showModal({
+        title: '提示',
+        content: '需要相册权限才能保存视频，请前往设置开启',
+        showCancel: true,
+        success: (res) => {
+          if (res.confirm) {
+            Taro.openSetting()
+          }
+        }
+      })
+      return
+    }
+
+    Taro.showLoading({ title: '保存中...', mask: true })
+    try {
+      const res: any = await Network.downloadFile({ url: videoUrl })
+      if (res.statusCode === 200) {
+        Taro.saveVideoToPhotosAlbum({
+          filePath: res.tempFilePath,
+          success: () => {
+            Taro.hideLoading()
+            Taro.showToast({ title: '已保存到相册', icon: 'success' })
+          },
+          fail: () => {
+            Taro.hideLoading()
+            Taro.showToast({ title: '保存失败', icon: 'none' })
+          }
+        })
+      } else {
+        Taro.hideLoading()
+        Taro.showToast({ title: '下载视频失败', icon: 'none' })
+      }
+    } catch {
+      Taro.hideLoading()
+      Taro.showToast({ title: '下载视频失败', icon: 'none' })
     }
   }
 
@@ -129,11 +223,32 @@ export default function OrderStepPreview() {
                   {step.data?.url && (
                     <View className="preview-url-box">
                       <Text className="preview-url-text">{step.data.url}</Text>
+                      <View className="preview-url-actions">
+                        {step.extConfig?.open_button_text && (
+                          <View className="preview-url-btn preview-url-btn-open" onClick={() => Taro.navigateTo({ url: `/pages/webview/index?url=${encodeURIComponent(step.data!.url!)}` })}>
+                            <Text className="preview-url-btn-text">{step.extConfig.open_button_text}</Text>
+                          </View>
+                        )}
+                        {step.extConfig?.copy_button_text && (
+                          <View className="preview-url-btn preview-url-btn-copy" onClick={() => Taro.setClipboardData({ data: step.data!.url!, success: () => Taro.showToast({ title: '已复制', icon: 'success' }) })}>
+                            <Text className="preview-url-btn-text">{step.extConfig.copy_button_text}</Text>
+                          </View>
+                        )}
+                      </View>
                     </View>
                   )}
 
                   {step.data?.image && (
                     <Image src={step.data.image} className="preview-image" mode="widthFix" />
+                  )}
+                  {step.data?.image && step.type === 'upload_qrcode' && (
+                    <>
+                      <View />
+                      <View className="preview-save-btn" onClick={() => handleSaveImage(step.data!.image!)}>
+                        <Text className="preview-save-btn-text">{step.extConfig?.save_button_imege || '一键保存'}</Text>
+                      </View>
+                      <View />
+                    </>
                   )}
 
                   {step.data?.video && (
@@ -142,8 +257,15 @@ export default function OrderStepPreview() {
 
                   {step.data?.copyData && (
                     <View className="preview-copy-box">
-                      <Text className="preview-copy-label">复制数据：</Text>
-                      <Text className="preview-copy-text">{step.data.copyData}</Text>
+                      <View className="preview-copy-content">
+                        <Text className="preview-copy-label">复制数据：</Text>
+                        <Text className="preview-copy-text">{step.data.copyData}</Text>
+                      </View>
+                      {step.extConfig?.copy_button_text && (
+                        <View className="preview-copy-btn" onClick={() => Taro.setClipboardData({ data: step.data!.copyData!, success: () => Taro.showToast({ title: '已复制', icon: 'success' }) })}>
+                          <Text className="preview-copy-btn-text">{step.extConfig.copy_button_text}</Text>
+                        </View>
+                      )}
                     </View>
                   )}
 
@@ -151,6 +273,24 @@ export default function OrderStepPreview() {
                     <View className="preview-example-box preview-example-box-image">
                       <Text className="preview-example-label">示例截图：</Text>
                       <Image src={step.data.exampleImage} className="preview-example-image" mode="widthFix" />
+                    </View>
+                  )}
+                  {step.type === 'collect_image' && !step.data?.exampleImage && (
+                    <View />
+                  )}
+                  {step.type === 'collect_image' && (
+                    <View className="preview-collect-box">
+                      <View className="preview-collect-label">上传截图</View>
+                      <View className="preview-image-upload" onClick={() => handleUploadImage(step.id)}>
+                        {uploadedImages[step.id] ? (
+                          <Image src={uploadedImages[step.id]} className="preview-uploaded-image" mode="widthFix" />
+                        ) : (
+                          <View className="preview-upload-placeholder">
+                            <Camera size={48} color="#1677ff" />
+                            <Text className="preview-upload-text">{step.extConfig?.upload_button_image || '上传图片'}</Text>
+                          </View>
+                        )}
+                      </View>
                     </View>
                   )}
 
@@ -168,67 +308,68 @@ export default function OrderStepPreview() {
 
                   {step.data?.useAiMaterial ? (
                     <View className="preview-ai-material-hint">
-                      <Text className="preview-ai-material-text">AI将根据素材说明自动生成文案内容</Text>
+                      <Text className="preview-ai-material-text">
+                        {step.data.aiPrompt ? `AI将根据"${step.data.aiPrompt}"生成文案内容` : 'AI将根据素材说明自动生成文案内容'}
+                      </Text>
                     </View>
                   ) : step.data?.materials && step.data.materials.length > 0 ? (
                     <View className="preview-material-box">
-                      {step.data.materials[0].type === 'text' && (
-                        <Text className="preview-material-text">{step.data.materials[0].content}</Text>
+                      {step.data.materials![0].type === 'text' && (
+                        <>
+                          <Text className="preview-material-text">{step.data.materials![0].content}</Text>
+                          <View className="preview-material-action">
+                            <View className="preview-material-btn preview-material-btn-copy" onClick={() => Taro.setClipboardData({ data: step.data!.materials![0].content, success: () => Taro.showToast({ title: '已复制', icon: 'success' }) })}>
+                              <Text className="preview-material-btn-text">一键复制</Text>
+                            </View>
+                          </View>
+                        </>
                       )}
-                      {step.data.materials[0].type === 'image' && (
-                        <Image src={step.data.materials[0].content} className="preview-image" mode="widthFix" />
+                      {step.data.materials![0].type === 'image' && (
+                        <>
+                          <Image src={step.data.materials![0].content} className="preview-image" mode="widthFix" />
+                          <View className="preview-material-action">
+                            <View className="preview-material-btn preview-material-btn-save" onClick={() => handleSaveImage(step.data!.materials![0].content)}>
+                              <Text className="preview-material-btn-text">一键保存</Text>
+                            </View>
+                          </View>
+                        </>
                       )}
-                      {step.data.materials[0].type === 'video' && (
-                        <Video src={step.data.materials[0].content} className="preview-video" controls />
+                      {step.data.materials![0].type === 'video' && (
+                        <>
+                          <Video src={step.data.materials![0].content} className="preview-video" controls />
+                          <View className="preview-material-action">
+                            <View className="preview-material-btn preview-material-btn-save" onClick={() => handleSaveVideo(step.data!.materials![0].content)}>
+                              <Text className="preview-material-btn-text">一键保存</Text>
+                            </View>
+                          </View>
+                        </>
                       )}
-                      {step.data.materials.length > 1 && (
-                        <Text className="preview-material-more">+{step.data.materials.length - 1}个素材</Text>
+                      {step.data.materials!.length > 1 && (
+                        <Text className="preview-material-more">+{step.data.materials!.length - 1}个素材</Text>
                       )}
                     </View>
                   ) : null}
                 </View>
 
-                {step.label === '收集截图' && (
+                {step.type === 'collect_info' && (
                   <View className="preview-collect-box">
-                    <View className="preview-collect-label">上传截图</View>
-                    <View className="preview-image-upload" onClick={() => handleUploadImage(step.id)}>
-                      {uploadedImages[step.id] ? (
-                        <Image src={uploadedImages[step.id]} className="preview-uploaded-image" mode="widthFix" />
-                      ) : (
-                        <View className="preview-upload-placeholder">
-                          <Camera size={48} color="#1677ff" />
-                          <Text className="preview-upload-text">上传图片</Text>
-                        </View>
-                      )}
-                    </View>
+                    <TaroInput
+                      className="preview-collect-input"
+                      placeholder="请提供商家要求的收集信息"
+                      value={inputTexts[step.id] || ''}
+                      onInput={(e) => setInputTexts(prev => ({ ...prev, [step.id]: e.detail.value }))}
+                    />
                   </View>
                 )}
 
-                {step.label === '收集信息' && (
+                {step.type === 'collect_url' && (
                   <View className="preview-collect-box">
-                    <View className="preview-collect-label">填写信息</View>
-                    <View className="preview-input-wrap">
-                      <TaroInput
-                        className="preview-collect-input"
-                        placeholder="请输入信息"
-                        value={inputTexts[step.id] || ''}
-                        onInput={(e) => setInputTexts(prev => ({ ...prev, [step.id]: e.detail.value }))}
-                      />
-                    </View>
-                  </View>
-                )}
-
-                {step.label === '收集链接' && (
-                  <View className="preview-collect-box">
-                    <View className="preview-collect-label">填写链接</View>
-                    <View className="preview-input-wrap">
-                      <TaroInput
-                        className="preview-collect-input"
-                        placeholder="请输入链接地址"
-                        value={inputUrls[step.id] || ''}
-                        onInput={(e) => setInputUrls(prev => ({ ...prev, [step.id]: e.detail.value }))}
-                      />
-                    </View>
+                    <TaroInput
+                      className="preview-collect-input"
+                      placeholder="请提供商家要求的收集链接"
+                      value={inputUrls[step.id] || ''}
+                      onInput={(e) => setInputUrls(prev => ({ ...prev, [step.id]: e.detail.value }))}
+                    />
                   </View>
                 )}
               </View>

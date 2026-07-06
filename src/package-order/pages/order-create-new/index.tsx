@@ -39,13 +39,13 @@ const ACCEPTANCE_TIMEOUT_OPTIONS = [
   { label: '12h', value: 12 },
   { label: '1天', value: 24 },
   { label: '3天', value: 72 },
-  { label: '5天', value: 120 },
-  { label: '7天', value: 168 },
+  // { label: '5天', value: 120 },
+  // { label: '7天', value: 168 },
 ]
 
 // 接单超时选项（分钟）
 const ACCEPT_TIMEOUT_OPTIONS = [
-  { label: '不限时', value: 0 },
+  // { label: '不限时', value: 0 },
   { label: '30分钟', value: 30 },
   { label: '1小时', value: 60 },
   { label: '2小时', value: 120 },
@@ -73,26 +73,26 @@ type FormState = {
   avatarCount: number
   basePricePerUnit: number
   contentPricePerUnit: number
-  personality: {
-    tags: string
-    niches: string
-  }
+  // personality: {
+  //   tags: string
+  //   niches: string
+  // }
 }
 const initialForm: FormState = {
   title: '',
   description: '',
   contentType: 'text',
   acceptRegions: [],
-  acceptTimeout: 0,
+  acceptTimeout: 120,
   acceptanceTimeout: 24,
   platforms: [],
-  avatarCount: 1,
+  avatarCount: 0,
   basePricePerUnit: 0,
   contentPricePerUnit: 0,
-  personality: {
-    tags: '',
-    niches: '',
-  },
+  // personality: {
+  //   tags: '',
+  //   niches: '',
+  // },
 }
 const STEP_PAGE_URL = '/package-order/pages/order-step-management/index'
 const DRAFT_STORAGE_KEY = 'order_create_step_draft'
@@ -119,7 +119,6 @@ export default function OrderCreate() {
 
   // 格式化接单超时显示
   const formatAcceptTimeout = (minutes: number): string => {
-    if (minutes === 0) return '不限时'
     if (minutes < 60) return `${minutes}分钟`
     if (minutes < 1440) {
       const hours = minutes / 60
@@ -190,9 +189,9 @@ export default function OrderCreate() {
             accept_timeout: data.acceptTimeout || data.accept_timeout || 0,
             acceptance_timeout: data.acceptanceTimeout || data.acceptance_timeout || 24,
             platforms: data.platforms || [],
-            preferred_styles: data.preferredStyles || data.preferred_styles || '',
-            industry_tags: data.industryTags || data.industry_tags || '',
-            avatar_count: data.avatarCount || data.avatar_count || 1,
+            // preferred_styles: data.preferredStyles || data.preferred_styles || '',
+            // industry_tags: data.industryTags || data.industry_tags || '',
+            avatar_count: data.avatarCount ?? data.avatar_count ?? 0,
             base_price: data.baseAmount || data.base_price || 0,
             content_price: data.contentAmount || data.content_price || 0,
             total_price: data.budget || data.totalPrice || data.total_price || 0,
@@ -200,7 +199,7 @@ export default function OrderCreate() {
           submittedPayloadRef.current = stringifyPayload(savedPayload)
           Taro.setStorageSync(DRAFT_STORAGE_KEY, { orderId: routeOrderId, payload: savedPayload })
 
-          const basePricePerUnit = savedPayload.base_price / savedPayload.avatar_count
+          const basePricePerUnit = data.price || data.customBasePrice || data.custom_base_price || 0
 
           setForm({
             title: data.title || '',
@@ -210,13 +209,13 @@ export default function OrderCreate() {
             acceptTimeout: data.acceptTimeout || data.accept_timeout || 0,
             acceptanceTimeout: data.acceptanceTimeout || data.acceptance_timeout || 24,
             platforms: data.platforms || [],
-            avatarCount: data.avatarCount || data.avatar_count || 1,
-            basePricePerUnit: basePricePerUnit || 0,
+            avatarCount: data.avatarCount ?? data.avatar_count ?? 0,
+            basePricePerUnit: basePricePerUnit,
             contentPricePerUnit: data.contentPricePerUnit || data.content_price_per_unit || 0,
-            personality: {
-              tags: data.personality?.tags || '',
-              niches: data.personality?.niches || '',
-            },
+            // personality: {
+            //   tags: data.personality?.tags || '',
+            //   niches: data.personality?.niches || '',
+            // },
           })
         }
       } catch (e) {
@@ -433,10 +432,10 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
       accept_timeout: form.acceptTimeout,
       acceptance_timeout: form.acceptanceTimeout,
       platforms: canonicalizePlatforms(form.platforms),
-      personality: {
-        tags: form.personality.tags,
-        niches: form.personality.niches,
-      },
+      // personality: {
+      //   tags: form.personality.tags,
+      //   niches: form.personality.niches,
+      // },
       avatar_count: form.avatarCount,
       basePricePerUnit: form.basePricePerUnit,
       contentPricePerUnit: form.contentPricePerUnit,
@@ -445,6 +444,8 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
       total_price: totalPrice,
       platform: 'special',
       status: 'draft',
+      price: form.basePricePerUnit,
+      custom_base_price: form.basePricePerUnit,
     }
   }
   const validateForm = () => {
@@ -469,14 +470,12 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
       return false
     }
     if (form.avatarCount < 1) {
-      Taro.showToast({ title: '分身数量至少为1', icon: 'none' })
+      Taro.showToast({ title: '请输入接单数量', icon: 'none' })
       return false
     }
     return true
   }
   const goStepManagement = (nextOrderId: string, payload: Record<string, any>) => {
-    console.log('nextOrderId:', nextOrderId)
-    console.log('payload:', payload)
     Taro.setStorageSync(DRAFT_STORAGE_KEY, { orderId: nextOrderId, payload })
     Taro.navigateTo({ url: `${STEP_PAGE_URL}?orderId=${encodeURIComponent(nextOrderId)}` })
   }
@@ -768,7 +767,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         </View>
 
         {/* 内容风格偏好 */}
-        <View className="section">
+        {/* <View className="section">
           <View className="section-header">
             <View className="section-title-row">
               <View className="title-dot accent" />
@@ -792,10 +791,10 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
               </View>
             </View>
           )}
-        </View>
+        </View> */}
 
         {/* 行业领域偏好 */}
-        <View className="section">
+        {/* <View className="section">
           <View className="section-header">
             <View className="section-title-row">
               <View className="title-dot accent" />
@@ -819,19 +818,19 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
               </View>
             </View>
           )}
-        </View>
+        </View> */}
 
         {/* 分身设置 - 增加价值说明 */}
         <View className="section">
           <View className="section-header">
             <View className="section-title-row">
               <View className="title-dot" />
-              <Text className="section-title">分身数量</Text>
+              <Text className="section-title">接单数量</Text>
             </View>
             <View className="avatar-count-control">
               <View
                 className="counter-btn minus"
-                onClick={() => setForm(prev => ({ ...prev, avatarCount: Math.max(1, prev.avatarCount - 1) }))}
+                onClick={() => form.avatarCount > 1 && setForm(prev => ({ ...prev, avatarCount: prev.avatarCount - 1 }))}
               >
                 <Text>-</Text>
               </View>
@@ -839,26 +838,24 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                 <TaroInput
                   className="counter-input"
                   type="number"
-                  value={String(form.avatarCount)}
+                  value={form.avatarCount === 0 ? '' : String(form.avatarCount)}
+                  placeholder=""
                   onInput={e => {
                     const val = e.detail.value.replace(/[^\d]/g, '')
                     const num = parseInt(val, 10)
-                    if (!Number.isNaN(num) && num >= 1 && num <= 99) {
+                    if (!Number.isNaN(num) && num >= 1) {
                       setForm(prev => ({ ...prev, avatarCount: num }))
                     } else if (val === '' || Number.isNaN(num)) {
-                      // 空时保持
-                    } else if (num > 99) {
-                      setForm(prev => ({ ...prev, avatarCount: 99 }))
+                      setForm(prev => ({ ...prev, avatarCount: 0 }))
                     }
                   }}
                   onBlur={e => {
                     const val = e.detail.value.replace(/[^\d]/g, '')
                     const num = parseInt(val, 10)
                     if (Number.isNaN(num) || num < 1) {
-                      setForm(prev => ({ ...prev, avatarCount: 1 }))
+                      setForm(prev => ({ ...prev, avatarCount: 0 }))
                     }
                   }}
-                  maxlength={2}
                 />
               </View>
               <View
@@ -918,7 +915,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         )}
 
         {/* 风格偏好选择弹窗 */}
-        {showStylePicker && (
+        {/* {showStylePicker && (
           <View className="region-picker-overlay" onClick={() => setShowStylePicker(false)}>
             <View className="region-picker-content" onClick={e => e.stopPropagation()}>
               <View className="region-picker-header">
@@ -952,10 +949,10 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
               </View>
             </View>
           </View>
-        )}
+        )} */}
 
         {/* 领域偏好选择弹窗 */}
-        {showNichePicker && (
+        {/* {showNichePicker && (
           <View className="region-picker-overlay" onClick={() => setShowNichePicker(false)}>
             <View className="region-picker-content" onClick={e => e.stopPropagation()}>
               <View className="region-picker-header">
@@ -989,7 +986,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
               </View>
             </View>
           </View>
-        )}
+        )} */}
 
         {/* 审核时间选择弹窗 */}
         {showAcceptanceTimeoutModal && (
@@ -1037,11 +1034,11 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                         setCustomAcceptanceInput(filteredValue)
                         if (filteredValue && filteredValue.trim() !== '') {
                           const numValue = parseInt(filteredValue, 10)
-                          if (!Number.isNaN(numValue) && numValue >= 1 && numValue <= 168) {
+                          if (!Number.isNaN(numValue) && numValue >= 1 && numValue <= 72) {
                             setForm(prev => ({ ...prev, acceptanceTimeout: numValue }))
-                          } else if (!Number.isNaN(numValue) && numValue > 168) {
-                            setCustomAcceptanceInput('168')
-                            setForm(prev => ({ ...prev, acceptanceTimeout: 168 }))
+                          } else if (!Number.isNaN(numValue) && numValue > 72) {
+                            setCustomAcceptanceInput('72')
+                            setForm(prev => ({ ...prev, acceptanceTimeout: 72 }))
                           }
                         } else {
                           setForm(prev => ({ ...prev, acceptanceTimeout: 24 })) // 默认1天
@@ -1050,7 +1047,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                     />
                     <Text className="custom-unit">小时</Text>
                   </View>
-                  <Text className="custom-hint">范围：1-168小时（7天），仅支持整数</Text>
+                  <Text className="custom-hint">范围：1-72小时（3天），仅支持整数</Text>
                 </View>
 
               </View>
@@ -1086,8 +1083,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                       className={`modal-option ${form.acceptTimeout === option.value ? 'active' : ''}`}
                       onClick={() => {
                         setForm(prev => ({ ...prev, acceptTimeout: option.value }))
-                        // 不限时为0，但输入框显示空
-                        setCustomAcceptTimeoutInput(option.value === 0 ? '' : String(option.value))
+                        setCustomAcceptTimeoutInput(String(option.value))
                       }}
                     >
                       <Text className="option-label">{option.label}</Text>
@@ -1133,11 +1129,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                       return
                     }
                     const inputValue = parseInt(inputStr, 10)
-                    if (inputValue === 0) {
-                      // 输入0视为不限时
-                      setForm(prev => ({ ...prev, acceptTimeout: 0 }))
-                      setShowAcceptTimeoutModal(false)
-                    } else if (inputValue < 30) {
+                    if (inputValue < 30) {
                       Taro.showToast({ title: '最小30分钟', icon: 'none' })
                       setCustomAcceptTimeoutInput('30')
                       setForm(prev => ({ ...prev, acceptTimeout: 30 }))

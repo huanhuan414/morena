@@ -284,7 +284,8 @@ export class OrderService {
 
   private statusTransitions: Record<string, string[]> = {
     'pending_payment': ['open', 'cancelled'],
-    'open': ['pending_dispatch', 'cancelled'],
+    'open': ['pending_review', 'cancelled'],
+    'pending_review': ['pending_acceptance', 'cancelled'],
     'pending_dispatch': ['pending_acceptance', 'cancelled'],
     'pending_acceptance': ['in_progress', 'rejected', 'cancelled'],
     'in_progress': ['submitted', 'cancelled'],
@@ -426,7 +427,7 @@ export class OrderService {
     
     const orderRows = await db.query(
       `SELECT id, user_id, avatar_id, title, description, content_type, accept_regions,
-       platforms, requirements, budget, base_amount, content_amount, status, result, created_at, updated_at,
+       platforms, requirements, budget, base_amount, content_amount, price, status, result, created_at, updated_at,
        completed_at, latitude, longitude, location_text, target_audience,
        expected_quantity, deadline, order_type, priority, assigned_to,
        avatar_count, quantity_per_avatar, is_paid, acceptance_timeout, accept_timeout, personality
@@ -524,10 +525,10 @@ export class OrderService {
     const expectedQuantity = Number(order.expectedQuantity)
     const avatarCount = Number(order.avatarCount)
     const requiredCount =
-      Number.isFinite(expectedQuantity) && expectedQuantity > 0
-        ? expectedQuantity
-        : Number.isFinite(avatarCount) && avatarCount > 0
-          ? avatarCount
+      Number.isFinite(avatarCount) && avatarCount > 0
+        ? avatarCount
+        : Number.isFinite(expectedQuantity) && expectedQuantity > 0
+          ? expectedQuantity
           : 1
     const expectedEarnings =
       baseAmount > 0 && requiredCount > 0
@@ -558,6 +559,8 @@ export class OrderService {
         ? JSON.parse(order.personality)
         : (order.personality || {}),
       budget,
+      price: Number(order.price || 0),
+      customBasePrice: Number(order.customBasePrice || order.custom_base_price || 0),
       expectedEarnings,
       status: order.status,
       avatarCount: requiredCount,
@@ -713,7 +716,7 @@ export class OrderService {
       }
       
       const dispatchedCount = dispatchCounts[row.id] || 0
-      const needAvatarCount = row.expectedQuantity || row.avatarCount || 0
+      const needAvatarCount = Number.isFinite(Number(row.avatarCount)) ? Number(row.avatarCount) : Number.isFinite(Number(row.expectedQuantity)) ? Number(row.expectedQuantity) : 0
       const budget = Number(row.budget) || 0
       const baseAmount = Number(row.baseAmount || row.base_amount) || budget
       const contentAmount = Number(row.contentAmount || row.content_amount) || 0
@@ -811,6 +814,12 @@ export class OrderService {
       content_price: 'content_amount',
       contentPrice: 'content_amount',
       total_price: 'budget',
+      price: 'price',
+      custom_base_price: 'custom_base_price',
+      customBasePrice: 'custom_base_price',
+      // 素材分配模式
+      asset_distribute_mode: 'asset_distribute_mode',
+      assetDistributeMode: 'asset_distribute_mode',
     }
 
     const normalized: Record<string, any> = {}
@@ -943,7 +952,7 @@ export class OrderService {
       price: Number(row.price || row.price || 0),
       status: row.status,
       avatarCount: (() => {
-        const raw = row.expectedQuantity ?? row.expected_quantity ?? row.avatarCount ?? row.avatar_count ?? 1
+        const raw = row.avatarCount ?? row.avatar_count ?? row.expectedQuantity ?? row.expected_quantity ?? 1
         const n = Number(raw)
         return Number.isFinite(n) && n > 0 ? n : 1
       })(),
@@ -953,7 +962,7 @@ export class OrderService {
       pendingCount: Number(row.pendingCount || row.pending_count || 0),
       remainingSlots: Math.max(0, 
         ((() => {
-          const raw = row.expectedQuantity ?? row.expected_quantity ?? row.avatarCount ?? row.avatar_count ?? 1
+          const raw = row.avatarCount ?? row.avatar_count ?? row.expectedQuantity ?? row.expected_quantity ?? 1
           const n = Number(raw)
           return Number.isFinite(n) && n > 0 ? n : 1
         })()) - Number(row.acceptCount || row.accept_count || 0) - Number(row.pendingCount || row.pending_count || 0)
@@ -963,7 +972,7 @@ export class OrderService {
         const avatarCount = (() => {
           const raw = row.expectedQuantity ?? row.expected_quantity ?? row.avatarCount ?? row.avatar_count ?? 1
           const n = Number(raw)
-          return Number.isFinite(n) && n > 0 ? n : 1
+          return Number.isFinite(n) ? n : 1
         })()
         return avatarCount > 0 ? Math.round(baseAmount / avatarCount * 100) / 100 : baseAmount
       })(),
@@ -1179,10 +1188,10 @@ export class OrderService {
 
     // 写入DB → snake_case，status必须使用orders表ENUM允许的值
     // ENUM: pending, pending_acceptance, pending_payment, accepted, in_progress, ...
-    // 支付成功后 → pending_dispatch（待派单），点"匹配分身"后才改为 pending
+    // 支付成功后 → pending_review（待审核）
     await db.query(
       'UPDATE orders SET is_paid = 1, status = ?, updated_at = ? WHERE id = ?',
-      ['pending_dispatch', new Date(), orderId]
+      ['pending_review', new Date(), orderId]
     )
 
     // 读取DB返回值 → camelCase (order.userId)
@@ -1191,7 +1200,7 @@ export class OrderService {
       user_id: order.userId,
       type: 'order_paid',
       title: '订单支付成功',
-      content: `订单"${order.title}"支付成功，正在匹配分身`,
+      content: `订单"${order.title}"支付成功，等待审核`,
       metadata: { orderId, transactionId }
     })
 
@@ -1217,11 +1226,217 @@ export class OrderService {
     // 不在支付成功时自动派单，等待发单方在匹配页确认后再执行
 
     // 支付成功后立即触发AI素材预生成（异步，不阻塞返回）
-    this.contentGenService.pregenerateOrderAssets(orderId).catch(err => {
-      console.warn(`[handlePaymentSuccess] 素材预生成启动失败(非阻塞): ${err.message}`)
-    })
+    // this.contentGenService.pregenerateOrderAssets(orderId).catch(err => {
+    //   console.warn(`[handlePaymentSuccess] 素材预生成启动失败(非阻塞): ${err.message}`)
+    // })
 
     return this.getOrderById(orderId)
+  }
+
+  private getTaskStepType(step: Record<string, any>): string {
+    return String(step?.type || step?.stepType || step?.step_type || '')
+  }
+
+  private readonly MATERIAL_TYPES = ['material_text', 'material_image', 'material_video']
+
+  private toJson(value: any): string | null {
+    if (value === undefined || value === null) return null
+    return JSON.stringify(value)
+  }
+
+  private toMediaList(step: Record<string, any>, stepType: string): any[] | null {
+    const data = step?.data || {}
+    const mediaList: any[] = []
+    const imageUrl = data.image
+    const videoUrl = data.video
+    const exampleImageUrl = data.exampleImage || data.example_image
+
+    switch (stepType) {
+      case 'upload_qrcode':
+        if (imageUrl) mediaList.push({ type: 'qrcode', url: imageUrl })
+        break
+      case 'image_instruction':
+        if (imageUrl) mediaList.push({ type: 'image', url: imageUrl })
+        break
+      case 'video_instruction':
+        if (videoUrl) mediaList.push({ type: 'video', url: videoUrl })
+        break
+      case 'collect_image':
+        if (exampleImageUrl) mediaList.push({ type: 'sample_image', url: exampleImageUrl })
+        break
+      default:
+        if (imageUrl) mediaList.push({ type: 'image', url: imageUrl })
+        if (videoUrl) mediaList.push({ type: 'video', url: videoUrl })
+    }
+
+    return mediaList.length > 0 ? mediaList : null
+  }
+
+  private toMainContent(step: Record<string, any>): string | null {
+    const data = step?.data || {}
+    return data.url || data.copyData || data.copy_data || data.exampleText || data.example_text || data.exampleUrl || data.example_url || null
+  }
+
+  private buildMaterialRecords(orderId: string, materialSteps: Record<string, any>[]): any {
+    const record: any = {
+      order_id: orderId,
+      text_mode: '',
+      text_content: null,
+      text_prompt: null,
+      text_ext: null,
+      image_mode: '',
+      image_list: null,
+      image_prompt: null,
+      image_ext: null,
+      video_mode: '',
+      video_list: null,
+      video_ext: null,
+      status: 1,
+    }
+
+    for (const step of materialSteps) {
+      const stepType = this.getTaskStepType(step)
+      if (!this.MATERIAL_TYPES.includes(stepType)) continue
+
+      const stepData = step.data || {}
+      const materials = Array.isArray(stepData.materials) ? stepData.materials : []
+      const useAiMaterial = stepData.useAiMaterial === true || stepData.use_ai_material === true
+      const aiPrompt = stepData.aiPrompt || stepData.prompt || ''
+      const distributeMode = stepData.distributeMode || stepData.distribute_mode || 'shared'
+      const stepDescription = step.description || step.step_desc || ''
+
+      switch (stepType) {
+        case 'material_text':
+          if (useAiMaterial || materials.length === 0) {
+            record.text_mode = 'ai_prompt_only'
+          } else {
+            record.text_mode = 'user_upload'
+          }
+          record.text_content = materials.length > 0 ? this.toJson(materials) : null
+          record.text_prompt = aiPrompt || null
+          record.text_ext = this.toJson({ distribute_mode: distributeMode, description: stepDescription })
+          break
+
+        case 'material_image':
+          if (useAiMaterial || materials.length === 0) {
+            record.image_mode = 'ai_generate'
+          } else {
+            record.image_mode = 'user_upload'
+          }
+          record.image_list = materials.length > 0 ? this.toJson(materials) : null
+          record.image_prompt = aiPrompt || null
+          record.image_ext = this.toJson({ distribute_mode: distributeMode, description: stepDescription })
+          break
+
+        case 'material_video':
+          if (useAiMaterial || materials.length === 0) {
+            record.video_mode = 'ai_generate'
+          } else {
+            record.video_mode = 'user_upload'
+          }
+          record.video_list = materials.length > 0 ? this.toJson(materials) : null
+          record.video_ext = this.toJson({ distribute_mode: distributeMode, description: stepDescription })
+          break
+      }
+    }
+
+    return record
+  }
+
+  async saveOrderTaskSteps(orderId: string, steps: Record<string, any>[]) {
+    console.log('saveOrderTaskSteps', orderId, steps)
+    if (!orderId) {
+      throw new Error('缺少订单ID')
+    }
+    if (!Array.isArray(steps)) {
+      throw new Error('步骤数据格式错误')
+    }
+
+    const db = getMySQLClient()
+    const orderRows = await db.query('SELECT id FROM orders WHERE id = ? LIMIT 1', [orderId])
+    if (!orderRows || orderRows.length === 0) {
+      throw new Error('订单不存在')
+    }
+
+    await db.query('UPDATE order_task_steps SET status = 0 WHERE order_id = ?', [orderId])
+
+    const taskSteps = steps.filter(step => !this.MATERIAL_TYPES.includes(this.getTaskStepType(step)))
+    const materialSteps = steps.filter(step => this.MATERIAL_TYPES.includes(this.getTaskStepType(step)))
+
+    for (let index = 0; index < taskSteps.length; index++) {
+      const step = taskSteps[index] || {}
+      const stepType = this.getTaskStepType(step)
+      const mediaList = this.toMediaList(step, stepType)
+      const extConfig = step.extConfig || step.ext_config
+
+      await db.query(
+        `INSERT INTO order_task_steps
+         (order_id, step_type, step_title, step_desc, main_content, media_list, ext_config, sort_order, is_required,created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, now())`,
+        [
+          orderId,
+          stepType,
+          step.label || '',
+          step.description || null,
+          this.toMainContent(step),
+          this.toJson(mediaList),
+          this.toJson(extConfig),
+          index,
+          1
+        ]
+      )
+    }
+
+    const materialRecord = this.buildMaterialRecords(orderId, materialSteps)
+    
+    await db.query('DELETE FROM order_task_materials WHERE order_id = ?', [orderId])
+
+    const fields = Object.keys(materialRecord)
+    const values = Object.values(materialRecord)
+    await db.query(
+      `INSERT INTO order_task_materials (${fields.join(', ')},created_at) VALUES (${fields.map(() => '?').join(', ')},NOW())`,
+      values
+    )
+
+    return {
+      orderId,
+      stepCount: taskSteps.length,
+      materialCount: materialSteps.length,
+    }
+  }
+
+  async getOrderTaskSteps(orderId: string) {
+    const db = getMySQLClient()
+    const steps = await db.query(
+      `SELECT id, order_id, step_type, step_title, step_desc, main_content,
+              media_list, ext_config, sort_order, is_required, status, created_at, updated_at
+       FROM order_task_steps
+       WHERE order_id = ? AND status = 1
+       ORDER BY sort_order ASC, id ASC`,
+      [orderId]
+    )
+    const materialRows = await db.query(
+      `SELECT id, order_id, text_mode, text_content, text_prompt, text_ext,
+              image_mode, image_list, image_prompt, image_ext,
+              video_mode, video_list, video_ext,
+              status, created_at, updated_at
+       FROM order_task_materials
+       WHERE order_id = ? AND status = 1`,
+      [orderId]
+    )
+
+    const materialRecord = materialRows && materialRows.length > 0 ? materialRows[0] : null
+
+    const processedSteps = (steps || []).map((row: any) => ({
+      ...row,
+      extConfig: this.safeParseJson(row.extConfig || row.ext_config, {}),
+      mediaList: this.safeParseJson(row.mediaList || row.media_list, []),
+    }))
+
+    return {
+      steps: processedSteps,
+      material: materialRecord || null,
+    }
   }
 
   async handlePaymentFailure(orderId: string, reason: string) {
