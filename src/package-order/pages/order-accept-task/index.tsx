@@ -45,6 +45,8 @@ const getStepDesc = (step: TaskStep) => step.stepDesc || step.step_desc || ''
 const getMainContent = (step: TaskStep) => step.mainContent || step.main_content || ''
 const getMediaList = (step: TaskStep) => step.mediaList || step.media_list || []
 const getExtConfig = (step: TaskStep) => step.extConfig || step.ext_config || {}
+const PREVIEW_ONLY_STATUSES = ['awaiting_acceptance', 'settled', 'cancelled', 'failed']
+const getStepResult = (stepResults: Record<string, any>, step: TaskStep) => stepResults[step.id] || stepResults[String(step.id)] || {}
 
 export default function OrderAcceptTask() {
   const router = useRouter()
@@ -52,8 +54,10 @@ export default function OrderAcceptTask() {
   const requestId = String(router.params?.requestId || router.params?.id || '')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [taskStatus, setTaskStatus] = useState('')
   const [steps, setSteps] = useState<TaskStep[]>([])
   const [stepResults, setStepResults] = useState<Record<string, any>>({})
+  const previewOnly = PREVIEW_ONLY_STATUSES.includes(taskStatus)
 
   const fetchTaskView = async () => {
     if (!requestId) return
@@ -65,6 +69,7 @@ export default function OrderAcceptTask() {
       const data = res.data?.data
       if (res.data?.code === 200 && data) {
         setSteps(Array.isArray(data.steps) ? data.steps : [])
+        setTaskStatus(data.request?.status || data.status || '')
         setStepResults(data.stepResults || {})
       } else {
         Taro.showToast({ title: res.data?.message || '获取任务失败', icon: 'none' })
@@ -292,7 +297,7 @@ export default function OrderAcceptTask() {
             {item.type === 'text' && (
               <>
                 <Text className="accept-material-text">{item.content}</Text>
-                {extConfig.copy_button_text && (
+                {!previewOnly && extConfig.copy_button_text && (
                   <Button variant="outline" className="accept-mini-btn" onClick={() => copyText(item.content)}>
                     <Text className="accept-mini-btn-text">{extConfig.copy_button_text}</Text>
                   </Button>
@@ -302,7 +307,7 @@ export default function OrderAcceptTask() {
             {item.type === 'image' && (
               <>
                 <Image src={item.content} className="accept-material-image" mode="aspectFill" />
-                {extConfig.save_button_image && (
+                {!previewOnly && extConfig.save_button_image && (
                   <Button className="accept-mini-btn accept-material-action" onClick={() => handleSaveImage(item.content)}>
                     <Text className="accept-action-btn-text">{extConfig.save_button_image}</Text>
                   </Button>
@@ -312,7 +317,7 @@ export default function OrderAcceptTask() {
             {item.type === 'video' && (
               <>
                 <Video src={item.content} className="accept-material-video" controls />
-                {extConfig.save_button_video && (
+                {!previewOnly && extConfig.save_button_video && (
                   <Button className="accept-mini-btn accept-material-action" onClick={() => handleSaveVideo(item.content)}>
                     <Text className="accept-action-btn-text">{extConfig.save_button_video}</Text>
                   </Button>
@@ -330,7 +335,7 @@ export default function OrderAcceptTask() {
     const mainContent = getMainContent(step)
     const mediaList = getMediaList(step)
     const extConfig = getExtConfig(step)
-    const result = stepResults[step.id] || {}
+    const result = getStepResult(stepResults, step)
     const sampleImage = mediaList.find((item: any) => item.type === 'sample_image' || item.type === 'image' || item.type === 'qrcode')?.url
     const video = mediaList.find((item: any) => item.type === 'video')?.url
 
@@ -341,13 +346,13 @@ export default function OrderAcceptTask() {
           <View className="accept-url-box">
             <Text className="accept-url-text">{mainContent}</Text>
             <View className="accept-action-row">
-              {extConfig.open_button_text && (
+              {!previewOnly && extConfig.open_button_text && (
                 <Button className="accept-action-btn" onClick={() => openUrl(mainContent)}>
                   <ExternalLink size={14} color="#fff" />
                   <Text className="accept-action-btn-text">{extConfig.open_button_text}</Text>
                 </Button>
               )}
-              {extConfig.copy_button_text && (
+              {!previewOnly && extConfig.copy_button_text && (
                 <Button variant="outline" className="accept-action-btn" onClick={() => copyText(mainContent)}>
                   <Text className="accept-action-btn-secondary">{extConfig.copy_button_text}</Text>
                 </Button>
@@ -358,7 +363,7 @@ export default function OrderAcceptTask() {
         {mainContent && stepType === 'copy_data' && (
           <View className="accept-copy-box">
             <Text className="accept-copy-text">{mainContent}</Text>
-            {extConfig.copy_button_text && (
+            {!previewOnly && extConfig.copy_button_text && (
               <Button className="accept-action-btn" onClick={() => copyText(mainContent)}>
                 <Text className="accept-action-btn-text">{extConfig.copy_button_text}</Text>
               </Button>
@@ -366,24 +371,26 @@ export default function OrderAcceptTask() {
           </View>
         )}
         {sampleImage && <Image src={sampleImage} className="accept-image" mode="widthFix" />}
-        {sampleImage && extConfig.save_button_image && (
+        {!previewOnly && sampleImage && extConfig.save_button_image && (
           <Button className="accept-action-btn" onClick={() => handleSaveImage(sampleImage)}>
             <Text className="accept-action-btn-text">{extConfig.save_button_image}</Text>
           </Button>
         )}
         {video && <Video src={video} className="accept-video" controls />}
-        {video && extConfig.save_button_video && (
+        {!previewOnly && video && extConfig.save_button_video && (
           <Button className="accept-action-btn" onClick={() => handleSaveVideo(video)}>
             <Text className="accept-action-btn-text">{extConfig.save_button_video}</Text>
           </Button>
         )}
         {stepType === 'collect_image' && (
           <View className="accept-collect-box">
-            <View className="accept-upload" onClick={() => handleUploadImage(step)}>
+            <View className="accept-upload" onClick={() => !previewOnly && handleUploadImage(step)}>
               {Array.isArray(result.value) && result.value[0] ? (
                 <Image src={result.value[0]} className="accept-uploaded-image" mode="widthFix" />
+              ) : previewOnly ? (
+                <Text className="accept-copy-text">暂无收集图片</Text>
               ) : (
-                extConfig.upload_button_image && (
+                !previewOnly && extConfig.upload_button_image && (
                   <View className="accept-upload-placeholder">
                     <Camera size={40} color="#1677ff" />
                     <Text className="accept-upload-text">{extConfig.upload_button_image}</Text>
@@ -393,7 +400,12 @@ export default function OrderAcceptTask() {
             </View>
           </View>
         )}
-        {stepType === 'collect_info' && (
+        {stepType === 'collect_info' && previewOnly && (
+          <View className="accept-copy-box">
+            <Text className="accept-copy-text">{result.value || '暂无收集信息'}</Text>
+          </View>
+        )}
+        {stepType === 'collect_info' && !previewOnly && (
           <Input
             className="accept-input"
             placeholder="请输入需要提交的信息"
@@ -401,7 +413,12 @@ export default function OrderAcceptTask() {
             onInput={(event) => saveStepResult(step, 'text', event.detail.value)}
           />
         )}
-        {stepType === 'collect_url' && (
+        {stepType === 'collect_url' && previewOnly && (
+          <View className="accept-url-box">
+            <Text className="accept-url-text">{result.value || '暂无收集链接'}</Text>
+          </View>
+        )}
+        {stepType === 'collect_url' && !previewOnly && (
           <Input
             className="accept-input"
             placeholder="请输入提交链接"
@@ -452,14 +469,16 @@ export default function OrderAcceptTask() {
           </View>
         )}
       </ScrollView>
-      <View
-        className="accept-bottom-bar"
-        style={{ position: 'fixed', display: 'flex' }}
-      >
-        <Button className="accept-submit-btn" onClick={handlePublishTask} disabled={loading || submitting}>
-          <Text className="accept-submit-text">{submitting ? '发布中...' : '发布'}</Text>
-        </Button>
-      </View>
+      {!previewOnly && (
+        <View
+          className="accept-bottom-bar"
+          style={{ position: 'fixed', display: 'flex' }}
+        >
+          <Button className="accept-submit-btn" onClick={handlePublishTask} disabled={loading || submitting}>
+            <Text className="accept-submit-text">{submitting ? '发布中...' : '发布'}</Text>
+          </Button>
+        </View>
+      )}
     </View>
   )
 }

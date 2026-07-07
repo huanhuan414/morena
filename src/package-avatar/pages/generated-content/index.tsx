@@ -90,6 +90,10 @@ function getContentTypeInfo(type: string): { icon: any; name: string } {
   }
 }
 
+const isSpecialContent = (content: any) => (
+  content?.rawPlatform === 'special'
+)
+
 export default function GeneratedContentPage() {
   const [contents, setContents] = useState<any[]>([])
   const [avatars, setAvatars] = useState<any[]>([])
@@ -234,6 +238,12 @@ export default function GeneratedContentPage() {
   // 查看内容详情
   const handleView = (content: any) => {
     const backendStatus = content.status
+    const query = buildAcceptTaskQuery(content)
+
+    if (isSpecialContent(content)) {
+      Taro.navigateTo({ url: `/package-order/pages/order-accept-task/index?${query}` })
+      return
+    }
 
     // 待整改状态跳转到发布反馈页面
     if (backendStatus === 'revision_requested') {
@@ -243,9 +253,7 @@ export default function GeneratedContentPage() {
       return
     }
 
-    const query = buildAcceptTaskQuery(content)
-    const targetPage = content.rawPlatform === 'special' ? 'order-accept-task' : 'order-processing'
-    Taro.navigateTo({ url: `/package-order/pages/${targetPage}/index?${query}` })
+    Taro.navigateTo({ url: `/package-order/pages/order-processing/index?${query}` })
 
     // if (normalizedStatus === 'generating') {
     //   const query = `orderId=${encodeURIComponent(content.orderId || '')}&requestId=${encodeURIComponent(content.id || '')}`
@@ -268,7 +276,7 @@ export default function GeneratedContentPage() {
 
   // 发布
   const handlePublish = (content: any) => {
-    if (content.rawPlatform === 'special') {
+    if (isSpecialContent(content)) {
       Taro.navigateTo({ url: `/package-order/pages/order-accept-task/index?${buildAcceptTaskQuery(content)}` })
       return
     }
@@ -348,6 +356,10 @@ export default function GeneratedContentPage() {
 
   // 反馈
   const handleFeedback = (content: any) => {
+    if (isSpecialContent(content)) {
+      Taro.navigateTo({ url: `/package-order/pages/order-accept-task/index?${buildAcceptTaskQuery(content)}` })
+      return
+    }
     Taro.navigateTo({ url: `/package-order/pages/order-publish-feedback/index?requestId=${encodeURIComponent(content.id)}&orderId=${encodeURIComponent(content.orderId || '')}` })
   }
 
