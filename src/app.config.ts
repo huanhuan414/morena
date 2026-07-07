@@ -23,6 +23,7 @@ export default defineAppConfig({
         'pages/order-step-preview/index',
         'pages/order-detail/index',
         'pages/order-processing/index',
+        'pages/order-accept-task/index',
         'pages/order-acceptance/index',
         'pages/order-matching/index',
         'pages/order-content-creation/index',

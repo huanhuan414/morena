@@ -24,6 +24,7 @@ interface PendingOrder {
   title: string
   description: string
   contentType: string
+  platform: string
   platforms: string[]
   budget: number
   expectedEarnings: number
@@ -194,6 +195,7 @@ export default function PendingOrderListPage() {
             title: item.title || '订单内容',
             description: item.description || '',
             contentType: item.contentType || 'image_text',
+            platform: item.platform || '',
             platforms: canonicalizePlatforms(safeParseJSON(item.platforms)),
             budget: parseFloat(item.budget) || 0,
             expectedEarnings: parseFloat(item.expectedEarnings) || 0,
@@ -265,10 +267,11 @@ export default function PendingOrderListPage() {
           `avatarId=${encodeURIComponent(nextAvatarId)}`,
           nextRequestId ? `requestId=${encodeURIComponent(nextRequestId)}` : '',
         ].filter(Boolean).join('&')
+        const targetPage = order.platform === 'special' ? 'order-accept-task' : 'order-processing'
 
         setTimeout(() => {
           Taro.navigateTo({
-            url: `/package-order/pages/order-processing/index?${query}`
+            url: `/package-order/pages/${targetPage}/index?${query}`
           })
         }, 500)
         // 从列表移除

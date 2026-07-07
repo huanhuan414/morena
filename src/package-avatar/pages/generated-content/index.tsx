@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
-import { ArrowLeft, Clock, FileText, ImagePlus, Play, Eye, Send, MessageSquare, Bell, Trash2, RefreshCw, CircleCheckBig } from 'lucide-react-taro'
+import { ArrowLeft, Clock, FileText, ImagePlus, Play, Eye, Send, MessageSquare, Bell, Trash2, CircleCheckBig } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import { canonicalizePlatform, getPlatformLabel, getPlatformMeta } from '@/constants/publish-platform'
@@ -142,6 +142,7 @@ export default function GeneratedContentPage() {
             platforms,
             tags: safeParseJSON(c.tags),
             platform: canonicalizePlatform(c.platform || platforms[0] || ''),
+            rawPlatform: c.rawPlatform || '',
             contentType: c.contentType || c.content_type || 'image_text',
             status: c.status,
             createdAt: c.createdAt || c.created_at || '',
@@ -224,10 +225,15 @@ export default function GeneratedContentPage() {
     ? avatars.find(a => a.id === selectedAvatarId)?.name || '未知分身'
     : '全部分身'
 
+  const buildAcceptTaskQuery = (content: any) => ([
+    `orderId=${encodeURIComponent(content.orderId || '')}`,
+    content.avatarId ? `avatarId=${encodeURIComponent(content.avatarId)}` : '',
+    `requestId=${encodeURIComponent(content.id || '')}`,
+  ].filter(Boolean).join('&'))
+
   // 查看内容详情
   const handleView = (content: any) => {
     const backendStatus = content.status
-    const normalizedStatus = BACKEND_STATUS_TO_TAB[backendStatus] || 'generating'
 
     // 待整改状态跳转到发布反馈页面
     if (backendStatus === 'revision_requested') {
@@ -237,12 +243,9 @@ export default function GeneratedContentPage() {
       return
     }
 
-    const query = [
-      `orderId=${encodeURIComponent(content.orderId || '')}`,
-      content.avatarId ? `avatarId=${encodeURIComponent(content.avatarId)}` : '',
-      `requestId=${encodeURIComponent(content.id || '')}`,
-    ].filter(Boolean).join('&')
-    Taro.navigateTo({ url: `/package-order/pages/order-processing/index?${query}` })
+    const query = buildAcceptTaskQuery(content)
+    const targetPage = content.rawPlatform === 'special' ? 'order-accept-task' : 'order-processing'
+    Taro.navigateTo({ url: `/package-order/pages/${targetPage}/index?${query}` })
 
     // if (normalizedStatus === 'generating') {
     //   const query = `orderId=${encodeURIComponent(content.orderId || '')}&requestId=${encodeURIComponent(content.id || '')}`
@@ -265,6 +268,10 @@ export default function GeneratedContentPage() {
 
   // 发布
   const handlePublish = (content: any) => {
+    if (content.rawPlatform === 'special') {
+      Taro.navigateTo({ url: `/package-order/pages/order-accept-task/index?${buildAcceptTaskQuery(content)}` })
+      return
+    }
     Taro.navigateTo({ url: `/package-order/pages/order-publish-guide/index?contentId=${encodeURIComponent(content.id)}` })
   }
 

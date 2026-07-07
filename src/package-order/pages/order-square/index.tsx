@@ -15,6 +15,7 @@ interface OrderItem {
   description: string
   platform: string
   platforms: string[]
+  rawPlatform?: string
   estimatedEarning: number
   budget: number
   customBasePrice: number  // 自定义基础费用
@@ -213,6 +214,7 @@ const Index: React.FC = () => {
           title: o.title || '未命名订单',
           description: o.description || '',
           platform: canonicalizePlatform(o.primaryPlatform || o.platforms?.[0] || o.platform),
+          rawPlatform: o.platform || '',
           platforms: Array.isArray(o.platforms) ? o.platforms : (o.platform ? [o.platform] : []),
           budget: Number(o.budget || o.price || 0),
           customBasePrice: Number(o.customBasePrice || o.custom_base_price),
@@ -405,9 +407,10 @@ const Index: React.FC = () => {
           `avatarId=${encodeURIComponent(nextAvatarId)}`,
           nextRequestId ? `requestId=${encodeURIComponent(nextRequestId)}` : '',
         ].filter(Boolean).join('&')
+        const targetPage = orderInfo?.rawPlatform === 'special' ? 'order-accept-task' : 'order-processing'
         setTimeout(() => {
           Taro.navigateTo({
-            url: `/package-order/pages/order-processing/index?${query}`
+            url: `/package-order/pages/${targetPage}/index?${query}`
           })
         }, 500)
       } else {

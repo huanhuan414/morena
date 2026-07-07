@@ -14,6 +14,7 @@ export type FulfillmentStatus =
 export type DispatchStatus = 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'completed' | 'settled' | 'done'
 
 export type OrderStatus =
+  | 'draft'
   | 'pending_payment'
   | 'open'
   | 'pending_review'

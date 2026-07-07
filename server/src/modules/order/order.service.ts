@@ -283,6 +283,7 @@ export class OrderService {
   }
 
   private statusTransitions: Record<string, string[]> = {
+    'draft': ['pending_payment', 'cancelled'],
     'pending_payment': ['open', 'cancelled'],
     'open': ['pending_review', 'cancelled'],
     'pending_review': ['pending_acceptance', 'cancelled'],
@@ -348,7 +349,7 @@ export class OrderService {
       base_amount: baseAmount,
       content_amount: contentAmount,
       custom_base_price: customBasePrice,
-      status: 'pending_payment',
+      status: orderData.status || 'pending_payment',
       expected_quantity: avatarCount,
       avatar_count: avatarCount,
       quantity_per_avatar: orderData.quantityPerAvatar || orderData.quantity_per_avatar || 1,
@@ -1119,7 +1120,8 @@ export class OrderService {
       throw new Error('无权操作此订单')
     }
     // 只有这些状态可以取消
-    const cancellableStatuses = ['pending_payment', 'pending', 'awaiting_acceptance', 'pending_acceptance']
+    // const cancellableStatuses = ['draft', 'pending_payment', 'pending', 'awaiting_acceptance', 'pending_acceptance']
+    const cancellableStatuses = ['draft','pending_payment']
     if (!cancellableStatuses.includes(order.status)) {
       throw new Error(`订单状态为"${order.status}"，无法取消`)
     }
@@ -1131,13 +1133,13 @@ export class OrderService {
     await db.updateWhere('orders', { id: orderId }, {
       status: order.isPaid === 1 ? 'cancelled' : 'auto_cancelled',
       updated_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
-    })
-    // 取消关联的派单请求
-    await db.updateWhere('dispatch_requests', { order_id: orderId, status: 'pending' }, {
-      status: 'expired',
-      updated_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
-    })
-    return { success: true, orderId, newStatus: order.isPaid === 1 ? 'cancelled' : 'auto_cancelled' }
+    }) 
+    // // 取消关联的派单请求
+    // await db.updateWhere('dispatch_requests', { order_id: orderId, status: 'pending' }, {
+    //   status: 'expired',
+    //   updated_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+    // })
+    // return { success: true, orderId, newStatus: order.isPaid === 1 ? 'cancelled' : 'auto_cancelled' }
   }
 
   /**
@@ -1304,6 +1306,9 @@ export class OrderService {
       const aiPrompt = stepData.aiPrompt || stepData.prompt || ''
       const distributeMode = stepData.distributeMode || stepData.distribute_mode || 'shared'
       const stepDescription = step.description || step.step_desc || ''
+      const materialExt = {
+        distribute_mode: distributeMode,
+      }
 
       switch (stepType) {
         case 'material_text':
@@ -1314,7 +1319,7 @@ export class OrderService {
           }
           record.text_content = materials.length > 0 ? this.toJson(materials) : null
           record.text_prompt = aiPrompt || null
-          record.text_ext = this.toJson({ distribute_mode: distributeMode, description: stepDescription })
+          record.text_ext = this.toJson(materialExt)
           break
 
         case 'material_image':
@@ -1325,7 +1330,7 @@ export class OrderService {
           }
           record.image_list = materials.length > 0 ? this.toJson(materials) : null
           record.image_prompt = aiPrompt || null
-          record.image_ext = this.toJson({ distribute_mode: distributeMode, description: stepDescription })
+          record.image_ext = this.toJson(materialExt)
           break
 
         case 'material_video':
@@ -1335,7 +1340,7 @@ export class OrderService {
             record.video_mode = 'user_upload'
           }
           record.video_list = materials.length > 0 ? this.toJson(materials) : null
-          record.video_ext = this.toJson({ distribute_mode: distributeMode, description: stepDescription })
+          record.video_ext = this.toJson(materialExt)
           break
       }
     }
@@ -1360,14 +1365,16 @@ export class OrderService {
 
     await db.query('UPDATE order_task_steps SET status = 0 WHERE order_id = ?', [orderId])
 
-    const taskSteps = steps.filter(step => !this.MATERIAL_TYPES.includes(this.getTaskStepType(step)))
-    const materialSteps = steps.filter(step => this.MATERIAL_TYPES.includes(this.getTaskStepType(step)))
+    const stepsWithSortOrder = steps.map((step, index) => ({ ...(step || {}), __sortOrder: index }))
+    const materialSteps = stepsWithSortOrder.filter(step => this.MATERIAL_TYPES.includes(this.getTaskStepType(step)))
 
-    for (let index = 0; index < taskSteps.length; index++) {
-      const step = taskSteps[index] || {}
+    for (let index = 0; index < stepsWithSortOrder.length; index++) {
+      const step = stepsWithSortOrder[index] || {}
       const stepType = this.getTaskStepType(step)
-      const mediaList = this.toMediaList(step, stepType)
+      const isMaterialStep = this.MATERIAL_TYPES.includes(stepType)
+      const mediaList = isMaterialStep ? null : this.toMediaList(step, stepType)
       const extConfig = step.extConfig || step.ext_config
+      const sortOrder = Number(step.__sortOrder ?? index)
 
       await db.query(
         `INSERT INTO order_task_steps
@@ -1378,10 +1385,10 @@ export class OrderService {
           stepType,
           step.label || '',
           step.description || null,
-          this.toMainContent(step),
+          isMaterialStep ? null : this.toMainContent(step),
           this.toJson(mediaList),
           this.toJson(extConfig),
-          index,
+          sortOrder,
           1
         ]
       )
@@ -1400,14 +1407,14 @@ export class OrderService {
 
     return {
       orderId,
-      stepCount: taskSteps.length,
+      stepCount: stepsWithSortOrder.length,
       materialCount: materialSteps.length,
     }
   }
 
   async getOrderTaskSteps(orderId: string) {
     const db = getMySQLClient()
-    const steps = await db.query(
+    const queryResult = await db.query(
       `SELECT id, order_id, step_type, step_title, step_desc, main_content,
               media_list, ext_config, sort_order, is_required, status, created_at, updated_at
        FROM order_task_steps
@@ -1415,7 +1422,9 @@ export class OrderService {
        ORDER BY sort_order ASC, id ASC`,
       [orderId]
     )
-    const materialRows = await db.query(
+    const steps = queryResult || []
+
+    const materialQueryResult = await db.query(
       `SELECT id, order_id, text_mode, text_content, text_prompt, text_ext,
               image_mode, image_list, image_prompt, image_ext,
               video_mode, video_list, video_ext,
@@ -1425,16 +1434,11 @@ export class OrderService {
       [orderId]
     )
 
-    const materialRecord = materialRows && materialRows.length > 0 ? materialRows[0] : null
-
-    const processedSteps = (steps || []).map((row: any) => ({
-      ...row,
-      extConfig: this.safeParseJson(row.extConfig || row.ext_config, {}),
-      mediaList: this.safeParseJson(row.mediaList || row.media_list, []),
-    }))
+    const materialRows = materialQueryResult || []
+    const materialRecord = materialRows.length > 0 ? materialRows[0] : null
 
     return {
-      steps: processedSteps,
+      steps,
       material: materialRecord || null,
     }
   }

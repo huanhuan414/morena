@@ -222,11 +222,8 @@ export default function OrderCreate() {
         console.error('加载订单数据失败:', e)
       }
     } else {
-      const draft = Taro.getStorageSync(DRAFT_STORAGE_KEY)
-      if (draft?.orderId && draft?.payload) {
-        setOrderId(draft.orderId)
-        submittedPayloadRef.current = stringifyPayload(draft.payload)
-      }
+      setOrderId('')
+      submittedPayloadRef.current = ''
     }
   })
   // ========== 素材上传相关 ==========

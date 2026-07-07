@@ -271,6 +271,7 @@ export class ContentGenerationService implements OnModuleInit {
     useCustomCopywriting?: boolean
     customCopywriting?: string
     skipGeneration?: boolean
+    config?: Record<string, any>
   }): Promise<any[]> {
     const results: any[] = []
 
@@ -305,6 +306,11 @@ export class ContentGenerationService implements OnModuleInit {
           video_url: null,
           assigned_images: input.assignedImages?.length > 0 ? JSON.stringify(input.assignedImages) : null,
           assigned_video_url: input.assignedVideoUrl || null,
+          config: JSON.stringify({
+            ...(input.config || {}),
+            platforms: input.platforms,
+            contentType: effectiveContentType,
+          }),
         })
         this.logger.log(`创建生成记录: ${requestId}, platform=${platform}, assignedImages=${input.assignedImages?.length || 0}, assignedVideoUrl=${input.assignedVideoUrl || 'none'}`)
       } catch (dbError: any) {
@@ -312,11 +318,16 @@ export class ContentGenerationService implements OnModuleInit {
         if (dbError.code === 'ER_DUP_ENTRY') {
           try {
             await db.query(
-              'UPDATE content_generation_requests SET status = ?, assigned_images = ?, assigned_video_url = ?, updated_at = NOW() WHERE id = ?',
+              'UPDATE content_generation_requests SET status = ?, assigned_images = ?, assigned_video_url = ?, config = ?, updated_at = NOW() WHERE id = ?',
               [
                 'processing',
                 input.assignedImages?.length > 0 ? JSON.stringify(input.assignedImages) : null,
                 input.assignedVideoUrl || null,
+                JSON.stringify({
+                  ...(input.config || {}),
+                  platforms: input.platforms,
+                  contentType: effectiveContentType,
+                }),
                 requestId
               ]
             )

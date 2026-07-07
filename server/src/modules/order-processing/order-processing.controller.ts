@@ -10,6 +10,60 @@ export class OrderProcessingController {
     @Inject(LinkValidationService) private readonly linkValidationService: LinkValidationService
   ) {}
 
+  @Get(':id/task-view')
+  async getTaskView(@Param('id') id: string) {
+    try {
+      const result = await this.processingService.getTaskView(id)
+      return {
+        code: 200,
+        data: result,
+        message: result ? '获取成功' : '记录不存在'
+      }
+    } catch (error: any) {
+      return {
+        code: 500,
+        data: null,
+        message: error.message || '获取失败'
+      }
+    }
+  }
+
+  @Put(':id/step-results')
+  async saveStepResult(@Param('id') id: string, @Body() body: Record<string, any>) {
+    try {
+      const result = await this.processingService.saveStepResult(id, body || {})
+      return {
+        code: 200,
+        data: result,
+        message: result ? '保存成功' : '记录不存在'
+      }
+    } catch (error: any) {
+      return {
+        code: 400,
+        data: null,
+        message: error.message || '保存失败'
+      }
+    }
+  }
+
+  @Post(':id/task-submit')
+  async submitTaskResult(@Param('id') id: string, @Body() body: Record<string, any>) {
+    try {
+      const result = await this.processingService.submitTaskResult(id, body || {})
+      return {
+        code: 200,
+        data: result,
+        message: result ? '发布成功' : '记录不存在'
+      }
+    } catch (error: any) {
+      return {
+        code: 400,
+        data: null,
+        message: error.message || '发布失败'
+      }
+    }
+  }
+
   /**
    * 根据 orderId 查询内容生成状态
    * 路径: GET /api/order-processing/status/:orderId

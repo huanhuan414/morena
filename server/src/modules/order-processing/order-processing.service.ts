@@ -304,6 +304,71 @@ export class OrderProcessingService {
     return fallback
   }
 
+  private toSnakeKey(key: string): string {
+    return key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)
+  }
+
+  private normalizeObjectKeysToSnake(input: any): any {
+    if (Array.isArray(input)) {
+      return input.map((item) => this.normalizeObjectKeysToSnake(item))
+    }
+    if (!input || typeof input !== 'object') {
+      return input
+    }
+    return Object.entries(input).reduce<Record<string, any>>((acc, [key, value]) => {
+      acc[this.toSnakeKey(key)] = this.normalizeObjectKeysToSnake(value)
+      return acc
+    }, {})
+  }
+
+  private getMaterialKey(stepType: string): 'text' | 'image' | 'video' | null {
+    if (stepType === 'material_text') return 'text'
+    if (stepType === 'material_image') return 'image'
+    if (stepType === 'material_video') return 'video'
+    return null
+  }
+
+  private normalizeTaskStepFromTable(step: any, index: number, assignedMaterials: Record<string, any>): any {
+    const stepType = step.step_type || step.stepType || ''
+    const materialType = this.getMaterialKey(stepType)
+    const extConfig = this.normalizeObjectKeysToSnake(this.parseJsonObject<Record<string, any>>(step.ext_config || step.extConfig, {}))
+    const mediaList = this.parseJsonObject<any[]>(step.media_list || step.mediaList, [])
+    const sortOrder = Number(step.sort_order ?? step.sortOrder ?? index)
+
+    return {
+      id: step.id,
+      order_id: step.order_id || step.orderId,
+      step_type: stepType,
+      step_title: step.step_title || step.stepTitle || '',
+      step_desc: step.step_desc || step.stepDesc || null,
+      main_content: step.main_content || step.mainContent || null,
+      media_list: mediaList,
+      ext_config: extConfig,
+      sort_order: sortOrder,
+      is_required: step.is_required ?? step.isRequired ?? 1,
+      status: step.status,
+      created_at: step.created_at || step.createdAt,
+      updated_at: step.updated_at || step.updatedAt,
+      ...(materialType ? {
+        isMaterial: true,
+        materialType,
+        assignedMaterial: assignedMaterials?.[materialType] || { mode: 'shared', items: [], prompt: '' },
+      } : {}),
+    }
+  }
+
+  private mergeTaskStepsWithMaterials(steps: any[], material: any, assignedMaterials: Record<string, any>): any[] {
+    const normalizedSteps = (Array.isArray(steps) ? steps : [])
+      .map((step, index) => this.normalizeTaskStepFromTable(step, index, assignedMaterials))
+
+    return normalizedSteps.sort((a, b) => {
+      const left = Number(a.sort_order ?? a.sortOrder ?? 0)
+      const right = Number(b.sort_order ?? b.sortOrder ?? 0)
+      if (left !== right) return left - right
+      return String(a.id || '').localeCompare(String(b.id || ''))
+    })
+  }
+
   private normalizePlatforms(input: any): string[] {
     if (!input) return []
     if (Array.isArray(input)) {
@@ -338,7 +403,8 @@ export class OrderProcessingService {
       'rejectReason', 'reject_reason',
       'status', 'rating', 'comment', 'feedback', 'revision_requested',
       'revisionHistory', 'revision_history',
-      'feedback_submitted_at', 'submitted_at'
+      'feedback_submitted_at', 'submitted_at',
+      'step_results', 'task_submitted_at'
     ]
     Object.entries(incoming || {}).forEach(([key, value]) => {
       // 大小写不敏感匹配
@@ -519,6 +585,87 @@ export class OrderProcessingService {
     setCache(requestId, normalized)
     setCache(data.order_id, normalized)
     return normalized
+  }
+
+  async getTaskView(requestId: string): Promise<any> {
+    const record = await this.findByRequestId(requestId)
+    if (!record) return null
+
+    const orderId = record.orderId || record.order_id
+    const config = this.parseJsonObject<Record<string, any>>(record.config, {})
+    const taskData = await this.orderService.getOrderTaskSteps(orderId)
+    const assignedMaterials = config.assignedMaterials || {
+      text: { mode: 'shared', items: [], prompt: '' },
+      image: { mode: 'shared', items: [], prompt: '' },
+      video: { mode: 'shared', items: [], prompt: '' },
+    }
+    const mergedSteps = this.mergeTaskStepsWithMaterials(taskData?.steps || [], taskData?.material, assignedMaterials)
+
+    return {
+      request: {
+        id: record.id,
+        requestId: record.id,
+        orderId,
+        avatarId: record.avatarId || record.avatar_id,
+        userId: record.userId || record.user_id,
+        platform: record.platform,
+        status: record.status,
+      },
+      steps: mergedSteps,
+      assignedMaterials,
+      stepResults: config.stepResults || {},
+      config,
+    }
+  }
+
+  async saveStepResult(requestId: string, data: Record<string, any>): Promise<any> {
+    const record = await this.findByRequestId(requestId)
+    if (!record) return null
+
+    const stepId = data.stepId || data.step_id
+    if (!stepId) {
+      throw new Error('缺少步骤ID')
+    }
+
+    const config = this.parseJsonObject<Record<string, any>>(record.config, {})
+    const stepResults = {
+      ...(config.stepResults || {}),
+      [stepId]: {
+        stepId,
+        stepType: data.stepType || data.step_type || '',
+        valueType: data.valueType || data.value_type || '',
+        value: data.value,
+        submittedAt: new Date().toISOString(),
+      },
+    }
+
+    const db = getMySQLClient()
+    await db.query(
+      'UPDATE content_generation_requests SET config = ?, updated_at = NOW() WHERE id = ?',
+      [JSON.stringify({ ...config, stepResults }), record.id]
+    )
+
+    return this.getTaskView(record.id)
+  }
+
+  async submitTaskResult(requestId: string, data: Record<string, any>): Promise<any> {
+    const record = await this.findByRequestId(requestId)
+    if (!record) return null
+
+    const config = this.parseJsonObject<Record<string, any>>(record.config, {})
+    const stepResults = data?.stepResults || data?.step_results || config.stepResults || {}
+    const submittedAt = new Date().toISOString()
+
+    const db = getMySQLClient()
+    await db.query(
+      'UPDATE content_generation_requests SET config = ?, updated_at = NOW() WHERE id = ?',
+      [JSON.stringify({ ...config, stepResults, taskSubmittedAt: submittedAt }), record.id]
+    )
+
+    return this.submitFeedback(record.id, {
+      step_results: stepResults,
+      task_submitted_at: submittedAt,
+    })
   }
 
   /**
@@ -1039,7 +1186,8 @@ export class OrderProcessingService {
       'rejectReason', 'reject_reason',
       'revisionHistory', 'revision_history',
       'status',
-      'feedback_submitted_at', 'submitted_at'
+      'feedback_submitted_at', 'submitted_at',
+      'step_results', 'task_submitted_at'
     ]
     Object.keys(existingFeedback).forEach(key => {
       // 大小写不敏感过滤元数据字段

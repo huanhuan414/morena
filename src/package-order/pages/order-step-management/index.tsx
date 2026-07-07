@@ -39,12 +39,100 @@ const truncateStr = (str: string | undefined, maxLen = 20) => {
 
 const STEP_EXT_CONFIG: Record<string, Record<string, string>> = {
   input_url: { open_button_text: '打开链接', copy_button_text: '一键复制' },
-  upload_qrcode: { save_button_imege: '一键保存' },
+  upload_qrcode: { save_button_image: '一键保存' },
   copy_data: { copy_button_text: '一键复制' },
-  collect_url: { upload_button_image: '上传图片' },
+  collect_image: { upload_button_image: '上传图片' },
+  // collect_url: { upload_button_image: '一键复制' },
   material_text: { copy_button_text: '一键复制' },
   material_image: { save_button_image: '一键保存' },
-  material_video: { save_button_image: '一键保存' },
+  material_video: { save_button_video: '一键保存' },
+}
+
+const MATERIAL_TYPES = ['material_text', 'material_image', 'material_video']
+
+const transformTaskSteps = (steps: any[], materialRecord: any): StepItem[] => {
+  return steps.map((row) => {
+    const stepType = row.step_type || row.stepType || ''
+    const mediaList = typeof row.media_list === 'string'
+      ? (row.media_list ? JSON.parse(row.media_list) : [])
+      : (row.mediaList || [])
+    const extConfig = typeof row.ext_config === 'string'
+      ? (row.ext_config ? JSON.parse(row.ext_config) : {})
+      : (row.extConfig || {})
+    const mainContent = row.main_content || row.mainContent || ''
+    const stepDesc = row.step_desc || row.stepDesc || ''
+
+    const data: Record<string, any> = {}
+
+    if (stepType === 'input_url') {
+      data.url = mainContent || ''
+    } else if (stepType === 'upload_qrcode') {
+      data.image = mediaList[0]?.url || ''
+    } else if (stepType === 'copy_data') {
+      data.copyData = mainContent || ''
+    } else if (stepType === 'image_instruction') {
+      data.image = mediaList[0]?.url || ''
+    } else if (stepType === 'video_instruction') {
+      data.video = mediaList[0]?.url || ''
+    } else if (stepType === 'collect_image') {
+      data.exampleImage = mediaList[0]?.url || ''
+    } else if (stepType === 'collect_info') {
+      data.exampleText = mainContent || ''
+    } else if (stepType === 'collect_url') {
+      data.exampleUrl = mainContent || ''
+    } else if (stepType === 'material_text' && materialRecord) {
+      const textContent = typeof materialRecord.text_content === 'string'
+        ? (materialRecord.text_content ? JSON.parse(materialRecord.text_content) : [])
+        : (materialRecord.textContent || [])
+      data.materials = textContent
+      data.useAiMaterial = (materialRecord.text_mode || materialRecord.textMode) === 'ai_prompt_only'
+      data.aiPrompt = materialRecord.text_prompt || materialRecord.textPrompt || ''
+      const textExt = typeof materialRecord.text_ext === 'string'
+        ? (materialRecord.text_ext ? JSON.parse(materialRecord.text_ext) : {})
+        : (materialRecord.textExt || {})
+      data.distributeMode = textExt.distribute_mode || 'shared'
+    } else if (stepType === 'material_image' && materialRecord) {
+      const imageList = typeof materialRecord.image_list === 'string'
+        ? (materialRecord.image_list ? JSON.parse(materialRecord.image_list) : [])
+        : (materialRecord.imageList || [])
+      data.materials = imageList
+      data.useAiMaterial = (materialRecord.image_mode || materialRecord.imageMode) === 'ai_generate'
+      data.aiPrompt = materialRecord.image_prompt || materialRecord.imagePrompt || ''
+      const imageExt = typeof materialRecord.image_ext === 'string'
+        ? (materialRecord.image_ext ? JSON.parse(materialRecord.image_ext) : {})
+        : (materialRecord.imageExt || {})
+      data.distributeMode = imageExt.distribute_mode || 'shared'
+    } else if (stepType === 'material_video' && materialRecord) {
+      const videoList = typeof materialRecord.video_list === 'string'
+        ? (materialRecord.video_list ? JSON.parse(materialRecord.video_list) : [])
+        : (materialRecord.videoList || [])
+      data.materials = videoList
+      data.useAiMaterial = (materialRecord.video_mode || materialRecord.videoMode) === 'ai_generate'
+      data.aiPrompt = materialRecord.video_prompt || materialRecord.videoPrompt || ''
+      const videoExt = typeof materialRecord.video_ext === 'string'
+        ? (materialRecord.video_ext ? JSON.parse(materialRecord.video_ext) : {})
+        : (materialRecord.videoExt || {})
+      data.distributeMode = videoExt.distribute_mode || 'shared'
+    }
+
+    const resultStep: StepItem = {
+      id: `step_${row.id}`,
+      group: MATERIAL_TYPES.includes(stepType) ? '发布素材' : '任务入口',
+      label: row.step_title || row.stepTitle || '',
+      type: stepType,
+      description: stepDesc || '',
+    }
+
+    if (Object.keys(data).length > 0) {
+      resultStep.data = data
+    }
+
+    if (Object.keys(extConfig).length > 0) {
+      resultStep.extConfig = extConfig
+    }
+
+    return resultStep
+  })
 }
 
 const STEP_GROUPS = [
@@ -80,7 +168,6 @@ const STEP_GROUPS = [
 
 const getStepsStorageKey = (orderId: string) => `order_steps_${orderId || 'draft'}`
 const DRAFT_STORAGE_KEY = 'order_create_step_draft' // 上一步传递的订单信息 Taro.getStorageSync(storageKey)步骤管理页的步骤列表数据
-
 
 const isValidUrl = (url: string): boolean => {
   const trimmedUrl = url.trim()
@@ -127,9 +214,33 @@ export default function OrderStepManagement() {
 
   const stepsRef = useRef(steps)
   stepsRef.current = steps
+  const repayInFlightRef = useRef(false)
 
-  useDidShow(() => {
+  useDidShow(async () => {
     const draftData = Taro.getStorageSync(DRAFT_STORAGE_KEY)
+    const storedSteps = Taro.getStorageSync(storageKey)
+    //本地存储中已经保存了步骤数据就从本地获取，没有就从数据库
+    if (storedSteps && Array.isArray(storedSteps) && storedSteps.length > 0) {
+      return
+    }
+
+    if (orderId) {
+      try {
+        const res = await Network.request({
+          url: `/api/order/${orderId}/task-steps`,
+          method: 'GET',
+        })
+        const payload = res?.data
+        if (payload?.code === 200 && payload?.data?.steps && payload.data.steps.length > 0) {
+          const transformedSteps = transformTaskSteps(payload.data.steps, payload.data.material)
+          persistSteps(transformedSteps)
+          return
+        }
+      } catch (e) {
+        console.error('[获取步骤] 错误:', e)
+      }
+    }
+
     if (draftData && draftData.payload) {
       const currentContentType = draftData.payload.contentType || draftData.payload.content_type || 'text'
       const currentSteps = stepsRef.current
@@ -149,7 +260,6 @@ export default function OrderStepManagement() {
       if (incompatibleIds.size > 0) {
         const updatedSteps = currentSteps.filter(step => !incompatibleIds.has(step.id))
         persistSteps(updatedSteps)
-        // Taro.showToast({ title: '内容类型已变更，已移除发布素材', icon: 'none' })
       }
     }
   })
@@ -280,7 +390,10 @@ export default function OrderStepManagement() {
 
       const payload = res?.data
       if (payload?.code === 200) {
-        updateOrderRequirements()
+        // 直接显示支付弹窗，不再更新订单
+        const newPriceInfo = calculatePrice()
+        setPriceInfo(newPriceInfo)
+        setShowPayModal(true)
       } else {
         Taro.showToast({ title: payload?.message || '保存步骤失败', icon: 'none' })
       }
@@ -288,39 +401,6 @@ export default function OrderStepManagement() {
       // Taro.hideLoading()
       console.error('[步骤保存] 错误:', e)
       Taro.showToast({ title: '保存步骤失败', icon: 'none' })
-    }
-  }
-
-  const updateOrderRequirements = async () => {
-    const materialStep = steps.find(s => ['material_text', 'material_image', 'material_video'].includes(s.type))
-    const materialData = materialStep?.data || {}
-
-    const requirements = {
-      material_mode: materialData.useAiMaterial ? 'ai_generate' : 'user_upload',
-      material_prompt: materialData.aiPrompt || '',
-      custom_copywriting: '',
-      asset_distribute_mode: materialData.distributeMode || 'shared',
-    }
-
-    try {
-      const res = await Network.request({
-        url: `/api/order/${orderId}`,
-        method: 'PUT',
-        data: {
-          requirements,
-          assetDistributeMode: materialData.distributeMode || 'shared',
-        },
-      })
-      if (res.data?.code === 200) {
-        const newPriceInfo = calculatePrice()
-        setPriceInfo(newPriceInfo)
-        setShowPayModal(true)
-      } else {
-        Taro.showToast({ title: res.data?.message || '更新失败', icon: 'none' })
-      }
-    } catch (e) {
-      console.error('[更新订单] 错误:', e)
-      Taro.showToast({ title: '更新失败', icon: 'none' })
     }
   }
 
@@ -346,6 +426,50 @@ export default function OrderStepManagement() {
       },
     }
     Taro.showModal(modalOptions)
+  }
+
+  const repayAndNavigate = async (targetOrderId: string, openid: string) => {
+    if (!openid) {
+      Taro.showToast({ title: '请重新进入页面再试', icon: 'none' })
+      return
+    }
+    if (repayInFlightRef.current) return
+    repayInFlightRef.current = true
+    try {
+      Taro.showLoading({ title: '创建支付...' })
+      const res = await Network.request({
+        url: `/api/order/${targetOrderId}/repay`,
+        method: 'POST',
+        data: { openid },
+        dedupKey: `order:repay:${targetOrderId}`,
+      })
+      Taro.hideLoading()
+      const payload = res?.data
+      if (payload?.code === 200 && payload?.data?.payment) {
+        const payment = payload.data.payment
+        await Taro.requestPayment({
+          timeStamp: payment.timeStamp,
+          nonceStr: payment.nonceStr,
+          package: payment.packageValue,
+          signType: payment.signType || 'MD5',
+          paySign: payment.paySign,
+        })
+        Taro.showToast({ title: '支付成功', icon: 'success' })
+        setTimeout(() => {
+          Taro.navigateTo({ url: `/package-order/pages/order-asset-waiting/index?orderId=${targetOrderId}` })
+        }, 1500)
+      } else {
+        Taro.showToast({ title: payload?.message || '创建支付失败', icon: 'none' })
+      }
+    } catch (payErr: any) {
+      Taro.hideLoading()
+      const errMsg = String(payErr?.errMsg || payErr?.message || '')
+      if (!errMsg.includes('cancel')) {
+        Taro.showToast({ title: '支付失败，请稍后重试', icon: 'none' })
+      }
+    } finally {
+      repayInFlightRef.current = false
+    }
   }
 
   const handlePayConfirm = async () => {
@@ -375,6 +499,7 @@ export default function OrderStepManagement() {
           base_price: priceInfo.basePrice,
           total_price: priceInfo.totalPrice,
           price: priceInfo.baseUnit,
+          custom_base_price: priceInfo.baseUnit,
         },
       })
 
@@ -392,8 +517,8 @@ export default function OrderStepManagement() {
 
       Taro.hideLoading()
 
-      if (payRes.data?.code === 200 && payRes.data.data) {
-        const payment = payRes.data.data
+      if (payRes.data?.code === 200 && payRes.data.data?.payment) {
+        const payment = payRes.data.data.payment
         try {
           await Taro.requestPayment({
             timeStamp: payment.timeStamp,
@@ -405,15 +530,44 @@ export default function OrderStepManagement() {
           Taro.showToast({ title: '支付成功', icon: 'success' })
           setShowPayModal(false)
           setTimeout(() => {
-            Taro.navigateBack()
+            Taro.navigateTo({ url: `/package-order/pages/order-asset-waiting/index?orderId=${orderId}` })
           }, 1500)
         } catch (payErr: any) {
           console.warn('[支付] 结果:', payErr)
           const errMsg = String(payErr?.errMsg || payErr?.message || '')
-          if (errMsg.includes('cancel')) {
-            Taro.showToast({ title: '支付已取消', icon: 'none' })
+          if (errMsg.includes('cancel') || errMsg.includes('取消')) {
+            // Taro.showToast({ title: '支付已取消', icon: 'none' })
+            // 用户取消支付 → 跳转到订单详情，显示待支付状态
+            Taro.showModal({
+              title: '支付已取消',
+              content: '您可以稍后在订单详情中继续支付',
+              confirmText: '去支付',
+              cancelText: '查看订单',
+              success: (modalRes) => {
+                if (modalRes.confirm) {
+                  // 重新支付
+                  repayAndNavigate(orderId, openid)
+                } else {
+                  Taro.navigateTo({ url: `/package-order/pages/order-detail/index?id=${orderId}&action=pay` })
+                }
+              },
+            })
           } else {
-            Taro.showToast({ title: '支付失败，请稍后重试', icon: 'none' })
+            // Taro.showToast({ title: '支付失败，请稍后重试', icon: 'none' })
+            // 支付失败
+            Taro.showModal({
+              title: '支付失败',
+              content: '支付遇到问题，您可以稍后重试',
+              confirmText: '重试',
+              cancelText: '查看订单',
+              success: (modalRes) => {
+                if (modalRes.confirm) {
+                  repayAndNavigate(orderId, openid)
+                } else {
+                  Taro.navigateTo({ url: `/package-order/pages/order-detail/index?id=${orderId}&action=pay` })
+                }
+              },
+            })
           }
         }
       } else {

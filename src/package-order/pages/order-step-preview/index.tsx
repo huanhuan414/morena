@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import Taro, { useRouter } from '@tarojs/taro'
 import { ScrollView, Text, View, Image, Input as TaroInput, Video } from '@tarojs/components'
 import { ArrowLeft, Camera } from 'lucide-react-taro'
-import { Button } from '@/components/ui/button'
 import { Network } from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import './index.css'
@@ -168,19 +167,12 @@ export default function OrderStepPreview() {
     }
   }
 
-  const handleSubmit = () => {
-    const results: Record<string, any> = {}
-    steps.forEach(step => {
-      if (step.label === '收集截图') {
-        results[step.id] = { type: 'image', value: uploadedImages[step.id] }
-      } else if (step.label === '收集信息') {
-        results[step.id] = { type: 'text', value: inputTexts[step.id] }
-      } else if (step.label === '收集链接') {
-        results[step.id] = { type: 'url', value: inputUrls[step.id] }
-      }
+  const copyText = (text: string) => {
+    if (!text) return
+    Taro.setClipboardData({
+      data: text,
+      success: () => Taro.showToast({ title: '已复制', icon: 'success' }),
     })
-    console.log('提交结果:', results)
-    Taro.showToast({ title: '提交成功', icon: 'success' })
   }
 
   return (
@@ -230,7 +222,7 @@ export default function OrderStepPreview() {
                           </View>
                         )}
                         {step.extConfig?.copy_button_text && (
-                          <View className="preview-url-btn preview-url-btn-copy" onClick={() => Taro.setClipboardData({ data: step.data!.url!, success: () => Taro.showToast({ title: '已复制', icon: 'success' }) })}>
+                          <View className="preview-url-btn preview-url-btn-copy" onClick={() => copyText(step.data!.url!)}>
                             <Text className="preview-url-btn-text">{step.extConfig.copy_button_text}</Text>
                           </View>
                         )}
@@ -244,9 +236,11 @@ export default function OrderStepPreview() {
                   {step.data?.image && step.type === 'upload_qrcode' && (
                     <>
                       <View />
-                      <View className="preview-save-btn" onClick={() => handleSaveImage(step.data!.image!)}>
-                        <Text className="preview-save-btn-text">{step.extConfig?.save_button_imege || '一键保存'}</Text>
-                      </View>
+                      {step.extConfig?.save_button_image && (
+                        <View className="preview-save-btn" onClick={() => handleSaveImage(step.data!.image!)}>
+                          <Text className="preview-save-btn-text">{step.extConfig.save_button_image}</Text>
+                        </View>
+                      )}
                       <View />
                     </>
                   )}
@@ -262,7 +256,7 @@ export default function OrderStepPreview() {
                         <Text className="preview-copy-text">{step.data.copyData}</Text>
                       </View>
                       {step.extConfig?.copy_button_text && (
-                        <View className="preview-copy-btn" onClick={() => Taro.setClipboardData({ data: step.data!.copyData!, success: () => Taro.showToast({ title: '已复制', icon: 'success' }) })}>
+                        <View className="preview-copy-btn" onClick={() => copyText(step.data!.copyData!)}>
                           <Text className="preview-copy-btn-text">{step.extConfig.copy_button_text}</Text>
                         </View>
                       )}
@@ -317,31 +311,37 @@ export default function OrderStepPreview() {
                       {step.data.materials![0].type === 'text' && (
                         <>
                           <Text className="preview-material-text">{step.data.materials![0].content}</Text>
-                          <View className="preview-material-action">
-                            <View className="preview-material-btn preview-material-btn-copy" onClick={() => Taro.setClipboardData({ data: step.data!.materials![0].content, success: () => Taro.showToast({ title: '已复制', icon: 'success' }) })}>
-                              <Text className="preview-material-btn-text">一键复制</Text>
+                          {step.extConfig?.copy_button_text && (
+                            <View className="preview-material-action">
+                              <View className="preview-material-btn preview-material-btn-copy" onClick={() => copyText(step.data!.materials![0].content)}>
+                                <Text className="preview-material-btn-text">{step.extConfig.copy_button_text}</Text>
+                              </View>
                             </View>
-                          </View>
+                          )}
                         </>
                       )}
                       {step.data.materials![0].type === 'image' && (
                         <>
                           <Image src={step.data.materials![0].content} className="preview-image" mode="widthFix" />
-                          <View className="preview-material-action">
-                            <View className="preview-material-btn preview-material-btn-save" onClick={() => handleSaveImage(step.data!.materials![0].content)}>
-                              <Text className="preview-material-btn-text">一键保存</Text>
+                          {step.extConfig?.save_button_image && (
+                            <View className="preview-material-action">
+                              <View className="preview-material-btn preview-material-btn-save" onClick={() => handleSaveImage(step.data!.materials![0].content)}>
+                                <Text className="preview-material-btn-text">{step.extConfig.save_button_image}</Text>
+                              </View>
                             </View>
-                          </View>
+                          )}
                         </>
                       )}
                       {step.data.materials![0].type === 'video' && (
                         <>
                           <Video src={step.data.materials![0].content} className="preview-video" controls />
-                          <View className="preview-material-action">
-                            <View className="preview-material-btn preview-material-btn-save" onClick={() => handleSaveVideo(step.data!.materials![0].content)}>
-                              <Text className="preview-material-btn-text">一键保存</Text>
+                          {step.extConfig?.save_button_video && (
+                            <View className="preview-material-action">
+                              <View className="preview-material-btn preview-material-btn-save" onClick={() => handleSaveVideo(step.data!.materials![0].content)}>
+                                <Text className="preview-material-btn-text">{step.extConfig.save_button_video}</Text>
+                              </View>
                             </View>
-                          </View>
+                          )}
                         </>
                       )}
                       {step.data.materials!.length > 1 && (
@@ -370,6 +370,11 @@ export default function OrderStepPreview() {
                       value={inputUrls[step.id] || ''}
                       onInput={(e) => setInputUrls(prev => ({ ...prev, [step.id]: e.detail.value }))}
                     />
+                    {step.extConfig?.upload_button_image && (
+                      <View className="preview-copy-btn" onClick={() => copyText(inputUrls[step.id] || '')}>
+                        <Text className="preview-copy-btn-text">{step.extConfig.upload_button_image}</Text>
+                      </View>
+                    )}
                   </View>
                 )}
               </View>
