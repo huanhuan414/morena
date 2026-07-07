@@ -182,7 +182,7 @@ export class OrderDispatchService {
     const requestRows = await db.query(
       `SELECT r.id as dispatch_id, r.order_id, r.avatar_id, r.status as dispatch_status,
               r.expires_at, r.created_at as dispatch_created_at,r.accept_timeout_at,
-              o.title, o.description, o.content_type, o.platforms, o.budget, o.base_amount,
+              o.title, o.description, o.content_type, o.platform, o.platforms, o.budget, o.base_amount,
               o.status as order_status, o.quantity_per_avatar, o.expected_quantity,
               o.created_at as order_created_at, o.target_audience, o.deadline,
               o.priority, o.requirements,
@@ -246,6 +246,8 @@ export class OrderDispatchService {
       const acceptTimeoutAt = req.accept_timeout_at || req.acceptTimeoutAt
       const acceptTimeoutText = this.calculateAcceptTimeoutText(acceptTimeoutAt)
       
+      const rawPlatform =  req.platform
+
       return {
         ...req,
         matchScore: score,
@@ -253,6 +255,7 @@ export class OrderDispatchService {
         expectedEarnings,
         platformFeeRate,
         acceptTimeoutText,
+        rawPlatform,
       }
     })
   }

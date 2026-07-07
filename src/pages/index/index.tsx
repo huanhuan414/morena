@@ -244,13 +244,14 @@ const Index: React.FC = () => {
             id: orderId,
             dispatchId: item.dispatchId || item.dispatch_id,
             avatarId: item.avatarId || item.avatar_id,
-            rawPlatform: item.platform || '',
+            rawPlatform: item.rawPlatform || '',
             platform: platformName,
             platformColor: getPlatformColor(platformName),
             title: item.title || '新订单',
             budget: item.expectedEarnings ? `¥${item.expectedEarnings}` : '待定',
             deadline: '长期有效',
-            acceptTimeoutText: item.acceptTimeoutText || ''
+            acceptTimeoutText: item.acceptTimeoutText || '',
+
           })
           setShowOrderModal(true)
         }
@@ -260,7 +261,7 @@ const Index: React.FC = () => {
     }
   }, [dismissedOrderIds, showOrderModal, orderModalData])
 
-  // 接单
+  //接单
   const handleAcceptOrder = async (orderId: string, orderInfo?: OrderItem) => {
     if (orderId.startsWith('demo_')) {
       Taro.showToast({ title: '示例订单，请先创建分身', icon: 'none' })
@@ -603,6 +604,7 @@ const Index: React.FC = () => {
     Taro.navigateTo({ url: path })
   }
 
+  // 立即接单
   const handleOrderAccept = async () => {
     if (!orderModalData?.id || !orderModalData?.avatarId) return
 
