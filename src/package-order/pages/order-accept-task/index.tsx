@@ -47,6 +47,11 @@ const getMediaList = (step: TaskStep) => step.mediaList || step.media_list || []
 const getExtConfig = (step: TaskStep) => step.extConfig || step.ext_config || {}
 const PREVIEW_ONLY_STATUSES = ['awaiting_acceptance', 'settled', 'cancelled', 'failed']
 const getStepResult = (stepResults: Record<string, any>, step: TaskStep) => stepResults[step.id] || stepResults[String(step.id)] || {}
+const getAiTextStatusLabel = (status?: string) => {
+  if (status === 'completed') return '已完成'
+  if (status === 'generating') return '生成中'
+  return '排队中'
+}
 
 export default function OrderAcceptTask() {
   const router = useRouter()
@@ -57,11 +62,14 @@ export default function OrderAcceptTask() {
   const [taskStatus, setTaskStatus] = useState('')
   const [steps, setSteps] = useState<TaskStep[]>([])
   const [stepResults, setStepResults] = useState<Record<string, any>>({})
+  const [assignedMaterials, setAssignedMaterials] = useState<Record<string, AssignedMaterialGroup & { status?: string }>>({})
   const previewOnly = PREVIEW_ONLY_STATUSES.includes(taskStatus)
+  const textMaterial = assignedMaterials.text
+  const isAiTextGenerating = textMaterial?.sourceMode === 'ai_prompt_only' && textMaterial?.status !== 'completed'
 
-  const fetchTaskView = async () => {
+  const fetchTaskView = async (silent = false) => {
     if (!requestId) return
-    setLoading(true)
+    if (!silent) setLoading(true)
     try {
       const res = await Network.request({
         url: `/api/order-processing/${requestId}/task-view`,
@@ -71,6 +79,7 @@ export default function OrderAcceptTask() {
         setSteps(Array.isArray(data.steps) ? data.steps : [])
         setTaskStatus(data.request?.status || data.status || '')
         setStepResults(data.stepResults || {})
+        setAssignedMaterials(data.assignedMaterials || {})
       } else {
         Taro.showToast({ title: res.data?.message || '获取任务失败', icon: 'none' })
       }
@@ -78,13 +87,19 @@ export default function OrderAcceptTask() {
       console.error('[接单任务] 获取失败:', error)
       Taro.showToast({ title: '获取任务失败', icon: 'none' })
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 
   useEffect(() => {
     fetchTaskView()
   }, [requestId])
+
+  useEffect(() => {
+    if (!requestId || !isAiTextGenerating) return
+    const timer = setInterval(() => fetchTaskView(true), 2000)
+    return () => clearInterval(timer)
+  }, [requestId, isAiTextGenerating])
 
   const saveStepResult = async (step: TaskStep, valueType: string, value: any) => {
     const stepId = step.id
@@ -332,6 +347,17 @@ export default function OrderAcceptTask() {
 
   const renderStepContent = (step: TaskStep) => {
     const stepType = getStepType(step)
+
+    if (stepType === 'material_text' && isAiTextGenerating) {
+      return (
+        <View className="accept-ai-box">
+          <Text className="accept-ai-text">
+            {textMaterial?.status === 'generating' ? 'AI 正在生成文字素材，请稍候...' : '文字素材已进入生成队列，请稍候...'}
+          </Text>
+        </View>
+      )
+    }
+
     const mainContent = getMainContent(step)
     const mediaList = getMediaList(step)
     const extConfig = getExtConfig(step)
@@ -469,7 +495,7 @@ export default function OrderAcceptTask() {
           </View>
         )}
       </ScrollView>
-      {!previewOnly && (
+      {!previewOnly && !isAiTextGenerating && (
         <View
           className="accept-bottom-bar"
           style={{ position: 'fixed', display: 'flex' }}

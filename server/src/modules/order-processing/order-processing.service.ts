@@ -8,6 +8,7 @@ import { WechatSubscribeMessageService } from '../notification/wechat-subscribe-
 import { normalizeFulfillmentStatus } from '../order/order-status'
 import { RedisService } from '../redis/redis.service'
 import { console } from 'inspector'
+import { ContentGenerationService } from '../content-generation/content-generation.service'
 
 const URGE_ACCEPTANCE_COOLDOWN_MS = 60 * 60 * 1000
 const lastUrgeAcceptanceAt = new Map<string, number>()
@@ -24,7 +25,8 @@ export class OrderProcessingService {
     @Inject(RedisService)
     private readonly redisService: RedisService,
     @Inject(WechatSubscribeMessageService)
-    private readonly wechatSubscribeService: WechatSubscribeMessageService
+    private readonly wechatSubscribeService: WechatSubscribeMessageService,
+    private readonly contentGenerationService: ContentGenerationService
   ) {}
 
   /**
@@ -369,6 +371,64 @@ export class OrderProcessingService {
     })
   }
 
+  private async updateRequestConfig(requestId: string, config: Record<string, any>): Promise<void> {
+    const db = getMySQLClient()
+    await db.query(
+      'UPDATE content_generation_requests SET config = ?, updated_at = NOW() WHERE id = ?',
+      [JSON.stringify(config || {}), requestId]
+    )
+  }
+
+  private async ensureAiTextMaterial(record: any, config: Record<string, any>, assignedMaterials: Record<string, any>): Promise<Record<string, any>> {
+    const textMaterial = assignedMaterials?.text
+    if (!textMaterial || textMaterial.sourceMode !== 'ai_prompt_only') return assignedMaterials
+    if (textMaterial.status === 'completed' || textMaterial.status === 'generating' || textMaterial.status === 'pending') return assignedMaterials
+
+    const nextAssignedMaterials = {
+      ...assignedMaterials,
+      text: {
+        ...textMaterial,
+        status: 'pending',
+        items: [],
+      },
+    }
+    await this.updateRequestConfig(record.id, { ...config, assignedMaterials: nextAssignedMaterials })
+
+    this.generateAiTextMaterial(record, { ...config, assignedMaterials: nextAssignedMaterials }, nextAssignedMaterials)
+      .catch(err => this.logger.warn(`AI文字素材后台生成失败: ${err?.message || err}`))
+
+    return nextAssignedMaterials
+  }
+
+  private async generateAiTextMaterial(record: any, config: Record<string, any>, assignedMaterials: Record<string, any>): Promise<void> {
+    const textMaterial = assignedMaterials?.text || {}
+    const generatingMaterials = {
+      ...assignedMaterials,
+      text: {
+        ...textMaterial,
+        status: 'generating',
+        items: [],
+      },
+    }
+    await this.updateRequestConfig(record.id, { ...config, assignedMaterials: generatingMaterials })
+
+    const content = await this.contentGenerationService.generateMaterialText({
+      prompt: textMaterial.prompt || '',
+      orderTitle: config.orderTitle || config.title || '',
+      orderDescription: config.orderDescription || config.description || '',
+      platform: record.platform || config.platform || '',
+    })
+    const nextAssignedMaterials = {
+      ...assignedMaterials,
+      text: {
+        ...textMaterial,
+        status: 'completed',
+        items: content ? [{ type: 'text', content }] : [],
+      },
+    }
+    await this.updateRequestConfig(record.id, { ...config, assignedMaterials: nextAssignedMaterials })
+  }
+
   private normalizePlatforms(input: any): string[] {
     if (!input) return []
     if (Array.isArray(input)) {
@@ -594,11 +654,12 @@ export class OrderProcessingService {
     const orderId = record.orderId || record.order_id
     const config = this.parseJsonObject<Record<string, any>>(record.config, {})
     const taskData = await this.orderService.getOrderTaskSteps(orderId)
-    const assignedMaterials = config.assignedMaterials || {
+    let assignedMaterials = config.assignedMaterials || {
       text: { mode: 'shared', items: [], prompt: '' },
       image: { mode: 'shared', items: [], prompt: '' },
       video: { mode: 'shared', items: [], prompt: '' },
     }
+    assignedMaterials = await this.ensureAiTextMaterial(record, config, assignedMaterials)
     const mergedSteps = this.mergeTaskStepsWithMaterials(taskData?.steps || [], taskData?.material, assignedMaterials)
 
     return {

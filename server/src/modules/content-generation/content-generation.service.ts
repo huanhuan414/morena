@@ -195,6 +195,32 @@ export class ContentGenerationService implements OnModuleInit {
     })
   }
 
+  async generateMaterialText(input: {
+    prompt: string
+    orderTitle?: string
+    orderDescription?: string
+    platform?: string
+  }): Promise<string> {
+    const prompt = [
+      '你是专业的商单文字素材创作者，请根据以下要求生成一段可直接发布或复制使用的文字素材。',
+      input.orderTitle ? `订单标题：${input.orderTitle}` : '',
+      input.orderDescription ? `订单说明：${input.orderDescription}` : '',
+      input.platform ? `发布平台：${input.platform}` : '',
+      `素材要求：${input.prompt || ''}`,
+      '只输出文字素材正文，不要输出解释、标题或创作说明。',
+    ].filter(Boolean).join('\n')
+
+    try {
+      return await this.invokeLlm([
+        { role: 'system', content: '你是一个擅长生成中文商单发布素材的内容创作者。' },
+        { role: 'user', content: prompt },
+      ])
+    } catch (err: any) {
+      this.logger.warn(`AI文字素材生成失败: ${err.message}`)
+      return input.prompt || ''
+    }
+  }
+
   /**
    * 模块初始化：已禁用卡住任务自动恢复
    * 原有逻辑：启动时+每5分钟检查创建超过30分钟仍在处理中的任务，智能恢复
