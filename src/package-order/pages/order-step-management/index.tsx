@@ -461,10 +461,13 @@ export default function OrderStepManagement() {
         })
         Taro.showToast({ title: '支付成功', icon: 'success' })
         setTimeout(() => {
-          Taro.navigateTo({ url: `/package-order/pages/order-asset-waiting/index?orderId=${targetOrderId}` })
+          Taro.redirectTo({ url: '/package-order/pages/order-list/index' })
         }, 1500)
       } else {
         Taro.showToast({ title: payload?.message || '创建支付失败', icon: 'none' })
+        setTimeout(() => {
+          Taro.redirectTo({ url: '/package-order/pages/order-list/index' })
+        }, 1500)
       }
     } catch (payErr: any) {
       Taro.hideLoading()
@@ -535,7 +538,7 @@ export default function OrderStepManagement() {
           Taro.showToast({ title: '支付成功', icon: 'success' })
           setShowPayModal(false)
           setTimeout(() => {
-            Taro.navigateTo({ url: `/package-order/pages/order-asset-waiting/index?orderId=${orderId}` })
+            Taro.redirectTo({ url: '/package-order/pages/order-list/index' })
           }, 1500)
         } catch (payErr: any) {
           console.warn('[支付] 结果:', payErr)
@@ -1134,7 +1137,7 @@ export default function OrderStepManagement() {
                 {(modalType === 'input_url' || modalType === 'collect_url') && (
                   <View className="step-modal-field">
                     <Text className="step-modal-field-label">
-                      {modalType === 'input_url' ? '输入网址' : '链接地址'}
+                      {modalType === 'input_url' ? '输入网址' : '链接示例'}
                     </Text>
                     <View className="step-modal-input-wrap">
                       <Input

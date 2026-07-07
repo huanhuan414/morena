@@ -313,23 +313,23 @@ export default function OrderAcceptTask() {
     return (
       <View className="accept-material-grid">
         {items.map((item, index) => (
-          <View key={`${step.id}-${index}`} className="accept-material-item">
+          <View key={`${step.id}-${index}`} className={item.type === 'text' ? 'accept-material-box' : 'accept-material-item'}>
             {item.type === 'text' && (
-              <>
-                <Text className="accept-material-text">{item.content}</Text>
+              <View className="accept-copy-box">
+                <Text className="accept-copy-text">{item.content}</Text>
                 {!previewOnly && extConfig.copy_button_text && (
-                  <Button variant="outline" className="accept-mini-btn" onClick={() => copyText(item.content)}>
-                    <Text className="accept-mini-btn-text">{extConfig.copy_button_text}</Text>
+                  <Button className="accept-copy-btn" onClick={() => copyText(item.content)}>
+                    <Text className="accept-copy-btn-text">{extConfig.copy_button_text}</Text>
                   </Button>
                 )}
-              </>
+              </View>
             )}
             {item.type === 'image' && (
               <>
                 <Image src={item.content} className="accept-material-image" mode="aspectFill" />
                 {!previewOnly && extConfig.save_button_image && (
-                  <Button className="accept-mini-btn accept-material-action" onClick={() => handleSaveImage(item.content)}>
-                    <Text className="accept-action-btn-text">{extConfig.save_button_image}</Text>
+                  <Button className="accept-material-btn accept-material-btn-save accept-material-action" onClick={() => handleSaveImage(item.content)}>
+                    <Text className="accept-material-btn-text">{extConfig.save_button_image}</Text>
                   </Button>
                 )}
               </>
@@ -338,8 +338,8 @@ export default function OrderAcceptTask() {
               <>
                 <Video src={item.content} className="accept-material-video" controls />
                 {!previewOnly && extConfig.save_button_video && (
-                  <Button className="accept-mini-btn accept-material-action" onClick={() => handleSaveVideo(item.content)}>
-                    <Text className="accept-action-btn-text">{extConfig.save_button_video}</Text>
+                  <Button className="accept-material-btn accept-material-btn-save accept-material-action" onClick={() => handleSaveVideo(item.content)}>
+                    <Text className="accept-material-btn-text">{extConfig.save_button_video}</Text>
                   </Button>
                 )}
               </>
@@ -357,7 +357,7 @@ export default function OrderAcceptTask() {
       return (
         <View className="accept-ai-box">
           <Text className="accept-ai-text">
-            {textMaterial?.status === 'generating' ? 'AI 正在生成文字素材，请稍候...' : '文字素材已进入生成队列，请稍候...'}
+            {textMaterial?.status === 'generating' ? 'AI 生成中...' : 'AI 排队中...'}
           </Text>
         </View>
       )
@@ -373,7 +373,7 @@ export default function OrderAcceptTask() {
     return (
       <>
         {step.isMaterial && renderMaterialContent(step, extConfig)}
-        {mainContent && ['input_url', 'collect_url'].includes(stepType) && (
+        {mainContent && ['input_url'].includes(stepType) && (
           <View className="accept-url-box">
             <Text className="accept-url-text">{mainContent}</Text>
             <View className="accept-action-row">
@@ -395,13 +395,13 @@ export default function OrderAcceptTask() {
           <View className="accept-copy-box">
             <Text className="accept-copy-text">{mainContent}</Text>
             {!previewOnly && extConfig.copy_button_text && (
-              <Button className="accept-action-btn" onClick={() => copyText(mainContent)}>
-                <Text className="accept-action-btn-text">{extConfig.copy_button_text}</Text>
+              <Button className="accept-copy-btn" onClick={() => copyText(mainContent)}>
+                <Text className="accept-copy-btn-text">{extConfig.copy_button_text}</Text>
               </Button>
             )}
           </View>
         )}
-        {sampleImage && <Image src={sampleImage} className="accept-image" mode="widthFix" />}
+        {sampleImage && !stepType.includes('collect_image') && <Image src={sampleImage} className="accept-image" mode="widthFix" />}
         {!previewOnly && sampleImage && extConfig.save_button_image && (
           <Button className="accept-action-btn" onClick={() => handleSaveImage(sampleImage)}>
             <Text className="accept-action-btn-text">{extConfig.save_button_image}</Text>
@@ -415,47 +415,93 @@ export default function OrderAcceptTask() {
         )}
         {stepType === 'collect_image' && (
           <View className="accept-collect-box">
-            <View className="accept-upload" onClick={() => !previewOnly && handleUploadImage(step)}>
-              {Array.isArray(result.value) && result.value[0] ? (
-                <Image src={result.value[0]} className="accept-uploaded-image" mode="widthFix" />
-              ) : previewOnly ? (
-                <Text className="accept-copy-text">暂无收集图片</Text>
-              ) : (
-                !previewOnly && extConfig.upload_button_image && (
-                  <View className="accept-upload-placeholder">
-                    <Camera size={40} color="#1677ff" />
-                    <Text className="accept-upload-text">{extConfig.upload_button_image}</Text>
-                  </View>
-                )
-              )}
+            <View className="accept-collect-grid">
+              <View className="accept-collect-item">
+                {sampleImage ? (
+                  <>
+                    <Image src={sampleImage} className="accept-collect-sample" mode="widthFix" onClick={() => Taro.previewImage({ urls: [sampleImage], current: sampleImage })} />
+                    <Text className="accept-collect-label">示例图片</Text>
+                  </>
+                ) : (
+                  <Text className="accept-copy-text">暂无示例图片</Text>
+                )}
+              </View>
+              <View className="accept-collect-item">
+                <View className="accept-upload" onClick={() => !previewOnly && handleUploadImage(step)}>
+                  {Array.isArray(result.value) && result.value[0] ? (
+                    <Image src={result.value[0]} className="accept-uploaded-image" mode="widthFix" />
+                  ) : previewOnly ? (
+                    <Text className="accept-copy-text">暂无收集图片</Text>
+                  ) : (
+                    !previewOnly && extConfig.upload_button_image && (
+                      <View className="accept-upload-placeholder">
+                        <Camera size={40} color="#1677ff" />
+                        <Text className="accept-upload-text">{extConfig.upload_button_image}</Text>
+                      </View>
+                    )
+                  )}
+                </View>
+              </View>
             </View>
           </View>
         )}
         {stepType === 'collect_info' && previewOnly && (
-          <View className="accept-copy-box">
-            <Text className="accept-copy-text">{result.value || '暂无收集信息'}</Text>
-          </View>
+          <>
+            {mainContent && (
+              <View className="accept-example-row">
+                <Text className="accept-example-label">示例：</Text>
+                <Text className="accept-example-text">{mainContent}</Text>
+              </View>
+            )}
+            <View className="accept-info-preview">
+              <Text className="accept-info-preview-text">{result.value || '暂无收集信息'}</Text>
+            </View>
+          </>
         )}
         {stepType === 'collect_info' && !previewOnly && (
-          <Input
-            className="accept-input"
-            placeholder="请输入需要提交的信息"
-            value={result.value || ''}
-            onInput={(event) => saveStepResult(step, 'text', event.detail.value)}
-          />
+          <>
+            {mainContent && (
+              <View className="accept-example-row" onClick={() => copyText(mainContent)}>
+                <Text className="accept-example-label">示例：</Text>
+                <Text className="accept-example-text">{mainContent}</Text>
+              </View>
+            )}
+            <Input
+              className="accept-input"
+              placeholder="请提供商家要求的收集信息"
+              value={result.value || ''}
+              onInput={(event) => saveStepResult(step, 'text', event.detail.value)}
+            />
+          </>
         )}
         {stepType === 'collect_url' && previewOnly && (
-          <View className="accept-url-box">
-            <Text className="accept-url-text">{result.value || '暂无收集链接'}</Text>
-          </View>
+          <>
+            {mainContent && (
+              <View className="accept-example-row">
+                <Text className="accept-example-label">示例链接：</Text>
+                <Text className="accept-example-text">{mainContent}</Text>
+              </View>
+            )}
+            <View className="accept-url-box">
+              <Text className="accept-url-text">{result.value || '暂无收集链接'}</Text>
+            </View>
+          </>
         )}
         {stepType === 'collect_url' && !previewOnly && (
-          <Input
-            className="accept-input"
-            placeholder="请输入提交链接"
-            value={result.value || ''}
-            onInput={(event) => saveStepResult(step, 'url', event.detail.value)}
-          />
+          <>
+            {mainContent && (
+              <View className="accept-example-row" onClick={() => copyText(mainContent)}>
+                <Text className="accept-example-label">示例链接：</Text>
+                <Text className="accept-example-text">{mainContent}</Text>
+              </View>
+            )}
+            <Input
+              className="accept-input"
+              placeholder="请提供商家要求的收集链接"
+              value={result.value || ''}
+              onInput={(event) => saveStepResult(step, 'url', event.detail.value)}
+            />
+          </>
         )}
       </>
     )
