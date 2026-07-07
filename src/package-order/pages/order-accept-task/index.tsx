@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import Taro, { useRouter } from '@tarojs/taro'
 import { Image, ScrollView, Text, Video, View } from '@tarojs/components'
-import { ArrowLeft, Camera, ExternalLink } from 'lucide-react-taro'
+import { ArrowLeft, Camera, ExternalLink, ShieldAlert } from 'lucide-react-taro'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Network } from '@/network'
@@ -63,6 +63,7 @@ export default function OrderAcceptTask() {
   const [steps, setSteps] = useState<TaskStep[]>([])
   const [stepResults, setStepResults] = useState<Record<string, any>>({})
   const [assignedMaterials, setAssignedMaterials] = useState<Record<string, AssignedMaterialGroup & { status?: string }>>({})
+  const [revisionReason, setRevisionReason] = useState<string>('')
   const previewOnly = PREVIEW_ONLY_STATUSES.includes(taskStatus)
   const textMaterial = assignedMaterials.text
   const isAiTextGenerating = textMaterial?.sourceMode === 'ai_prompt_only' && textMaterial?.status !== 'completed'
@@ -80,6 +81,10 @@ export default function OrderAcceptTask() {
         setTaskStatus(data.request?.status || data.status || '')
         setStepResults(data.stepResults || {})
         setAssignedMaterials(data.assignedMaterials || {})
+        // 获取整改原因
+        const publishFeedback = data.publishFeedback || data.publish_feedback || {}
+        const reason = publishFeedback.rejectReason || publishFeedback.reject_reason || ''
+        setRevisionReason(reason)
       } else {
         Taro.showToast({ title: res.data?.message || '获取任务失败', icon: 'none' })
       }
@@ -492,6 +497,17 @@ export default function OrderAcceptTask() {
                 </View>
               ))}
             </View>
+
+            {/* 整改内容 - 仅 revision_requested 状态显示 */}
+            {taskStatus === 'revision_requested' && revisionReason && (
+              <View className="accept-revision-box">
+                <View className="accept-revision-header">
+                  <ShieldAlert size={18} color="#EA580C" />
+                  <Text className="accept-revision-title">整改要求</Text>
+                </View>
+                <Text className="accept-revision-text">{revisionReason}</Text>
+              </View>
+            )}
           </View>
         )}
       </ScrollView>

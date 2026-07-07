@@ -304,3 +304,33 @@
   color: #ffffff;
   font-weight: 700;
 }
+
+/* 整改要求样式 */
+.accept-revision-box {
+  background: #FFF7ED;
+  border: 1px solid #FED7AA;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-top: 22rpx;
+  margin-bottom: 140rpx;
+}
+
+.accept-revision-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.accept-revision-title {
+  margin-left: 8rpx;
+  color: #C2410C;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.accept-revision-text {
+  display: block;
+  color: #C2410C;
+  font-size: 26rpx;
+  line-height: 40rpx;
+}

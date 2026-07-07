@@ -675,6 +675,7 @@ export class OrderProcessingService {
       steps: mergedSteps,
       assignedMaterials,
       stepResults: config.stepResults || {},
+      publishFeedback: this.parseJsonObject(record.publishFeedback || record.publish_feedback, {}),
       config,
     }
   }

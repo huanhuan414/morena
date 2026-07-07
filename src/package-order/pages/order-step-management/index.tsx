@@ -49,6 +49,7 @@ const STEP_EXT_CONFIG: Record<string, Record<string, string>> = {
 }
 
 const MATERIAL_TYPES = ['material_text', 'material_image', 'material_video']
+const ACCEPTANCE_STEP_TYPES = ['collect_image', 'collect_info', 'collect_url']
 
 const transformTaskSteps = (steps: any[], materialRecord: any): StepItem[] => {
   return steps.map((row) => {
@@ -368,6 +369,10 @@ export default function OrderStepManagement() {
   const handlePublish = async () => {
     if (steps.length === 0) {
       Taro.showToast({ title: '请至少添加一个步骤', icon: 'none' })
+      return
+    }
+    if (!steps.some(step => ACCEPTANCE_STEP_TYPES.includes(step.type))) {
+      Taro.showToast({ title: '请至少添加一个验收内容步骤', icon: 'none' })
       return
     }
     if (!orderId) {
