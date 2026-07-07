@@ -382,6 +382,43 @@
   margin-top: 12rpx;
 }
 
+.accept-qrcode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16rpx;
+}
+
+.accept-qrcode-item {
+  background: #f8fafc;
+  border-radius: 12rpx;
+  padding: 16rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.accept-qrcode-image {
+  width: 100%;
+  max-width: 280rpx;
+  border-radius: 10rpx;
+}
+
+.accept-qrcode-scan {
+  width: 100%;
+  height: 280rpx;
+  border: 2rpx dashed #cbd5e1;
+  border-radius: 10rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.accept-qrcode-scan-text {
+  font-size: 26rpx;
+  color: #9ca3af;
+}
+
 .accept-example-row {
   background: #fef3c7;
   border-radius: 12rpx;
@@ -406,7 +443,9 @@
 }
 
 .accept-info-preview {
-  padding: 16rpx 0;
+  background: #f3f4f6;
+  border-radius: 12rpx;
+  padding: 18rpx 20rpx;
 }
 
 .accept-info-preview-text {

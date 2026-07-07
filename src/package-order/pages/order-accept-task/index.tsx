@@ -401,8 +401,22 @@ export default function OrderAcceptTask() {
             )}
           </View>
         )}
-        {sampleImage && !stepType.includes('collect_image') && <Image src={sampleImage} className="accept-image" mode="widthFix" />}
-        {!previewOnly && sampleImage && extConfig.save_button_image && (
+        {sampleImage && stepType === 'upload_qrcode' && (
+          <View className="accept-qrcode-grid">
+            <View className="accept-qrcode-item">
+              <Image src={sampleImage} className="accept-qrcode-image" mode="widthFix" onClick={() => Taro.previewImage({ urls: [sampleImage], current: sampleImage })} />
+              <View className="accept-qrcode-item">
+                {!previewOnly && extConfig.save_button_image && (
+                  <Button className="accept-action-btn" onClick={() => handleSaveImage(sampleImage)}>
+                    <Text className="accept-action-btn-text">{extConfig.save_button_image}</Text>
+                  </Button>
+                )}
+              </View>
+            </View>
+          </View>
+        )}
+        {sampleImage && !stepType.includes('collect_image') && stepType !== 'upload_qrcode' && <Image src={sampleImage} className="accept-image" mode="widthFix" />}
+        {!previewOnly && sampleImage && extConfig.save_button_image && stepType !== 'upload_qrcode' && (
           <Button className="accept-action-btn" onClick={() => handleSaveImage(sampleImage)}>
             <Text className="accept-action-btn-text">{extConfig.save_button_image}</Text>
           </Button>
@@ -454,7 +468,7 @@ export default function OrderAcceptTask() {
               </View>
             )}
             <View className="accept-info-preview">
-              <Text className="accept-info-preview-text">{result.value || '暂无收集信息'}</Text>
+              <Text className="accept-info-preview-text">{result.value}</Text>
             </View>
           </>
         )}
@@ -483,7 +497,7 @@ export default function OrderAcceptTask() {
               </View>
             )}
             <View className="accept-url-box">
-              <Text className="accept-url-text">{result.value || '暂无收集链接'}</Text>
+              <Text className="accept-url-text">{result.value}</Text>
             </View>
           </>
         )}
