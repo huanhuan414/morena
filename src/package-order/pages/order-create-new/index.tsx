@@ -115,7 +115,9 @@ export default function OrderCreate() {
   const [customAcceptTimeoutInput, setCustomAcceptTimeoutInput] = useState('')
   const aiPollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [orderId, setOrderId] = useState('')
+  const orderIdRef = useRef('')
   const submittedPayloadRef = useRef('')
+  const submitLockRef = useRef(false)
 
   // 格式化接单超时显示
   const formatAcceptTimeout = (minutes: number): string => {
@@ -180,6 +182,7 @@ export default function OrderCreate() {
         const res = await Network.request({ url: `/api/order/${routeOrderId}` })
         const data = res.data?.data
         if (data) {
+          orderIdRef.current = routeOrderId
           setOrderId(routeOrderId)
           const savedPayload: Record<string, any> = {
             title: data.title || '',
@@ -222,8 +225,7 @@ export default function OrderCreate() {
         console.error('加载订单数据失败:', e)
       }
     } else {
-      setOrderId('')
-      submittedPayloadRef.current = ''
+      // Keep the order id created in this page when returning from the next step.
     }
   })
   // ========== 素材上传相关 ==========
@@ -477,20 +479,31 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
     Taro.navigateTo({ url: `${STEP_PAGE_URL}?orderId=${encodeURIComponent(nextOrderId)}` })
   }
   const handleSubmit = async () => {
+    if (submitLockRef.current || isSubmitting) return
     if (!validateForm()) return
+    submitLockRef.current = true
     const payload = buildOrderPayload()
     const nextSnapshot = stringifyPayload(payload)
+    const draft = Taro.getStorageSync(DRAFT_STORAGE_KEY)
+    const draftOrderId = draft?.orderId ? String(draft.orderId) : ''
+    const draftSnapshot = draftOrderId && draft?.payload ? stringifyPayload(draft.payload) : ''
+    const effectiveOrderId = orderId || orderIdRef.current || (draftSnapshot === nextSnapshot ? draftOrderId : '')
+    const submittedSnapshot = submittedPayloadRef.current || draftSnapshot
 
-    if (orderId && submittedPayloadRef.current === nextSnapshot) {
-      goStepManagement(orderId, payload)
+    if (effectiveOrderId && submittedSnapshot === nextSnapshot) {
+      orderIdRef.current = effectiveOrderId
+      setOrderId(effectiveOrderId)
+      submittedPayloadRef.current = submittedSnapshot
+      goStepManagement(effectiveOrderId, payload)
+      submitLockRef.current = false
       return
     }
 
     setIsSubmitting(true)
     try {
-      if (orderId) {
+      if (effectiveOrderId) {
         const res = await Network.request({
-          url: `/api/order/${orderId}`,
+          url: `/api/order/${effectiveOrderId}`,
           method: 'PUT',
           data: payload,
         })
@@ -499,8 +512,10 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           Taro.showToast({ title: Network.getMsg(data, '更新订单失败'), icon: 'none' })
           return
         }
+        orderIdRef.current = effectiveOrderId
+        setOrderId(effectiveOrderId)
         submittedPayloadRef.current = nextSnapshot
-        goStepManagement(orderId, payload)
+        goStepManagement(effectiveOrderId, payload)
         return
       }
       const ires = await Network.request({
@@ -511,6 +526,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
       const data = ires?.data
       const nextOrderId = data?.data?.id
       if (data?.code === 200 && nextOrderId) {
+        orderIdRef.current = nextOrderId
         setOrderId(nextOrderId)
         submittedPayloadRef.current = nextSnapshot
         goStepManagement(nextOrderId, payload)
@@ -521,6 +537,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
       console.error('创建订单失败:', err)
       Taro.showToast({ title: err?.message || '网络错误，请重试', icon: 'none' })
     } finally {
+      submitLockRef.current = false
       setIsSubmitting(false)
     }
   }
