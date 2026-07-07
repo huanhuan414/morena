@@ -428,7 +428,7 @@ export class OrderService {
     
     const orderRows = await db.query(
       `SELECT id, user_id, avatar_id, title, description, content_type, accept_regions,
-       platforms, requirements, budget, base_amount, content_amount, price, status, result, created_at, updated_at,
+       platforms, platform, requirements, budget, base_amount, content_amount, price, status, result, created_at, updated_at,
        completed_at, latitude, longitude, location_text, target_audience,
        expected_quantity, deadline, order_type, priority, assigned_to,
        avatar_count, quantity_per_avatar, is_paid, acceptance_timeout, accept_timeout, personality
@@ -545,6 +545,7 @@ export class OrderService {
       title: order.title,
       description: order.description,
       contentType: order.contentType,
+      platform: order.platform || '',
       acceptRegions: typeof order.acceptRegions === 'string' 
         ? JSON.parse(order.acceptRegions) 
         : (order.acceptRegions || []),

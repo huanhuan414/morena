@@ -129,6 +129,33 @@ const EVENT_LABELS: Record<string, string> = {
   timeout: '派单超时',
 }
 
+const COLLECT_STEP_TYPES = ['collect_info', 'collect_url', 'collect_image']
+const FEEDBACK_METADATA_KEYS = [
+  'rejectreason', 'reject_reason',
+  'revisionhistory', 'revision_history',
+  'status',
+  'feedback_submitted_at', 'submitted_at',
+  'revision_count',
+  'stepresults', 'step_results',
+  'tasksubmittedat', 'task_submitted_at',
+]
+
+const getSpecialTaskRequestId = (avatar: any) => avatar?.requestId || avatar?.request_id || ''
+
+const getSpecialStepResult = (stepResults: Record<string, any>, step: any) => (
+  stepResults?.[String(step?.id)] || stepResults?.[step?.id] || {}
+)
+
+const getSpecialResultValue = (result: any) => {
+  if (result && typeof result === 'object' && 'value' in result) return result.value
+  return result
+}
+
+const getSpecialResultImages = (value: any) => {
+  if (Array.isArray(value)) return value.filter(Boolean)
+  return value ? [value] : []
+}
+
 function formatTime(dateStr: string, addSeconds = 0): string {
   if (!dateStr) return ''
   try {
@@ -163,6 +190,12 @@ export default function OrderDetailPage() {
   const [selectedAvatar, setSelectedAvatar] = useState<any>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogTab, setDialogTab] = useState('content')
+  const [rawOrderPlatform, setRawOrderPlatform] = useState('')
+  const [specialTaskView, setSpecialTaskView] = useState<{ loading: boolean; steps: any[]; stepResults: Record<string, any> }>({
+    loading: false,
+    steps: [],
+    stepResults: {},
+  })
   const [assetSummary, setAssetSummary] = useState<{ total: number; ready: number; generating: number; failed: number; images: number; videos: number; user_uploaded: number; ai_generated: number } | null>(null)
   const [assetImages, setAssetImages] = useState<string[]>([])
   const [assetVideos, setAssetVideos] = useState<string[]>([])
@@ -254,6 +287,7 @@ export default function OrderDetailPage() {
       ])
       const orderData = normalizeOrderDetail(orderRes.data?.data)
       setOrder(orderData)
+      setRawOrderPlatform(orderRes.data?.data?.platform || '')
       // 设置静默时间配置
       if (orderRes.data?.data?.silenceDurationMs) {
         setSilenceDurationMs(orderRes.data.data.silenceDurationMs)
@@ -458,11 +492,36 @@ export default function OrderDetailPage() {
     Taro.navigateTo({ url: `/package-order/pages/order-acceptance/index?orderId=${orderId}` })
   }, [orderId])
 
-  const openAvatarDetail = useCallback((avatar: any) => {
+  const openAvatarDetail = useCallback(async (avatar: any) => {
     setSelectedAvatar(avatar)
     setDialogTab('content')
     setDialogOpen(true)
-  }, [])
+    setSpecialTaskView({ loading: false, steps: [], stepResults: {} })
+
+    const isSpecialOrder = rawOrderPlatform === 'special' || (order?.platforms || []).includes('special')
+    const requestId = getSpecialTaskRequestId(avatar)
+    if (!isSpecialOrder || !requestId) return
+
+    setSpecialTaskView(prev => ({ ...prev, loading: true }))
+    try {
+      const res = await Network.request({ url: `/api/order-processing/${requestId}/task-view` })
+      const data = res.data?.data || {}
+      if (res.data?.code === 200) {
+        setSpecialTaskView({
+          loading: false,
+          steps: Array.isArray(data.steps) ? data.steps : [],
+          stepResults: data.stepResults || data.step_results || {},
+        })
+      } else {
+        setSpecialTaskView({ loading: false, steps: [], stepResults: {} })
+        Taro.showToast({ title: res.data?.message || '收集信息加载失败', icon: 'none' })
+      }
+    } catch (error) {
+      console.error('[OrderDetail] special task view error:', error)
+      setSpecialTaskView({ loading: false, steps: [], stepResults: {} })
+      Taro.showToast({ title: '收集信息加载失败', icon: 'none' })
+    }
+  }, [order?.platforms, rawOrderPlatform])
 
   if (loading) {
     return (
@@ -891,7 +950,13 @@ export default function OrderDetailPage() {
               const contentTypeLabel = CONTENT_TYPE_MAP[av.contentType]?.label || av.contentType || '内容'
               const avatarStatusCfg = STATUS_CONFIG[avatarStatus] || { label: avatarStatus, color: '#9CA3AF', bgColor: '#F9FAFB' }
               const previewCount = (av.content ? 1 : 0) + avatarImages.length + avatarVideoUrls.length
-              const feedbackPlatformCount = hasFeedback ? Object.keys(publishFeedback).length : 0
+              const feedbackPlatformKeys = hasFeedback
+                ? Object.keys(publishFeedback).filter(key => !FEEDBACK_METADATA_KEYS.includes(key.toLowerCase()))
+                : []
+              const feedbackPlatformCount = feedbackPlatformKeys.length
+              const isSpecialOrder = rawOrderPlatform === 'special' || (order?.platforms || []).includes('special')
+              const specialSteps = specialTaskView.steps.filter(step => COLLECT_STEP_TYPES.includes(step.step_type || step.stepType))
+              const specialPreviewCount = specialSteps.length
 
               return (
                 <View className="od-dialog-body">
@@ -941,14 +1006,15 @@ export default function OrderDetailPage() {
                         >
                           <FileText size={14} color={dialogTab === 'content' ? '#6366F1' : '#9CA3AF'} />
                           <Text className="block od-dialog-tab-text" style={{ color: dialogTab === 'content' ? '#6366F1' : '#6B7280' }}>
-                            生成内容
+                            {isSpecialOrder ? '收集信息' : '生成内容'}
                           </Text>
-                          {previewCount > 0 && (
+                          {(isSpecialOrder ? specialPreviewCount : previewCount) > 0 && (
                             <View className="od-dialog-tab-badge">
-                              <Text className="block od-dialog-tab-badge-text">{previewCount}</Text>
+                              <Text className="block od-dialog-tab-badge-text">{isSpecialOrder ? specialPreviewCount : previewCount}</Text>
                             </View>
                           )}
                         </View>
+                        {!isSpecialOrder && (
                         <View
                           className={`od-dialog-tab-item ${dialogTab === 'feedback' ? 'od-dialog-tab-active' : ''}`}
                           onClick={() => setDialogTab('feedback')}
@@ -963,12 +1029,85 @@ export default function OrderDetailPage() {
                             </View>
                           )}
                         </View>
+                        )}
                       </View>
 
                       {/* 内容区域 */}
                       <ScrollView scrollY className="od-dialog-scroll">
                         {dialogTab === 'content' && (
                           <View className="od-dialog-content-inner">
+                            {isSpecialOrder ? (
+                              <>
+                                {specialTaskView.loading && (
+                                  <View className="od-dialog-empty">
+                                    <Loader size={28} color="#6366F1" />
+                                    <Text className="block od-dialog-empty-text">收集信息加载中</Text>
+                                  </View>
+                                )}
+                                {!specialTaskView.loading && specialSteps.map((step: any) => {
+                                  const stepType = step.step_type || step.stepType
+                                  const result = getSpecialStepResult(specialTaskView.stepResults, step)
+                                  const value = getSpecialResultValue(result)
+                                  const images = getSpecialResultImages(value)
+                                  const textValue = Array.isArray(value) ? value.filter(Boolean).join('\n') : String(value || '')
+                                  return (
+                                    <View key={step.id} className="od-dialog-card">
+                                      <View className="od-dialog-card-header">
+                                        <View className="od-dialog-card-icon-wrap" style={{ backgroundColor: stepType === 'collect_image' ? '#FEF3C7' : '#EEF2FF' }}>
+                                          {stepType === 'collect_image' ? <ImageIcon size={14} color="#F59E0B" /> : <FileText size={14} color="#6366F1" />}
+                                        </View>
+                                        <Text className="block od-dialog-card-title">{step.step_title || step.stepTitle || '收集信息'}</Text>
+                                      </View>
+                                      {(step.step_desc || step.stepDesc) && (
+                                        <View className="od-dialog-markdown-body" style={{ marginBottom: '12rpx' }}>
+                                          <Text className="block" style={{ fontSize: '13px', color: '#6B7280', lineHeight: 1.6 }}>
+                                            {step.step_desc || step.stepDesc}
+                                          </Text>
+                                        </View>
+                                      )}
+                                      {stepType === 'collect_image' ? (
+                                        images.length > 0 ? (
+                                          <View className="od-dialog-images-grid">
+                                            {images.map((img: string, imgIdx: number) => (
+                                              <View key={imgIdx} className="od-dialog-img-wrap">
+                                                <Image
+                                                  src={img}
+                                                  className="od-dialog-img-thumb"
+                                                  mode="aspectFill"
+                                                  onClick={() => Taro.previewImage({ current: img, urls: images })}
+                                                />
+                                              </View>
+                                            ))}
+                                          </View>
+                                        ) : (
+                                          <Text className="block od-dialog-empty-sub">暂无收集图片</Text>
+                                        )
+                                      ) : textValue ? (
+                                        <View
+                                          className="od-dialog-markdown-body"
+                                          onClick={() => Taro.setClipboardData({ data: textValue, success: () => Taro.showToast({ title: '已复制', icon: 'success' }) })}
+                                        >
+                                          <Text className="block" style={{ fontSize: '14px', color: '#1F2937', lineHeight: 1.6, wordBreak: 'break-all' }}>
+                                            {textValue}
+                                          </Text>
+                                        </View>
+                                      ) : (
+                                        <Text className="block od-dialog-empty-sub">暂无收集内容</Text>
+                                      )}
+                                    </View>
+                                  )
+                                })}
+                                {!specialTaskView.loading && specialSteps.length === 0 && (
+                                  <View className="od-dialog-empty">
+                                    <View className="od-dialog-empty-icon-wrap">
+                                      <FileText size={32} color="#D1D5DB" />
+                                    </View>
+                                    <Text className="block od-dialog-empty-text">暂无收集信息</Text>
+                                  </View>
+                                )}
+                              </>
+                            ) : (
+                              <>
                             {/* 文案内容 - Markdown 渲染 */}
                             {av.content && (
                               <View className="od-dialog-card">
@@ -1051,13 +1190,15 @@ export default function OrderDetailPage() {
                                 <Text className="block od-dialog-empty-sub">内容生成后将在此展示</Text>
                               </View>
                             )}
+                              </>
+                            )}
                           </View>
                         )}
 
                         {dialogTab === 'feedback' && (
                           <View className="od-dialog-content-inner">
                             {hasFeedback ? (
-                              Object.keys(publishFeedback).map(platformKey => {
+                              feedbackPlatformKeys.map(platformKey => {
                                 const pf = publishFeedback[platformKey]
                                 if (!pf || typeof pf !== 'object') return null
                                 const pName = PLATFORM_MAP[platformKey] || platformKey

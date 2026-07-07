@@ -48,6 +48,22 @@ function formatNumber(num: number): string {
   return num.toString()
 }
 
+const COLLECT_STEP_TYPES = ['collect_info', 'collect_url', 'collect_image']
+
+const getSpecialStepResult = (stepResults: Record<string, any>, step: any) => (
+  stepResults?.[String(step?.id)] || stepResults?.[step?.id] || {}
+)
+
+const getSpecialResultValue = (result: any) => {
+  if (result && typeof result === 'object' && 'value' in result) return result.value
+  return result
+}
+
+const getSpecialResultImages = (value: any) => {
+  if (Array.isArray(value)) return value.filter(Boolean)
+  return value ? [value] : []
+}
+
 interface AvatarStat {
   requestId?: string
   avatarId: string
@@ -102,6 +118,12 @@ export default function OrderAcceptance() {
     '其他',
   ]
   const [generatedContent, setGeneratedContent] = useState<{ content?: string; images?: string[]; videos?: string[]; status?: string } | null>(null)
+  const [rawOrderPlatform, setRawOrderPlatform] = useState('')
+  const [specialTaskView, setSpecialTaskView] = useState<{ loading: boolean; steps: any[]; stepResults: Record<string, any> }>({
+    loading: false,
+    steps: [],
+    stepResults: {},
+  })
   const [hasPermission, setHasPermission] = useState(true)
   const [acceptanceTimeout, setAcceptanceTimeout] = useState<number>(24)  // 审核超时时间（小时）
   const [countdowns, setCountdowns] = useState<Record<string, { timeoutAt: string; display: string }>>({})  // 各分身的倒计时
@@ -156,6 +178,7 @@ export default function OrderAcceptance() {
       const res = await Network.request({ url: `/api/order/${orderId}` })
       if (res.data?.code === 200 && res.data.data?.summary_stats?.avatarStats) {
         const orderData = res.data.data
+        setRawOrderPlatform(orderData.platform || '')
         const userInfo = Taro.getStorageSync('userInfo')
         const currentUserId = userInfo?.id
         const orderUserId = orderData.userId || orderData.user_id
@@ -229,8 +252,27 @@ export default function OrderAcceptance() {
   const handleSelectAvatar = async (avatar: AvatarStat) => {
     setSelectedAvatar(avatar)
     setGeneratedContent(null)
+    setSpecialTaskView({ loading: false, steps: [], stepResults: {} })
     if (avatar.requestId) {
       try {
+        const isSpecialOrder = rawOrderPlatform === 'special'
+        if (isSpecialOrder) {
+          setSpecialTaskView(prev => ({ ...prev, loading: true }))
+          const res = await Network.request({ url: `/api/order-processing/${avatar.requestId}/task-view` })
+          const data = res.data?.data || {}
+          if (res.data?.code === 200) {
+            setSpecialTaskView({
+              loading: false,
+              steps: Array.isArray(data.steps) ? data.steps : [],
+              stepResults: data.stepResults || data.step_results || {},
+            })
+          } else {
+            setSpecialTaskView({ loading: false, steps: [], stepResults: {} })
+            showToast({ title: res.data?.message || '收集信息加载失败', icon: 'none' })
+          }
+          return
+        }
+
         const res = await Network.request({ url: `/api/content-generation/content/${avatar.requestId}` })
         if (res.data?.code === 200 && res.data.data) {
           const data = res.data.data
@@ -242,6 +284,7 @@ export default function OrderAcceptance() {
           })
         }
       } catch (error) {
+        setSpecialTaskView({ loading: false, steps: [], stepResults: {} })
         console.error('获取生成内容失败:', error)
       }
     }
@@ -383,6 +426,12 @@ export default function OrderAcceptance() {
     }
   }
 
+  void acceptanceTimeout
+  void formatAcceptanceTimeout
+
+  const isSelectedSpecialOrder = rawOrderPlatform === 'special'
+  const specialSteps = specialTaskView.steps.filter(step => COLLECT_STEP_TYPES.includes(step.step_type || step.stepType))
+
   if (loading) {
     return (
       <View className="od-page">
@@ -496,7 +545,7 @@ export default function OrderAcceptance() {
           </View>
 
           {/* 生成内容 */}
-          {generatedContent && (
+          {(isSelectedSpecialOrder || generatedContent) && (
             <View className="od-card">
               <View className="od-stats-header" style={{ marginBottom: 12 }}>
                 <FileText size={16} color="#6366F1" />
@@ -504,7 +553,69 @@ export default function OrderAcceptance() {
               </View>
 
               {/* 文案内容 */}
-              {generatedContent.content && (
+              {isSelectedSpecialOrder ? (
+                <View>
+                  {specialTaskView.loading && (
+                    <View className="od-dialog-empty">
+                      <FileText size={28} color="#6366F1" />
+                      <Text className="block od-dialog-empty-text">收集信息加载中</Text>
+                    </View>
+                  )}
+                  {!specialTaskView.loading && specialSteps.map((step: any) => {
+                    const stepType = step.step_type || step.stepType
+                    const result = getSpecialStepResult(specialTaskView.stepResults, step)
+                    const value = getSpecialResultValue(result)
+                    const images = getSpecialResultImages(value)
+                    const textValue = Array.isArray(value) ? value.filter(Boolean).join('\n') : String(value || '')
+                    return (
+                      <View key={step.id} className="od-card" style={{ marginBottom: 12, padding: 12, boxShadow: 'none', border: '1px solid #F0F0F5' }}>
+                        <View className="od-stats-header" style={{ marginBottom: 8 }}>
+                          {stepType === 'collect_image' ? <ImageIcon size={14} color="#F59E0B" /> : <FileText size={14} color="#6366F1" />}
+                          <Text className="block od-stats-title">{step.step_title || step.stepTitle || '收集信息'}</Text>
+                        </View>
+                        {(step.step_desc || step.stepDesc) && (
+                          <Text className="block" style={{ fontSize: '13px', color: '#6B7280', lineHeight: 1.6, marginBottom: 8 }}>
+                            {step.step_desc || step.stepDesc}
+                          </Text>
+                        )}
+                        {stepType === 'collect_image' ? (
+                          images.length > 0 ? (
+                            <View className="od-images-grid">
+                              {images.map((img: string, idx: number) => (
+                                <Image
+                                  key={idx}
+                                  src={img}
+                                  className="od-preview-image"
+                                  mode="aspectFill"
+                                  onClick={() => handleImagePreview(img)}
+                                />
+                              ))}
+                            </View>
+                          ) : (
+                            <Text className="block" style={{ fontSize: '13px', color: '#9CA3AF' }}>暂无收集图片</Text>
+                          )
+                        ) : textValue ? (
+                          <View
+                            style={{ backgroundColor: '#F9FAFB', borderRadius: 8, padding: 12 }}
+                            onClick={() => Taro.setClipboardData({ data: textValue, success: () => showToast({ title: '已复制', icon: 'success' }) })}
+                          >
+                            <Text className="block" style={{ fontSize: '14px', color: '#1F2937', lineHeight: 1.6, wordBreak: 'break-all' }}>
+                              {textValue}
+                            </Text>
+                          </View>
+                        ) : (
+                          <Text className="block" style={{ fontSize: '13px', color: '#9CA3AF' }}>暂无收集内容</Text>
+                        )}
+                      </View>
+                    )
+                  })}
+                  {!specialTaskView.loading && specialSteps.length === 0 && (
+                    <Text className="block" style={{ fontSize: '13px', color: '#9CA3AF' }}>暂无收集信息</Text>
+                  )}
+                </View>
+              ) : (
+                <>
+              {generatedContent?.content && (
                 <View style={{ marginBottom: 12 }}>
                   <Text className="block" style={{ fontSize: '13px', color: '#6B7280', marginBottom: 4 }}>文案</Text>
                   <View style={{ backgroundColor: '#F9FAFB', borderRadius: 8, padding: 12 }}>
@@ -516,7 +627,7 @@ export default function OrderAcceptance() {
               )}
 
               {/* 图片内容 */}
-              {generatedContent.images && generatedContent.images.length > 0 && (
+              {generatedContent?.images && generatedContent.images.length > 0 && (
                 <View style={{ marginBottom: 12 }}>
                   <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
                     <ImageIcon size={14} color="#6366F1" />
@@ -537,7 +648,7 @@ export default function OrderAcceptance() {
               )}
 
               {/* 视频内容 - 封面卡点击播放 */}
-              {generatedContent.videos && generatedContent.videos.length > 0 && (
+              {generatedContent?.videos && generatedContent.videos.length > 0 && (
                 <View>
                   <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
                     <Video size={14} color="#6366F1" />
@@ -566,6 +677,8 @@ export default function OrderAcceptance() {
                   ))}
                 </View>
               )}
+                </>
+              )}
             </View>
           )}
 
@@ -578,7 +691,9 @@ export default function OrderAcceptance() {
               'revisionhistory', 'revision_history',
               'status',
               'feedback_submitted_at', 'submitted_at',
-              'revision_count'
+              'revision_count',
+              'stepresults', 'step_results',
+              'tasksubmittedat', 'task_submitted_at',
             ]
             const platformEntries = Object.entries(pf).filter(([key, value]) => {
               if (metadataKeys.includes(key.toLowerCase())) return false
@@ -796,7 +911,9 @@ export default function OrderAcceptance() {
                 <Text className="block od-action-text" style={{ color: '#EF4444' }}>驳回</Text>
               </View>
               {(() => {
-                const isPublished = generatedContent?.status === 'awaiting_acceptance'
+                const isPublished = isSelectedSpecialOrder
+                  ? ['awaiting_acceptance', 'feedback_submitted', 'preview'].includes(selectedAvatar.status)
+                  : generatedContent?.status === 'awaiting_acceptance'
                 return isPublished ? (
                   <View className="od-action-btn od-action-primary" onClick={() => setShowApprove(true)}>
                     <CircleCheckBig size={16} color="#fff" />
