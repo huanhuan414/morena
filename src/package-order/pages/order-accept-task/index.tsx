@@ -563,10 +563,9 @@ export default function OrderAcceptTask() {
                     <View className="accept-step-info">
                       {/* <Text className="accept-step-name">{getStepTitle(step)}</Text> */}
                       <Text className="accept-step-name">步骤{getChineseNumber(index + 1)}：{getStepType(step) === 'upload_qrcode' ? '二维码识别' : getStepTitle(step)}</Text>
-
-                      {getStepDesc(step) && <Text className="accept-step-desc">{getStepDesc(step)}</Text>}
                     </View>
                   </View>
+                  <View >{getStepDesc(step) && <Text className="accept-step-desc">{getStepDesc(step)}</Text>}</View>
                   <View className="accept-step-content">
                     {renderStepContent(step)}
                   </View>
