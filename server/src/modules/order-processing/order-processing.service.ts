@@ -1131,10 +1131,10 @@ export class OrderProcessingService {
 
       const requiredCount = (() => {
         const raw =
-          (order as any).expectedQuantity ??
-          (order as any).expected_quantity ??
           (order as any).avatarCount ??
           (order as any).avatar_count ??
+          (order as any).expectedQuantity ??
+          (order as any).expected_quantity ??
           1
         const n = Number(raw)
         return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1
@@ -1190,7 +1190,8 @@ export class OrderProcessingService {
       }
 
       console.log('[结算] 获取用户会员等级抽成比例: orderId=' + orderId + ', userId=' + userId + ', platformFeeRate=' + platformFeeRate + ', customBasePrice=' + customBasePrice)
-      const feeAmount = Number((customBasePrice * (1 - platformFeeRate)).toFixed(2))
+      const priceCents = Math.round(customBasePrice * 100)
+      const feeAmount = Math.round((priceCents * (1 - platformFeeRate))) / 100
       const earningId = randomUUID()
       await db.query(
         `INSERT INTO earnings (id, user_id, type, amount, status, description, avatar_id, order_id, created_at, fee_rate, fee_amount)

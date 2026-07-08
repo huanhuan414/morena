@@ -238,8 +238,8 @@ export class OrderDispatchService {
       const { score, details } = this.calculateMatchScore(req, req)
       const baseAmount = Number(req.base_amount || req.baseAmount || req.budget || 0)
       const expectedQuantity = Number(req.expectedQuantity || req.expected_quantity || 1)
-      const customBasePrice = Number(req.custom_base_price || req.customBasePrice || 0)
-      const expectedEarnings = Number((customBasePrice * (1 - platformFeeRate)).toFixed(2))
+      const customBasePrice = Math.round(Number(req.custom_base_price || req.customBasePrice || 0) * 100)
+      const expectedEarnings = Math.round((customBasePrice * (1 - platformFeeRate)) ) / 100
       
  
       // 计算待接单倒计时文本（兼容下划线和驼峰）

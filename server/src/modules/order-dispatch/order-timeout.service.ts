@@ -69,10 +69,10 @@ export class OrderTimeoutService {
       // 4. 计算单份收益金额
       const requiredCount = (() => {
         const raw =
-          (order as any).expectedQuantity ??
-          (order as any).expected_quantity ??
           (order as any).avatarCount ??
           (order as any).avatar_count ??
+          (order as any).expectedQuantity ??
+          (order as any).expected_quantity ??
           1
         const n = Number(raw)
         return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1
@@ -123,7 +123,8 @@ export class OrderTimeoutService {
       }
 
       // 8. 计算实际收益（扣除平台抽成后）
-      const feeAmount = Number((customBasePrice * (1 - platformFeeRate)).toFixed(2))
+      const priceCents = Math.round(customBasePrice * 100)
+      const feeAmount = Math.round((priceCents * (1 - platformFeeRate))) / 100
       
       // 9. 创建收益记录
       const earningId = uuidv4()
