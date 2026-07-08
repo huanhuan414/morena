@@ -403,15 +403,15 @@ export class ContentGenerationService implements OnModuleInit {
         continue
       }
 
-      // 4. 后台异步执行生成（不 await，让接口立即返回）
-      this.executeGeneration(requestId, platform, {
-        ...input,
-        contentType: effectiveContentType,
-        primarySkill,
-      }).catch(err => {
-        this.logger.error(`后台生成失败: ${err.message}`, err.stack)
-        this.updateStatus(requestId, input.orderId, 'failed', null, err.message)
-      })
+      // // 4. 后台异步执行生成（不 await，让接口立即返回）
+      // this.executeGeneration(requestId, platform, {
+      //   ...input,
+      //   contentType: effectiveContentType,
+      //   primarySkill,
+      // }).catch(err => {
+      //   this.logger.error(`后台生成失败: ${err.message}`, err.stack)
+      //   this.updateStatus(requestId, input.orderId, 'failed', null, err.message)
+      // })
     }
 
     return results
