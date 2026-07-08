@@ -14,10 +14,10 @@ import { ArrowDownToLine, Sparkles, ArrowLeft, X, Info } from 'lucide-react-taro
 import './index.css'
 
 const WITHDRAW_RULES = [
-  '1. 提现额度：最低20元可发起提现，单笔提现无上限。',
+  '1. 提现额度：单笔提现无上限。',
   '2. 提现次数：账号每日提现次数无限制。',
   '3. 申请时间：全天24小时均可提交提现申请。',
-  '4. 审核与到账：提交提现后平台合规审核周期最长7个工作日，审核通过后用户点立即提现后立即到账；若提现失败，资金原路退回可提现余额。'
+  '4. 审核与到账：提交提现后平台合规审核周期最长7个工作日，审核通过后用户点立即提现后立即到账。'
 ]
 
 export default function EarningCenterPage() {
@@ -178,7 +178,7 @@ export default function EarningCenterPage() {
       showToast({ title: `余额不足，当前余额: ${balance.toFixed(2)}元`, icon: 'none' })
       return
     }
-    
+
     // 使用公共验证函数
     // if (!validateWithdrawAmount(amount)) {
     //   return
@@ -405,7 +405,7 @@ export default function EarningCenterPage() {
               <Text className="overview-label">可提现余额</Text>
               <View className="help-btn" onClick={() => setShowRuleModal(true)}>
                 <Info size={20} color="#fbbf24" />
-              </View> 
+              </View>
             </View>
             <View className="balance-wrap">
               <Text className="currency">¥</Text>
@@ -469,16 +469,16 @@ export default function EarningCenterPage() {
       </View>
 
       {/* 提现规则区域 */}
-       {!confirmingWithdraw && (<View className="withdraw-rules-section">
-          <View className="withdraw-rules-card">
-            <View className="withdraw-rules-title">提现规则说明</View>
-            <View className="withdraw-rules-content">
-              {WITHDRAW_RULES.map((rule, index) => (
-                <Text key={index} className="withdraw-rule-text">{rule}</Text>
-              ))}
-            </View>
+      {!confirmingWithdraw && (<View className="withdraw-rules-section">
+        <View className="withdraw-rules-card">
+          <View className="withdraw-rules-title">提现规则说明</View>
+          <View className="withdraw-rules-content">
+            {WITHDRAW_RULES.map((rule, index) => (
+              <Text key={index} className="withdraw-rule-text">{rule}</Text>
+            ))}
           </View>
-        </View>)}
+        </View>
+      </View>)}
 
       {/* 收益明细/提现明细 */}
       <View className="records-section">
@@ -618,13 +618,13 @@ export default function EarningCenterPage() {
                     onInput={(e) => setWithdrawAmount(e.detail.value)}
                   />
                 </View>
-                <View 
-                  className={`withdraw-all-btn ${toNumber(overview.balance) < 20 ? 'disabled' : ''}`} 
+                <View
+                  className={`withdraw-all-btn ${toNumber(overview.balance) < 20 ? 'disabled' : ''}`}
                   onClick={() => toNumber(overview.balance) >= 20 && handleWithdrawAll()}
                 >
                   <Text className="withdraw-all-text">
-                    {toNumber(overview.balance) < 20 
-                      ? `还差${(20 - toNumber(overview.balance)).toFixed(2)}元` 
+                    {toNumber(overview.balance) < 20
+                      ? `还差${(20 - toNumber(overview.balance)).toFixed(2)}元`
                       : '全部提现'
                     }
                   </Text>

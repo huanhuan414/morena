@@ -61,6 +61,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: str
   auto_cancelled: { label: '自动取消', color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1, desc: '订单因超时自动取消' },
   timeout: { label: '已超时', color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1, desc: '订单已超时' },
   expired: { label: '已过期', color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1, desc: '订单已过期' },
+  pending_review: { label: '待审核', color: '#F59E0B', bgColor: '#F9FAFB', phase: -1, desc: '审核订单中' },
 }
 
 // 5阶段进度定义
@@ -1015,20 +1016,20 @@ export default function OrderDetailPage() {
                           )}
                         </View>
                         {!isSpecialOrder && (
-                        <View
-                          className={`od-dialog-tab-item ${dialogTab === 'feedback' ? 'od-dialog-tab-active' : ''}`}
-                          onClick={() => setDialogTab('feedback')}
-                        >
-                          <Send size={14} color={dialogTab === 'feedback' ? '#6366F1' : '#9CA3AF'} />
-                          <Text className="block od-dialog-tab-text" style={{ color: dialogTab === 'feedback' ? '#6366F1' : '#6B7280' }}>
-                            发布反馈
-                          </Text>
-                          {feedbackPlatformCount > 0 && (
-                            <View className="od-dialog-tab-badge">
-                              <Text className="block od-dialog-tab-badge-text">{feedbackPlatformCount}</Text>
-                            </View>
-                          )}
-                        </View>
+                          <View
+                            className={`od-dialog-tab-item ${dialogTab === 'feedback' ? 'od-dialog-tab-active' : ''}`}
+                            onClick={() => setDialogTab('feedback')}
+                          >
+                            <Send size={14} color={dialogTab === 'feedback' ? '#6366F1' : '#9CA3AF'} />
+                            <Text className="block od-dialog-tab-text" style={{ color: dialogTab === 'feedback' ? '#6366F1' : '#6B7280' }}>
+                              发布反馈
+                            </Text>
+                            {feedbackPlatformCount > 0 && (
+                              <View className="od-dialog-tab-badge">
+                                <Text className="block od-dialog-tab-badge-text">{feedbackPlatformCount}</Text>
+                              </View>
+                            )}
+                          </View>
                         )}
                       </View>
 
@@ -1108,88 +1109,88 @@ export default function OrderDetailPage() {
                               </>
                             ) : (
                               <>
-                            {/* 文案内容 - Markdown 渲染 */}
-                            {av.content && (
-                              <View className="od-dialog-card">
-                                <View className="od-dialog-card-header">
-                                  <View className="od-dialog-card-icon-wrap" style={{ backgroundColor: '#EEF2FF' }}>
-                                    <FileText size={14} color="#6366F1" />
+                                {/* 文案内容 - Markdown 渲染 */}
+                                {av.content && (
+                                  <View className="od-dialog-card">
+                                    <View className="od-dialog-card-header">
+                                      <View className="od-dialog-card-icon-wrap" style={{ backgroundColor: '#EEF2FF' }}>
+                                        <FileText size={14} color="#6366F1" />
+                                      </View>
+                                      <Text className="block od-dialog-card-title">生成文案</Text>
+                                    </View>
+                                    <View className="od-dialog-markdown-body">
+                                      <MarkdownRenderer content={av.content} />
+                                    </View>
                                   </View>
-                                  <Text className="block od-dialog-card-title">生成文案</Text>
-                                </View>
-                                <View className="od-dialog-markdown-body">
-                                  <MarkdownRenderer content={av.content} />
-                                </View>
-                              </View>
-                            )}
+                                )}
 
-                            {/* 图片 */}
-                            {avatarImages.length > 0 && (
-                              <View className="od-dialog-card">
-                                <View className="od-dialog-card-header">
-                                  <View className="od-dialog-card-icon-wrap" style={{ backgroundColor: '#FEF3C7' }}>
-                                    <ImageIcon size={14} color="#F59E0B" />
+                                {/* 图片 */}
+                                {avatarImages.length > 0 && (
+                                  <View className="od-dialog-card">
+                                    <View className="od-dialog-card-header">
+                                      <View className="od-dialog-card-icon-wrap" style={{ backgroundColor: '#FEF3C7' }}>
+                                        <ImageIcon size={14} color="#F59E0B" />
+                                      </View>
+                                      <Text className="block od-dialog-card-title">生成配图</Text>
+                                      <Text className="block od-dialog-card-count">{avatarImages.length}张</Text>
+                                    </View>
+                                    <View className="od-dialog-images-grid">
+                                      {avatarImages.map((img: string, imgIdx: number) => (
+                                        <View key={imgIdx} className="od-dialog-img-wrap">
+                                          <Image
+                                            src={img}
+                                            className="od-dialog-img-thumb"
+                                            mode="aspectFill"
+                                            onClick={() => {
+                                              Taro.previewImage({ current: img, urls: avatarImages })
+                                            }}
+                                          />
+                                        </View>
+                                      ))}
+                                    </View>
                                   </View>
-                                  <Text className="block od-dialog-card-title">生成配图</Text>
-                                  <Text className="block od-dialog-card-count">{avatarImages.length}张</Text>
-                                </View>
-                                <View className="od-dialog-images-grid">
-                                  {avatarImages.map((img: string, imgIdx: number) => (
-                                    <View key={imgIdx} className="od-dialog-img-wrap">
-                                      <Image
-                                        src={img}
-                                        className="od-dialog-img-thumb"
-                                        mode="aspectFill"
+                                )}
+
+                                {/* 视频 */}
+                                {avatarVideoUrls.length > 0 && (
+                                  <View className="od-dialog-card">
+                                    <View className="od-dialog-card-header">
+                                      <View className="od-dialog-card-icon-wrap" style={{ backgroundColor: '#FCE7F3' }}>
+                                        <Video size={14} color="#EC4899" />
+                                      </View>
+                                      <Text className="block od-dialog-card-title">生成视频</Text>
+                                    </View>
+                                    {avatarVideoUrls.map((vUrl: string, vIdx: number) => (
+                                      <View
+                                        key={vIdx}
+                                        className="od-dialog-video-card"
                                         onClick={() => {
-                                          Taro.previewImage({ current: img, urls: avatarImages })
+                                          const isMiniApp = ([Taro.ENV_TYPE.WEAPP, Taro.ENV_TYPE.TT] as string[]).includes(Taro.getEnv())
+                                          if (isMiniApp) {
+                                            Taro.previewMedia({ sources: [{ url: vUrl, type: 'video' }] })
+                                          }
                                         }}
-                                      />
-                                    </View>
-                                  ))}
-                                </View>
-                              </View>
-                            )}
-
-                            {/* 视频 */}
-                            {avatarVideoUrls.length > 0 && (
-                              <View className="od-dialog-card">
-                                <View className="od-dialog-card-header">
-                                  <View className="od-dialog-card-icon-wrap" style={{ backgroundColor: '#FCE7F3' }}>
-                                    <Video size={14} color="#EC4899" />
+                                      >
+                                        <View className="od-dialog-video-overlay" />
+                                        <View className="od-dialog-video-play">
+                                          <Text className="block od-dialog-video-play-icon">▶</Text>
+                                        </View>
+                                        <Text className="block od-dialog-video-label">点击播放视频</Text>
+                                      </View>
+                                    ))}
                                   </View>
-                                  <Text className="block od-dialog-card-title">生成视频</Text>
-                                </View>
-                                {avatarVideoUrls.map((vUrl: string, vIdx: number) => (
-                                  <View
-                                    key={vIdx}
-                                    className="od-dialog-video-card"
-                                    onClick={() => {
-                                      const isMiniApp = ([Taro.ENV_TYPE.WEAPP, Taro.ENV_TYPE.TT] as string[]).includes(Taro.getEnv())
-                                      if (isMiniApp) {
-                                        Taro.previewMedia({ sources: [{ url: vUrl, type: 'video' }] })
-                                      }
-                                    }}
-                                  >
-                                    <View className="od-dialog-video-overlay" />
-                                    <View className="od-dialog-video-play">
-                                      <Text className="block od-dialog-video-play-icon">▶</Text>
-                                    </View>
-                                    <Text className="block od-dialog-video-label">点击播放视频</Text>
-                                  </View>
-                                ))}
-                              </View>
-                            )}
+                                )}
 
-                            {/* 无内容提示 */}
-                            {!av.content && avatarImages.length === 0 && avatarVideoUrls.length === 0 && (
-                              <View className="od-dialog-empty">
-                                <View className="od-dialog-empty-icon-wrap">
-                                  <FileText size={32} color="#D1D5DB" />
-                                </View>
-                                <Text className="block od-dialog-empty-text">暂无生成内容</Text>
-                                <Text className="block od-dialog-empty-sub">内容生成后将在此展示</Text>
-                              </View>
-                            )}
+                                {/* 无内容提示 */}
+                                {!av.content && avatarImages.length === 0 && avatarVideoUrls.length === 0 && (
+                                  <View className="od-dialog-empty">
+                                    <View className="od-dialog-empty-icon-wrap">
+                                      <FileText size={32} color="#D1D5DB" />
+                                    </View>
+                                    <Text className="block od-dialog-empty-text">暂无生成内容</Text>
+                                    <Text className="block od-dialog-empty-sub">内容生成后将在此展示</Text>
+                                  </View>
+                                )}
                               </>
                             )}
                           </View>

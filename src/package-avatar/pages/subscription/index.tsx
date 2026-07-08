@@ -39,7 +39,7 @@ const COMPARISON_ITEMS = [
   // === 分身平台权益 ===
   { key: 'section_platform', label: '【分身平台权益】', icon: Crown, freeVal: '', basicVal: '', proVal: '', enterpriseVal: '', isSection: true },
   { key: 'dailyOrderLimit', label: '接单数量', icon: TrendingUp, freeVal: '5单/天', basicVal: '20单/天', proVal: '不限', enterpriseVal: '不限' },
-  { key: 'commissionRate', label: '平台抽成', icon: CircleDollarSign, freeVal: '20%', basicVal: '15%', proVal: '10%', enterpriseVal: '5%' },
+  { key: 'commissionRate', label: '收益加成', icon: CircleDollarSign, freeVal: '0%', basicVal: '5%', proVal: '10%', enterpriseVal: '15%' },
   { key: 'autoAccept', label: '自动接单', icon: Zap, freeVal: false, basicVal: false, proVal: true, enterpriseVal: true },
   { key: 'orderPriority', label: '订单优先级', icon: TrendingUp, freeVal: '普通', basicVal: '普通', proVal: '高级', enterpriseVal: '最优' },
   { key: 'customAvatarAccept', label: '自定义分身接单', icon: Users, freeVal: false, basicVal: false, proVal: true, enterpriseVal: true },
