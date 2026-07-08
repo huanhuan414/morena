@@ -141,6 +141,9 @@ const FEEDBACK_METADATA_KEYS = [
   'tasksubmittedat', 'task_submitted_at',
 ]
 
+
+const PROFILE_TAB_URL = '/package-order/pages/order-list/index'
+
 const getSpecialTaskRequestId = (avatar: any) => avatar?.requestId || avatar?.request_id || ''
 
 const getSpecialStepResult = (stepResults: Record<string, any>, step: any) => (
@@ -174,6 +177,16 @@ export default function OrderDetailPage() {
   const [paying, setPaying] = useState(false)
   const [silenceDurationMs, setSilenceDurationMs] = useState(86400000)  // 默认24小时
 
+  const handleBack = useCallback(() => {
+    const pages = Taro.getCurrentPages()
+    if (pages.length > 1) {
+      Taro.navigateBack({ delta: 1 })
+      return
+    }
+    void Taro.switchTab({ url: PROFILE_TAB_URL }).catch(() => {
+      void Taro.reLaunch({ url: PROFILE_TAB_URL })
+    })
+  }, [])
   // 格式化静默时间显示
   const formatSilenceDuration = (ms: number) => {
     if (ms < 60 * 1000) {
@@ -579,7 +592,7 @@ export default function OrderDetailPage() {
         <View className="od-header-deco1" />
         <View className="od-header-deco2" />
         <View className="od-header-bar" style={{ paddingTop: `${statusBarHeight + 12}px` }}>
-          <View className="od-back-btn" onClick={() => Taro.navigateBack()}>
+          <View className="od-back-btn" onClick={() => handleBack()}>
             <ArrowLeft size={18} color="#fff" />
           </View>
           <View className="od-header-center">

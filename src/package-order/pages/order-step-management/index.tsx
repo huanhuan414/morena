@@ -556,7 +556,7 @@ export default function OrderStepManagement() {
                   // 重新支付
                   repayAndNavigate(orderId, openid)
                 } else {
-                  Taro.navigateTo({ url: `/package-order/pages/order-detail/index?id=${orderId}&action=pay` })
+                  Taro.reLaunch({ url: `/package-order/pages/order-detail/index?id=${orderId}&action=pay` })
                 }
               },
             })
@@ -572,7 +572,7 @@ export default function OrderStepManagement() {
                 if (modalRes.confirm) {
                   repayAndNavigate(orderId, openid)
                 } else {
-                  Taro.navigateTo({ url: `/package-order/pages/order-detail/index?id=${orderId}&action=pay` })
+                  Taro.reLaunch({ url: `/package-order/pages/order-detail/index?id=${orderId}&action=pay` })
                 }
               },
             })
