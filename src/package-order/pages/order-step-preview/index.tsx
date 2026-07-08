@@ -30,6 +30,20 @@ type StepItem = {
 
 const getStepsStorageKey = (orderId: string) => `order_steps_${orderId || 'draft'}`
 
+const CHINESE_NUMBERS = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十']
+
+const getChineseNumber = (num: number): string => {
+  if (num <= 10) {
+    return CHINESE_NUMBERS[num]
+  }
+  const tens = Math.floor(num / 10)
+  const ones = num % 10
+  if (ones === 0) {
+    return CHINESE_NUMBERS[tens] + '十'
+  }
+  return CHINESE_NUMBERS[tens] + '十' + CHINESE_NUMBERS[ones]
+}
+
 export default function OrderStepPreview() {
   const router = useRouter()
   const statusBarHeight = getStatusBarHeight()
@@ -204,7 +218,7 @@ export default function OrderStepPreview() {
                     <Text className="preview-step-index-text">{index + 1}</Text>
                   </View>
                   <View className="preview-step-info">
-                    <Text className="preview-step-name">步骤{index + 1}：{step.label}</Text>
+                    <Text className="preview-step-name">步骤{getChineseNumber(index + 1)}：{step.type === 'upload_qrcode' ? '二维码识别' : step.label}</Text>
                     {step.description && (
                       <Text className="preview-step-desc">{step.description}</Text>
                     )}
