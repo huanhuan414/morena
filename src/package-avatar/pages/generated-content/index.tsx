@@ -157,10 +157,10 @@ export default function GeneratedContentPage() {
         setContents(parsedContents)
 
         // 对图片为空的记录异步加载（列表API可能未返回images，或base64尚未迁移）
-        const needLoadImages = parsedContents.filter((c: any) => !Array.isArray(c.images) || c.images.length === 0)
-        if (needLoadImages.length > 0) {
-          loadImagesForContents(needLoadImages)
-        }
+        // const needLoadImages = parsedContents.filter((c: any) => !Array.isArray(c.images) || c.images.length === 0)
+        // if (needLoadImages.length > 0) {
+        //   loadImagesForContents(needLoadImages)
+        // }
       }
     } catch (err) {
       console.error('[已生成内容] 加载失败:', err)
