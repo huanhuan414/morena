@@ -2505,6 +2505,7 @@ async getExecutionProgress(orderId: string) {
       orderTitle: request.order_title || order.title || '内容生成',
       orderDescription: request.description || order.description || '',
       platforms: normalizedPlatforms,
+      platform: order.platform ,
       contentType: order.content_type || order.contentType || 'image_text',
       // simple类型不需要AI生成内容，直接标记ready
       skipGeneration: (order.content_type || order.contentType) === 'simple',

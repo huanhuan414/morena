@@ -280,7 +280,8 @@ export class ContentGenerationService implements OnModuleInit {
     avatarId: string
     orderTitle: string
     orderDescription: string
-    platforms: string[]
+    platform: string
+    platforms?: string[]
     contentType: string
     targetAudience: string
     avatarName?: string
@@ -304,7 +305,7 @@ export class ContentGenerationService implements OnModuleInit {
     const primarySkill = this.detectPrimarySkill(input.avatarSkills || [], input.contentType)
     const effectiveContentType = this.resolveContentType(primarySkill, input.contentType)
 
-    this.logger.log(`内容生成: orderId=${input.orderId}, avatarId=${input.avatarId}, primarySkill=${primarySkill}, contentType=${input.contentType}->${effectiveContentType}, skills=${input.avatarSkills?.join(',')}, requestId=${input.requestId || 'new'}, assignedImages=${input.assignedImages?.length || 0}, assignedVideoUrl=${input.assignedVideoUrl || 'none'}, useCustomCopywriting=${input.useCustomCopywriting || false}`)
+    this.logger.log(`内容生成: orderId=${input.orderId}, avatarId=${input.avatarId}, platform=${input.platform}, primarySkill=${primarySkill}, contentType=${input.contentType}->${effectiveContentType}, skills=${input.avatarSkills?.join(',')}, requestId=${input.requestId || 'new'}, assignedImages=${input.assignedImages?.length || 0}, assignedVideoUrl=${input.assignedVideoUrl || 'none'}, useCustomCopywriting=${input.useCustomCopywriting || false}`)
 
     for (let i = 0; i < input.platforms.length; i++) {
       const platform = input.platforms[i]
@@ -404,14 +405,16 @@ export class ContentGenerationService implements OnModuleInit {
       }
 
       // // 4. 后台异步执行生成（不 await，让接口立即返回）
-      // this.executeGeneration(requestId, platform, {
-      //   ...input,
-      //   contentType: effectiveContentType,
-      //   primarySkill,
-      // }).catch(err => {
-      //   this.logger.error(`后台生成失败: ${err.message}`, err.stack)
-      //   this.updateStatus(requestId, input.orderId, 'failed', null, err.message)
-      // })
+      if (platform != 'special') {
+        this.executeGeneration(requestId, platform, {
+          ...input,
+          contentType: effectiveContentType,
+          primarySkill,
+        }).catch(err => {
+          this.logger.error(`后台生成失败: ${err.message}`, err.stack)
+          this.updateStatus(requestId, input.orderId, 'failed', null, err.message)
+        })
+      }
     }
 
     return results

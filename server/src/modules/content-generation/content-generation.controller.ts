@@ -50,7 +50,8 @@ export class ContentGenerationController {
     avatarId: string
     orderTitle: string
     orderDescription: string
-    platforms: string[]
+    platform: string
+    platforms?: string[]
     contentType: string
     targetAudience?: string
     contentQuantity?: number
