@@ -414,7 +414,7 @@ export default function OrderAcceptTask() {
             )}
           </View>
         )}
-        {sampleImage && stepType === 'upload_qrcode' && (
+        {sampleImage && !stepType.includes('collect_image') && (
           <View className="accept-qrcode-grid">
             <View className="accept-qrcode-item">
               <Image src={sampleImage} className="accept-qrcode-image" mode="widthFix" onClick={() => Taro.previewImage({ urls: [sampleImage], current: sampleImage })} />
@@ -428,12 +428,13 @@ export default function OrderAcceptTask() {
             </View>
           </View>
         )}
-        {sampleImage && !stepType.includes('collect_image') && stepType !== 'upload_qrcode' && <Image src={sampleImage} className="accept-image" mode="widthFix" />}
+        {/* // && stepType === 'upload_qrcode'  */}
+        {/* {sampleImage && !stepType.includes('collect_image') && stepType !== 'upload_qrcode' && <Image src={sampleImage} className="accept-image" mode="widthFix" />}
         {!previewOnly && sampleImage && extConfig.save_button_image && stepType !== 'upload_qrcode' && (
           <Button className="accept-action-btn" onClick={() => handleSaveImage(sampleImage)}>
             <Text className="accept-action-btn-text">{extConfig.save_button_image}</Text>
           </Button>
-        )}
+        )} */}
         {video && <Video src={video} className="accept-video" controls />}
         {!previewOnly && video && extConfig.save_button_video && (
           <Button className="accept-action-btn" onClick={() => handleSaveVideo(video)}>

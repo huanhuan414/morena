@@ -1033,7 +1033,8 @@ export default function OrderStepManagement() {
         </Button>
       </View>
 
-      <Text className="drag-hint">长按“≡”拖动可以调整顺序，左滑删除</Text>
+      {/* <Text className="drag-hint">长按“≡”拖动可以调整顺序，左滑删除</Text> */}
+      <Text className="drag-hint">左滑删除</Text>
 
       <ScrollView scrollY className="step-content">
         {steps.length === 0 ? (

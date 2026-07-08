@@ -725,7 +725,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
             <Text className="timeout-value">
               {formatAcceptTimeout(form.acceptTimeout)}
             </Text>
-            <Text className="timeout-hint">超时未接单将自动取消订单</Text>
+            <Text className="timeout-hint">超时未发布将自动取消订单</Text>
           </View>
         </View>
 

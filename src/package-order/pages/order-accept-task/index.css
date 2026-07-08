@@ -338,9 +338,26 @@
   height: 64rpx;
 }
 
+.accept-image-row {
+  display: flex;
+  flex-direction: row;
+  gap: 16rpx;
+}
+
+.accept-image-wrap {
+  flex: 1;
+}
+
 .accept-image {
   width: 100%;
   border-radius: 12rpx;
+}
+
+.accept-image-action {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .accept-video {
