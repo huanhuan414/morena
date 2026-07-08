@@ -461,12 +461,12 @@ export default function OrderStepManagement() {
         })
         Taro.showToast({ title: '支付成功', icon: 'success' })
         setTimeout(() => {
-          Taro.redirectTo({ url: '/package-order/pages/order-list/index' })
+          Taro.reLaunch({ url: '/package-order/pages/order-list/index' })
         }, 1500)
       } else {
         Taro.showToast({ title: payload?.message || '创建支付失败', icon: 'none' })
         setTimeout(() => {
-          Taro.redirectTo({ url: '/package-order/pages/order-list/index' })
+          Taro.reLaunch({ url: '/package-order/pages/order-list/index' })
         }, 1500)
       }
     } catch (payErr: any) {
@@ -538,7 +538,7 @@ export default function OrderStepManagement() {
           Taro.showToast({ title: '支付成功', icon: 'success' })
           setShowPayModal(false)
           setTimeout(() => {
-            Taro.redirectTo({ url: '/package-order/pages/order-list/index' })
+            Taro.reLaunch({ url: '/package-order/pages/order-list/index' })
           }, 1500)
         } catch (payErr: any) {
           console.warn('[支付] 结果:', payErr)

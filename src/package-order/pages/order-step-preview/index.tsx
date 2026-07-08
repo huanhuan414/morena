@@ -204,7 +204,7 @@ export default function OrderStepPreview() {
                     <Text className="preview-step-index-text">{index + 1}</Text>
                   </View>
                   <View className="preview-step-info">
-                    <Text className="preview-step-name">步骤一：{step.label}</Text>
+                    <Text className="preview-step-name">步骤{index + 1}：{step.label}</Text>
                     {step.description && (
                       <Text className="preview-step-desc">{step.description}</Text>
                     )}

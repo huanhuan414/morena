@@ -33,7 +33,7 @@ export const REFERRAL_MILESTONES = [
 export const QUICK_ACTION_TAG = `邀请好友`
 
 /** Banner 主标题 */
-export const BANNER_TITLE = `邀请好友一起体验Morena AI 领现金大奖`
+export const BANNER_TITLE = `邀请好友一起体验莫瑞娜AI 领现金大奖`
 
 /** Banner 副标题模板（传入已邀请人数） */
 export const BANNER_DESC = (invitedCount: number) =>

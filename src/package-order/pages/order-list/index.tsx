@@ -95,6 +95,8 @@ function formatTime(dateStr: string): string {
   } catch { return '' }
 }
 
+const PROFILE_TAB_URL = '/pages/profile/index'
+
 // 进度文案
 function getPhaseText(order: any): string {
   const phase = STATUS_CONFIG[order.status]?.phase ?? -1
@@ -223,7 +225,14 @@ export default function OrderListPage() {
   }, [])
 
   const handleBack = useCallback(() => {
-    Taro.navigateBack({ delta: 1 })
+    const pages = Taro.getCurrentPages()
+    if (pages.length > 1) {
+      Taro.navigateBack({ delta: 1 })
+      return
+    }
+    void Taro.switchTab({ url: PROFILE_TAB_URL }).catch(() => {
+      void Taro.reLaunch({ url: PROFILE_TAB_URL })
+    })
   }, [])
 
   const handleCreate = useCallback(() => {
