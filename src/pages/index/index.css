@@ -878,6 +878,11 @@
   font-size: 32rpx !important;
   font-weight: 700 !important;
 }
+.po-cb-card-sub {
+  font-size: 22rpx;
+  font-weight: 400;
+  color: #DC2626;
+}
 .po-cb-card-tip {
   font-size: 22rpx;
   color: #999;
@@ -1110,6 +1115,204 @@
 }
 .order-modal-btn-text.accept {
   color: #FFFFFF;
+}
+
+/* ===== 接单收益确认弹窗 ===== */
+.accept-confirm-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(15, 23, 42, 0.48);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+  padding: 32rpx;
+}
+.accept-confirm-modal {
+  width: 650rpx;
+  background: #F8FAFC;
+  border-radius: 22rpx;
+  overflow: hidden;
+  box-shadow: 0 24rpx 80rpx rgba(15, 23, 42, 0.22);
+}
+.accept-confirm-main {
+  padding: 28rpx 30rpx 24rpx;
+  background: #FFFFFF;
+  border-bottom: 1rpx solid #EEF2F7;
+}
+.accept-confirm-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 20rpx;
+}
+.accept-confirm-title-wrap {
+  flex: 1;
+  min-width: 0;
+}
+.accept-confirm-title {
+  display: block;
+  font-size: 28rpx;
+  line-height: 1.45;
+  font-weight: 700;
+  color: #0F172A;
+}
+.accept-confirm-plan {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 20rpx;
+  color: #94A3B8;
+}
+.accept-confirm-amount {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6rpx;
+  flex-shrink: 0;
+}
+.accept-confirm-amount-label {
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 50%;
+  background: #FEE2E2;
+  color: #EF4444;
+  font-size: 18rpx;
+  line-height: 28rpx;
+  text-align: center;
+  font-weight: 700;
+}
+.accept-confirm-amount-value {
+  font-size: 30rpx;
+  font-weight: 800;
+  color: #F43F5E;
+}
+.accept-confirm-desc {
+  display: block;
+  margin-top: 14rpx;
+  font-size: 22rpx;
+  line-height: 1.5;
+  color: #64748B;
+}
+.accept-confirm-plan-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-top: 12rpx;
+  padding: 12rpx 0rpx;
+  background: #F8FAFC;
+  border-radius: 8rpx;
+}
+.accept-confirm-plan-label {
+  font-size: 24rpx;
+  color: #64748B;
+}
+.accept-confirm-plan-name {
+  font-size: 24rpx;
+  color: #6366F1;
+  font-weight: 500;
+}
+.accept-confirm-plan-spacer {
+  flex: 1;
+}
+.accept-confirm-plan-value {
+  font-size: 26rpx;
+  color: #10B981;
+  font-weight: 600;
+}
+.accept-confirm-member {
+  margin: 18rpx 20rpx;
+  padding: 20rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #E2E8F0;
+  border-radius: 16rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 18rpx;
+}
+.accept-confirm-crown {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: #FEF3C7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.accept-confirm-crown-text {
+  font-size: 38rpx;
+  color: #D97706;
+  font-weight: 700;
+}
+.accept-confirm-member-body {
+  flex: 1;
+  min-width: 0;
+}
+.accept-confirm-member-title-row {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  min-width: 0;
+}
+.accept-confirm-member-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #1E293B;
+}
+.accept-confirm-member-price {
+  font-size: 34rpx;
+  font-weight: 800;
+  color: #F43F5E;
+}
+.accept-confirm-member-unit {
+  margin-left: 6rpx;
+  font-size: 22rpx;
+  color: #64748B;
+}
+.accept-confirm-member-desc {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  line-height: 1.4;
+  color: #94A3B8;
+}
+.accept-confirm-upgrade {
+  flex-shrink: 0;
+  padding: 10rpx 22rpx;
+  border-radius: 14rpx;
+  background: #0EA5E9;
+}
+.accept-confirm-upgrade-text {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+.accept-confirm-actions {
+  display: flex;
+  flex-direction: row;
+  border-top: 1rpx solid #E2E8F0;
+  background: #FFFFFF;
+}
+.accept-confirm-btn {
+  flex: 1;
+  height: 92rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.accept-confirm-btn-cancel {
+  border-right: 1rpx solid #E2E8F0;
+}
+.accept-confirm-btn-cancel-text {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #334155;
+}
+.accept-confirm-btn-ok-text {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #6692d8;
 }
 
 /* ===== 通知弹窗 ===== */

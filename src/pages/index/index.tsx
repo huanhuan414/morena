@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, ScrollView } from '@tarojs/components'
-import { Bell, Settings, Users, FileText, Coins, Plus, Zap, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye, ShoppingBag, ChevronRight, Gift, Rocket, Clock, CircleCheckBig, ChevronDown } from 'lucide-react-taro'
+import { Bell, Settings, Users, FileText, Coins, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye, ShoppingBag, ChevronRight, Gift, Clock, CircleCheckBig, ChevronDown } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { BANNER_TITLE, BANNER_DESC } from '@/constants/referral-rewards'
 import { PLATFORM_UI_ORDER, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
@@ -38,6 +38,36 @@ interface OrderItem {
   urgency: 'urgent' | 'high' | 'normal' | 'low'
   isAcceptedByMe?: boolean
   acceptRegions?: string[]  // 接单区域限制
+  acceptanceTimeout?: number  // 接单超时时间（小时）
+}
+
+interface EarningPlanInfo {
+  currentPlanId: string
+  currentPlanName: string
+  currentRate: number
+  freeName: string
+  freeRate: number
+  basicName: string
+  basicRate: number
+  proName: string
+  proRate: number
+  enterpriseName: string
+  enterpriseRate: number
+}
+
+interface AcceptConfirmData {
+  title: string
+  bountyPrice: number
+  currentAmount: number
+  currentPlanName: string
+  targetAmount: number
+  targetPlanName: string
+  targetDesc: string
+  actionText: string
+  showUpgrade: boolean
+  remainingSlots: number
+  reviewDays: string  // 格式化后的时间，如 "1天" 或 "12小时"
+  resolve: (confirmed: boolean) => void
 }
 
 const Index: React.FC = () => {
@@ -57,15 +87,32 @@ const Index: React.FC = () => {
 
   // 计算实际收益范围
   const calcEarningRange = (customBasePrice: number) => {
-    const minEarning = (customBasePrice * (1 - feeRateRange.max)).toFixed(2)
-    const maxEarning = (customBasePrice * (1 - feeRateRange.min)).toFixed(2)
-    return `¥${minEarning} ~ ¥${maxEarning}`
+    const priceCents = Math.round(customBasePrice * 100)
+    const feeAmount = Math.round((priceCents * (1 - earningPlanInfo.freeRate))) / 100
+    return feeAmount
+    // const minEarning = (customBasePrice * (1 - feeRateRange.max)).toFixed(2)
+    // const maxEarning = (customBasePrice * (1 - feeRateRange.min)).toFixed(2)
+    // return `¥${minEarning} ~ ¥${maxEarning}`
   }
 
   const [showOrderModal, setShowOrderModal] = useState(false)
   const [orderModalData, setOrderModalData] = useState<any>(null)
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
   const [avatarPickerData, setAvatarPickerData] = useState<{ avatars: any[], resolve: ((idx: number) => void) | null }>({ avatars: [], resolve: null })
+  const [acceptConfirmData, setAcceptConfirmData] = useState<AcceptConfirmData | null>(null)
+  const [earningPlanInfo, setEarningPlanInfo] = useState<EarningPlanInfo>({
+    currentPlanId: 'plan_free',
+    currentPlanName: '免费版',
+    currentRate: 0.20,
+    freeName: '免费版',
+    freeRate: 0.20,
+    basicName: '基础版',
+    basicRate: 0.15,
+    proName: '专业版',
+    proRate: 0.10,
+    enterpriseName: '企业版',
+    enterpriseRate: 0.15,
+  })
   const [trustAllLoading, setTrustAllLoading] = useState(false)
   const [dismissedOrderIds, setDismissedOrderIds] = useState<Set<string>>(() => {
     try {
@@ -76,6 +123,95 @@ const Index: React.FC = () => {
     }
   })
   const loadUserFromStorage = useUserStore(state => state.loadUserFromStorage)
+
+  const normalizeRate = (value: any, fallback = 0.20) => {
+    const rate = Number(value)
+    return Number.isFinite(rate) && rate >= 0 ? rate : fallback
+  }
+
+  const calcNetAmount = (amount: number, rate: number) => {
+    const cents = Math.round(Number(amount || 0) * 100)
+    const baseCents = Math.round(cents * (1 - rate))
+    return baseCents / 100
+  }
+
+  const netAmount = (amount: number, rate: number) => {
+    const cents = Math.round(Number(amount || 0) * 100)
+    const baseCents = Math.round(cents * rate)
+    return baseCents / 100
+  }
+
+  const formatMoney = (amount: number) => {
+    return `¥${Number(amount || 0).toFixed(2)}`
+  }
+
+  const getPlanRate = (plans: any[], planId: string, fallback: number) => {
+    const plan = plans.find((item) => (item.id || item.planId || item.plan_id) === planId)
+    return normalizeRate(plan?.platformFeeRate || plan?.platform_fee_rate, fallback)
+  }
+
+  const getPlanName = (plans: any[], planId: string, fallback: string) => {
+    const plan = plans.find((item) => (item.id || item.planId || item.plan_id) === planId)
+    return plan?.name || plan?.planName || plan?.plan_name || fallback
+  }
+
+  // 格式化审核时间（小时转天数）
+  const formatReviewTime = (hours: number): string => {
+    if (hours >= 24) {
+      const days = Math.floor(hours / 24)
+      return `${days}天`
+    }
+    return `${Math.ceil(hours)}小时`
+  }
+
+  const fetchEarningPlanInfo = useCallback(async (): Promise<EarningPlanInfo> => {
+    const userId = useUserStore.getState().userInfo?.id
+    let currentPlanId = 'plan_free'
+    let currentPlanName = '免费版'
+    let currentRate = 0.20
+    let plans: any[] = []
+
+    if (userId) {
+      const subRes = await Network.request({
+        url: `/api/subscription/status?userId=${userId}`,
+        method: 'GET',
+      })
+      const plan = subRes?.data?.data?.plan
+      currentPlanId = plan?.id || 'plan_free'
+      currentPlanName = plan?.name || '免费版'
+      currentRate = normalizeRate(plan?.platformFeeRate || plan?.platform_fee_rate, 0.20)
+    }
+
+    try {
+      const plansRes = await Network.request({ url: '/api/subscription/plans' })
+      plans = plansRes?.data?.data || []
+    } catch (err) {
+      console.error('获取会员价格失败:', err)
+    }
+
+    const nextInfo = {
+      currentPlanId,
+      currentPlanName,
+      currentRate,
+      freeName: getPlanName(plans, 'plan_free', '免费版'),
+      freeRate: getPlanRate(plans, 'plan_free', 0.20),
+      basicName: getPlanName(plans, 'plan_basic', '基础版'),
+      basicRate: getPlanRate(plans, 'plan_basic', 0.15),
+      proName: getPlanName(plans, 'plan_pro', '专业版'),
+      proRate: getPlanRate(plans, 'plan_pro', 0.10),
+      enterpriseName: getPlanName(plans, 'plan_enterprise', '企业版'),
+      enterpriseRate: getPlanRate(plans, 'plan_enterprise', 0.15),
+    }
+    setEarningPlanInfo(nextInfo)
+    return nextInfo
+  }, [])
+
+  const showAcceptConfirm = (data: Omit<AcceptConfirmData, 'resolve'>) => {
+    return new Promise<boolean>((resolve) => {
+      setAcceptConfirmData({ ...data, resolve })
+    })
+  }
+
 
   // 静默时间状态
   const [silenceUntil, setSilenceUntil] = useState<string | null>(null)
@@ -192,7 +328,8 @@ const Index: React.FC = () => {
           quantityPerAvatar: o.quantityPerAvatar || o.quantity_per_avatar || 1,
           urgency: o.urgency || (o.priority >= 4 ? 'urgent' : o.priority >= 3 ? 'high' : o.priority >= 2 ? 'normal' : 'low'),
           isAcceptedByMe: Boolean(o.isAcceptedByMe || o.is_accepted_by_me),
-          acceptRegions: Array.isArray(o.acceptRegions || o.accept_regions) ? (o.acceptRegions || o.accept_regions) : []
+          acceptRegions: Array.isArray(o.acceptRegions || o.accept_regions) ? (o.acceptRegions || o.accept_regions) : [],
+          acceptanceTimeout: Number(o.acceptanceTimeout || o.acceptance_timeout || 0)
         }))
         setOrders(prev => {
           const next = append ? [...prev, ...mapped] : mapped
@@ -294,30 +431,33 @@ const Index: React.FC = () => {
       let planId = 'plan_free'
       let planName = '免费版'
       let platformFeeRate = 0.20
+      let planInfo = earningPlanInfo
+      // 直接使用之前获取的会员信息（页面加载时已获取）
       if (userId) {
-        const subRes = await Network.request({
-          url: `/api/subscription/status?userId=${userId}`,
-          method: 'GET',
-        })
-        const plan = subRes?.data?.data?.plan
-        planId = plan?.id || 'plan_free'
-        planName = plan?.name || '免费版'
-        platformFeeRate = Number(plan?.platformFeeRate || plan?.platform_fee_rate || 0.20)
+        planId = planInfo?.currentPlanId || 'plan_free'
+        planName = planInfo?.currentPlanName || '免费版'
+        platformFeeRate = Number(planInfo?.currentRate || 0.20)
       }
 
       // 3. 弹出抽成确认框
-      const orderPrice = orderInfo?.customBasePrice || 0
-      const actualEarning = Number((orderPrice * (1 - platformFeeRate)).toFixed(2))
-      const feePercentage = (platformFeeRate * 100).toFixed(0)
-      const confirmResult = await new Promise<boolean>((resolve) => {
-        Taro.showModal({
-          title: '确认接单',
-          content: `收益将扣除平台抽成：${planName} ${feePercentage}%(详情看我的订阅中心) 扣除抽成后实收：¥${orderPrice} * (1-${feePercentage}%) = ¥${actualEarning} 是否确认接单？`,
-          confirmText: '确认接单',
-          cancelText: '取消',
-          success: (res) => resolve(res.confirm),
-          fail: () => resolve(false),
-        })
+      const orderPrice = Number(orderInfo?.customBasePrice || 0)
+      const isFreePlan = planId === 'plan_free'
+      const targetPlanName = planId === 'plan_free' ? earningPlanInfo.basicName : planId === 'plan_basic' ? earningPlanInfo.proName : planId === 'plan_pro' ? earningPlanInfo.enterpriseName : earningPlanInfo.enterpriseName
+      const targetRate = planId === 'plan_free' ? earningPlanInfo.basicRate : planId === 'plan_basic' ? earningPlanInfo.proRate : planId === 'plan_pro' ? earningPlanInfo.enterpriseRate : earningPlanInfo.enterpriseRate
+      const remainingSlots = Math.max(0, Number(orderInfo?.avatarCount || 1) - Number(orderInfo?.acceptCount || 0))
+      const maxSubsidy = netAmount(orderPrice, Math.max(0, earningPlanInfo.freeRate - earningPlanInfo.enterpriseRate))
+      const confirmResult = await showAcceptConfirm({
+        title: orderInfo?.title || '新订单',
+        bountyPrice: calcEarningRange(orderPrice),
+        currentAmount: calcNetAmount(orderPrice, platformFeeRate),
+        currentPlanName: planName,
+        targetAmount: calcNetAmount(orderPrice, targetRate),
+        targetPlanName,
+        targetDesc: `官方补贴${targetRate * 100}%，每单最高补贴${maxSubsidy}元`,
+        actionText: isFreePlan ? '开通会员' : '升级会员',
+        showUpgrade: true,
+        remainingSlots,
+        reviewDays: formatReviewTime(orderInfo?.acceptanceTimeout || 0),
       })
 
       if (!confirmResult) {
@@ -523,6 +663,7 @@ const Index: React.FC = () => {
       fetchAssignedOrders()
       fetchOrders()
       fetchFeeRateRange()
+      fetchEarningPlanInfo()
       fetchMenuConfig()
       checkAvatarReminder()
     }).catch(err => console.error('刷新数据失败:', err))
@@ -758,6 +899,18 @@ const Index: React.FC = () => {
       'marketing': { text: '营销', color: '#F59E0B', bg: '#FFFBEB' },
     }
     return typeMap[order.contentType || ''] || { text: '图文', color: '#6366F1', bg: '#EEF2FF' }
+  }
+
+  const closeAcceptConfirm = (confirmed: boolean) => {
+    if (acceptConfirmData?.resolve) {
+      acceptConfirmData.resolve(confirmed)
+    }
+    setAcceptConfirmData(null)
+  }
+
+  const handleAcceptConfirmUpgrade = () => {
+    closeAcceptConfirm(false)
+    Taro.navigateTo({ url: '/package-avatar/pages/subscription/index' })
   }
 
   return (
@@ -1092,7 +1245,7 @@ const Index: React.FC = () => {
                         <View className="po-reward-amount">
                           {/* <Text className="po-reward-symbol">¥</Text> */}
                           {/* <Text className="po-reward-value">{order.estimatedEarning.toFixed(2)}</Text> */}
-                          <Text className="po-reward-value">{calcEarningRange(order.estimatedEarning)}</Text>
+                          <Text className="po-reward-value">¥{calcEarningRange(order.customBasePrice)}</Text>
 
                           <Text className="po-reward-unit">/单</Text>
                         </View>
@@ -1171,7 +1324,7 @@ const Index: React.FC = () => {
                       </View>
                       <View className="po-cb-card po-cb-benefit">
                         <Text className="block po-cb-card-label">预计收益</Text>
-                        <Text className="block po-cb-card-value po-cb-card-value-hl">{calcEarningRange(order.estimatedEarning)}</Text>
+                        <Text className="block po-cb-card-value po-cb-card-value-hl">¥{calcEarningRange(order.customBasePrice)}<Text className="po-cb-card-sub">({earningPlanInfo.proName}用户：{calcNetAmount(order.customBasePrice, earningPlanInfo.proRate)}元)</Text></Text>
                         {/* <Text className="block po-cb-card-value po-cb-card-value-hl">¥{(order.estimatedEarning || 0).toFixed(2)}</Text> */}
                         {/* <Text className="block po-cb-card-tip">(预收益{calcEarningRange(order.estimatedEarning)})</Text> */}
                       </View>
@@ -1220,7 +1373,7 @@ const Index: React.FC = () => {
                             {/* <Text className="po-btn-label po-btn-label-primary">接单赚¥{(order.customBasePrice || order.estimatedEarning).toFixed(2)}</Text> */}
                             {/* <Text className="po-btn-label po-btn-label-secondary">(预收益{calcEarningRange(order.estimatedEarning)})</Text> */}
 
-                            <Text className="po-btn-label po-btn-label-primary">接单预收益{calcEarningRange(order.customBasePrice || order.estimatedEarning)}</Text>
+                            <Text className="po-btn-label po-btn-label-primary">接单预收益¥{calcEarningRange(order.customBasePrice || order.estimatedEarning)}</Text>
 
                             <ChevronRight size={14} color="rgba(255,255,255,0.7)" />
                           </>
@@ -1245,6 +1398,62 @@ const Index: React.FC = () => {
         {/* 底部留白 */}
         <View className="bottom-spacer" />
       </ScrollView>
+
+      {acceptConfirmData && (
+        <View className="accept-confirm-overlay" onClick={() => closeAcceptConfirm(false)}>
+          <View className="accept-confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <View className="accept-confirm-main">
+              <View className="accept-confirm-row">
+                <View className="accept-confirm-title-wrap">
+                  <Text className="accept-confirm-title">标题:{acceptConfirmData.title}</Text>
+                </View>
+                <View className="accept-confirm-amount">
+                  <Text className="accept-confirm-amount-label">赏</Text>
+                  <Text className="accept-confirm-amount-value">{formatMoney(acceptConfirmData.bountyPrice)}</Text>
+                </View>
+              </View>
+              <Text className="accept-confirm-desc">
+                提交后{acceptConfirmData.reviewDays}内未审核，将自动通过！
+              </Text>
+              <View className="accept-confirm-plan-row">
+                <Text className="accept-confirm-plan-label">当天套餐：</Text>
+                <Text className="accept-confirm-plan-name">{acceptConfirmData.currentPlanName}</Text>
+                <Text className="accept-confirm-plan-spacer" />
+                <Text className="accept-confirm-plan-label">实收：</Text>
+                <Text className="accept-confirm-plan-value">{acceptConfirmData.currentAmount}元</Text>
+              </View>
+            </View>
+
+            <View className="accept-confirm-member">
+              <View className="accept-confirm-crown">
+                <Text className="accept-confirm-crown-text">♕</Text>
+              </View>
+              <View className="accept-confirm-member-body">
+                <View className="accept-confirm-member-title-row">
+                  <Text className="accept-confirm-member-title">{acceptConfirmData.targetPlanName}价：</Text>
+                  <Text className="accept-confirm-member-price">{acceptConfirmData.targetAmount.toFixed(2)}</Text>
+                  <Text className="accept-confirm-member-unit">元</Text>
+                </View>
+                <Text className="accept-confirm-member-desc">{acceptConfirmData.targetDesc}</Text>
+              </View>
+              {acceptConfirmData.showUpgrade && (
+                <View className="accept-confirm-upgrade" onClick={handleAcceptConfirmUpgrade}>
+                  <Text className="accept-confirm-upgrade-text">{acceptConfirmData.actionText}</Text>
+                </View>
+              )}
+            </View>
+
+            <View className="accept-confirm-actions">
+              <View className="accept-confirm-btn accept-confirm-btn-cancel" onClick={() => closeAcceptConfirm(false)}>
+                <Text className="accept-confirm-btn-cancel-text">取消</Text>
+              </View>
+              <View className="accept-confirm-btn accept-confirm-btn-ok" onClick={() => closeAcceptConfirm(true)}>
+                <Text className="accept-confirm-btn-ok-text">确认接单</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* 订单通知弹窗 */}
       {showOrderModal && orderModalData && (

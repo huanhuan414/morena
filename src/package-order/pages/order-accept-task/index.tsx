@@ -68,6 +68,19 @@ export default function OrderAcceptTask() {
   const textMaterial = assignedMaterials.text
   const isAiTextGenerating = textMaterial?.sourceMode === 'ai_prompt_only' && textMaterial?.status !== 'completed'
 
+  const CHINESE_NUMBERS = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十']
+
+  const getChineseNumber = (num: number): string => {
+    if (num <= 10) {
+      return CHINESE_NUMBERS[num]
+    }
+    const tens = Math.floor(num / 10)
+    const ones = num % 10
+    if (ones === 0) {
+      return CHINESE_NUMBERS[tens] + '十'
+    }
+    return CHINESE_NUMBERS[tens] + '十' + CHINESE_NUMBERS[ones]
+  }
   const fetchTaskView = async (silent = false) => {
     if (!requestId) return
     if (!silent) setLoading(true)
@@ -547,7 +560,9 @@ export default function OrderAcceptTask() {
                       <Text className="accept-step-index-text">{index + 1}</Text>
                     </View>
                     <View className="accept-step-info">
-                      <Text className="accept-step-name">{getStepTitle(step)}</Text>
+                      {/* <Text className="accept-step-name">{getStepTitle(step)}</Text> */}
+                      <Text className="accept-step-name">步骤{getChineseNumber(index + 1)}：{getStepType(step) === 'upload_qrcode' ? '二维码识别' : getStepTitle(step)}</Text>
+
                       {getStepDesc(step) && <Text className="accept-step-desc">{getStepDesc(step)}</Text>}
                     </View>
                   </View>

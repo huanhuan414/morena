@@ -877,7 +877,7 @@ export class OrderService {
     const rows = await db.query(
       `SELECT o.id, o.user_id, o.avatar_id, o.title, o.description, o.content_type, o.platforms, o.platform,
               o.requirements, o.target_audience, o.priority, o.deadline, o.content_deadline_at,
-              o.budget, o.base_amount, o.custom_base_price, o.content_amount, o.price, o.status, o.expected_quantity, o.avatar_count, o.quantity_per_avatar, o.is_paid,
+              o.budget, o.base_amount, o.acceptance_timeout, o.custom_base_price, o.content_amount, o.price, o.status, o.expected_quantity, o.avatar_count, o.quantity_per_avatar, o.is_paid,
               o.accept_regions, o.personality,
               o.created_at, o.updated_at,
               COALESCE(a_order.name, a_latest.name, u.nickname) as publisher_nickname,
@@ -927,7 +927,7 @@ export class OrderService {
       [...platformParams]
     )
     const total = Number(totalRows?.[0]?.total || 0)
-
+    
     // 读取DB返回值 → camelCase
     const items = (rows || []).map((row: any) => {
       const platforms = this.safeParseJson<any[]>(row.platforms, [])
@@ -950,6 +950,7 @@ export class OrderService {
       budget: Number(row.budget || 0),
       baseAmount: Number(row.baseAmount || row.base_amount || row.budget || 0),
       customBasePrice: Number(row.customBasePrice || row.custom_base_price || 0),
+      acceptanceTimeout: Number(row.acceptance_timeout || row.acceptanceTimeout || 0),
       contentAmount: Number(row.contentAmount || row.content_amount || 0),
       price: Number(row.price || row.price || 0),
       status: row.status,
@@ -972,7 +973,7 @@ export class OrderService {
       expectedEarnings: (() => {
         const baseAmount = Number(row.baseAmount || row.base_amount || row.budget || 0)
         const avatarCount = (() => {
-          const raw = row.expectedQuantity ?? row.expected_quantity ?? row.avatarCount ?? row.avatar_count ?? 1
+          const raw = row.avatarCount ?? row.avatar_count ?? row.expectedQuantity ?? row.expected_quantity ??  1
           const n = Number(raw)
           return Number.isFinite(n) ? n : 1
         })()
