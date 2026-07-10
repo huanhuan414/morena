@@ -264,14 +264,18 @@ export default function SkillTryPage() {
 
   return (
     <View className="skill-try-page">
-      <View className="skill-try-header" style={{ paddingTop: Taro.pxTransform(statusBarHeight + 10) }}>
-        <View className="skill-try-nav">
+      <View className="skill-try-header" style={{ paddingTop: `${statusBarHeight}px` }}>
+        <View className="skill-try-decoration">
+          <View className="deco-circle circle-1" />
+          <View className="deco-circle circle-2" />
+        </View>
+        <View className="skill-try-content">
           <View className="skill-try-back" onClick={() => Taro.navigateBack()}>
             <ArrowLeft size={20} color="#fff" />
           </View>
-          <View className="skill-try-title-area">
-            <Text className="block skill-try-title">{skillName}</Text>
-            <Text className="block skill-try-subtitle">{config.label} · 免费体验</Text>
+          <View className="skill-try-center">
+            <Text className="skill-try-title">{skillName}</Text>
+            <Text className="skill-try-subtitle">{config.label} · 免费体验</Text>
           </View>
         </View>
       </View>
@@ -431,10 +435,10 @@ export default function SkillTryPage() {
                   <Text className="try-result-type">AI视频</Text>
                 </View>
                 <View className="try-video-wrapper">
-                  <video 
-                    className="try-generated-video" 
-                    src={generatedVideoUrl} 
-                    controls 
+                  <video
+                    className="try-generated-video"
+                    src={generatedVideoUrl}
+                    controls
                     style={{ width: '100%', borderRadius: '16rpx' }}
                   />
                 </View>
