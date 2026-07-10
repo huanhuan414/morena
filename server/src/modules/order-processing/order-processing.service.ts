@@ -12,6 +12,19 @@ import { ContentGenerationService } from '../content-generation/content-generati
 
 const URGE_ACCEPTANCE_COOLDOWN_MS = 60 * 60 * 1000
 const lastUrgeAcceptanceAt = new Map<string, number>()
+const REQUIRED_COLLECT_STEP_LABELS: Record<string, string> = {
+  collect_image: '收集截图',
+  collect_info: '收集信息',
+  collect_url: '收集链接',
+}
+
+const getTaskStepType = (step: Record<string, any>) => step.stepType || step.step_type || ''
+const hasTaskStepResultValue = (value: any) => {
+  if (Array.isArray(value)) {
+    return value.some((item) => String(item || '').trim())
+  }
+  return String(value || '').trim().length > 0
+}
 
 @Injectable()
 export class OrderProcessingService {
@@ -716,6 +729,20 @@ export class OrderProcessingService {
 
     const config = this.parseJsonObject<Record<string, any>>(record.config, {})
     const stepResults = data?.stepResults || data?.step_results || config.stepResults || {}
+    const orderId = record.orderId || record.order_id
+    const taskData = orderId ? await this.orderService.getOrderTaskSteps(orderId) : null
+    const taskSteps = taskData?.steps || []
+    const missingStep = taskSteps.find((step: Record<string, any>) => {
+      const stepType = getTaskStepType(step)
+      if (!REQUIRED_COLLECT_STEP_LABELS[stepType]) return false
+      const result = stepResults[step.id] || stepResults[String(step.id)] || {}
+      return !hasTaskStepResultValue(result.value)
+    })
+    if (missingStep) {
+      const stepIndex = taskSteps.findIndex((step: Record<string, any>) => step.id === missingStep.id)
+      throw new Error(`步骤${stepIndex + 1}：需要您提供对应收集信息!`)
+    }
+
     const submittedAt = new Date().toISOString()
 
     const db = getMySQLClient()

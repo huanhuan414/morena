@@ -46,7 +46,18 @@ const getMainContent = (step: TaskStep) => step.mainContent || step.main_content
 const getMediaList = (step: TaskStep) => step.mediaList || step.media_list || []
 const getExtConfig = (step: TaskStep) => step.extConfig || step.ext_config || {}
 const PREVIEW_ONLY_STATUSES = ['awaiting_acceptance', 'settled', 'cancelled', 'failed']
+const REQUIRED_COLLECT_STEP_LABELS: Record<string, string> = {
+  collect_image: '收集截图',
+  collect_info: '收集信息',
+  collect_url: '收集链接',
+}
 const getStepResult = (stepResults: Record<string, any>, step: TaskStep) => stepResults[step.id] || stepResults[String(step.id)] || {}
+const hasStepResultValue = (value: any) => {
+  if (Array.isArray(value)) {
+    return value.some((item) => String(item || '').trim())
+  }
+  return String(value || '').trim().length > 0
+}
 const getAiTextStatusLabel = (status?: string) => {
   if (status === 'completed') return '已完成'
   if (status === 'generating') return '生成中'
@@ -281,7 +292,36 @@ export default function OrderAcceptTask() {
   }
 
   const handlePublishTask = async () => {
-    if (!requestId || submitting) return
+      if (!requestId || submitting) return
+      const missingStep = steps.find((step) => {
+        const stepType = getStepType(step)
+        if (!REQUIRED_COLLECT_STEP_LABELS[stepType]) return false
+        const result = getStepResult(stepResults, step)
+        return !hasStepResultValue(result.value)
+      })
+      if (missingStep) {
+        const stepIndex = steps.findIndex((step) => step.id === missingStep.id)
+        Taro.showToast({
+          title: `步骤${stepIndex + 1}：需要您提供对应收集信息!`,
+          icon: 'none',
+          duration: 2400,
+        })
+        return
+      }
+
+      const confirm = await new Promise<boolean>((resolve) => {
+      Taro.showModal({
+        title: '确认发布',
+        content: '发布后将提交给商家验收，确认发布吗？',
+        cancelText: '再检查下',
+        confirmText: '确认发布',
+        success: (res) => resolve(res.confirm),
+        fail: () => resolve(false),
+      })
+    })
+
+    if (!confirm) return  
+
     setSubmitting(true)
     Taro.showLoading({ title: '发布中...', mask: true })
     try {
@@ -370,7 +410,7 @@ export default function OrderAcceptTask() {
       return (
         <View className="accept-ai-box">
           <Text className="accept-ai-text">
-            {textMaterial?.status === 'generating' ? 'AI 生成中...' : 'AI 排队中...'}
+            AI {getAiTextStatusLabel(textMaterial?.status)}...
           </Text>
         </View>
       )
@@ -489,7 +529,7 @@ export default function OrderAcceptTask() {
         {stepType === 'collect_info' && !previewOnly && (
           <>
             {mainContent && (
-              <View className="accept-example-row" onClick={() => copyText(mainContent)}>
+              <View className="accept-example-row">
                 <Text className="accept-example-label">示例：</Text>
                 <Text className="accept-example-text">{mainContent}</Text>
               </View>
@@ -518,7 +558,8 @@ export default function OrderAcceptTask() {
         {stepType === 'collect_url' && !previewOnly && (
           <>
             {mainContent && (
-              <View className="accept-example-row" onClick={() => copyText(mainContent)}>
+              // <View className="accept-example-row" onClick={() => copyText(mainContent)}>
+              <View className="accept-example-row">
                 <Text className="accept-example-label">示例链接：</Text>
                 <Text className="accept-example-text">{mainContent}</Text>
               </View>
