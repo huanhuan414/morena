@@ -386,9 +386,9 @@ export class ContentGenerationService implements OnModuleInit {
         status: 'processing'
       })
 
-      // 3. 简单任务直接标记完成，不走AI生成
-      if (input.contentType === 'simple') {
-        this.logger.log(`简单任务，跳过AI生成: ${requestId}`)
+      // 3. 简单任务或 special 平台直接标记完成，不走AI生成
+      if (input.contentType === 'simple' || input.platform === 'special') {
+        this.logger.log(`${input.platform === 'special' ? 'special平台' : '简单任务'}，跳过AI生成: ${requestId}`)
         // 先更新content字段为订单描述，让分身能看到任务要求
         try {
           const db = getMySQLClient()
@@ -399,22 +399,20 @@ export class ContentGenerationService implements OnModuleInit {
           images: null,
           video_url: null,
         }).catch(err => {
-          this.logger.error(`简单任务状态更新失败: ${err.message}`, err.stack)
+          this.logger.error(`状态更新失败: ${err.message}`, err.stack)
         })
         continue
       }
 
-      // // 4. 后台异步执行生成（不 await，让接口立即返回）
-      if (platform != 'special') {
-        this.executeGeneration(requestId, platform, {
-          ...input,
-          contentType: effectiveContentType,
-          primarySkill,
-        }).catch(err => {
-          this.logger.error(`后台生成失败: ${err.message}`, err.stack)
-          this.updateStatus(requestId, input.orderId, 'failed', null, err.message)
-        })
-      }
+      // 4. 后台异步执行生成（不 await，让接口立即返回）
+      this.executeGeneration(requestId, platform, {
+        ...input,
+        contentType: effectiveContentType,
+        primarySkill,
+      }).catch(err => {
+        this.logger.error(`后台生成失败: ${err.message}`, err.stack)
+        this.updateStatus(requestId, input.orderId, 'failed', null, err.message)
+      })
     }
 
     return results
