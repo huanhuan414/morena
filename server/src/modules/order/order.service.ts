@@ -1351,7 +1351,7 @@ export class OrderService {
   }
 
   async saveOrderTaskSteps(orderId: string, steps: Record<string, any>[]) {
-    console.log('saveOrderTaskSteps', orderId, steps)
+    // console.log('saveOrderTaskSteps', orderId, steps)
     if (!orderId) {
       throw new Error('缺少订单ID')
     }
@@ -1360,7 +1360,7 @@ export class OrderService {
     }
 
     const db = getMySQLClient()
-    const orderRows = await db.query('SELECT id FROM orders WHERE id = ? LIMIT 1', [orderId])
+    const orderRows = await db.query('SELECT id, avatar_count FROM orders WHERE id = ? LIMIT 1', [orderId])
     if (!orderRows || orderRows.length === 0) {
       throw new Error('订单不存在')
     }
@@ -1369,6 +1369,25 @@ export class OrderService {
 
     const stepsWithSortOrder = steps.map((step, index) => ({ ...(step || {}), __sortOrder: index }))
     const materialSteps = stepsWithSortOrder.filter(step => this.MATERIAL_TYPES.includes(this.getTaskStepType(step)))
+    const order = orderRows[0] || {}
+    const rawAvatarCount = Number(order.avatar_count || order.avatarCount)
+    const avatarCount = Number.isFinite(rawAvatarCount) && rawAvatarCount > 0 ? rawAvatarCount : 0
+    if (avatarCount <= 0) {
+      throw new Error('获取接单数量为空，请联系管理员查看！')
+    }
+
+    const invalidExclusiveStep = materialSteps.find((step) => {
+      const stepData = step.data || {}
+      const distributeMode = stepData.distributeMode || stepData.distribute_mode || 'shared'
+      if (distributeMode !== 'exclusive') return false
+      if (this.getTaskStepType(step) in ['material_text', 'material_image', 'material_video'] && (stepData.useAiMaterial === true || stepData.use_ai_material === true)) return false
+      const materials = Array.isArray(stepData.materials) ? stepData.materials : []
+      return materials.length < avatarCount
+    })
+    if (invalidExclusiveStep) {
+      const stepIndex = Number(invalidExclusiveStep.__sortOrder ?? stepsWithSortOrder.findIndex(step => step === invalidExclusiveStep))
+      throw new Error(`步骤${stepIndex + 1}：独占至少需要${avatarCount}个素材，不能比接单数少！`)
+    }
 
     for (let index = 0; index < stepsWithSortOrder.length; index++) {
       const step = stepsWithSortOrder[index] || {}

@@ -366,6 +366,30 @@ export default function OrderStepManagement() {
     }
   }
 
+  const getAvatarCount = () => {
+    const raw = orderInfo?.avatarCount || orderInfo?.avatar_count || priceInfo.avatarCount
+    const count = Number(raw)
+    // return count
+    return Number.isFinite(count) && count > 0 ? count : 0
+  }
+
+  const getExclusiveMaterialWarning = (targetSteps: StepItem[], withStepNumber = true) => {
+    const avatarCount = getAvatarCount()
+    // const avatarCount = 0
+    if (avatarCount <= 0) {
+      return '获取接单数量为空，请联系管理员查看！'
+    }
+    const missingStepIndex = targetSteps.findIndex((step) => {
+      if (!MATERIAL_TYPES.includes(step.type)) return false
+      const data = step.data || {}
+      if ((data.distributeMode || 'shared') !== 'exclusive') return false
+      if (step.type in ['material_text', 'material_image', 'material_video'] && data.useAiMaterial) return false
+      const materials = Array.isArray(data.materials) ? data.materials : []
+      return materials.length < avatarCount
+    })
+    if (missingStepIndex < 0) return ''
+    return withStepNumber ? `步骤${missingStepIndex + 1}：独占至少需要${avatarCount}个素材，不能比接单数少！` : `独占至少需要${avatarCount}个素材，不能比接单数少！`
+  }
   const handlePublish = async () => {
     if (steps.length === 0) {
       Taro.showToast({ title: '请至少添加一个步骤', icon: 'none' })
@@ -377,6 +401,11 @@ export default function OrderStepManagement() {
     }
     if (!orderId) {
       Taro.showToast({ title: '订单ID缺失', icon: 'none' })
+      return
+    }
+    const exclusiveWarning = getExclusiveMaterialWarning(steps)
+    if (exclusiveWarning) {
+      Taro.showToast({ title: exclusiveWarning, icon: 'none', duration: 3000 })
       return
     }
 
@@ -668,7 +697,7 @@ export default function OrderStepManagement() {
     setModalMaterials([])
     setModalMaterialInput('')
     setModalDistributeMode('shared')
-    setModalUseAiMaterial(true)
+    setModalUseAiMaterial(item.type === 'material_text')
     setModalAiPrompt('')
     setShowSheet(false)
     setShowModal(true)
@@ -676,7 +705,6 @@ export default function OrderStepManagement() {
 
   const handleModalConfirm = () => {
     const data: StepItem['data'] = {}
-
     if (modalType === 'input_url') {
       if (!modalUrl.trim()) {
         Taro.showToast({ title: '请输入网址', icon: 'none' })
@@ -743,6 +771,7 @@ export default function OrderStepManagement() {
         Taro.showToast({ title: '请至少添加一个素材', icon: 'none' })
         return
       }
+
       data.materials = modalMaterials
       data.distributeMode = modalDistributeMode
       if (modalType === 'material_text') {
@@ -782,6 +811,11 @@ export default function OrderStepManagement() {
           extConfig: STEP_EXT_CONFIG[modalType] || undefined,
         },
       ]
+    }
+    const exclusiveWarning = getExclusiveMaterialWarning(nextSteps, false)
+    if (exclusiveWarning) {
+      Taro.showToast({ title: exclusiveWarning, icon: 'none' })
+      return
     }
     persistSteps(nextSteps)
     setShowModal(false)
@@ -1119,7 +1153,7 @@ export default function OrderStepManagement() {
                 {(modalType === 'material_text' || modalType === 'material_image' || modalType === 'material_video') && (
                   <View className="step-modal-field">
                     <View className="step-modal-field-row">
-                      <Text className="step-modal-field-label">分身数量：</Text>
+                      <Text className="step-modal-field-label">接单数量：</Text>
                       <Text className="step-modal-field-value">{priceInfo.avatarCount}</Text>
                     </View>
                   </View>

@@ -37,8 +37,12 @@ export class OrderController {
     @Param('id') orderId: string,
     @Body() body: Record<string, any>
   ) {
-    const result = await this.orderService.saveOrderTaskSteps(orderId, body?.steps || [])
-    return { code: 200, data: result, message: '保存成功' }
+    try {
+      const result = await this.orderService.saveOrderTaskSteps(orderId, body?.steps || [])
+      return { code: 200, data: result, message: '保存成功' }
+    } catch (error: any) {
+      return { code: 400, data: null, message: error.message || '保存失败' }
+    }
   }
 
   @Get(':id/task-steps')
