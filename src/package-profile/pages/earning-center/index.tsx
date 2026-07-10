@@ -525,9 +525,9 @@ export default function EarningCenterPage() {
                         <View className="record-info">
                           <Text className="record-desc">{typeInfo.label || record.description}</Text>
                           {/* 显示计算式：原始金额 × (1 - 抽成比例) = 实际金额 */}
-                          <Text className="record-fee-formula">
+                          {/* <Text className="record-fee-formula">
                             接单¥{formatNum(record.amount)} × (1-平台{Math.round(record.feeRate * 100)}%) = ¥{formatNum(record.feeAmount)}
-                          </Text>
+                          </Text> */}
                           <Text className="record-time">{formatTime(record.createdAt)}</Text>
                         </View>
                       </View>
