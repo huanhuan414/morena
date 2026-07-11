@@ -433,6 +433,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+}
+
+.preview-material-btn_video {
+  padding: 12rpx 28rpx;
+  border-radius: 8rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .preview-material-btn-copy {
@@ -454,4 +463,8 @@
 
 .preview-material-btn-save .preview-material-btn-text {
   color: #ffffff;
+}
+
+.preview-material-box-image {
+  grid-column: span 1;
 }

@@ -321,7 +321,7 @@ export default function OrderStepPreview() {
                       </Text>
                     </View>
                   ) : step.data?.materials && step.data.materials.length > 0 ? (
-                    <View className="preview-material-box">
+                    <View className={`preview-material-box ${step.data.materials![0].type === 'image' ? 'preview-material-box-image' : ''}`}>
                       {step.data.materials![0].type === 'text' && (
                         <>
                           <Text className="preview-material-text">{step.data.materials![0].content}</Text>
@@ -351,7 +351,7 @@ export default function OrderStepPreview() {
                           <Video src={step.data.materials![0].content} className="preview-video" controls />
                           {step.extConfig?.save_button_video && (
                             <View className="preview-material-action">
-                              <View className="preview-material-btn preview-material-btn-save" onClick={() => handleSaveVideo(step.data!.materials![0].content)}>
+                              <View className="preview-material-btn_video preview-material-btn-save" onClick={() => handleSaveVideo(step.data!.materials![0].content)}>
                                 <Text className="preview-material-btn-text">{step.extConfig.save_button_video}</Text>
                               </View>
                             </View>
