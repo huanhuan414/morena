@@ -659,7 +659,7 @@ export default function OrderAcceptTask() {
               <Image src={sampleImage} className="accept-qrcode-image" mode="widthFix" onClick={() => Taro.previewImage({ urls: [sampleImage], current: sampleImage })} />
               <View className="accept-qrcode-item">
                 {!previewOnly && extConfig.save_button_image && (
-                  <Button className="accept-action-btn" onClick={() => handleSaveImage(sampleImage)}>
+                  <Button className={stepType === 'upload_qrcode' ? 'accept-action-btn-qrcode ' : 'accept-action-btn'} onClick={() => handleSaveImage(sampleImage)}>
                     <Text className="accept-action-btn-text">{extConfig.save_button_image}</Text>
                   </Button>
                 )}
