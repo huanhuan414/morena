@@ -672,7 +672,7 @@ export default function OrderAcceptTask() {
                 </Button>
               )}
               {!previewOnly && extConfig.copy_button_text && (
-                <Button variant="outline" className="accept-action-btn" onClick={() => copyText(mainContent)}>
+                <Button variant="outline" className="accept-action-btn accept-action-btn-light" onClick={() => copyText(mainContent)}>
                   <Text className="accept-action-btn-secondary">{extConfig.copy_button_text}</Text>
                 </Button>
               )}
@@ -684,9 +684,9 @@ export default function OrderAcceptTask() {
           <View className="accept-qrcode-grid">
             <View className="accept-qrcode-item">
               <Image src={sampleImage} className="accept-qrcode-image" mode="widthFix" onClick={() => Taro.previewImage({ urls: [sampleImage], current: sampleImage })} />
-              <View className="accept-qrcode-item">
+              <View className="accept-qrcode-action">
                 {!previewOnly && extConfig.save_button_image && (
-                  <Button className={stepType === 'upload_qrcode' ? 'accept-action-btn-qrcode ' : 'accept-action-btn'} onClick={() => handleSaveImage(sampleImage)}>
+                  <Button className={stepType === 'upload_qrcode' ? 'accept-action-btn-qrcode' : 'accept-action-btn'} onClick={() => handleSaveImage(sampleImage)}>
                     <Text className="accept-action-btn-text">{extConfig.save_button_image}</Text>
                   </Button>
                 )}
