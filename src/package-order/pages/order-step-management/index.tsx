@@ -208,6 +208,7 @@ export default function OrderStepManagement() {
   const statusBarHeight = getStatusBarHeight()
   const orderId = String(router.params?.orderId || '')
   const storageKey = useMemo(() => getStepsStorageKey(orderId), [orderId])
+  const targetPlatformStorageKey = useMemo(() => `${storageKey}_target_platform`, [storageKey])
 
   const [saveTemplate, setSaveTemplate] = useState(true)
   const [showSheet, setShowSheet] = useState(false)
@@ -222,13 +223,14 @@ export default function OrderStepManagement() {
 
   useDidShow(async () => {
     const draftData = Taro.getStorageSync(DRAFT_STORAGE_KEY)
+    const draftPayload = draftData?.payload || {}
     const storedSteps = Taro.getStorageSync(storageKey)
-    //本地存储中已经保存了步骤数据就从本地获取，没有就从数据库
-    if (storedSteps && Array.isArray(storedSteps) && storedSteps.length > 0) {
-      return
-    }
+    let sourceSteps: StepItem[] = []
+    let shouldPersistSource = false
 
-    if (orderId) {
+    if (storedSteps && Array.isArray(storedSteps) && storedSteps.length > 0) {
+      sourceSteps = storedSteps
+    } else if (orderId) {
       try {
         const res = await Network.request({
           url: `/api/order/${orderId}/task-steps`,
@@ -236,39 +238,48 @@ export default function OrderStepManagement() {
         })
         const payload = res?.data
         if (payload?.code === 200 && payload?.data?.steps && payload.data.steps.length > 0) {
-          const transformedSteps = transformTaskSteps(payload.data.steps, payload.data.material)
-          persistSteps(transformedSteps)
-          return
+          sourceSteps = transformTaskSteps(payload.data.steps, payload.data.material)
+          shouldPersistSource = true
         }
       } catch (e) {
         console.error('[获取步骤] 错误:', e)
       }
     }
 
-    if (draftData && draftData.payload) {
-      const currentContentType = draftData.payload.contentType || draftData.payload.content_type || 'text'
-      const currentSteps = stepsRef.current
+    if (sourceSteps.length === 0) {
+      sourceSteps = stepsRef.current
+    }
+
+    let nextSteps = sourceSteps
+    if (draftData?.payload) {
+      const currentContentType = draftPayload.contentType || draftPayload.content_type || 'text'
       const expectedMaterialTypes = getMaterialItemsByContentType(currentContentType).map(item => item.type)
-
-      const incompatibleIds = new Set<string>()
-      currentSteps.forEach(step => {
-        if (step.group === '发布素材') {
-          if (currentContentType === 'simple') {
-            incompatibleIds.add(step.id)
-          } else if (expectedMaterialTypes.length > 0 && !expectedMaterialTypes.includes(step.type)) {
-            incompatibleIds.add(step.id)
-          }
-        }
-      })
-
-      if (incompatibleIds.size > 0) {
-        const updatedSteps = currentSteps.filter(step => !incompatibleIds.has(step.id))
-        persistSteps(updatedSteps)
+      const draftPlatforms = canonicalizePlatforms(draftPayload.platforms || [])
+      const targetPlatform = draftPlatforms[0] || ''
+      const previousTargetPlatform = Taro.getStorageSync(targetPlatformStorageKey) || ''
+      const targetPlatformChanged = !!previousTargetPlatform && !!targetPlatform && previousTargetPlatform !== targetPlatform
+      const hasCollectUrlStep = sourceSteps.some(step => step.type === 'collect_url')
+      const shouldRemoveCollectUrl = targetPlatformChanged && hasCollectUrlStep
+      if (targetPlatform) {
+        Taro.setStorageSync(targetPlatformStorageKey, targetPlatform)
       }
+
+      nextSteps = sourceSteps.filter(step => {
+        if (step.group === '发布素材') {
+          if (currentContentType === 'simple') return false
+          if (expectedMaterialTypes.length > 0 && !expectedMaterialTypes.includes(step.type)) return false
+        }
+        if (shouldRemoveCollectUrl && step.type === 'collect_url') return false
+        return true
+      })
+    }
+
+    if (shouldPersistSource || nextSteps.length !== sourceSteps.length) {
+      persistSteps(nextSteps)
     }
   })
 
-  const [contentType] = useState(() => {
+  const [contentType, setContentType] = useState(() => {
     const draftData = Taro.getStorageSync(DRAFT_STORAGE_KEY)
     if (draftData && draftData.payload) {
       return draftData.payload.contentType || draftData.payload.content_type || 'text'
@@ -340,6 +351,7 @@ export default function OrderStepManagement() {
     const draftData = Taro.getStorageSync(DRAFT_STORAGE_KEY)
     if (draftData?.payload) {
       setOrderInfo(draftData.payload)
+      setContentType(draftData.payload.contentType || draftData.payload.content_type || 'text')
       const basePrice = draftData.payload.baseAmount || draftData.payload.base_price || 0
       const contentPrice = draftData.payload.content_price || draftData.payload.contentPrice || 0
       const totalPrice = draftData.payload.total_price || draftData.payload.totalPrice || 0
@@ -758,7 +770,7 @@ export default function OrderStepManagement() {
     setModalType(step.type)
 
     if (step.data) {
-      setModalUrl(step.data.url || '')
+      setModalUrl(step.data.url || step.data.exampleUrl || '')
       setModalImage(step.data.image || '')
       setModalVideo(step.data.video || '')
       setModalCopyData(step.data.copyData || '')
