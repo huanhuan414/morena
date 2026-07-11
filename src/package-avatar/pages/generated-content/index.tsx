@@ -5,6 +5,7 @@ import { ArrowLeft, Clock, FileText, ImagePlus, Play, Eye, Send, MessageSquare, 
 import { Network } from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import { canonicalizePlatform, getPlatformLabel, getPlatformMeta } from '@/constants/publish-platform'
+import { formatDateTime } from '@/utils/time'
 import './index.css'
 
 // 内容状态映射
@@ -678,7 +679,7 @@ export default function GeneratedContentPage() {
                 <View className="card-footer">
                   <View className="footer-left">
                     <Clock size={12} color="#94A3B8" />
-                    <Text className="footer-time">{content.createdAt ? new Date(content.createdAt).toLocaleDateString('zh-CN') : ''}</Text>
+                    <Text className="footer-time">{formatDateTime(content.createdAt)}</Text>
                   </View>
                   <View className="footer-actions">
                     {actions.map(action => {
