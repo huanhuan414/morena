@@ -775,15 +775,9 @@ async getExecutionProgress(orderId: string) {
     // 与 acceptOrder 完全一致的名额计算逻辑
     const totalQuota = Math.max(
       Number(order.avatar_count) || 0,
-      Number(order.expected_quantity) || 0,
       1
     )
-    
-    // 如果 avatar_count 和 expected_quantity 都是 0 或 null，使用 required_count
-    const effectiveTotalQuota = (Number(order.avatar_count) === 0 && Number(order.expected_quantity) === 0)
-      ? Number(order.required_count || 1)
-      : totalQuota
-    
+
     // 查询已接单数量
     const acceptedRows = await db.query(
       `SELECT COUNT(1) as count FROM order_dispatch_requests WHERE order_id = ? AND status IN ('pending','accepted', 'completed')`,
@@ -791,13 +785,13 @@ async getExecutionProgress(orderId: string) {
     ) as any[]
     const acceptedCount = Number(acceptedRows?.[0]?.count || 0)
     
-    const remainingQuota = Math.max(0, effectiveTotalQuota - acceptedCount)
-    const isFull = acceptedCount >= effectiveTotalQuota
+    const remainingQuota = Math.max(0, totalQuota - acceptedCount)
+    const isFull = acceptedCount >= totalQuota
     
     return {
       exists: true,
       acceptedCount,
-      totalQuota: effectiveTotalQuota,
+      totalQuota: totalQuota,
       remainingQuota,
       isFull
     }
