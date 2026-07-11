@@ -375,7 +375,8 @@ export class TikHubService {
   private async verifyWechatArticle(postUrl: string, keywords: string[], platform: string) {
     try {
       // 备选方案：只要链接是微信公众号文章格式就直接通过
-      if (postUrl.includes('mp.weixin.qq.com/s/') || postUrl.includes('weixin.qq.com/sph/')) {
+      const pUrl = platform === 'wechat_mp' ? 'mp.weixin.qq.com/s/' : 'weixin.qq.com/sph/',
+      if (postUrl.includes(pUrl)) {
         return {
           success: true,
           data: {
