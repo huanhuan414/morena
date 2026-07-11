@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Network } from '@/network'
+import { canonicalizePlatforms, getPlatformLabel } from '@/constants/publish-platform'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import './index.css'
 
@@ -50,6 +51,8 @@ const STEP_EXT_CONFIG: Record<string, Record<string, string>> = {
 
 const MATERIAL_TYPES = ['material_text', 'material_image', 'material_video']
 const ACCEPTANCE_STEP_TYPES = ['collect_image', 'collect_info', 'collect_url']
+// #wechat_moments朋友圈/wechat_mp公众号/xiaohongshu小红书/douyin抖音/wechat_channel视频号/kuaishou快手
+const VERIFY_REQUIRED_PLATFORMS = ['douyin', 'kuaishou', 'xiaohongshu', 'wechat_mp', 'wechat_channel']
 
 const transformTaskSteps = (steps: any[], materialRecord: any): StepItem[] => {
   return steps.map((row) => {
@@ -288,6 +291,10 @@ export default function OrderStepManagement() {
   const [modalDistributeMode, setModalDistributeMode] = useState<'shared' | 'exclusive'>('shared')
   const [modalUseAiMaterial, setModalUseAiMaterial] = useState(true)
   const [modalAiPrompt, setModalAiPrompt] = useState('')
+  const [collectUrlVerifyStatus, setCollectUrlVerifyStatus] = useState<'idle' | 'verifying' | 'success' | 'failed'>('idle')
+  const [collectUrlVerifyMessage, setCollectUrlVerifyMessage] = useState('')
+  const collectUrlVerifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const collectUrlVerifySeqRef = useRef(0)
   const [editingStepId, setEditingStepId] = useState<string | null>(null)
   const [showPayModal, setShowPayModal] = useState(false)
   const [orderInfo, setOrderInfo] = useState<any>(null)
@@ -352,6 +359,91 @@ export default function OrderStepManagement() {
     }
   }
 
+  const getTargetPlatform = () => {
+    const platforms = canonicalizePlatforms(orderInfo?.platforms || [])
+    if (platforms[0]) return platforms[0]
+    return ''
+  }
+
+  const getTargetPlatformLabel = () => {
+    const platform = getTargetPlatform()
+    return platform ? getPlatformLabel(platform) : '未选择目标平台！'
+  }
+
+  const isVerifyRequiredPlatform = (platform: string) => VERIFY_REQUIRED_PLATFORMS.includes(platform)
+
+  const verifyCollectUrl = async (platform: string, postUrl: string, seq: number) => {
+    const keywords = [orderInfo?.title, orderInfo?.description].filter(Boolean).map(String)
+    try {
+      const response = await Network.request({
+        url: '/api/tikhub/verify-post',
+        method: 'POST',
+        data: { platform, postUrl, keywords },
+      })
+      if (seq !== collectUrlVerifySeqRef.current) return
+      const data = response.data
+      if (data?.code === 200 && data?.data) {
+        setCollectUrlVerifyStatus(data.data.verified ? 'success' : 'failed')
+        setCollectUrlVerifyMessage(data.data.message || (data.data.verified ? '验证通过' : '验证失败'))
+      } else {
+        setCollectUrlVerifyStatus('failed')
+        setCollectUrlVerifyMessage(data?.message || '验证失败，请重试')
+      }
+    } catch {
+      if (seq !== collectUrlVerifySeqRef.current) return
+      setCollectUrlVerifyStatus('failed')
+      setCollectUrlVerifyMessage('网络异常，请重试')
+    }
+  }
+
+  useEffect(() => {
+    if (collectUrlVerifyTimerRef.current) {
+      clearTimeout(collectUrlVerifyTimerRef.current)
+      collectUrlVerifyTimerRef.current = null
+    }
+    collectUrlVerifySeqRef.current += 1
+
+    if (modalType !== 'collect_url') {
+      setCollectUrlVerifyStatus('idle')
+      setCollectUrlVerifyMessage('')
+      return
+    }
+
+    const platform = getTargetPlatform()
+    const postUrl = modalUrl.trim()
+    if (!postUrl) {
+      setCollectUrlVerifyStatus('idle')
+      setCollectUrlVerifyMessage('')
+      return
+    }
+    if (!isValidUrl(postUrl)) {
+      setCollectUrlVerifyStatus('failed')
+      setCollectUrlVerifyMessage('请输入正确的链接地址')
+      return
+    }
+    if (!platform) {
+      setCollectUrlVerifyStatus('failed')
+      setCollectUrlVerifyMessage('缺少目标平台')
+      return
+    }
+    if (!isVerifyRequiredPlatform(platform)) {
+      setCollectUrlVerifyStatus('success')
+      setCollectUrlVerifyMessage('链接格式正确')
+      return
+    }
+
+    const seq = collectUrlVerifySeqRef.current
+    setCollectUrlVerifyStatus('verifying')
+    setCollectUrlVerifyMessage('验证中...')
+    collectUrlVerifyTimerRef.current = setTimeout(() => verifyCollectUrl(platform, postUrl, seq), 600)
+
+    return () => {
+      if (collectUrlVerifyTimerRef.current) {
+        clearTimeout(collectUrlVerifyTimerRef.current)
+        collectUrlVerifyTimerRef.current = null
+      }
+    }
+  }, [modalType, modalUrl, orderInfo])
   const calculatePrice = () => {
     const draftData = Taro.getStorageSync(DRAFT_STORAGE_KEY)
     const avatarCount = draftData?.payload?.avatarCount || draftData?.payload?.avatar_count || orderInfo?.avatarCount || 1
@@ -629,7 +721,15 @@ export default function OrderStepManagement() {
 
   const dynamicStepGroups = useMemo(() => {
     const materialItems = getMaterialItemsByContentType(contentType)
-    const groups = [...STEP_GROUPS]
+    const targetPlatform = getTargetPlatform()
+    const groups = STEP_GROUPS.map(group => ({ ...group, items: [...group.items] }))
+    const acceptanceGroupIndex = groups.findIndex(g => g.title === '验收内容')
+    if (acceptanceGroupIndex !== -1 && !isVerifyRequiredPlatform(targetPlatform)) {
+      groups[acceptanceGroupIndex] = {
+        ...groups[acceptanceGroupIndex],
+        items: groups[acceptanceGroupIndex].items.filter(item => item.type !== 'collect_url'),
+      }
+    }
     const materialGroupIndex = groups.findIndex(g => g.title === '发布素材')
     if (materialGroupIndex !== -1) {
       if (materialItems.length === 0) {
@@ -644,7 +744,7 @@ export default function OrderStepManagement() {
       }
     }
     return groups
-  }, [contentType, addedMaterialTypes])
+  }, [contentType, addedMaterialTypes, orderInfo])
 
   const persistSteps = (nextSteps: StepItem[]) => {
     setSteps(nextSteps)
@@ -763,6 +863,14 @@ export default function OrderStepManagement() {
       }
       if (!isValidUrl(modalUrl.trim())) {
         Taro.showToast({ title: '请输入正确的链接地址', icon: 'none' })
+        return
+      }
+      if (collectUrlVerifyStatus === 'verifying') {
+        Taro.showToast({ title: '链接验证中，请稍候', icon: 'none' })
+        return
+      }
+      if (collectUrlVerifyStatus !== 'success') {
+        Taro.showToast({ title: collectUrlVerifyMessage || '请先输入有效的目标平台链接', icon: 'none' })
         return
       }
       data.exampleUrl = modalUrl.trim()
@@ -1158,6 +1266,12 @@ export default function OrderStepManagement() {
                     </View>
                   </View>
                 )}
+                {modalType === 'collect_url' && (
+                  <View className="step-modal-platform-row">
+                    <Text className="step-modal-platform-label">目标平台：</Text>
+                    <Text className="step-modal-platform-value">{getTargetPlatformLabel()}</Text>
+                  </View>
+                )}
                 <View className="step-modal-field">
                   <Text className="step-modal-field-label">步骤说明</Text>
                   <Textarea
@@ -1182,6 +1296,13 @@ export default function OrderStepManagement() {
                         onInput={(e) => setModalUrl(e.detail.value)}
                       />
                     </View>
+                    {modalType === 'collect_url' && collectUrlVerifyStatus !== 'idle' && (
+                      <View className={`collect-url-verify ${collectUrlVerifyStatus}`}>
+                        <Text className={`collect-url-verify-text ${collectUrlVerifyStatus}`}>
+                          {collectUrlVerifyMessage}
+                        </Text>
+                      </View>
+                    )}
                   </View>
                 )}
 

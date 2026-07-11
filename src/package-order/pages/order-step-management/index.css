@@ -562,6 +562,62 @@
   color: #111827;
 }
 
+.step-modal-platform-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8rpx;
+  padding: 16rpx 20rpx;
+  background: #eef2ff;
+  border-radius: 14rpx;
+}
+
+.step-modal-platform-label {
+  font-size: 26rpx;
+  color: #64748b;
+}
+
+.step-modal-platform-value {
+  font-size: 26rpx;
+  color: #4f46e5;
+  font-weight: 700;
+}
+
+.collect-url-verify {
+  padding: 12rpx 16rpx;
+  border-radius: 12rpx;
+}
+
+.collect-url-verify.verifying {
+  background: #eff6ff;
+}
+
+.collect-url-verify.success {
+  background: #ecfdf5;
+}
+
+.collect-url-verify.failed {
+  background: #fef2f2;
+}
+
+.collect-url-verify-text {
+  font-size: 24rpx;
+  line-height: 1.4;
+}
+
+.collect-url-verify-text.verifying {
+  color: #2563eb;
+}
+
+.collect-url-verify-text.success {
+  color: #059669;
+}
+
+.collect-url-verify-text.failed {
+  color: #dc2626;
+}
+
+
 .avatar-count-value {
   color: #6366F1;
   font-weight: 600;

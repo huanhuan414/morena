@@ -224,7 +224,7 @@ export class TikHubService {
 
       // 微信公众号：直接抓取文章内容
       if (platform === 'wechat_mp' || platform === 'wechat_channel') {
-        return await this.verifyWechatArticle(postUrl, keywords)
+        return await this.verifyWechatArticle(postUrl, keywords, platform)
       }
 
       // 其他平台暂不支持自动验证
@@ -372,16 +372,16 @@ export class TikHubService {
   /**
    * 验证微信公众号文章
    */
-  private async verifyWechatArticle(postUrl: string, keywords: string[]) {
+  private async verifyWechatArticle(postUrl: string, keywords: string[], platform: string) {
     try {
       // 备选方案：只要链接是微信公众号文章格式就直接通过
-      if (postUrl.includes('mp.weixin.qq.com/s/')) {
+      if (postUrl.includes('mp.weixin.qq.com/s/') || postUrl.includes('weixin.qq.com/sph/')) {
         return {
           success: true,
           data: {
-            platform: 'wechat_mp',
+            platform: platform,
             verified: true,
-            title: '微信公众号文章',
+            title: platform === 'wechat_mp' ? '微信公众号文章' : '微信视频号',
             keywordMatch: true,
             message: '验证通过：发布链接有效',
           },
@@ -417,7 +417,7 @@ export class TikHubService {
       return {
         success: true,
         data: {
-          platform: 'wechat_mp',
+          platform: platform,
           verified: keywordMatch,
           title,
           keywordMatch,
@@ -428,7 +428,7 @@ export class TikHubService {
       console.error('[TikHubService] 微信文章验证失败:', error.message)
       return {
         success: false,
-        message: `微信文章验证失败: ${error.message}`,
+        message: `${platform === 'wechat_mp' ? '微信公众号文章' : '微信视频号'}验证验证失败: ${error.message}`,
       }
     }
   }
