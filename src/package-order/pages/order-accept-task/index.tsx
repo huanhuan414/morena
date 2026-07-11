@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Taro, { useRouter } from '@tarojs/taro'
 import { Image, ScrollView, Text, Video, View } from '@tarojs/components'
-import { ArrowLeft, Camera, ExternalLink, ShieldAlert } from 'lucide-react-taro'
+import { ArrowLeft, Camera, ExternalLink, Save, ShieldAlert } from 'lucide-react-taro'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Network } from '@/network'
@@ -79,6 +79,7 @@ export default function OrderAcceptTask() {
   const requestId = String(router.params?.requestId || router.params?.id || '')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [savingAllStepId, setSavingAllStepId] = useState('')
   const submitLockRef = useRef(false)
   const [taskStatus, setTaskStatus] = useState('')
   const [steps, setSteps] = useState<TaskStep[]>([])
@@ -275,6 +276,10 @@ export default function OrderAcceptTask() {
     }
   }
 
+  const getImageMaterialItems = (step: TaskStep) => {
+    const items = step.assignedMaterial?.items || []
+    return items.filter((item) => item.type === 'image' && item.content)
+  }
   const handleUploadImage = async (step: TaskStep) => {
     try {
       const selected = await Taro.chooseImage({ count: 1, sizeType: ['compressed'], sourceType: ['album', 'camera'] })
@@ -317,8 +322,12 @@ export default function OrderAcceptTask() {
 
   const requestAlbumPermission = async () => {
     try {
-      const res = await Taro.authorize({ scope: 'scope.writePhotosAlbum' })
-      return res?.errMsg === 'authorize:ok'
+      const settingRes = await Taro.getSetting()
+      const authSetting = settingRes.authSetting || {}
+      if (authSetting['scope.writePhotosAlbum'] === true) return true
+      if (authSetting['scope.writePhotosAlbum'] === false) return false
+      await Taro.authorize({ scope: 'scope.writePhotosAlbum' })
+      return true
     } catch {
       return false
     }
@@ -364,6 +373,60 @@ export default function OrderAcceptTask() {
     }
   }
 
+
+  const handleSaveAllImages = async (step: TaskStep) => {
+    const images = getImageMaterialItems(step).map((item) => item.content)
+    if (images.length === 0 || savingAllStepId) return
+
+    const hasPermission = await requestAlbumPermission()
+    if (!hasPermission) {
+      const { confirm } = await Taro.showModal({
+        title: '需要相册权限',
+        content: '请在设置中开启相册权限，才能保存图片到本地',
+        confirmText: '去设置',
+        confirmColor: '#6366F1',
+      })
+      if (confirm) Taro.openSetting()
+      return
+    }
+
+    setSavingAllStepId(step.id)
+    Taro.showLoading({ title: '准备保存...', mask: true })
+    let savedCount = 0
+    let failedCount = 0
+
+    for (let i = 0; i < images.length; i++) {
+      Taro.showLoading({ title: `保存中 ${i + 1}/${images.length}`, mask: true })
+      try {
+        const res: any = await Network.downloadFile({ url: images[i], timeout: 60000 })
+        if (res.statusCode === 200) {
+          try {
+            await Taro.saveImageToPhotosAlbum({ filePath: res.tempFilePath })
+            savedCount++
+          } catch (saveErr) {
+            console.error(`[接单任务] 第${i + 1}张保存到相册失败:`, saveErr)
+            failedCount++
+          }
+        } else {
+          console.error(`[接单任务] 第${i + 1}张下载失败, statusCode:`, res.statusCode)
+          failedCount++
+        }
+      } catch (downloadErr) {
+        console.error(`[接单任务] 第${i + 1}张下载异常:`, downloadErr)
+        failedCount++
+      }
+    }
+
+    Taro.hideLoading()
+    setSavingAllStepId('')
+    if (savedCount === 0 && failedCount > 0) {
+      Taro.showToast({ title: '保存失败，请重试', icon: 'none' })
+    } else if (failedCount === 0) {
+      Taro.showToast({ title: `已保存${savedCount}张图片`, icon: 'success' })
+    } else {
+      Taro.showToast({ title: `已保存${savedCount}张，${failedCount}张失败`, icon: 'none' })
+    }
+  }
   const handleSaveVideo = async (videoUrl: string) => {
     if (!videoUrl) return
     const hasPermission = await requestAlbumPermission()
@@ -486,6 +549,7 @@ export default function OrderAcceptTask() {
   const renderMaterialContent = (step: TaskStep, extConfig: Record<string, string>) => {
     const materialGroup = step.assignedMaterial || {}
     const items = materialGroup.items || []
+    const imageUrls = items.filter((item) => item.type === 'image' && item.content).map((item) => item.content)
     const hasPrompt = !!materialGroup.prompt && items.length === 0
 
     if (items.length === 0 && !hasPrompt) return null
@@ -514,7 +578,7 @@ export default function OrderAcceptTask() {
             )}
             {item.type === 'image' && (
               <>
-                <Image src={item.content} className="accept-material-image" mode="aspectFill" />
+                <Image src={item.content} className="accept-material-image" mode="aspectFill" onClick={() => Taro.previewImage({ urls: imageUrls, current: item.content })} />
                 {!previewOnly && extConfig.save_button_image && (
                   <Button className="accept-material-btn accept-material-btn-save accept-material-action" onClick={() => handleSaveImage(item.content)}>
                     <Text className="accept-material-btn-text">{extConfig.save_button_image}</Text>
@@ -749,9 +813,17 @@ export default function OrderAcceptTask() {
                       {/* <Text className="accept-step-name">{getStepTitle(step)}</Text> */}
                       <View className="accept-step-title-row">
                         <Text className="accept-step-name">步骤{getChineseNumber(index + 1)}：{getStepType(step) === 'upload_qrcode' ? '二维码识别' : getStepTitle(step)}</Text>
-                        {getStepType(step) === 'collect_url' && getTargetPlatformLabel() && (
-                          <Text className="accept-platform-badge">{getTargetPlatformLabel()}</Text>
-                        )}
+                        <View className="accept-step-title-actions">
+                          {getStepType(step) === 'material_image' && !previewOnly && getImageMaterialItems(step).length > 1 && (
+                            <View className={`accept-save-all-btn ${savingAllStepId === step.id ? 'disabled' : ''}`} onClick={() => handleSaveAllImages(step)}>
+                              <Save size={13} color="#3B82F6" />
+                              <Text className="accept-save-all-text">{savingAllStepId === step.id ? '保存中' : '保存全部'}</Text>
+                            </View>
+                          )}
+                          {getStepType(step) === 'collect_url' && getTargetPlatformLabel() && (
+                            <Text className="accept-platform-badge">{getTargetPlatformLabel()}</Text>
+                          )}
+                        </View>
                       </View>
                     </View>
                   </View>

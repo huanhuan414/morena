@@ -622,3 +622,29 @@
 .accept-url-verify-text.verifying {
   color: #2563eb;
 }
+
+.accept-step-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex-shrink: 0;
+}
+
+.accept-save-all-btn {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 8rpx 14rpx;
+  border-radius: 8rpx;
+  background: #eff6ff;
+}
+
+.accept-save-all-btn.disabled {
+  opacity: 0.6;
+}
+
+.accept-save-all-text {
+  font-size: 22rpx;
+  color: #3b82f6;
+  font-weight: 500;
+}
