@@ -264,13 +264,15 @@
 }
 
 .accept-copy-box {
-  background: #fef3c7;
+  background: #fffaf0;
+  border: 1rpx solid #fdecc8;
+  border-left: 6rpx solid #f59e0b;
   border-radius: 12rpx;
-  padding: 18rpx 20rpx;
+  padding: 16rpx 18rpx;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12rpx;
 }
 
 .accept-ai-text {
@@ -289,21 +291,42 @@
 }
 
 .accept-copy-text {
-  flex: 1;
-  font-size: 26rpx;
-  color: #b45309;
+  display: block;
+  font-size: 25rpx;
+  color: #9a5b13;
+  line-height: 1.65;
   word-break: break-all;
 }
 
+
+
+.accept-copy-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.accept-copy-toggle {
+  font-size: 24rpx;
+  color: #2563eb;
+  font-weight: 600;
+}
+
 .accept-copy-btn {
-  padding: 12rpx 24rpx;
+  width: 144rpx;
+  height: 52rpx;
+  padding: 0;
   background: #8b5cf6;
   border-radius: 8rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
 
 .accept-copy-btn-text {
-  font-size: 24rpx;
+  font-size: 23rpx;
   color: #ffffff;
   font-weight: 600;
 }

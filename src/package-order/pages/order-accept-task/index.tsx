@@ -67,6 +67,8 @@ const hasStepResultValue = (value: any) => {
   }
   return String(value || '').trim().length > 0
 }
+const COPY_TEXT_PREVIEW_LENGTH = 120
+
 const getAiTextStatusLabel = (status?: string) => {
   if (status === 'completed') return '已完成'
   if (status === 'generating') return '生成中'
@@ -84,6 +86,8 @@ export default function OrderAcceptTask() {
   const [taskStatus, setTaskStatus] = useState('')
   const [steps, setSteps] = useState<TaskStep[]>([])
   const [stepResults, setStepResults] = useState<Record<string, any>>({})
+  const [expandedCopyTexts, setExpandedCopyTexts] = useState<Record<string, boolean>>({})
+  const [copyScrollTarget, setCopyScrollTarget] = useState('')
   const [assignedMaterials, setAssignedMaterials] = useState<Record<string, AssignedMaterialGroup & { status?: string }>>({})
   const [taskInfo, setTaskInfo] = useState<TaskInfo>({})
   const [collectUrlVerifyStatus, setCollectUrlVerifyStatus] = useState<Record<string, 'idle' | 'verifying' | 'success' | 'failed'>>({})
@@ -546,6 +550,47 @@ export default function OrderAcceptTask() {
     }
   }
 
+
+  const renderCopyBox = (copyKey: string | number, text: string, buttonText?: string) => {
+    const normalizedCopyKey = String(copyKey)
+    const chars = Array.from(text || '')
+    const expanded = !!expandedCopyTexts[normalizedCopyKey]
+    const shouldCollapse = chars.length > COPY_TEXT_PREVIEW_LENGTH
+    const displayText = expanded || !shouldCollapse ? text : `${chars.slice(0, COPY_TEXT_PREVIEW_LENGTH).join('')}...`
+    const copyBoxId = `copy-box-${normalizedCopyKey.replace(/[^a-zA-Z0-9_-]/g, '-')}`
+
+    const handleToggleCopyText = () => {
+      setExpandedCopyTexts(prev => ({ ...prev, [normalizedCopyKey]: !expanded }))
+      if (expanded) {
+        setCopyScrollTarget('')
+        setTimeout(() => setCopyScrollTarget(copyBoxId), 30)
+      }
+    }
+
+    return (
+      <View id={copyBoxId} className="accept-copy-box">
+        <Text className="accept-copy-text">{displayText}</Text>
+        {(shouldCollapse || (!previewOnly && buttonText)) && (
+          <View className="accept-copy-footer">
+            {shouldCollapse ? (
+              <Text
+                className="accept-copy-toggle"
+                onClick={handleToggleCopyText}
+              >
+                {expanded ? '收起' : '展开'}
+              </Text>
+            ) : <View />}
+            {!previewOnly && buttonText && (
+              <Button className="accept-copy-btn" onClick={() => copyText(text)}>
+                <Text className="accept-copy-btn-text">{buttonText}</Text>
+              </Button>
+            )}
+          </View>
+        )}
+      </View>
+    )
+  }
+
   const renderMaterialContent = (step: TaskStep, extConfig: Record<string, string>) => {
     const materialGroup = step.assignedMaterial || {}
     const items = materialGroup.items || []
@@ -566,16 +611,7 @@ export default function OrderAcceptTask() {
       <View className="accept-material-grid">
         {items.map((item, index) => (
           <View key={`${step.id}-${index}`} className={item.type === 'text' ? 'accept-material-box' : 'accept-material-item'}>
-            {item.type === 'text' && (
-              <View className="accept-copy-box">
-                <Text className="accept-copy-text">{item.content}</Text>
-                {!previewOnly && extConfig.copy_button_text && (
-                  <Button className="accept-copy-btn" onClick={() => copyText(item.content)}>
-                    <Text className="accept-copy-btn-text">{extConfig.copy_button_text}</Text>
-                  </Button>
-                )}
-              </View>
-            )}
+            {item.type === 'text' && renderCopyBox(`${step.id}-${index}`, item.content, extConfig.copy_button_text)}
             {item.type === 'image' && (
               <>
                 <Image src={item.content} className="accept-material-image" mode="aspectFill" onClick={() => Taro.previewImage({ urls: imageUrls, current: item.content })} />
@@ -643,16 +679,7 @@ export default function OrderAcceptTask() {
             </View>
           </View>
         )}
-        {mainContent && stepType === 'copy_data' && (
-          <View className="accept-copy-box">
-            <Text className="accept-copy-text">{mainContent}</Text>
-            {!previewOnly && extConfig.copy_button_text && (
-              <Button className="accept-copy-btn" onClick={() => copyText(mainContent)}>
-                <Text className="accept-copy-btn-text">{extConfig.copy_button_text}</Text>
-              </Button>
-            )}
-          </View>
-        )}
+        {mainContent && stepType === 'copy_data' && renderCopyBox(step.id, mainContent, extConfig.copy_button_text)}
         {sampleImage && !stepType.includes('collect_image') && (
           <View className="accept-qrcode-grid">
             <View className="accept-qrcode-item">
@@ -796,7 +823,7 @@ export default function OrderAcceptTask() {
         </View>
       </View>
 
-      <ScrollView scrollY className="accept-content">
+      <ScrollView scrollY className="accept-content" scrollIntoView={copyScrollTarget} scrollWithAnimation>
         {loading ? (
           <View className="accept-empty"><Text className="accept-empty-text">加载中...</Text></View>
         ) : (
