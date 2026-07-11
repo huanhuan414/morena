@@ -39,14 +39,14 @@ const truncateStr = (str: string | undefined, maxLen = 20) => {
 };
 
 const STEP_EXT_CONFIG: Record<string, Record<string, string>> = {
-  input_url: { open_button_text: '打开链接', copy_button_text: '一键复制' },
-  upload_qrcode: { save_button_image: '一键保存' },
-  copy_data: { copy_button_text: '一键复制' },
+  input_url: { open_button_text: '打开链接', copy_button_text: '复制' },
+  upload_qrcode: { save_button_image: '保存' },
+  copy_data: { copy_button_text: '复制' },
   collect_image: { upload_button_image: '上传图片' },
   // collect_url: { upload_button_image: '一键复制' },
-  material_text: { copy_button_text: '一键复制' },
-  material_image: { save_button_image: '一键保存' },
-  material_video: { save_button_video: '一键保存' },
+  material_text: { copy_button_text: '复制' },
+  material_image: { save_button_image: '保存' },
+  material_video: { save_button_video: '保存' },
 }
 
 const MATERIAL_TYPES = ['material_text', 'material_image', 'material_video']
