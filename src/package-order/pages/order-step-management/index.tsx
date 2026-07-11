@@ -428,11 +428,11 @@ export default function OrderStepManagement() {
       setCollectUrlVerifyMessage('')
       return
     }
-    if (!isValidUrl(postUrl)) {
-      setCollectUrlVerifyStatus('failed')
-      setCollectUrlVerifyMessage('请输入正确的链接地址')
-      return
-    }
+    // if (!isValidUrl(postUrl)) {
+    //   setCollectUrlVerifyStatus('failed')
+    //   setCollectUrlVerifyMessage('请输入正确的链接地址')
+    //   return
+    // }
     if (!platform) {
       setCollectUrlVerifyStatus('failed')
       setCollectUrlVerifyMessage('缺少目标平台')
@@ -873,10 +873,10 @@ export default function OrderStepManagement() {
         Taro.showToast({ title: '请输入链接地址', icon: 'none' })
         return
       }
-      if (!isValidUrl(modalUrl.trim())) {
-        Taro.showToast({ title: '请输入正确的链接地址', icon: 'none' })
-        return
-      }
+      // if (!isValidUrl(modalUrl.trim())) {
+      //   Taro.showToast({ title: '请输入正确的链接地址', icon: 'none' })
+      //   return
+      // }
       if (collectUrlVerifyStatus === 'verifying') {
         Taro.showToast({ title: '链接验证中，请稍候', icon: 'none' })
         return
