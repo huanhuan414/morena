@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Taro, { useRouter } from '@tarojs/taro'
 import { Image, ScrollView, Text, Video, View } from '@tarojs/components'
 import { ArrowLeft, Camera, ExternalLink, ShieldAlert } from 'lucide-react-taro'
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Network } from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
+import { canonicalizePlatform, canonicalizePlatforms, getPlatformLabel } from '@/constants/publish-platform'
 import './index.css'
 
 type MaterialItem = {
@@ -18,6 +19,13 @@ type AssignedMaterialGroup = {
   sourceMode?: string
   items?: MaterialItem[]
   prompt?: string
+}
+
+type TaskInfo = {
+  platform?: string
+  platforms?: string[]
+  title?: string
+  description?: string
 }
 
 type TaskStep = {
@@ -46,6 +54,7 @@ const getMainContent = (step: TaskStep) => step.mainContent || step.main_content
 const getMediaList = (step: TaskStep) => step.mediaList || step.media_list || []
 const getExtConfig = (step: TaskStep) => step.extConfig || step.ext_config || {}
 const PREVIEW_ONLY_STATUSES = ['awaiting_acceptance', 'settled', 'cancelled', 'failed']
+const VERIFY_REQUIRED_PLATFORMS = ['douyin', 'kuaishou', 'xiaohongshu', 'wechat_mp', 'wechat_channel']
 const REQUIRED_COLLECT_STEP_LABELS: Record<string, string> = {
   collect_image: '收集截图',
   collect_info: '收集信息',
@@ -70,10 +79,16 @@ export default function OrderAcceptTask() {
   const requestId = String(router.params?.requestId || router.params?.id || '')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const submitLockRef = useRef(false)
   const [taskStatus, setTaskStatus] = useState('')
   const [steps, setSteps] = useState<TaskStep[]>([])
   const [stepResults, setStepResults] = useState<Record<string, any>>({})
   const [assignedMaterials, setAssignedMaterials] = useState<Record<string, AssignedMaterialGroup & { status?: string }>>({})
+  const [taskInfo, setTaskInfo] = useState<TaskInfo>({})
+  const [collectUrlVerifyStatus, setCollectUrlVerifyStatus] = useState<Record<string, 'idle' | 'verifying' | 'success' | 'failed'>>({})
+  const [collectUrlVerifyMessage, setCollectUrlVerifyMessage] = useState<Record<string, string>>({})
+  const collectUrlVerifyTimerRef = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({})
+  const collectUrlVerifySeqRef = useRef<Record<string, number>>({})
   const [revisionReason, setRevisionReason] = useState<string>('')
   const previewOnly = PREVIEW_ONLY_STATUSES.includes(taskStatus)
   const textMaterial = assignedMaterials.text
@@ -105,6 +120,14 @@ export default function OrderAcceptTask() {
         setTaskStatus(data.request?.status || data.status || '')
         setStepResults(data.stepResults || {})
         setAssignedMaterials(data.assignedMaterials || {})
+        const config = data.config || {}
+        const request = data.request || {}
+        setTaskInfo({
+          platform: request.platform || config.platform || '',
+          platforms: canonicalizePlatforms(config.platforms || request.platforms || []),
+          title: config.title || data.title || '',
+          description: config.description || data.description || '',
+        })
         // 获取整改原因
         const publishFeedback = data.publishFeedback || data.publish_feedback || {}
         const reason = publishFeedback.rejectReason || publishFeedback.reject_reason || ''
@@ -130,6 +153,96 @@ export default function OrderAcceptTask() {
     return () => clearInterval(timer)
   }, [requestId, isAiTextGenerating])
 
+  useEffect(() => {
+    return () => {
+      Object.values(collectUrlVerifyTimerRef.current).forEach((timer) => {
+        if (timer) clearTimeout(timer)
+      })
+    }
+  }, [])
+
+  const getTargetPlatform = () => {
+    const platforms = canonicalizePlatforms(taskInfo.platforms || [])
+    return platforms[0] || canonicalizePlatform(taskInfo.platform || '')
+  }
+
+  const getTargetPlatformLabel = () => {
+    const platform = getTargetPlatform()
+    return platform ? getPlatformLabel(platform) : ''
+  }
+
+  const isVerifyRequiredPlatform = (platform: string) => VERIFY_REQUIRED_PLATFORMS.includes(platform)
+
+  const isValidUrl = (url: string) => /^https?:\/\/\S+\.\S+/.test(url.trim())
+
+  const setCollectVerifyState = (stepId: string, status: 'idle' | 'verifying' | 'success' | 'failed', message = '') => {
+    setCollectUrlVerifyStatus(prev => ({ ...prev, [stepId]: status }))
+    setCollectUrlVerifyMessage(prev => ({ ...prev, [stepId]: message }))
+  }
+
+  const verifyCollectUrl = async (stepId: string, platform: string, postUrl: string, seq: number) => {
+    const keywords = [taskInfo.title, taskInfo.description].filter(Boolean).map(String)
+    try {
+      const response = await Network.request({
+        url: '/api/tikhub/verify-post',
+        method: 'POST',
+        data: { platform, postUrl, keywords },
+      })
+      if (seq !== collectUrlVerifySeqRef.current[stepId]) return
+      const data = response.data
+      if (data?.code === 200 && data?.data) {
+        setCollectVerifyState(stepId, data.data.verified ? 'success' : 'failed', data.data.message || (data.data.verified ? '验证通过' : '验证失败'))
+      } else {
+        setCollectVerifyState(stepId, 'failed', data?.message || '验证失败，请重试')
+      }
+    } catch {
+      if (seq !== collectUrlVerifySeqRef.current[stepId]) return
+      setCollectVerifyState(stepId, 'failed', '网络异常，请重试')
+    }
+  }
+
+  const scheduleCollectUrlVerify = (step: TaskStep, value: string) => {
+    const stepId = step.id
+    if (collectUrlVerifyTimerRef.current[stepId]) {
+      clearTimeout(collectUrlVerifyTimerRef.current[stepId]!)
+      collectUrlVerifyTimerRef.current[stepId] = null
+    }
+    const seq = (collectUrlVerifySeqRef.current[stepId] || 0) + 1
+    collectUrlVerifySeqRef.current[stepId] = seq
+
+    const postUrl = value.trim()
+    if (!postUrl) {
+      setCollectVerifyState(stepId, 'idle', '')
+      return
+    }
+    if (!isValidUrl(postUrl)) {
+      setCollectVerifyState(stepId, 'failed', '请输入正确的链接地址')
+      return
+    }
+    const platform = getTargetPlatform()
+    if (!platform) {
+      setCollectVerifyState(stepId, 'failed', '缺少目标平台')
+      return
+    }
+    if (!isVerifyRequiredPlatform(platform)) {
+      setCollectVerifyState(stepId, 'success', '链接格式正确')
+      return
+    }
+
+    setCollectVerifyState(stepId, 'verifying', '验证中...')
+    collectUrlVerifyTimerRef.current[stepId] = setTimeout(() => verifyCollectUrl(stepId, platform, postUrl, seq), 600)
+  }
+
+  useEffect(() => {
+    if (previewOnly) return
+    steps.forEach((step) => {
+      if (getStepType(step) !== 'collect_url') return
+      const result = getStepResult(stepResults, step)
+      const value = String(result.value || '').trim()
+      if (!value || collectUrlVerifyStatus[step.id]) return
+      scheduleCollectUrlVerify(step, value)
+    })
+  }, [steps, stepResults, taskInfo, previewOnly])
   const saveStepResult = async (step: TaskStep, valueType: string, value: any) => {
     const stepId = step.id
     const next = {
@@ -292,7 +405,8 @@ export default function OrderAcceptTask() {
   }
 
   const handlePublishTask = async () => {
-      if (!requestId || submitting) return
+      if (!requestId || submitting || submitLockRef.current) return
+      submitLockRef.current = true
       const missingStep = steps.find((step) => {
         const stepType = getStepType(step)
         if (!REQUIRED_COLLECT_STEP_LABELS[stepType]) return false
@@ -306,9 +420,26 @@ export default function OrderAcceptTask() {
           icon: 'none',
           duration: 2400,
         })
+        submitLockRef.current = false
         return
       }
 
+      const invalidCollectUrlStep = steps.find((step) => {
+        if (getStepType(step) !== 'collect_url') return false
+        const result = getStepResult(stepResults, step)
+        if (!hasStepResultValue(result.value)) return false
+        return collectUrlVerifyStatus[step.id] !== 'success'
+      })
+      if (invalidCollectUrlStep) {
+        const stepIndex = steps.findIndex((step) => step.id === invalidCollectUrlStep.id)
+        Taro.showToast({
+          title: `步骤${stepIndex + 1}：请先输入有效的目标平台链接!`,
+          icon: 'none',
+          duration: 2400,
+        })
+        submitLockRef.current = false
+        return
+      }
       const confirm = await new Promise<boolean>((resolve) => {
       Taro.showModal({
         title: '确认发布',
@@ -320,7 +451,10 @@ export default function OrderAcceptTask() {
       })
     })
 
-    if (!confirm) return  
+    if (!confirm) {
+      submitLockRef.current = false
+      return
+    }
 
     setSubmitting(true)
     Taro.showLoading({ title: '发布中...', mask: true })
@@ -344,6 +478,7 @@ export default function OrderAcceptTask() {
       console.error('[接单任务] 发布失败:', error)
       Taro.showToast({ title: '发布失败', icon: 'none' })
     } finally {
+      submitLockRef.current = false
       setSubmitting(false)
     }
   }
@@ -568,8 +703,17 @@ export default function OrderAcceptTask() {
               className="accept-input"
               placeholder="请提供商家要求的收集链接"
               value={result.value || ''}
-              onInput={(event) => saveStepResult(step, 'url', event.detail.value)}
+              onInput={(event) => {
+                const value = event.detail.value
+                saveStepResult(step, 'url', value)
+                scheduleCollectUrlVerify(step, value)
+              }}
             />
+            {collectUrlVerifyStatus[step.id] && collectUrlVerifyStatus[step.id] !== 'idle' && (
+              <View className={`accept-url-verify ${collectUrlVerifyStatus[step.id]}`}>
+                <Text className={`accept-url-verify-text ${collectUrlVerifyStatus[step.id]}`}>{collectUrlVerifyMessage[step.id]}</Text>
+              </View>
+            )}
           </>
         )}
       </>
@@ -603,7 +747,12 @@ export default function OrderAcceptTask() {
                     </View>
                     <View className="accept-step-info">
                       {/* <Text className="accept-step-name">{getStepTitle(step)}</Text> */}
-                      <Text className="accept-step-name">步骤{getChineseNumber(index + 1)}：{getStepType(step) === 'upload_qrcode' ? '二维码识别' : getStepTitle(step)}</Text>
+                      <View className="accept-step-title-row">
+                        <Text className="accept-step-name">步骤{getChineseNumber(index + 1)}：{getStepType(step) === 'upload_qrcode' ? '二维码识别' : getStepTitle(step)}</Text>
+                        {getStepType(step) === 'collect_url' && getTargetPlatformLabel() && (
+                          <Text className="accept-platform-badge">{getTargetPlatformLabel()}</Text>
+                        )}
+                      </View>
                     </View>
                   </View>
                   <View >{getStepDesc(step) && <Text className="accept-step-desc">{getStepDesc(step)}</Text>}</View>

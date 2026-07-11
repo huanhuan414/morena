@@ -568,3 +568,57 @@
   font-size: 26rpx;
   line-height: 40rpx;
 }
+
+.accept-step-title-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.accept-platform-badge {
+  flex-shrink: 0;
+  padding: 6rpx 14rpx;
+  border-radius: 999rpx;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-size: 22rpx;
+  font-weight: 600;
+}
+
+.accept-url-verify {
+  border-radius: 10rpx;
+  padding: 12rpx 16rpx;
+  background: #f8fafc;
+}
+
+.accept-url-verify.success {
+  background: #ecfdf5;
+}
+
+.accept-url-verify.failed {
+  background: #fef2f2;
+}
+
+.accept-url-verify.verifying {
+  background: #eff6ff;
+}
+
+.accept-url-verify-text {
+  display: block;
+  font-size: 24rpx;
+  color: #64748b;
+}
+
+.accept-url-verify-text.success {
+  color: #059669;
+}
+
+.accept-url-verify-text.failed {
+  color: #dc2626;
+}
+
+.accept-url-verify-text.verifying {
+  color: #2563eb;
+}
