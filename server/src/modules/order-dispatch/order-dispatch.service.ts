@@ -1331,439 +1331,308 @@ async getExecutionProgress(orderId: string) {
     let request: any = null
     let actualAvatarId: string | undefined = avatarId
     let requiredCount = 1
-    let wasAlreadyAccepted = false
+    let redisOccupied = false
+    let slotNumber = 0
+    let redisRequiredCount = 0
 
-    // =====================================================
-    // 第零阶段：区域限制检查
-    // =====================================================
-    // 获取订单的接单区域限制
-    const orderRegionRows = await db.query('SELECT accept_regions FROM orders WHERE id = ? AND is_deleted = 0', [orderId])
-    const acceptRegionsStr = (orderRegionRows as any[])?.[0]?.acceptRegions || (orderRegionRows as any[])?.[0]?.accept_regions
-    const acceptRegions = this.safeParseJson<string[]>(acceptRegionsStr, [])
-
-    // 如果订单有区域限制，检查分身地址是否在限制区域内
-    if (acceptRegions.length > 0) {
-      const avatarRows = await db.query('SELECT location_text FROM avatars WHERE id = ?', [avatarId])
-      const avatarLocationText = (avatarRows as any[])?.[0]?.locationText || (avatarRows as any[])?.[0]?.location_text || ''
-      
-      // 提取省份（与前端逻辑一致：split(/[省市区县]/) 取第一个部分）
-      const parts = avatarLocationText.split(/[省市区县]/)
-      const avatarProvince = parts.length > 0 ? parts[0].trim() : ''
-
-      this.logger.log(`[acceptOrder] 区域检查: 分身省份=${avatarProvince}, 订单区域=${JSON.stringify(acceptRegions)}`)
-
-      // 检查分身省份是否在订单限制区域内
-      const isRegionMatched = acceptRegions.some(region => 
-        avatarProvince.includes(region) || region.includes(avatarProvince)
-      )
-
-      if (!isRegionMatched) {
-        throw new BadRequestException(`该订单限制了接单区域：${acceptRegions.join('、')}，您的分身地址不在这些区域内，无法接单`)
-      }
+    if (!avatarId || avatarId === 'undefined') {
+      throw new NotFoundException('分身ID不能为空！')
     }
 
-    // =====================================================
-    // 第一阶段：Redis快速检查（毫秒级，快速拒绝已满订单）
-    // =====================================================
-
-    // 1.1 快速校验订单状态（不加锁，读最新数据即可）
     const orderRows = await db.query(
       `SELECT id, status, is_paid, accept_timeout,
-              GREATEST(COALESCE(NULLIF(avatar_count, 0), NULLIF(expected_quantity, 0), 1), 1) as required_count
-       FROM orders
-       WHERE id = ?`,
+              GREATEST(NULLIF(avatar_count, 0),1) as required_count,
+              accept_regions, platform, title, user_id as owner_user_id, description, platforms,
+               budget
+       FROM orders WHERE id = ? AND is_deleted = 0`,
       [orderId]
     )
     const orderRow: any = (orderRows as any[])?.[0]
-    // db.query 内部会 convertKeysToCamel，所以 required_count → requiredCount
-    requiredCount = Number(orderRow?.requiredCount || orderRow?.required_count || 1) || 1
-    const orderAcceptTimeout = orderRow?.acceptTimeout || orderRow?.accept_timeout || null // 接单超时（分钟）
     if (!orderRow) {
       throw new NotFoundException('订单不存在')
     }
-    
-    const acceptablStatuses = ['pending', 'pending_payment', 'open', 'created', 'assigned', 'pending_acceptance', 'pending_dispatch', 'awaiting_acceptance', 'in_progress']
-    if (!acceptablStatuses.includes(orderRow.status)) {
+
+    requiredCount = Number(orderRow?.requiredCount || orderRow?.required_count || 1) || 1
+    const orderAcceptTimeout = orderRow?.acceptTimeout || orderRow?.accept_timeout || null
+    const acceptableStatuses = ['pending', 'pending_payment', 'open', 'created', 'assigned', 'pending_acceptance', 'pending_dispatch', 'awaiting_acceptance', 'in_progress']
+    if (!acceptableStatuses.includes(orderRow.status)) {
       throw new ConflictException(`订单已${orderRow.status === 'completed' ? '完成' : orderRow.status === 'cancelled' ? '取消' : '关闭'}, 无法接单`)
     }
     if (orderRow.status === 'pending_payment' && Number(orderRow.is_paid || 0) !== 1) {
       throw new BadRequestException('订单未支付，无法接单')
     }
 
-    // 1.2 初始化Redis计数器（首次访问时从数据库同步）
+    const avatarRows = await db.query(
+      `SELECT id, user_id, status, location_text
+       FROM avatars
+       WHERE id = ?
+       LIMIT 1`,
+      [avatarId]
+    )
+    const avatarOwner: any = (avatarRows as any[])?.[0]
+    if (!avatarOwner || avatarOwner.status !== 'active') {
+      throw new NotFoundException('分身不存在或已失效，无法接单')
+    }
+    const avatarUserId = avatarOwner.user_id || avatarOwner.userId
+    // =====================================================
+    // 区域限制检查
+    // =====================================================
+    const acceptRegionsStr = orderRow.acceptRegions || orderRow.accept_regions
+    const acceptRegions = this.safeParseJson<string[]>(acceptRegionsStr, [])
+    if (acceptRegions.length > 0) {
+      const avatarLocationText = avatarOwner.location_text || avatarOwner.locationText || ''
+      const parts = avatarLocationText.split(/[省市区县]/)
+      const avatarProvince = parts.length > 0 ? parts[0].trim() : ''
+      this.logger.log(`[acceptOrder] 区域检查: 分身省份=${avatarProvince}, 订单区域=${JSON.stringify(acceptRegions)}`)
+      const isRegionMatched = acceptRegions.some(region =>
+        avatarProvince.includes(region) || region.includes(avatarProvince))
+      if (!isRegionMatched) {
+        throw new BadRequestException(`该订单限制了接单区域：${acceptRegions.join('、')}，您的分身地址不在这些区域内，无法接单`)
+      }
+    }
+
+    
+    const existingDispatchRows = await db.query(
+      `SELECT id, status
+       FROM order_dispatch_requests
+       WHERE order_id = ? AND user_id = ?
+         AND status IN ('accepted', 'completed')
+       ORDER BY created_at DESC, updated_at DES
+       LIMIT 1`,
+      [orderId, avatarUserId,]
+    )
+    if ((existingDispatchRows as any[])?.[0]) {
+      throw new ConflictException('您已接过此订单，不能重复接单')
+    }
+    // 静默期检查：用户在静默期内不能接单
+    const silenceRows = await db.query(
+      `SELECT silence_until FROM users WHERE id = ?`,
+      [avatarUserId]
+    )
+    const silenceUntil = (silenceRows as any[])?.[0]?.silence_until || (silenceRows as any[])?.[0]?.silenceUntil
+    if (silenceUntil && new Date(silenceUntil) > new Date()) {
+      const remainingMs = new Date(silenceUntil).getTime() - Date.now()
+      let remainingText = ''
+      if (remainingMs < 60 * 1000) {
+        remainingText = `${Math.ceil(remainingMs / 1000)}秒`
+      } else if (remainingMs < 60 * 60 * 1000) {
+        remainingText = `${Math.ceil(remainingMs / (60 * 1000))}分钟`
+      } else if (remainingMs < 24 * 60 * 60 * 1000) {
+        remainingText = `${Math.ceil(remainingMs / (60 * 60 * 1000))}小时`
+      } else {
+        remainingText = `${Math.ceil(remainingMs / (24 * 60 * 60 * 1000))}天`
+      }
+      throw new ConflictException(`您目前处于静默期，${remainingText}后可恢复接单`)
+    }
+     // 接单权限校验：检查每日次数+同时接单数
+    const permission = await this.subscriptionService.checkOrderPermission(avatarUserId)
+    if (!permission.allowed) {
+      throw new ConflictException(permission.reason)
+    }
+    // 初始化Redis计数器（首次访问时从数据库同步）
     const redisKeyAccepted = `${OrderDispatchService.REDIS_KEY_ACCEPTED}${orderId}`
     const redisKeyRequired = `${OrderDispatchService.REDIS_KEY_REQUIRED}${orderId}`
 
-    // 用SET NX确保只初始化一次
+    // 独占模式校验：分身数不能超过可用素材数
+    // let effectiveRequired = requiredCount
+    // try {
+    //   const platform = orderRow?.platform || ''
+    //   if (platform !== 'special') {
+    //     const orderInfoRows = await db.query('SELECT asset_distribute_mode FROM orders WHERE id = ? AND is_deleted = 0', [orderId])
+    //     const orderDistributeMode = (orderInfoRows as any[])?.[0]?.assetDistributeMode || (orderInfoRows as any[])?.[0]?.asset_distribute_mode || 'shared'
+    //     if (orderDistributeMode === 'exclusive') {
+    //       const assetCountRows = await db.query(
+    //         `SELECT asset_type, COUNT(*) as cnt FROM order_assets WHERE order_id = ? AND status = 'ready' GROUP BY asset_type`,
+    //         [orderId]
+    //       )
+    //       const readyImageCount = (assetCountRows as any[])?.find((a: any) => a.assetType === 'image' || a.asset_type === 'image')?.cnt || 0
+    //       const readyVideoCount = (assetCountRows as any[])?.find((a: any) => a.assetType === 'video' || a.asset_type === 'video')?.cnt || 0
+    //       const maxAvatarsByAssets = readyImageCount + readyVideoCount
+    //       if (maxAvatarsByAssets > 0 && maxAvatarsByAssets < effectiveRequired) {
+    //         effectiveRequired = maxAvatarsByAssets
+    //       }
+    //     }
+    //   }
+    // } catch (err: any) {
+    //   console.warn(`[acceptOrder] 独占模式校验失败:`, err.message)
+    // }
+    // requiredCount = effectiveRequired
+
     const requiredSet = await this.redisService.setNX(redisKeyRequired, String(requiredCount), OrderDispatchService.REDIS_TTL_SECONDS * 1000)
     if (requiredSet) {
-      // 首次初始化：用SET NX初始化redisKeyAccepted（不覆盖已存在的INCR结果）
-      // 关键：并发时，其他请求可能已经先INCR了redisKeyAccepted，
-      // 如果用SET会覆盖INCR结果导致超卖，所以必须用SET NX
       const acceptedSetResult = await this.redisService.getClient().set(
         redisKeyAccepted, '0', 'NX', 'EX', OrderDispatchService.REDIS_TTL_SECONDS
       )
       if (!acceptedSetResult) {
-        // redisKeyAccepted已被其他并发请求INCR创建，无需初始化
         this.logger.log(`redisKeyAccepted已存在，跳过初始化: orderId=${orderId}`)
       }
     }
 
-    // 独占模式校验：分身数不能超过可用素材数
-    let effectiveRequired = requiredCount
-    try {
-      const orderInfoRows = await db.query('SELECT asset_distribute_mode FROM orders WHERE id = ? AND is_deleted = 0', [orderId])
-      const orderDistributeMode = (orderInfoRows as any[])?.[0]?.assetDistributeMode || (orderInfoRows as any[])?.[0]?.asset_distribute_mode || 'shared'
-      if (orderDistributeMode === 'exclusive') {
-        const assetCountRows = await db.query(
-          `SELECT asset_type, COUNT(*) as cnt FROM order_assets WHERE order_id = ? AND status = 'ready' GROUP BY asset_type`,
-          [orderId]
-        )
-        const readyImageCount = (assetCountRows as any[])?.find((a: any) => a.assetType === 'image' || a.asset_type === 'image')?.cnt || 0
-        const readyVideoCount = (assetCountRows as any[])?.find((a: any) => a.assetType === 'video' || a.asset_type === 'video')?.cnt || 0
-        const maxAvatarsByAssets = readyImageCount + readyVideoCount
-        if (maxAvatarsByAssets > 0 && maxAvatarsByAssets < effectiveRequired) {
-          effectiveRequired = maxAvatarsByAssets
-          // 更新Redis中的required计数
-          await this.redisService.getClient().set(redisKeyRequired, String(effectiveRequired), 'EX', OrderDispatchService.REDIS_TTL_SECONDS)
-        }
-      }
-    } catch (err: any) {
-      console.warn(`[acceptOrder] 独占模式校验失败:`, err.message)
-    }
-
-    // 1.3 原子占位：INCR递增已接单计数
-    // 关键：INCR之前不做DB同步检查！
-    // DB事务提交有延迟，并发时"先读DB再覆盖Redis"会导致INCR结果被覆盖，造成超卖。
-    // Redis计数器仅通过INCR/DECR原子操作管理，不需要从DB同步。
-    // 如果Redis计数器因重启丢失，SET NX初始化时已从DB同步过一次。
-
-    // INCR是原子操作，返回递增后的值。如果超过名额，立即DECR回滚并拒绝
-    // 这确保了即使100个请求同时到达，也只有requiredCount个能通过
-    const redisRequiredCount = await this.redisService.getCounter(redisKeyRequired)
-    const slotNumber = await this.redisService.getClient().incr(redisKeyAccepted)
+    redisRequiredCount = await this.redisService.getCounter(redisKeyRequired)
+    slotNumber = await this.redisService.getClient().incr(redisKeyAccepted)
+    redisOccupied = true
     if (slotNumber > redisRequiredCount && redisRequiredCount > 0) {
-      // 超出名额，回滚占位（DECR是原子操作，无需额外补偿）
-      // 不做DB同步补偿！并发时DB事务延迟会导致补偿覆盖INCR/DECR的正确结果
       await this.redisService.getClient().decr(redisKeyAccepted)
+      redisOccupied = false
       throw new ConflictException('名额已满，请抢其他订单')
     }
 
-
-    // =====================================================
-    // 第二阶段：数据库短事务（不锁orders行，仅操作dispatch_requests）
-    // =====================================================
     const conn = await pool.getConnection()
     try {
       await conn.beginTransaction()
 
-      if (!avatarId || avatarId === 'undefined') {
-        const [acceptRows1] = await conn.query(
-          `SELECT r.*, o.title as order_title, o.user_id as owner_user_id, o.description, o.platforms, o.budget, o.expected_quantity, o.quantity_per_avatar, o.target_audience
-           FROM order_dispatch_requests r
-           LEFT JOIN orders o ON r.order_id = o.id
-           WHERE r.order_id = ? AND r.status = 'pending'
-           LIMIT 1`,
-          [orderId]
-        )
-        request = (acceptRows1 as any[])?.[0]
-        if (!request) {
-          throw new NotFoundException('暂无可接派单记录')
-        }
-      } else {
-        const [acceptRows2] = await conn.query(
-          `SELECT r.*, o.title as order_title, o.user_id as owner_user_id, o.description, o.platforms, o.budget, o.expected_quantity, o.quantity_per_avatar, o.target_audience
-           FROM order_dispatch_requests r
-           LEFT JOIN orders o ON r.order_id = o.id
-           WHERE r.avatar_id = ? AND r.order_id = ? AND r.status = 'pending'
-           LIMIT 1`,
-          [avatarId, orderId]
-        )
-        request = (acceptRows2 as any[])?.[0]
-        if (request) request._isMatchedAvatar = true
-      }
-
-      if (!request && avatarId && avatarId !== 'undefined') {
-        // 先获取该分身所属的用户ID（按用户判断，不是按分身）
-        const [avatarRows] = await conn.query(
-          `SELECT user_id FROM avatars WHERE id = ? LIMIT 1`,
-          [avatarId]
-        )
-        const avatarUserId = (avatarRows as any[])?.[0]?.user_id
-        
-        if (avatarUserId) {
-          // 按用户ID检查是否已接单
-          const [existingDispatchRows] = await conn.query(
-            `SELECT COUNT(1) as count
-             FROM order_dispatch_requests
-             WHERE order_id = ? AND user_id = ?`,
-            [orderId, avatarUserId]
-          )
-          const existingCount = Number((existingDispatchRows as any[])?.[0]?.count || 0)
-          if (existingCount > 0) {
-            throw new ConflictException('您已接过此订单，不能重复接单')
-          }
-        }
-      }
-
-      // 检查该分身是否曾被踢出（expired），被踢出的分身不能再接此订单
-      const [kickedDispatchRows] = await conn.query(
-        `SELECT COUNT(*) as count
-         FROM order_dispatch_requests
-         WHERE order_id = ? AND (avatar_id = ? OR target_avatar_id = ?)
-           AND status = 'expired' AND reject_reason IS NULL`,
-        [orderId, avatarId, avatarId]
+      const acceptTimeoutAt = orderAcceptTimeout
+        ? new Date(Date.now() + Number(orderAcceptTimeout) * 60 * 1000)
+        : null
+      
+      const pendingRows = await db.query(
+        `SELECT r.*, o.title as order_title, o.user_id as owner_user_id, o.description, o.platforms, o.budget,
+                o.expected_quantity, o.quantity_per_avatar, o.target_audience
+        FROM order_dispatch_requests r
+        LEFT JOIN orders o ON r.order_id = o.id
+        WHERE r.avatar_id = ? AND r.order_id = ? AND r.status = 'pending'
+        ORDER BY r.created_at DESC, r.updated_at DESC
+        LIMIT 1`,
+        [avatarId, orderId]
       )
-      const kickedCount = Number((kickedDispatchRows as any[])?.[0]?.count || 0)
-      if (kickedCount > 0) {
-        throw new ConflictException('该分身已被踢出，不能再接此订单')
-      }
+      request = (pendingRows as any[])?.[0]
+      if (request) request._isMatchedAvatar = true
+      const currentPendingId = request?.id || null
 
-      if (!request) {
-        const [acceptOrderRows] = await conn.query(
-          `SELECT id, title, user_id as owner_user_id, description, platforms, budget, expected_quantity, quantity_per_avatar, target_audience, status, accept_timeout
-           FROM orders WHERE id = ? AND is_deleted = 0`,
-          [orderId]
+      if (request) {
+        const [updateResult] = await conn.query(
+          `UPDATE order_dispatch_requests
+           SET status = 'accepted',
+               accepted_at = NOW(),
+               accept_timeout_at = ?,
+               responded_at = NOW(),
+               updated_at = NOW()
+           WHERE id = ? AND status = 'pending'`,
+          [acceptTimeoutAt, request.id]
         )
-        const order: any = (acceptOrderRows as any[])?.[0]
-        if (!order) {
-          throw new NotFoundException('订单不存在')
+        if (!updateResult || Number((updateResult as any).affectedRows || 0) !== 1) {
+          throw new ConflictException('该派单已处理，请刷新后重试')
         }
-
-        if (!avatarId || avatarId === 'undefined') {
-          throw new BadRequestException('缺少分身ID')
-        }
-
-        const [avatarOwnerRows] = await conn.query(
-          `SELECT id, user_id, status
-           FROM avatars
-           WHERE id = ?
-           LIMIT 1`,
-          [avatarId]
-        )
-        const avatarOwner: any = (avatarOwnerRows as any[])?.[0]
-        if (!avatarOwner || avatarOwner.status !== 'active') {
-          throw new NotFoundException('分身不存在或已失效，无法接单')
-        }
-
-        // 静默期检查：用户在静默期内不能接单
-        const [silenceRows] = await conn.query(
-          `SELECT silence_until FROM users WHERE id = ?`,
-          [avatarOwner.user_id]
-        )
-        const silenceUntil = (silenceRows as any[])?.[0]?.silence_until || (silenceRows as any[])?.[0]?.silenceUntil
-        if (silenceUntil && new Date(silenceUntil) > new Date()) {
-          // 计算剩余静默时间并格式化
-          const remainingMs = new Date(silenceUntil).getTime() - Date.now()
-          let remainingText = ''
-          if (remainingMs < 60 * 1000) {
-            remainingText = `${Math.ceil(remainingMs / 1000)}秒`
-          } else if (remainingMs < 60 * 60 * 1000) {
-            remainingText = `${Math.ceil(remainingMs / (60 * 1000))}分钟`
-          } else if (remainingMs < 24 * 60 * 60 * 1000) {
-            remainingText = `${Math.ceil(remainingMs / (60 * 60 * 1000))}小时`
-          } else {
-            remainingText = `${Math.ceil(remainingMs / (24 * 60 * 60 * 1000))}天`
-          }
-          throw new ConflictException(`您目前处于静默期，${remainingText}后可恢复接单`)
-        }
-
-        // 接单权限校验：检查每日次数+同时接单数
-        const permission = await this.subscriptionService.checkOrderPermission(avatarOwner.user_id)
-        if (!permission.allowed) {
-          throw new ConflictException(permission.reason)
-        }
-
+        request.status = 'accepted'
+      } else {
         const dispatchId = 'odr-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8)
-        try {
-          // 如果订单设置了接单超时时间，计算超时截止时间
-          const acceptTimeoutMinutes = order.accept_timeout ? Number(order.accept_timeout) : null
-          const acceptTimeoutAt = acceptTimeoutMinutes
-            ? new Date(Date.now() + acceptTimeoutMinutes * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ')
-            : null
-          
-          await conn.query(
-            `INSERT INTO order_dispatch_requests (id, order_id, avatar_id, user_id, platform, status, accept_timeout_at, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, 'pending', ?, NOW(), NOW())`,
-            [
-              dispatchId,
-              orderId,
-              avatarId,
-              avatarOwner.user_id,
-              Array.isArray(order.platforms) ? order.platforms[0] : (order.platforms || 'general'),
-              acceptTimeoutAt,
-            ]
-          )
-        } catch (err: any) {
-          if (String(err?.code || '') === 'ER_DUP_ENTRY') {
-            throw new ConflictException('该分身已接单，不能重复接单')
-          }
-          throw err
-        }
-
+        const platform = Array.isArray(orderRow.platforms) ? orderRow.platforms[0] : (orderRow.platform || orderRow.platforms || 'general')
+        await conn.query(
+          `INSERT INTO order_dispatch_requests (id, order_id, avatar_id, user_id, platform, status, accepted_at, responded_at, accept_timeout_at, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, 'accepted', NOW(), NOW(), ?, NOW(), NOW())`,
+          [dispatchId, orderId, avatarId, avatarUserId, platform, acceptTimeoutAt]
+        )
         request = {
           id: dispatchId,
           order_id: orderId,
           avatar_id: avatarId,
-          user_id: avatarOwner.user_id,
-          platform: Array.isArray(order.platforms) ? order.platforms[0] : (order.platforms || 'general'),
-          status: 'pending',
-          order_title: order.title,
-          owner_user_id: order.owner_user_id,
-          description: order.description,
-          platforms: order.platforms,
-          budget: order.budget,
-          expected_quantity: order.expected_quantity,
-          quantity_per_avatar: order.quantity_per_avatar,
-          target_audience: order.target_audience,
+          user_id: avatarUserId,
+          platform,
+          status: 'accepted',
+          order_title: orderRow.title,
+          owner_user_id: orderRow.owner_user_id,
+          description: orderRow.description,
+          platforms: orderRow.platforms,
+          budget: orderRow.budget,
+          expected_quantity: orderRow.expected_quantity,
+          quantity_per_avatar: orderRow.quantity_per_avatar,
+          target_audience: orderRow.target_audience,
         }
       }
 
       actualAvatarId = request.avatarId || request.avatar_id || avatarId
 
-      if (actualAvatarId) {
-        const [avatarCheckRows] = await conn.query('SELECT id, status FROM avatars WHERE id = ?', [actualAvatarId])
-        const avatarCheck: any = (avatarCheckRows as any[])?.[0]
-        if (!avatarCheck || avatarCheck.status !== 'active') {
-          throw new NotFoundException('分身不存在或已失效，无法接单')
-        }
-      }
-
-      // 计算接单超时截止时间
-      const acceptTimeoutAt = orderAcceptTimeout
-        ? new Date(Date.now() + orderAcceptTimeout * 60 * 1000)
-        : null
-
-      const [updateResult] = await conn.query(
-        `UPDATE order_dispatch_requests
-         SET status = 'accepted',
-             accepted_at = IFNULL(accepted_at, NOW()),
-             accept_timeout_at = ?,
-             responded_at = NOW(),
-             updated_at = NOW()
-         WHERE id = ? AND status = 'pending'`,
-        [acceptTimeoutAt, request.id]
+      const [acceptedCountRows] = await conn.query(
+        `SELECT COUNT(DISTINCT avatar_id) as count
+         FROM order_dispatch_requests
+         WHERE order_id = ? AND status IN ('accepted', 'completed')`,
+        [orderId]
       )
-      if (!updateResult || Number((updateResult as any).affectedRows || 0) !== 1) {
-        const [rowCheck] = await conn.query(
-          `SELECT avatar_id, status
-           FROM order_dispatch_requests
-           WHERE id = ?
+      const acceptedCount = Number((acceptedCountRows as any[])?.[0]?.count || 0)
+
+      const isMatchedAvatar = request._isMatchedAvatar === true
+      const [matchedPendingRows] = await conn.query(
+        `SELECT COUNT(*) as count
+         FROM order_dispatch_requests
+         WHERE order_id = ? AND status = 'pending'`,
+        [orderId]
+      )
+      const matchedPendingCount = Number((matchedPendingRows as any[])?.[0]?.count || 0)
+      const shouldKick = !isMatchedAvatar && (acceptedCount + matchedPendingCount) >= requiredCount
+      if (shouldKick) {
+        const [pendingDispatches] = await conn.query(
+          `SELECT d.id, d.avatar_id, d.user_id
+           FROM order_dispatch_requests d
+           WHERE d.order_id = ? AND d.status = 'pending'
+           ORDER BY d.created_at ASC
            LIMIT 1`,
-          [request.id]
-        )
-        const currentRow: any = (rowCheck as any[])?.[0]
-        const currentAvatarId = currentRow?.avatar_id || currentRow?.avatarId
-        const currentStatus = String(currentRow?.status || '').trim().toLowerCase()
-        if (currentRow && currentAvatarId === actualAvatarId && ['accepted', 'completed'].includes(currentStatus)) {
-          wasAlreadyAccepted = true
-        } else {
-          throw new ConflictException('手慢了，订单已被其他人抢走')
-        }
-      }
-
-      if (!wasAlreadyAccepted) {
-        // 从数据库查询当前已接单数（事务内，数据一致性保证）
-        const [acceptedCountRows] = await conn.query(
-          `SELECT COUNT(DISTINCT avatar_id) as count
-           FROM order_dispatch_requests
-           WHERE order_id = ? AND status IN ('accepted', 'completed')`,
           [orderId]
         )
-        const acceptedCount = Number((acceptedCountRows as any[])?.[0]?.count || 0)
-
-        const isMatchedAvatar = request._isMatchedAvatar === true
-        const [matchedPendingRows] = await conn.query(
-          `SELECT COUNT(*) as count
-           FROM order_dispatch_requests
-           WHERE order_id = ? AND status = 'pending'`,
-          [orderId]
-        )
-        const matchedPendingCount = Number((matchedPendingRows as any[])?.[0]?.count || 0)
-        const shouldKick = !isMatchedAvatar && (acceptedCount + matchedPendingCount) >= requiredCount
-        if (shouldKick) {
-          const [pendingDispatches] = await conn.query(
-            `SELECT d.id, d.avatar_id, d.user_id
-             FROM order_dispatch_requests d
-             WHERE d.order_id = ? AND d.status = 'pending'
-             ORDER BY d.created_at ASC
-             LIMIT 1`,
-            [orderId]
-          )
-          const kickedDispatch: any = (pendingDispatches as any[])?.[0]
-          if (kickedDispatch) {
-            await conn.query(
-              `UPDATE order_dispatch_requests
-               SET status = 'expired',
-                   reject_reason = '订单已被其他分身抢先接单，名额已满',
-                   updated_at = NOW()
-               WHERE id = ? AND status = 'pending'`,
-              [kickedDispatch.id]
-            )
-          }
-        }
-
-        if (acceptedCount >= requiredCount) {
+        const kickedDispatch: any = (pendingDispatches as any[])?.[0]
+        if (kickedDispatch) {
           await conn.query(
             `UPDATE order_dispatch_requests
              SET status = 'expired',
-                 reject_reason = '订单名额已满',
+                 reject_reason = '订单已被其他分身抢先接单，名额已满',
                  updated_at = NOW()
-             WHERE order_id = ? AND status = 'pending'`,
-            [orderId]
-          )
-          await conn.query(
-            `UPDATE orders
-             SET status = 'in_progress',
-                 updated_at = NOW()
-             WHERE id = ? AND status NOT IN ('completed', 'cancelled')`,
-            [orderId]
+             WHERE id = ? AND status = 'pending'`,
+            [kickedDispatch.id]
           )
         }
       }
 
-      await conn.commit()
+      if (acceptedCount >= requiredCount) {
+        await conn.query(
+          `UPDATE order_dispatch_requests
+           SET status = 'expired',
+               reject_reason = '订单名额已满',
+               updated_at = NOW()
+           WHERE order_id = ? AND status = 'pending'`,
+          [orderId]
+        )
+        await conn.query(
+          `UPDATE orders
+           SET status = 'in_progress',
+               updated_at = NOW()
+           WHERE id = ? AND status NOT IN ('completed', 'cancelled')`,
+          [orderId]
+        )
+      }
 
-      // INCR已在事务前完成，无需再次更新Redis
+      await conn.commit()
     } catch (error) {
       try {
         await conn.rollback()
       } catch {}
-      // 事务失败，回滚Redis占位
-      if (!wasAlreadyAccepted) {
+      if (redisOccupied) {
         await this.redisService.getClient().decr(redisKeyAccepted)
+        redisOccupied = false
       }
       throw error
     } finally {
       conn.release()
     }
 
-    // =====================================================
-    // 第四阶段：名额满时更新订单状态（Redis原子判断，不依赖事务隔离级别）
-    // =====================================================
-    if (slotNumber === redisRequiredCount) {
-      // 我是最后一个占位成功的请求，负责更新订单状态和踢人
-      try {
-        // 更新订单为 in_progress
-        await db.query(
-          `UPDATE orders SET status = 'in_progress', updated_at = NOW() WHERE id = ? AND status NOT IN ('completed', 'cancelled')`,
-          [orderId]
-        )
-        // 踢掉剩余的pending派单
-        await db.query(
-          `UPDATE order_dispatch_requests
-           SET status = 'expired', reject_reason = '订单名额已满', updated_at = NOW()
-           WHERE order_id = ? AND status = 'pending'`,
-          [orderId]
-        )
-      } catch (err) {
-        console.error(`[acceptOrder] 名额满后更新失败:`, err)
-      }
-    }
+    // if (slotNumber === redisRequiredCount) {
+    //   try {
+    //     await db.query(
+    //       `UPDATE orders SET status = 'in_progress', updated_at = NOW() WHERE id = ? AND status NOT IN ('completed', 'cancelled')`,
+    //       [orderId]
+    //     )
+    //     await db.query(
+    //       `UPDATE order_dispatch_requests
+    //        SET status = 'expired', reject_reason = '订单名额已满', updated_at = NOW()
+    //        WHERE order_id = ? AND status = 'pending'`,
+    //       [orderId]
+    //     )
+    //   } catch (err) {
+    //     console.error(`[acceptOrder] 名额满后更新失败:`, err)
+    //   }
+    // }
 
-    if (!actualAvatarId) {
-      throw new BadRequestException('缺少分身ID')
-    }
+    // if (!actualAvatarId) {
+    //   throw new BadRequestException('缺少分身ID')
+    // }
 
     request.ownerUserId = request.ownerUserId || request.owner_user_id
     request.orderTitle = request.orderTitle || request.order_title
@@ -1801,7 +1670,6 @@ async getExecutionProgress(orderId: string) {
     } catch (err) {
       console.error('[acceptOrder] 创建通知失败:', err)
     }
-    
     // 自动启动内容生成流程（异步执行，不阻塞返回）
     const processingRecordBefore = await this.waitForProcessingRecord(orderId, actualAvatarId)
     if (!processingRecordBefore && !wasAlreadyAccepted) {
@@ -1830,6 +1698,7 @@ async getExecutionProgress(orderId: string) {
         `SELECT id, order_id, avatar_id
          FROM content_generation_requests
          WHERE order_id = ? AND avatar_id = ?
+         and status not in ('cancelled')
          ORDER BY created_at DESC
          LIMIT 1`,
         [orderId, avatarId]
@@ -2061,6 +1930,7 @@ async getExecutionProgress(orderId: string) {
       requestId: processingRecord?.id || processingRecord?.requestId || '',
     }
   }
+
   /**
    * 分身婉拒订单
    */
@@ -2278,6 +2148,24 @@ async getExecutionProgress(orderId: string) {
         'UPDATE content_generation_requests SET status = ?, error = ?, updated_at = NOW() WHERE id = ?',
         ['failed', `内容生成启动失败(${MAX_RETRIES}次重试): ${lastError?.message || '未知错误'}`, fallbackRequestId]
       )
+      const reject_reason = '内容生成启动失败，已释放接单名额'  
+      const dispatchResult = await db.query(
+      `UPDATE order_dispatch_requests
+        SET status = 'expired',
+            kick_type = 'content_generation_failed',
+            reject_reason = ?,
+            updated_at = NOW()
+        WHERE id = ? AND status = 'accepted'`,
+      [reject_reason, request.id]
+      )
+      const affectedRows = (avatarRows as any[])?.[0].affectedRows || 0
+      if (Number(affectedRows) === 1) {
+        const redisKey = `order:accept:count:${orderId}`
+        const current = await this.redisService.getClient().get(redisKey)
+        if (Number(current || 0) > 0) {
+          await this.redisService.getClient().decr(redisKey)
+        }
+      }
     } catch (fallbackErr: any) {
       console.error('[startContentGeneration] 创建兜底记录也失败:', fallbackErr.message)
     }
@@ -2702,7 +2590,7 @@ async getExecutionProgress(orderId: string) {
         LEFT JOIN users u ON a.user_id = u.id 
         WHERE a.id = ? AND a.status = 'active'`, [avatarId])
       const avatar = notifyAvatarRows?.[0]
-      
+
       if (!avatar) continue
       
       // 生成通知内容
@@ -2758,7 +2646,7 @@ async getExecutionProgress(orderId: string) {
     const db = getMySQLClient()
 
     // 1. 验证订单存在且操作者是发单方
-    const orders = await db.query('SELECT id, user_id, status FROM orders WHERE id = ?', [orderId])
+    const orders = await db.query('SELECT id, user_id, status, title FROM orders WHERE id = ?', [orderId])
     const order = orders?.[0]
     if (!order) {
       return { success: false, message: '订单不存在' }
@@ -2830,67 +2718,44 @@ async getExecutionProgress(orderId: string) {
     }
 
     // 8. 设置用户静默期（按用户，不按分身）
-    const silenceDurationMs = parseInt(process.env.ORDER_SILENCE_DURATION_MS || '86400000', 10)
-    const silenceUntil = new Date(Date.now() + silenceDurationMs)
-    await db.query(
-      `UPDATE users SET silence_until = ? WHERE id = ? AND (silence_until IS NULL OR silence_until < ?)`,
-      [silenceUntil, dispatch.userId || dispatch.user_id, silenceUntil]
-    )
-    this.logger.log(`手动踢出: 用户 ${dispatch.userId || dispatch.user_id} 静默期至 ${silenceUntil.toISOString()}`)
+    const silenceDurationMs = parseInt(process.env.ORDER_SILENCE_DURATION_MS, 10)
+    if (silenceDurationMs > 0) {
+      const silenceUntil = new Date(Date.now() + silenceDurationMs)
+      await db.query(
+        `UPDATE users SET silence_until = ? WHERE id = ? AND (silence_until IS NULL OR silence_until < ?)`,
+        [silenceUntil, dispatch.userId || dispatch.user_id, silenceUntil]
+      )
+      this.logger.log(`手动踢出: 用户 ${dispatch.userId || dispatch.user_id} 静默期至 ${silenceUntil.toISOString()}`)
 
-    // 9. 发送通知给被踢出的用户
-    try {
-      const notificationService = new NotificationService()
-      // 获取订单标题用于通知
-      let orderTitle = ''
+      // 9. 发送通知给被踢出的用户
       try {
-        const [orderRows] = await db.query(
-          `SELECT title FROM orders WHERE id = ? LIMIT 1`,
-          [orderId]
-        )
-      
-        // 处理不同的返回格式
-        const rawRows = (orderRows as any)
-        let orderRow = null
-        if (Array.isArray(rawRows)) {
-          orderRow = rawRows[0]
-        } else if (rawRows?.data && Array.isArray(rawRows.data)) {
-          orderRow = rawRows.data[0]
-        } else if (rawRows?.title) {
-          // rawRows 本身就是单条记录
-          orderRow = rawRows
+        const notificationService = new NotificationService()
+        // 获取订单标题用于通知
+        let orderTitle = order.title || ''
+        // 计算静默期文本（支持秒、分钟、小时、天）
+        let silenceText = ''
+        if (silenceDurationMs < 60 * 1000) {
+          silenceText = `${Math.round(silenceDurationMs / 1000)}秒`
+        } else if (silenceDurationMs < 60 * 60 * 1000) {
+          silenceText = `${Math.round(silenceDurationMs / (60 * 1000))}分钟`
+        } else if (silenceDurationMs < 24 * 60 * 60 * 1000) {
+          silenceText = `${Math.round(silenceDurationMs / (60 * 60 * 1000))}小时`
+        } else {
+          silenceText = `${Math.round(silenceDurationMs / (24 * 60 * 60 * 1000))}天`
         }
-        if (orderRow?.title) {
-          orderTitle = orderRow.title
-        }
-      } catch (orderErr) {
-        this.logger.warn(`获取订单标题失败: ${(orderErr as Error).message}`)
-      }
 
-      // 计算静默期文本（支持秒、分钟、小时、天）
-      let silenceText = ''
-      if (silenceDurationMs < 60 * 1000) {
-        silenceText = `${Math.round(silenceDurationMs / 1000)}秒`
-      } else if (silenceDurationMs < 60 * 60 * 1000) {
-        silenceText = `${Math.round(silenceDurationMs / (60 * 1000))}分钟`
-      } else if (silenceDurationMs < 24 * 60 * 60 * 1000) {
-        silenceText = `${Math.round(silenceDurationMs / (60 * 60 * 1000))}小时`
-      } else {
-        silenceText = `${Math.round(silenceDurationMs / (24 * 60 * 60 * 1000))}天`
+        await notificationService.createNotification({
+          user_id: dispatch.userId || dispatch.user_id,
+          type: 'manual_kick',
+          title: '您已被踢出订单',
+          content: `您在订单「${orderTitle}」中被发单者踢出。${silenceText}内无法接单。`,
+          metadata: { orderId, avatarId }
+        })
+        this.logger.log(`手动踢出: 已发送通知给用户 ${dispatch.userId || dispatch.user_id}`)
+      } catch (notifyErr) {
+        this.logger.warn(`手动踢出: 发送通知失败 ${(notifyErr as Error).message}`)
       }
-      console.log('orderTitle2:', orderTitle)
-      await notificationService.createNotification({
-        user_id: dispatch.userId || dispatch.user_id,
-        type: 'manual_kick',
-        title: '您已被踢出订单',
-        content: `您在订单「${orderTitle}」中被发单者踢出。${silenceText}内无法接单。`,
-        metadata: { orderId, avatarId }
-      })
-      this.logger.log(`手动踢出: 已发送通知给用户 ${dispatch.userId || dispatch.user_id}`)
-    } catch (notifyErr) {
-      this.logger.warn(`手动踢出: 发送通知失败 ${(notifyErr as Error).message}`)
     }
-
     // 6.5 释放Redis已接单计数器
     const redisKeyAccepted = `order:accept:count:${orderId}`
     try {
