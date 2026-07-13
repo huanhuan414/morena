@@ -343,8 +343,8 @@ export class UserStatsService {
         , o.title as order_title, o.platform as order_platform, dr.accept_timeout_at, o.description as content
         FROM content_generation_requests cgr
         LEFT JOIN orders o ON cgr.order_id = o.id
-        LEFT JOIN order_dispatch_requests dr ON cgr.order_id = dr.order_id AND cgr.avatar_id = dr.avatar_id
-        WHERE cgr.avatar_id IN (${avatarIdParams}) ORDER BY cgr.created_at DESC LIMIT 50`
+        LEFT JOIN order_dispatch_requests dr ON cgr.order_id = dr.order_id AND cgr.avatar_id = dr.avatar_id and dr.status not in ('expired')
+        WHERE cgr.avatar_id IN (${avatarIdParams}) and cgr.status != 'expired' ORDER BY cgr.created_at DESC LIMIT 50`
         const t0 = Date.now()
         const result = await db.query(sql, avatarIds) as any
         contents = Array.isArray(result) ? result : (result?.data || [])
