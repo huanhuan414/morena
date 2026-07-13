@@ -1397,7 +1397,7 @@ async getExecutionProgress(orderId: string) {
        FROM order_dispatch_requests
        WHERE order_id = ? AND user_id = ?
          AND status IN ('accepted', 'completed')
-       ORDER BY created_at DESC, updated_at DES
+       ORDER BY created_at DESC, updated_at DESC
        LIMIT 1`,
       [orderId, avatarUserId,]
     )
@@ -1581,24 +1581,23 @@ async getExecutionProgress(orderId: string) {
         }
       }
 
-      if (acceptedCount >= requiredCount) {
-        await conn.query(
-          `UPDATE order_dispatch_requests
-           SET status = 'expired',
-               reject_reason = '订单名额已满',
-               updated_at = NOW()
-           WHERE order_id = ? AND status = 'pending'`,
-          [orderId]
-        )
-        await conn.query(
-          `UPDATE orders
-           SET status = 'in_progress',
-               updated_at = NOW()
-           WHERE id = ? AND status NOT IN ('completed', 'cancelled')`,
-          [orderId]
-        )
-      }
-
+      // if (acceptedCount >= requiredCount) {
+      //   await conn.query(
+      //     `UPDATE order_dispatch_requests
+      //      SET status = 'expired',
+      //          reject_reason = '订单名额已满',
+      //          updated_at = NOW()
+      //      WHERE order_id = ? AND status = 'pending'`,
+      //     [orderId]
+      //   )
+      //   await conn.query(
+      //     `UPDATE orders
+      //      SET status = 'in_progress',
+      //          updated_at = NOW()
+      //      WHERE id = ? AND status NOT IN ('completed', 'cancelled')`,
+      //     [orderId]
+      //   )
+      // }
       await conn.commit()
     } catch (error) {
       try {
@@ -1672,7 +1671,7 @@ async getExecutionProgress(orderId: string) {
     }
     // 自动启动内容生成流程（异步执行，不阻塞返回）
     const processingRecordBefore = await this.waitForProcessingRecord(orderId, actualAvatarId)
-    if (!processingRecordBefore && !wasAlreadyAccepted) {
+    if (!processingRecordBefore) {
       this.startContentGeneration(orderId, actualAvatarId, request).catch(err => {
         console.error('[acceptOrder] 启动内容生成失败:', err)
       })
@@ -2126,11 +2125,13 @@ async getExecutionProgress(orderId: string) {
   async startContentGeneration(orderId: string, avatarId: string, request: any, requestId?: string) {
     const MAX_RETRIES = 3
     let lastError: any = null
-
+    let success = false
+    const db = getMySQLClient()
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
         await this._doStartContentGeneration(orderId, avatarId, request, requestId)
-        return
+        success = true
+        break
       } catch (err: any) {
         lastError = err
         console.warn(`[startContentGeneration] 第${attempt}次尝试失败: ${err.message}`)
@@ -2139,35 +2140,45 @@ async getExecutionProgress(orderId: string) {
         }
       }
     }
-
-    console.error(`[startContentGeneration] ${MAX_RETRIES}次重试全部失败，创建兜底 failed 记录: orderId=${orderId}`)
-    try {
-      const db = getMySQLClient()
-      const fallbackRequestId = requestId || `req_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
+    if (success) {
       await db.query(
-        'UPDATE content_generation_requests SET status = ?, error = ?, updated_at = NOW() WHERE id = ?',
-        ['failed', `内容生成启动失败(${MAX_RETRIES}次重试): ${lastError?.message || '未知错误'}`, fallbackRequestId]
+        `UPDATE orders
+        SET status = 'in_progress',
+            updated_at = NOW()
+        WHERE id = ?
+          AND status not IN ('draft', 'completed', 'failed', 'cancelled')`,
+        [orderId]
       )
-      const reject_reason = '内容生成启动失败，已释放接单名额'  
-      const dispatchResult = await db.query(
-      `UPDATE order_dispatch_requests
-        SET status = 'expired',
+    } else {
+      console.error(`[startContentGeneration] ${MAX_RETRIES}次重试全部失败，创建兜底 failed 记录: orderId=${orderId}`)
+      try {
+         const reject_reason = '内容生成启动失败，已释放接单名额'
+        const dispatchResult = await db.query(
+          `UPDATE order_dispatch_requests
+          SET status = 'expired',
             kick_type = 'content_generation_failed',
             reject_reason = ?,
             updated_at = NOW()
-        WHERE id = ? AND status = 'accepted'`,
-      [reject_reason, request.id]
-      )
-      const affectedRows = (avatarRows as any[])?.[0].affectedRows || 0
-      if (Number(affectedRows) === 1) {
-        const redisKey = `order:accept:count:${orderId}`
-        const current = await this.redisService.getClient().get(redisKey)
-        if (Number(current || 0) > 0) {
-          await this.redisService.getClient().decr(redisKey)
+          WHERE id = ? AND status = 'accepted'`,
+          [reject_reason, request.id]
+        )
+        const affectedRows = (dispatchResult as any)?.affectedRows || (dispatchResult as any)?.[0]?.affectedRows || 0
+        if (Number(affectedRows) === 1) {
+          const redisKey = `order:accept:count:${orderId}`
+          const current = await this.redisService.getClient().get(redisKey)
+          if (Number(current || 0) > 0) {
+            await this.redisService.getClient().decr(redisKey)
+          }
         }
+
+        const fallbackRequestId = requestId || `req_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
+        await db.query(
+          'UPDATE content_generation_requests SET status = ?, error = ?, updated_at = NOW() WHERE id = ?',
+          ['failed', `内容生成启动失败(${MAX_RETRIES}次重试): ${lastError?.message || '未知错误'}`, fallbackRequestId]
+        )
+      } catch (fallbackErr: any) {
+        console.error('[startContentGeneration] 创建兜底记录也失败:', fallbackErr.message)
       }
-    } catch (fallbackErr: any) {
-      console.error('[startContentGeneration] 创建兜底记录也失败:', fallbackErr.message)
     }
   }
 
