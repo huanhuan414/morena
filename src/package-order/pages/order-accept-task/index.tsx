@@ -53,7 +53,7 @@ const getStepDesc = (step: TaskStep) => step.stepDesc || step.step_desc || ''
 const getMainContent = (step: TaskStep) => step.mainContent || step.main_content || ''
 const getMediaList = (step: TaskStep) => step.mediaList || step.media_list || []
 const getExtConfig = (step: TaskStep) => step.extConfig || step.ext_config || {}
-const PREVIEW_ONLY_STATUSES = ['awaiting_acceptance', 'settled', 'cancelled', 'failed']
+const PREVIEW_ONLY_STATUSES = ['awaiting_acceptance', 'settled', 'cancelled', 'failed', 'rejected']
 const VERIFY_REQUIRED_PLATFORMS = ['douyin', 'kuaishou', 'xiaohongshu', 'wechat_mp', 'wechat_channel']
 const REQUIRED_COLLECT_STEP_LABELS: Record<string, string> = {
   collect_image: '收集截图',
@@ -472,42 +472,42 @@ export default function OrderAcceptTask() {
   }
 
   const handlePublishTask = async () => {
-      if (!requestId || submitting || submitLockRef.current) return
-      submitLockRef.current = true
-      const missingStep = steps.find((step) => {
-        const stepType = getStepType(step)
-        if (!REQUIRED_COLLECT_STEP_LABELS[stepType]) return false
-        const result = getStepResult(stepResults, step)
-        return !hasStepResultValue(result.value)
+    if (!requestId || submitting || submitLockRef.current) return
+    submitLockRef.current = true
+    const missingStep = steps.find((step) => {
+      const stepType = getStepType(step)
+      if (!REQUIRED_COLLECT_STEP_LABELS[stepType]) return false
+      const result = getStepResult(stepResults, step)
+      return !hasStepResultValue(result.value)
+    })
+    if (missingStep) {
+      const stepIndex = steps.findIndex((step) => step.id === missingStep.id)
+      Taro.showToast({
+        title: `步骤${stepIndex + 1}：需要您提供对应收集信息!`,
+        icon: 'none',
+        duration: 2400,
       })
-      if (missingStep) {
-        const stepIndex = steps.findIndex((step) => step.id === missingStep.id)
-        Taro.showToast({
-          title: `步骤${stepIndex + 1}：需要您提供对应收集信息!`,
-          icon: 'none',
-          duration: 2400,
-        })
-        submitLockRef.current = false
-        return
-      }
+      submitLockRef.current = false
+      return
+    }
 
-      const invalidCollectUrlStep = steps.find((step) => {
-        if (getStepType(step) !== 'collect_url') return false
-        const result = getStepResult(stepResults, step)
-        if (!hasStepResultValue(result.value)) return false
-        return collectUrlVerifyStatus[step.id] !== 'success'
+    const invalidCollectUrlStep = steps.find((step) => {
+      if (getStepType(step) !== 'collect_url') return false
+      const result = getStepResult(stepResults, step)
+      if (!hasStepResultValue(result.value)) return false
+      return collectUrlVerifyStatus[step.id] !== 'success'
+    })
+    if (invalidCollectUrlStep) {
+      const stepIndex = steps.findIndex((step) => step.id === invalidCollectUrlStep.id)
+      Taro.showToast({
+        title: `步骤${stepIndex + 1}：请先输入有效的目标平台链接!`,
+        icon: 'none',
+        duration: 2400,
       })
-      if (invalidCollectUrlStep) {
-        const stepIndex = steps.findIndex((step) => step.id === invalidCollectUrlStep.id)
-        Taro.showToast({
-          title: `步骤${stepIndex + 1}：请先输入有效的目标平台链接!`,
-          icon: 'none',
-          duration: 2400,
-        })
-        submitLockRef.current = false
-        return
-      }
-      const confirm = await new Promise<boolean>((resolve) => {
+      submitLockRef.current = false
+      return
+    }
+    const confirm = await new Promise<boolean>((resolve) => {
       Taro.showModal({
         title: '确认发布',
         content: '发布后将提交给商家验收，确认发布吗？',
