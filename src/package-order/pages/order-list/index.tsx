@@ -10,18 +10,9 @@ import {
 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import { WX_SUBSCRIBE_TEMPLATES } from '@/constants/wechat'
+import { canonicalizePlatforms, getPlatformLabel } from '@/constants/publish-platform'
 import './index.css'
 
-// ===== 平台名称映射 =====
-const PLATFORM_MAP: Record<string, string> = {
-  xiaohongshu: '小红书',
-  wechat_moments: '朋友圈',
-  douyin: '抖音',
-  weibo: '微博',
-  bilibili: 'B站',
-  zhihu: '知乎',
-  kuaishou: '快手',
-}
 
 // ===== 内容类型映射 =====
 const CONTENT_TYPE_MAP: Record<string, { label: string; icon: any }> = {
@@ -49,7 +40,7 @@ const STATUS_CONFIG: Record<string, {
   awaiting_acceptance: { label: '待验收', color: '#6366F1', bgColor: '#EEF2FF', icon: Users, phase: 3 },
   pending_acceptance: { label: '待接单', color: '#6366F1', bgColor: '#EEF2FF', icon: Users, phase: 2 },
   accepted: { label: '已接单', color: '#10B981', bgColor: '#ECFDF5', icon: CircleCheck, phase: 2 },
-  in_progress: { label: '制作中', color: '#10B981', bgColor: '#ECFDF5', icon: Loader, phase: 2 },
+  in_progress: { label: '进行中', color: '#10B981', bgColor: '#ECFDF5', icon: Loader, phase: 2 },
   content_generated: { label: '已生成', color: '#8B5CF6', bgColor: '#F5F3FF', icon: FileText, phase: 2 },
   submitted: { label: '待发布', color: '#8B5CF6', bgColor: '#F5F3FF', icon: FileText, phase: 3 },
   published: { label: '已发布', color: '#059669', bgColor: '#ECFDF5', icon: CircleCheck, phase: 3 },
@@ -81,6 +72,17 @@ function isStatusInTab(status: string, tabKey: string): boolean {
   return false
 }
 
+function getOrderPlatforms(platforms: any): string[] {
+  if (Array.isArray(platforms)) return canonicalizePlatforms(platforms)
+  if (typeof platforms === 'string') {
+    try {
+      const parsed = JSON.parse(platforms)
+      if (Array.isArray(parsed)) return canonicalizePlatforms(parsed)
+    } catch {}
+    return canonicalizePlatforms(platforms)
+  }
+  return []
+}
 function formatTime(dateStr: string): string {
   if (!dateStr) return ''
   try {
@@ -319,7 +321,7 @@ export default function OrderListPage() {
           {generating > 0 && (
             <View className="ol-progress-label-item">
               <View style={{ width: '12rpx', height: '12rpx', borderRadius: '50%', backgroundColor: '#F59E0B' }} />
-              <Text className="ol-progress-label-text" style={{ color: '#F59E0B' }}>{generating} 制作中</Text>
+              <Text className="ol-progress-label-text" style={{ color: '#F59E0B' }}>{generating} 进行中</Text>
             </View>
           )}
           {submittedCount > 0 && (
@@ -484,11 +486,11 @@ export default function OrderListPage() {
                     <ContentTypeIcon size={12} color="#7C3AED" />
                     <Text className="block ol-type-pill-text">{ctConfig.label}</Text>
                   </View>
-                  {Array.isArray(order.platforms) ? order.platforms.map((p: string, i: number) => (
-                    <View key={i} className="ol-platform-pill">
-                      <Text className="block ol-platform-pill-text">{PLATFORM_MAP[p] || p}</Text>
+                  {getOrderPlatforms(order.platforms).map((p: string, i: number) => (
+                    <View key={`${p}-${i}`} className="ol-platform-pill">
+                      <Text className="block ol-platform-pill-text">{getPlatformLabel(p)}</Text>
                     </View>
-                  )) : null}
+                  ))}
                   {/* 素材池概要标签 */}
                   {(() => {
                     const summary = typeof order.userAssetsSummary === 'string' ? (() => { try { return JSON.parse(order.userAssetsSummary) } catch { return null } })() : order.userAssetsSummary
@@ -563,7 +565,7 @@ export default function OrderListPage() {
       <View className="ol-footer">
         {/* <View className="ol-create-btn" onClick={handleCreate}>
           <Zap size={16} color="#fff" />
-          <Text className="block ol-create-btn-text">发布新订单</Text>
+          <Text className="block ol-create-btn-text">发布新订单1</Text>
         </View> */}
         <View className="ol-create-btn" onClick={handleCreate2}>
           <Zap size={16} color="#fff" />

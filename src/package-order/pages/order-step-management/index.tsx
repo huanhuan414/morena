@@ -546,6 +546,27 @@ export default function OrderStepManagement() {
     }
   }
 
+  const goOrderList = () => {
+    setShowPayModal(false)
+    Taro.reLaunch({ url: '/package-order/pages/order-list/index' })
+  }
+
+  const showPaymentRetryModal = (targetOrderId: string, openid: string, failed = false) => {
+    setShowPayModal(false)
+    Taro.showModal({
+      title: failed ? '支付失败' : '支付已取消',
+      content: failed ? '支付遇到问题，您可以稍后重试' : '您可以稍后在订单列表中继续支付',
+      confirmText: failed ? '重试' : '去支付',
+      cancelText: '查看订单',
+      success: (modalRes) => {
+        if (modalRes.confirm) {
+          repayAndNavigate(targetOrderId, openid)
+        } else {
+          goOrderList()
+        }
+      },
+    })
+  }
   const handleCustomBasePriceChange = () => {
     const currentValue = customBasePriceInput ? parseFloat(customBasePriceInput) : basePricePerUnit
     const modalOptions: Record<string, any> = {
@@ -609,8 +630,10 @@ export default function OrderStepManagement() {
     } catch (payErr: any) {
       Taro.hideLoading()
       const errMsg = String(payErr?.errMsg || payErr?.message || '')
-      if (!errMsg.includes('cancel')) {
-        Taro.showToast({ title: '支付失败，请稍后重试', icon: 'none' })
+      if (errMsg.includes('cancel') || errMsg.includes('取消')) {
+        showPaymentRetryModal(targetOrderId, openid)
+      } else {
+        showPaymentRetryModal(targetOrderId, openid, true)
       }
     } finally {
       repayInFlightRef.current = false
@@ -681,38 +704,9 @@ export default function OrderStepManagement() {
           console.warn('[支付] 结果:', payErr)
           const errMsg = String(payErr?.errMsg || payErr?.message || '')
           if (errMsg.includes('cancel') || errMsg.includes('取消')) {
-            // Taro.showToast({ title: '支付已取消', icon: 'none' })
-            // 用户取消支付 → 跳转到订单详情，显示待支付状态
-            Taro.showModal({
-              title: '支付已取消',
-              content: '您可以稍后在订单详情中继续支付',
-              confirmText: '去支付',
-              cancelText: '查看订单',
-              success: (modalRes) => {
-                if (modalRes.confirm) {
-                  // 重新支付
-                  repayAndNavigate(orderId, openid)
-                } else {
-                  Taro.reLaunch({ url: `/package-order/pages/order-detail/index?id=${orderId}&action=pay` })
-                }
-              },
-            })
+            showPaymentRetryModal(orderId, openid)
           } else {
-            // Taro.showToast({ title: '支付失败，请稍后重试', icon: 'none' })
-            // 支付失败
-            Taro.showModal({
-              title: '支付失败',
-              content: '支付遇到问题，您可以稍后重试',
-              confirmText: '重试',
-              cancelText: '查看订单',
-              success: (modalRes) => {
-                if (modalRes.confirm) {
-                  repayAndNavigate(orderId, openid)
-                } else {
-                  Taro.reLaunch({ url: `/package-order/pages/order-detail/index?id=${orderId}&action=pay` })
-                }
-              },
-            })
+            showPaymentRetryModal(orderId, openid, true)
           }
         }
       } else {
