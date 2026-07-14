@@ -268,10 +268,27 @@
 }
 
 .step-drag {
-  width: 44rpx;
+  width: 52rpx;
+  height: 52rpx;
+  margin-left: 16rpx;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 12rpx;
+}
+
+.step-drag:active {
+  background: #eef6ff;
+}
+
+.swipe-card-wrapper-sorting {
+  z-index: 5;
+}
+
+.swipe-card-content-sorting {
+  background: #f8fbff;
+  box-shadow: 0 8rpx 24rpx rgba(22, 119, 255, 0.16);
 }
 
 .step-index {
@@ -293,6 +310,7 @@
 
 .step-info {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 8rpx;

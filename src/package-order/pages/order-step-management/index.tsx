@@ -313,6 +313,10 @@ export default function OrderStepManagement() {
   const [customBasePriceInput, setCustomBasePriceInput] = useState('')
   const [contentTypes, setContentTypes] = useState<any[]>([])
   const [basePricePerUnit, setBasePricePerUnit] = useState(0)
+  const [draggingStepId, setDraggingStepId] = useState('')
+  const dragStartYRef = useRef(0)
+  const dragStartIndexRef = useRef(0)
+  const dragItemHeightRef = useRef(0)
 
   // 监听 customBasePriceInput 变化，重新计算价格
   useEffect(() => {
@@ -762,6 +766,37 @@ export default function OrderStepManagement() {
     setSteps(nextSteps)
     Taro.setStorageSync(storageKey, nextSteps)
   }
+
+  const moveStep = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return
+    const nextSteps = [...stepsRef.current]
+    if (fromIndex >= nextSteps.length || toIndex >= nextSteps.length) return
+    const [movingStep] = nextSteps.splice(fromIndex, 1)
+    nextSteps.splice(toIndex, 0, movingStep)
+    persistSteps(nextSteps)
+  }
+
+  const handleStepDragStart = (stepId: string, index: number, clientY: number) => {
+    const systemInfo = Taro.getSystemInfoSync()
+    setDraggingStepId(stepId)
+    dragStartYRef.current = clientY
+    dragStartIndexRef.current = index
+    dragItemHeightRef.current = Math.max(56, (systemInfo.windowWidth / 750) * 130)
+  }
+
+  const handleStepDragMove = (clientY: number) => {
+    if (!draggingStepId || stepsRef.current.length <= 1) return
+    const offsetY = clientY - dragStartYRef.current
+    const targetIndex = Math.max(0, Math.min(stepsRef.current.length - 1, dragStartIndexRef.current + Math.round(offsetY / dragItemHeightRef.current)))
+    const currentIndex = stepsRef.current.findIndex(step => step.id === draggingStepId)
+    if (currentIndex >= 0 && targetIndex !== currentIndex) {
+      moveStep(currentIndex, targetIndex)
+    }
+  }
+
+  const handleStepDragEnd = () => {
+    setDraggingStepId('')
+  }
   const editStep = (step: StepItem) => {
     setEditingStepId(step.id)
     setModalGroup(step.group)
@@ -1188,9 +1223,9 @@ export default function OrderStepManagement() {
       </View>
 
       {/* <Text className="drag-hint">长按“≡”拖动可以调整顺序，左滑删除</Text> */}
-      <Text className="drag-hint">左滑删除</Text>
+      <Text className="drag-hint">长按右侧按钮拖动可以调整顺序，左滑删除</Text>
 
-      <ScrollView scrollY className="step-content">
+      <ScrollView scrollY={!draggingStepId} className="step-content">
         {steps.length === 0 ? (
           <View className="empty-panel">
             <View className="empty-illustration">
@@ -1212,8 +1247,12 @@ export default function OrderStepManagement() {
                 key={step.id}
                 step={step}
                 index={index}
+                isSorting={draggingStepId === step.id}
                 onEdit={() => editStep(step)}
                 onDelete={() => removeStep(step.id)}
+                onSortStart={handleStepDragStart}
+                onSortMove={handleStepDragMove}
+                onSortEnd={handleStepDragEnd}
               />
             ))}
           </View>
@@ -1656,26 +1695,32 @@ export default function OrderStepManagement() {
 interface SwipeableStepCardProps {
   step: StepItem
   index: number
+  isSorting: boolean
   onEdit: () => void
   onDelete: () => void
+  onSortStart: (stepId: string, index: number, clientY: number) => void
+  onSortMove: (clientY: number) => void
+  onSortEnd: () => void
 }
 
-function SwipeableStepCard({ step, index, onEdit, onDelete }: SwipeableStepCardProps) {
+function SwipeableStepCard({ step, index, isSorting, onEdit, onDelete, onSortStart, onSortMove, onSortEnd }: SwipeableStepCardProps) {
   const [translateX, setTranslateX] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const startXRef = useRef(0)
   const currentXRef = useRef(0)
+  const dragStartYRef = useRef(0)
 
   const deleteBtnWidth = 140
 
   const onTouchStart = (e: any) => {
+    if (isSorting) return
     startXRef.current = e.touches[0].clientX
     currentXRef.current = translateX
     setIsDragging(true)
   }
 
   const onTouchMove = (e: any) => {
-    if (!isDragging) return
+    if (isSorting || !isDragging) return
     const diff = e.touches[0].clientX - startXRef.current
     let newTranslate = currentXRef.current + diff
     if (newTranslate > 0) newTranslate = 0
@@ -1684,6 +1729,7 @@ function SwipeableStepCard({ step, index, onEdit, onDelete }: SwipeableStepCardP
   }
 
   const onTouchEnd = () => {
+    if (isSorting) return
     setIsDragging(false)
     if (translateX < -deleteBtnWidth / 2) {
       setTranslateX(-deleteBtnWidth)
@@ -1692,22 +1738,44 @@ function SwipeableStepCard({ step, index, onEdit, onDelete }: SwipeableStepCardP
     }
   }
 
+  const handleDragHandleTouchStart = (e: any) => {
+    e.stopPropagation?.()
+    dragStartYRef.current = e.touches?.[0]?.clientY || 0
+  }
+
+  const handleDragHandleLongPress = (e: any) => {
+    e.stopPropagation?.()
+    setTranslateX(0)
+    onSortStart(step.id, index, dragStartYRef.current || e.touches?.[0]?.clientY || 0)
+  }
+
+  const handleDragHandleTouchMove = (e: any) => {
+    if (!isSorting) return
+    e.stopPropagation?.()
+    onSortMove(e.touches?.[0]?.clientY || dragStartYRef.current)
+  }
+
+  const handleDragHandleTouchEnd = (e: any) => {
+    if (!isSorting) return
+    e.stopPropagation?.()
+    onSortEnd()
+  }
+
   return (
-    <View className="swipe-card-wrapper">
+    <View className={'swipe-card-wrapper' + (isSorting ? ' swipe-card-wrapper-sorting' : '')}>
       <View className="swipe-card-delete" onClick={onDelete}>
         <Text className="swipe-card-delete-text">删除</Text>
       </View>
       <View
-        className="swipe-card-content"
-        style={{ transform: `translateX(${translateX}rpx)` }}
+        className={'swipe-card-content' + (isSorting ? ' swipe-card-content-sorting' : '')}
+        style={{ transform: 'translateX(' + translateX + 'rpx)' }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
-        onClick={onEdit}
+        onClick={() => {
+          if (!isSorting) onEdit()
+        }}
       >
-        <View className="step-drag">
-          <GripVertical size={18} color="#9ca3af" />
-        </View>
         <View className="step-index">
           <Text className="step-index-text">{index + 1}</Text>
         </View>
@@ -1717,6 +1785,17 @@ function SwipeableStepCard({ step, index, onEdit, onDelete }: SwipeableStepCardP
           {/* {step.description && (
             <Text className="step-desc">{truncateStr(step.description, 20)}</Text>
           )} */}
+        </View>
+        <View
+          className="step-drag"
+          onTouchStart={handleDragHandleTouchStart}
+          onLongPress={handleDragHandleLongPress}
+          onTouchMove={handleDragHandleTouchMove}
+          onTouchEnd={handleDragHandleTouchEnd}
+          onTouchCancel={handleDragHandleTouchEnd}
+          onClick={(e) => e.stopPropagation?.()}
+        >
+          <GripVertical size={18} color={isSorting ? '#1677ff' : '#9ca3af'} />
         </View>
       </View>
     </View>
