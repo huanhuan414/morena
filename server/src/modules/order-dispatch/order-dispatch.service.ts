@@ -2696,7 +2696,7 @@ async getExecutionProgress(orderId: string) {
 
     // 4. 检查是否已提交反馈（submitted/settled 状态不允许踢出）
     const cgrRows = await db.query(
-      `SELECT id, status FROM content_generation_requests WHERE order_id = ? AND avatar_id = ? AND status IN ('submitted', 'settled')`,
+      `SELECT id, status FROM content_generation_requests WHERE order_id = ? AND avatar_id = ? AND status IN ('awaiting_acceptance', 'settled')`,
       [orderId, avatarId]
     )
     if (cgrRows?.length > 0) {
@@ -2705,13 +2705,13 @@ async getExecutionProgress(orderId: string) {
 
     // 5. 执行踢出：更新 dispatch_request 状态为 expired，记录 kick_type
     await db.query(
-      `UPDATE order_dispatch_requests SET status = 'expired', kick_type = 'manual_kick', reject_reason = '发单者手动踢出', updated_at = NOW() WHERE id = ?`,
+      `UPDATE order_dispatch_requests SET status = 'expired', kick_type = 'manual_kick', reject_reason = '发单者手动踢出', updated_at = NOW() WHERE id = ? and status not in ('expired')`,
       [dispatch.id]
     )
 
     // 6. 取消该分身的内容生成请求
     await db.query(
-      `UPDATE content_generation_requests SET status = 'cancelled', updated_at = NOW() WHERE order_id = ? AND avatar_id = ? AND status NOT IN ('submitted', 'settled')`,
+      `UPDATE content_generation_requests SET status = 'cancelled', updated_at = NOW() WHERE order_id = ? AND avatar_id = ? AND status NOT IN ('awaiting_acceptance', 'settled', 'cancelled')`,
       [orderId, avatarId]
     )
 
