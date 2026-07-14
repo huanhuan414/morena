@@ -868,7 +868,7 @@ const Index: React.FC = () => {
                     <View className="po-steps">
                       <View className="po-step">
                         <View className="po-step-dot po-step-dot-1"><Text className="po-step-num">1</Text></View>
-                        <Text className="po-step-text">AI自动创作</Text>
+                        <Text className="po-step-text">订单创建</Text>
                       </View>
                       <View className="po-step-line" />
                       <View className="po-step">
@@ -991,7 +991,7 @@ const Index: React.FC = () => {
                 提交后{acceptConfirmData.reviewDays}内未审核，将自动通过！
               </Text>
               <View className="accept-confirm-plan-row">
-                <Text className="accept-confirm-plan-label">当天套餐：</Text>
+                <Text className="accept-confirm-plan-label">当前套餐：</Text>
                 <Text className="accept-confirm-plan-name">{acceptConfirmData.currentPlanName}</Text>
                 <Text className="accept-confirm-plan-spacer" />
                 <Text className="accept-confirm-plan-label">实收：</Text>
