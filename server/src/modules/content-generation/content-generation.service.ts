@@ -278,6 +278,7 @@ export class ContentGenerationService implements OnModuleInit {
   async generateContent(input: {
     orderId: string
     avatarId: string
+    userId?: string
     orderTitle: string
     orderDescription: string
     platform: string
@@ -324,7 +325,11 @@ export class ContentGenerationService implements OnModuleInit {
           id: requestId,
           avatar_id: input.avatarId,
           order_id: input.orderId,
+          user_id: input.userId || null,
+          order_title: input.orderTitle || '内容生成',
+          order_description: input.orderDescription || '',
           platform,
+          platforms: input.platforms || [],
           status: 'processing',
           content_type: effectiveContentType,
           content_quantity: input.contentQuantity || 1,
