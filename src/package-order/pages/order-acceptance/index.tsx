@@ -2,14 +2,15 @@
 import Taro, { useLoad, useRouter, navigateBack, showToast, previewImage } from '@tarojs/taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import { useState } from 'react'
-import { View, Text, ScrollView, Image, Input } from '@tarojs/components'
+import { View, Text, ScrollView, Image, Input, Textarea } from '@tarojs/components'
 import { Network } from '@/network'
 import {
   ArrowLeft, Check, CircleAlert, Image as ImageIcon, ExternalLink,
-  ChevronRight, TrendingUp, CircleCheckBig, Video, FileText, Play
+  ChevronRight, TrendingUp, CircleCheckBig, Video, FileText, Play, ShieldAlert
 } from 'lucide-react-taro'
 import { getPlatformLabel } from '@/constants/publish-platform'
 import '../order-detail/index.css'
+import './index.css'
 
 const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
 
@@ -89,7 +90,7 @@ export default function OrderAcceptance() {
   const [showReject, setShowReject] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [selectedReasonIdx, setSelectedReasonIdx] = useState(-1)
-  const [silenceDurationMs, setSilenceDurationMs] = useState(86400000)  // 默认24小时（毫秒）
+  const [silenceDurationMs, setSilenceDurationMs] = useState(0)  // 默认24小时（毫秒）
   const [isSilence, setIsSilence] = useState(false)  // 是否静默
 
   // 格式化静默时间显示（根据配置的毫秒数动态计算单位）
@@ -343,27 +344,37 @@ export default function OrderAcceptance() {
     // 检查是否是第2次驳回（通过 revisionHistory 判断）
     const publishFeedback = selectedAvatar.publishFeedback || {}
     const revisionHistory = publishFeedback.revisionHistory || []
-    const isSecondReject = revisionHistory.length >= 1  // 已有1次驳回记录，这次是第2次
-    console.log('isSilence', isSilence)
+    // const isSecondReject = revisionHistory.length >= 1  // 已有1次驳回记录，这次是第2次
     // 如果选择静默，则走二次驳回条件（直接静默）
     if (isSilence) {
+      const content = silenceDurationMs > 0 ? `驳回后该接单者将被静默${formatSilenceDuration(silenceDurationMs)}，期间无法接单，` : '终审驳回后，该接单者将无法再修改提交，'
+      const title = silenceDurationMs > 0 ? '静默驳回' : '终审驳回'
+      const modalRes = await Taro.showModal({
+        title: title,
+        content: `${content}确定要驳回吗？`,
+        confirmText: '确认驳回',
+        cancelText: '取消',
+      })
+      if (!modalRes.confirm) return
+    } else {
       const modalRes = await Taro.showModal({
         title: '确认驳回',
-        content: `驳回后该接单者将被静默${formatSilenceDuration(silenceDurationMs)}，期间无法接单。确定要驳回吗？`,
+        content: `驳回后需要等该接单者整改提交，确定要驳回吗？`,
         confirmText: '确认驳回',
         cancelText: '取消',
       })
-      if (!modalRes.confirm) return
-    } else if (isSecondReject) {
-      const modalRes = await Taro.showModal({
-        title: '确认最终驳回',
-        content: `这是第2次驳回，驳回后该接单者将被静默${formatSilenceDuration(silenceDurationMs)}，期间无法接单。确定要驳回吗？`,
-        confirmText: '确认驳回',
-        cancelText: '取消',
-      })
-
       if (!modalRes.confirm) return
     }
+    // else if (isSecondReject) {
+    //   const modalRes = await Taro.showModal({
+    //     title: '确认最终驳回',
+    //     content: `这是第2次驳回，驳回后该接单者将被静默${formatSilenceDuration(silenceDurationMs)}，期间无法接单。确定要驳回吗？`,
+    //     confirmText: '确认驳回',
+    //     cancelText: '取消',
+    //   })
+
+    //   if (!modalRes.confirm) return
+    // }
 
     try {
       const requestId = selectedAvatar.requestId
@@ -615,68 +626,68 @@ export default function OrderAcceptance() {
                 </View>
               ) : (
                 <>
-              {generatedContent?.content && (
-                <View style={{ marginBottom: 12 }}>
-                  <Text className="block" style={{ fontSize: '13px', color: '#6B7280', marginBottom: 4 }}>文案</Text>
-                  <View style={{ backgroundColor: '#F9FAFB', borderRadius: 8, padding: 12 }}>
-                    <Text className="block" style={{ fontSize: '14px', color: '#1F2937', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                      {generatedContent.content}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {/* 图片内容 */}
-              {generatedContent?.images && generatedContent.images.length > 0 && (
-                <View style={{ marginBottom: 12 }}>
-                  <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                    <ImageIcon size={14} color="#6366F1" />
-                    <Text className="block" style={{ fontSize: '13px', color: '#6B7280', marginLeft: 4 }}>配图 ({generatedContent.images.length})</Text>
-                  </View>
-                  <View className="od-images-grid">
-                    {generatedContent.images.map((img: string, idx: number) => (
-                      <Image
-                        key={idx}
-                        src={img}
-                        className="od-preview-image"
-                        mode="aspectFill"
-                        onClick={() => handleImagePreview(img)}
-                      />
-                    ))}
-                  </View>
-                </View>
-              )}
-
-              {/* 视频内容 - 封面卡点击播放 */}
-              {generatedContent?.videos && generatedContent.videos.length > 0 && (
-                <View>
-                  <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                    <Video size={14} color="#6366F1" />
-                    <Text className="block" style={{ fontSize: '13px', color: '#6B7280', marginLeft: 4 }}>视频 ({generatedContent.videos.length})</Text>
-                  </View>
-                  {generatedContent.videos.map((url: string, idx: number) => (
-                    <View key={idx} className="gc-video-cover-card" onClick={() => {
-                      Taro.previewMedia({
-                        sources: [{ url, type: 'video' }],
-                        current: 0,
-                      }).catch(() => {
-                        Taro.setClipboardData({ data: url })
-                        Taro.showToast({ title: '视频链接已复制', icon: 'none' })
-                      })
-                    }}
-                    >
-                      <View className="gc-video-cover-bg">
-                        <View className="gc-video-play-btn">
-                          <Play size={32} color="#fff" style={{ marginLeft: 4 }} />
-                        </View>
-                        <View className="gc-video-cover-label">
-                          <Text className="gc-video-cover-text">视频 {idx + 1} · 点击播放</Text>
-                        </View>
+                  {generatedContent?.content && (
+                    <View style={{ marginBottom: 12 }}>
+                      <Text className="block" style={{ fontSize: '13px', color: '#6B7280', marginBottom: 4 }}>文案</Text>
+                      <View style={{ backgroundColor: '#F9FAFB', borderRadius: 8, padding: 12 }}>
+                        <Text className="block" style={{ fontSize: '14px', color: '#1F2937', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                          {generatedContent.content}
+                        </Text>
                       </View>
                     </View>
-                  ))}
-                </View>
-              )}
+                  )}
+
+                  {/* 图片内容 */}
+                  {generatedContent?.images && generatedContent.images.length > 0 && (
+                    <View style={{ marginBottom: 12 }}>
+                      <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                        <ImageIcon size={14} color="#6366F1" />
+                        <Text className="block" style={{ fontSize: '13px', color: '#6B7280', marginLeft: 4 }}>配图 ({generatedContent.images.length})</Text>
+                      </View>
+                      <View className="od-images-grid">
+                        {generatedContent.images.map((img: string, idx: number) => (
+                          <Image
+                            key={idx}
+                            src={img}
+                            className="od-preview-image"
+                            mode="aspectFill"
+                            onClick={() => handleImagePreview(img)}
+                          />
+                        ))}
+                      </View>
+                    </View>
+                  )}
+
+                  {/* 视频内容 - 封面卡点击播放 */}
+                  {generatedContent?.videos && generatedContent.videos.length > 0 && (
+                    <View>
+                      <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                        <Video size={14} color="#6366F1" />
+                        <Text className="block" style={{ fontSize: '13px', color: '#6B7280', marginLeft: 4 }}>视频 ({generatedContent.videos.length})</Text>
+                      </View>
+                      {generatedContent.videos.map((url: string, idx: number) => (
+                        <View key={idx} className="gc-video-cover-card" onClick={() => {
+                          Taro.previewMedia({
+                            sources: [{ url, type: 'video' }],
+                            current: 0,
+                          }).catch(() => {
+                            Taro.setClipboardData({ data: url })
+                            Taro.showToast({ title: '视频链接已复制', icon: 'none' })
+                          })
+                        }}
+                        >
+                          <View className="gc-video-cover-bg">
+                            <View className="gc-video-play-btn">
+                              <Play size={32} color="#fff" style={{ marginLeft: 4 }} />
+                            </View>
+                            <View className="gc-video-cover-label">
+                              <Text className="gc-video-cover-text">视频 {idx + 1} · 点击播放</Text>
+                            </View>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  )}
                 </>
               )}
             </View>
@@ -936,68 +947,66 @@ export default function OrderAcceptance() {
         {/* 驳回弹窗 */}
         {
           showReject && (
-            <View className="od-modal-overlay" onClick={() => { setShowReject(false); setSelectedReasonIdx(-1); setRejectReason('') }}>
-              <View className="od-modal" onClick={(e) => e.stopPropagation()}>
-                <View className="od-modal-icon" style={{ backgroundColor: '#FEE2E2' }}>
-                  <CircleAlert size={24} color="#EF4444" />
+            <View className="od-modal-overlay" onClick={() => { setShowReject(false); setSelectedReasonIdx(-1); setRejectReason(''); setIsSilence(false) }}>
+              <View className="od-modal od-reject-modal-card" onClick={(e) => e.stopPropagation()}>
+                <View className="od-reject-modal-head">
+                  <View className="od-reject-modal-icon">
+                    <CircleAlert size={22} color="#EF4444" />
+                  </View>
+                  <Text className="block od-reject-modal-title">驳回修改</Text>
+                  {/* <Text className="block od-reject-modal-desc">请选择驳回原因，方便分身修改</Text> */}
                 </View>
-                <Text className="block od-modal-title">驳回修改</Text>
-                <Text className="block od-modal-desc">请选择驳回原因，方便分身修改</Text>
-                {/* 静默选项 */}
+
                 <View
-                  style={{ marginBottom: '10px', padding: '8px 10px', backgroundColor: isSilence ? '#FEF3C7' : '#F3F4F6', borderRadius: '6px', border: `1px solid ${isSilence ? '#FCD34D' : '#E5E7EB'}` }}
+                  className={`od-reject-mode-card ${isSilence ? 'od-reject-mode-card-active' : ''}`}
                   onClick={() => setIsSilence(!isSilence)}
                 >
-                  <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
-                    <View style={{
-                      width: '16px', height: '16px', borderRadius: '4px',
-                      backgroundColor: isSilence ? '#F59E0B' : 'transparent',
-                      border: isSilence ? 'none' : '2px solid #D1D5DB',
-                      marginRight: '8px', flexShrink: 0,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}
-                    >
-                      {isSilence && <Text style={{ color: '#fff', fontSize: '10px', fontWeight: 'bold' }}>✓</Text>}
-                    </View>
-                    <Text style={{ fontSize: '13px', color: isSilence ? '#92400E' : '#6B7280', fontWeight: '500' }}>同时静默该接单者（{formatSilenceDuration(silenceDurationMs)}）</Text>
+                  <View className={`od-reject-mode-check ${isSilence ? 'od-reject-mode-check-active' : ''}`}>
+                    {isSilence && <Check size={12} color="#ffffff" strokeWidth={3} />}
+                  </View>
+                  <View className="od-reject-mode-copy">
+                    <Text className="block od-reject-mode-title">{silenceDurationMs > 0 ? '同时静默该接单者' : '终审驳回'}</Text>
+                    <Text className="block od-reject-mode-desc">
+                      {silenceDurationMs > 0 ? `静默 ${formatSilenceDuration(silenceDurationMs)}，期间无法接单` : '驳回后该接单者将无法再修改提交'}
+                    </Text>
                   </View>
                 </View>
-                <View style={{ maxHeight: '320px', overflowY: 'auto' }}>
-                  {REJECT_REASONS.map((reason, idx) => (
-                    <View
-                      key={idx}
-                      className="od-reject-reason-item"
-                      style={{
-                        display: 'flex', flexDirection: 'row', alignItems: 'center',
-                        padding: '10px 12px', marginBottom: '6px', borderRadius: '8px',
-                        backgroundColor: selectedReasonIdx === idx ? '#FEF2F2' : '#F9FAFB',
-                        border: selectedReasonIdx === idx ? '1px solid #EF4444' : '1px solid #E5E7EB',
-                      }}
-                      onClick={() => setSelectedReasonIdx(idx)}
-                    >
-                      <View style={{
-                        width: '18px', height: '18px', borderRadius: '9px',
-                        border: selectedReasonIdx === idx ? '5px solid #EF4444' : '2px solid #D1D5DB',
-                        marginRight: '10px', flexShrink: 0,
-                      }}
-                      />
-                      <Text className="block" style={{ fontSize: '14px', color: selectedReasonIdx === idx ? '#EF4444' : '#374151' }}>
-                        {reason}
-                      </Text>
-                    </View>
-                  ))}
+
+                <ScrollView className="od-reject-reason-scroll" scrollY>
+                  {REJECT_REASONS.map((reason, idx) => {
+                    const active = selectedReasonIdx === idx
+                    return (
+                      <View
+                        key={idx}
+                        className={`od-reject-option ${active ? 'od-reject-option-active' : ''}`}
+                        onClick={() => setSelectedReasonIdx(idx)}
+                      >
+                        <View className={`od-reject-radio-dot ${active ? 'od-reject-radio-dot-active' : ''}`} />
+                        <Text className={`block od-reject-option-text ${active ? 'od-reject-option-text-active' : ''}`}>
+                          {reason}
+                        </Text>
+                      </View>
+                    )
+                  })}
                   {selectedReasonIdx === REJECT_REASONS.length - 1 && (
-                    <View className="od-modal-input-wrap" style={{ marginTop: '4px' }}>
-                      <Input className="od-modal-input" placeholder="请详细描述问题..." value={rejectReason} onInput={(e: any) => setRejectReason(e.detail.value)} />
+                    <View className="od-reject-other-wrap">
+                      <Textarea
+                        className="od-reject-other-input"
+                        placeholder="请详细描述问题..."
+                        value={rejectReason}
+                        maxlength={300}
+                        onInput={(e: any) => setRejectReason(e.detail.value)}
+                      />
                     </View>
                   )}
-                </View>
-                <View className="od-modal-actions">
-                  <View className="od-modal-btn od-modal-btn-cancel" onClick={() => { setShowReject(false); setSelectedReasonIdx(-1); setRejectReason('') }}>
-                    <Text className="block">取消</Text>
+                </ScrollView>
+
+                <View className="od-reject-modal-actions">
+                  <View className="od-reject-action-btn od-reject-action-cancel" onClick={() => { setShowReject(false); setSelectedReasonIdx(-1); setRejectReason(''); setIsSilence(false) }}>
+                    <Text className="block od-reject-action-cancel-text">取消</Text>
                   </View>
-                  <View className="od-modal-btn od-modal-btn-danger" onClick={handleReject}>
-                    <Text className="block" style={{ color: '#fff' }}>确认驳回</Text>
+                  <View className="od-reject-action-btn od-reject-action-confirm" onClick={handleReject}>
+                    <Text className="block od-reject-action-confirm-text">{isSilence ? (silenceDurationMs > 0 ? '静默驳回' : '终审驳回') : '确认驳回'}</Text>
                   </View>
                 </View>
               </View>
