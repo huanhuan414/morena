@@ -586,9 +586,27 @@ export class OrderProcessingService {
   }
 
   private async updateRecordByIdentifier(identifier: string, patch: Record<string, any>): Promise<any | null> {
-    const record = await this.findRecordByIdentifier(identifier)
+    // const record = await this.findRecordByIdentifier(identifier)
+    const db = getMySQLClient()
+    const record = await this.findByRequestId(identifier)
     if (!record) {
       return null
+    }
+    const currentStatus = String(record.status || '').trim().toLowerCase()
+    const terminalStatuses = ['rejected', 'settled', 'cancelled', 'failed']
+    if (terminalStatuses.includes(currentStatus)) {
+      const odrStatus = currentStatus === 'rejected' ? 'rejected' : 'settled'
+      await db.query(
+        `UPDATE order_dispatch_requests 
+         SET status = ?
+         WHERE order_id = ? and status not in ('expired')`,
+        [odrStatus, record.orderId || record.order_id]
+      )
+      const normalized = this.normalizeRecord(record)
+      setCache(normalized.requestId, normalized)
+      setCache(normalized.orderId, normalized)
+      this.logger.warn('忽略终态内容反馈提交: identifier=' + identifier + ', requestId=' + normalized.requestId + ', status=' + currentStatus)
+      return normalized
     }
 
     const columns = await this.getTableColumns()
@@ -609,7 +627,7 @@ export class OrderProcessingService {
     if (updates.length > 0) {
       const db = getMySQLClient()
       params.push(record.id)
-      await db.query(`UPDATE content_generation_requests SET ${updates.join(', ')} WHERE id = ?`, params)
+      await db.query(`UPDATE content_generation_requests SET ${updates.join(', ')} WHERE id = ? `, params)
     }
 
     return this.findByRequestId(record.id)
@@ -863,8 +881,8 @@ export class OrderProcessingService {
   }
 
   async submitFeedback(identifier: string, feedback: Record<string, any>): Promise<any> {
-  
-    const current = await this.findRecordByIdentifier(identifier)
+    // const current1 = await this.findRecordByIdentifier(identifier)
+    const current = await this.findByRequestId(identifier)
     if (!current) {
       return null
     }
@@ -887,7 +905,7 @@ export class OrderProcessingService {
 
     // 设置验收超时截止时间
     await this.setAcceptanceTimeout(normalized.orderId, normalized.avatarId)
-
+    // 同步订单状态
     await this.syncOrderStatus(normalized.orderId)
 
     // 发送订阅消息通知发单方（传递已有的数据，避免重复查询）
@@ -913,7 +931,7 @@ export class OrderProcessingService {
         `UPDATE order_dispatch_requests d
          JOIN orders o ON d.order_id = o.id
          SET d.acceptance_timeout_at = DATE_ADD(NOW(), INTERVAL o.acceptance_timeout HOUR)
-         WHERE d.order_id = ? AND d.avatar_id = ? AND o.acceptance_timeout > 0`,
+         WHERE d.order_id = ? AND d.avatar_id = ? AND o.acceptance_timeout > 0 AND d.status not in ('expired')`,
         [orderId, avatarId]
       )
     } catch (error) {
@@ -1300,7 +1318,8 @@ export class OrderProcessingService {
     })
     mergedFeedback.revisionHistory = revisionHistory
     mergedFeedback.rejectReason = feedback.rejectReason || ''
-    let isFinalRejection = revisionCount >= 2
+    // let isFinalRejection = revisionCount >= 2
+    let isFinalRejection = false
     if (silence) { 
       isFinalRejection = true
     }
@@ -1372,21 +1391,23 @@ export class OrderProcessingService {
       const actualUserId = avatarInfo?.userId || avatarInfo?.user_id
       if (actualUserId) {
         // 最终驳回：设置用户静默期
+        const silenceDurationMs = parseInt(process.env.ORDER_SILENCE_DURATION_MS, 10)
         if (isFinalRejection) {
-          const silenceDurationMs = parseInt(process.env.ORDER_SILENCE_DURATION_MS || '86400000', 10)
-          const silenceUntil = new Date(Date.now() + silenceDurationMs)
-          await db.query(
-            `UPDATE users SET silence_until = ? WHERE id = ? AND (silence_until IS NULL OR silence_until < ?)`,
-            [silenceUntil, actualUserId, silenceUntil]
-          )
-          this.logger.log(`[驳回] 已设置用户静默期: userId=${actualUserId}, silenceUntil=${silenceUntil.toISOString()}`)
+          if (silenceDurationMs > 0) {
+            const silenceUntil = new Date(Date.now() + silenceDurationMs)
+            await db.query(
+              `UPDATE users SET silence_until = ? WHERE id = ? AND (silence_until IS NULL OR silence_until < ?)`,
+              [silenceUntil, actualUserId, silenceUntil]
+            )
+            this.logger.log(`[驳回] 已设置用户静默期: userId=${actualUserId}, silenceUntil=${silenceUntil.toISOString()}`)
+          }
         }
 
         try {
           const notificationService = new NotificationService()
-          const canRegenerate = revisionCount < 2
+          // const canRegenerate = revisionCount < 2
           // 计算静默时间文本（支持秒、分钟、小时、天）
-          const silenceMs = parseInt(process.env.ORDER_SILENCE_DURATION_MS || '86400000', 10)
+          const silenceMs = parseInt(process.env.ORDER_SILENCE_DURATION_MS , 10)
           let silenceText = ''
           if (silenceMs < 60 * 1000) {
             silenceText = `${Math.round(silenceMs / 1000)}秒`
@@ -1397,14 +1418,15 @@ export class OrderProcessingService {
           } else {
             silenceText = `${Math.round(silenceMs / (24 * 60 * 60 * 1000))}天`
           }
-          const silenceNoticeText = isFinalRejection ? `，${silenceText}内无法接单` : ''
+          const silenceNoticeText = silenceDurationMs > 0 ? `，驳回后将被静默，${silenceText}内无法接单` : '，驳回后已不能修改提交！'
+          const nTitle = isFinalRejection ? (silenceDurationMs > 0 ? '订单静默驳回' : '订单终审驳回') : '订单驳回'
           await notificationService.createNotification({
             user_id: actualUserId,
             type: 'order_rejected',
-            title: canRegenerate ? '订单已被驳回' : '订单已被踢出',
-            content: canRegenerate
-              ? `订单「${avatarInfo.title || '内容'}」已被驳回，原因：${feedback.rejectReason || '无'}，可重新生成1次`
-              : `订单「${avatarInfo.title || '内容'}」已被驳回，原因：${feedback.rejectReason || '无'}，驳回次数已用完${silenceNoticeText}`,
+            title: nTitle,
+            content: isFinalRejection
+              ? `订单「${avatarInfo.title || '内容'}」终审驳回，原因：${feedback.rejectReason || '无'}${silenceNoticeText}`
+              : `订单「${avatarInfo.title || '内容'}」驳回，原因：${feedback.rejectReason || '无'}，可重新修改提交！`,
             metadata: { orderId: normalized.orderId, requestId: normalized.requestId, revisionCount }
           })
           this.logger.log(`[驳回] 已发送通知给用户: ${actualUserId}`)
