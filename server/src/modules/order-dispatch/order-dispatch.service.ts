@@ -1396,7 +1396,7 @@ async getExecutionProgress(orderId: string) {
       `SELECT id, status
        FROM order_dispatch_requests
        WHERE order_id = ? AND user_id = ?
-         AND status IN ('accepted', 'completed')
+         AND status IN ('accepted', 'completed','rejected')
        ORDER BY created_at DESC, updated_at DESC
        LIMIT 1`,
       [orderId, avatarUserId,]
@@ -1486,7 +1486,7 @@ async getExecutionProgress(orderId: string) {
         : null
       
       const pendingRows = await db.query(
-        `SELECT r.*, o.title as order_title, o.user_id as owner_user_id, o.description, o.platforms, o.budget,
+        `SELECT r.*, o.title as order_title, o.user_id as owner_user_id, o.description, o.platforms, o.budget,o.platform,
                 o.expected_quantity, o.quantity_per_avatar, o.target_audience
         FROM order_dispatch_requests r
         LEFT JOIN orders o ON r.order_id = o.id
@@ -1516,18 +1516,18 @@ async getExecutionProgress(orderId: string) {
         request.status = 'accepted'
       } else {
         const dispatchId = 'odr-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8)
-        const platform = Array.isArray(orderRow.platforms) ? orderRow.platforms[0] : (orderRow.platform || orderRow.platforms || 'general')
+        // const tarPlatform = Array.isArray(orderRow.platforms) ? orderRow.platforms[0] : (orderRow.platform || orderRow.platforms || 'general')
         await conn.query(
           `INSERT INTO order_dispatch_requests (id, order_id, avatar_id, user_id, platform, status, accepted_at, responded_at, accept_timeout_at, created_at, updated_at)
            VALUES (?, ?, ?, ?, ?, 'accepted', NOW(), NOW(), ?, NOW(), NOW())`,
-          [dispatchId, orderId, avatarId, avatarUserId, platform, acceptTimeoutAt]
+          [dispatchId, orderId, avatarId, avatarUserId, orderRow.platforms, acceptTimeoutAt]
         )
         request = {
           id: dispatchId,
           order_id: orderId,
           avatar_id: avatarId,
           user_id: avatarUserId,
-          platform,
+          platform: orderRow.platform,
           status: 'accepted',
           order_title: orderRow.title,
           owner_user_id: orderRow.owner_user_id,
@@ -2395,6 +2395,7 @@ async getExecutionProgress(orderId: string) {
     await this.contentGenerationService.generateContent({
       orderId,
       avatarId,
+      userId: request.user_id || request.userId || '',
       orderTitle: request.order_title || order.title || '内容生成',
       orderDescription: request.description || order.description || '',
       platforms: normalizedPlatforms,
