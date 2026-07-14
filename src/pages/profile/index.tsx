@@ -1,11 +1,11 @@
 import Taro, { useDidShow, navigateTo, reLaunch, showModal } from '@tarojs/taro'
 import { useState } from 'react'
-import { View, Text, ScrollView, Image } from '@tarojs/components'
+import { View, Text, ScrollView, Image, Button } from '@tarojs/components'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
 import {
   Settings, ChevronRight, LogOut, Bell, Info,
-  Wallet, Crown, Trophy, Sparkles, FileText, Coins
+  Wallet, Crown, Trophy, Sparkles, FileText, Coins, MessageCircle
 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import '@/styles/variables.css'
@@ -51,6 +51,7 @@ const menuItems = [
   { title: '收益中心', icon: Wallet, desc: '查看收益和提现', type: 'warning', path: '/package-profile/pages/earning-center/index', requireLogin: true, key: 'earning_center' },
   { title: '技能广场', icon: Sparkles, desc: '解锁更多能力', type: 'success', path: '/package-skill/pages/skills-square/index', requireLogin: true, key: 'skill_square' },
   { title: '我要发单', icon: FileText, desc: '发布和管理订单', type: 'info', path: '/package-order/pages/order-list/index', requireLogin: true, key: 'order_publish' },
+  { title: '我的客服', icon: MessageCircle, desc: '联系在线客服', type: 'info', path: '', requireLogin: false, key: 'customer_service' },
   { title: '工资墙', icon: Trophy, desc: '收益排行榜', type: 'primary', path: '/package-profile/pages/earnings-wall/index', requireLogin: true, key: 'earnings_wall' },
   { title: '关于我们', icon: Info, desc: '版本 v1.0.0', type: 'default', path: '/package-profile/pages/about/index', requireLogin: false, key: 'about_us' }
 ]
@@ -276,11 +277,53 @@ export default function ProfilePage() {
         {/* 功能菜单 */}
         <View className="menu-section">
           {menuItems
-            .filter(item => enabledMenuKeys.length === 0 || enabledMenuKeys.includes(item.key))
+            .filter(item => item.key === 'customer_service' || enabledMenuKeys.length === 0 || enabledMenuKeys.includes(item.key))
             .map((item, idx) => {
               const Icon = item.icon
               const iconColor = typeColorMap[item.type]
               const bgColor = typeBgMap[item.type]
+              // 客服菜单项使用 Button open-type="contact"
+              if (item.key === 'customer_service') {
+                return (
+                  <Button
+                    key={idx}
+                    className="menu-item"
+                    openType="contact"
+                    hoverClass="none"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      width: '100%',
+                      padding: '24rpx 32rpx',
+                      margin: 0,
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      borderTop: 'none',
+                      borderLeft: 'none',
+                      borderRight: 'none',
+                      borderBottom: '1rpx solid rgba(0, 0, 0, 0.05)',
+                      borderRadius: 0,
+                      lineHeight: 'normal',
+                      textAlign: 'left',
+                      boxSizing: 'border-box'
+                    }}
+                    send-message-title={item.title}
+                    send-message-path="/pages/profile/index"
+                    show-message-card
+                    session-from="profile"
+                  >
+                    <View className="menu-icon-wrap" style={{ backgroundColor: bgColor }}>
+                      <Icon size={20} color={iconColor} />
+                    </View>
+                    <View className="menu-content">
+                      <Text className="menu-title">{item.title}</Text>
+                      <Text className="menu-desc">{item.desc}</Text>
+                    </View>
+                    <ChevronRight size={20} color="#cccccc" />
+                  </Button>
+                )
+              }
+              // 普通菜单项
               const handleMenuClick = () => {
                 if (!item.path) return
                 if (item.requireLogin && !isLoggedIn) {
