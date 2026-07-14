@@ -21,7 +21,7 @@ export class OrderTimeoutService {
 
   // 静默期时长（毫秒）：从环境变量读取，默认1天
   private readonly SILENCE_DURATION_MS = parseInt(process.env.ORDER_SILENCE_DURATION_MS || '86400000', 10);
-  
+
   // 待接单超时时间（毫秒）：从环境变量读取，默认10分钟
   private readonly ACCEPT_TIMEOUT_MS = parseInt(process.env.ORDER_ACCEPT_TIMEOUT_MS || '600000', 10);
 
@@ -84,7 +84,7 @@ export class OrderTimeoutService {
 
       // 5. 获取 custom_base_price 值
       const customBasePrice = Number((order as any).customBasePrice || (order as any).custom_base_price || amountPerSlot)
-      
+
       // 6. 验证结算金额
       if (customBasePrice <= 0) {
         this.logger.error(`[结算] custom_base_price 为空: orderId=${orderId}, customBasePrice=${customBasePrice}`)
@@ -97,16 +97,16 @@ export class OrderTimeoutService {
 
       // 7. 查询用户会员等级获取抽成比例
       const [subRows] = await db.query(
-        `SELECT sp.platform_fee_rate 
-         FROM user_subscriptions us 
-         LEFT JOIN subscription_plans sp ON us.plan_id = sp.id 
-         WHERE us.user_id = ? AND us.status = 'active' 
+        `SELECT sp.platform_fee_rate
+         FROM user_subscriptions us
+         LEFT JOIN subscription_plans sp ON us.plan_id = sp.id
+         WHERE us.user_id = ? AND us.status = 'active'
          ORDER BY us.created_at DESC LIMIT 1`,
         [userId]
       ) as any[]
-      
+
       let platformFeeRate = 0.20 // 默认抽成 20%（免费版）
-      
+
       if (subRows) {
         if (Array.isArray(subRows) && subRows.length > 0) {
           const row = subRows[0]
@@ -125,7 +125,7 @@ export class OrderTimeoutService {
       // 8. 计算实际收益（扣除平台抽成后）
       const priceCents = Math.round(customBasePrice * 100)
       const feeAmount = Math.round((priceCents * (1 - platformFeeRate))) / 100
-      
+
       // 9. 创建收益记录
       const earningId = uuidv4()
       await db.query(
@@ -143,18 +143,18 @@ export class OrderTimeoutService {
       this.logger.log(`[结算] 分身结算成功: orderId=${orderId}, avatarId=${avatarId}, userId=${userId}, amount=${feeAmount}`)
     } catch (error: any) {
       this.logger.error(`[结算] 分身结算失败: orderId=${orderId}, avatarId=${avatarId}, error=${error.message}`)
-      
+
       if (error.message && error.message.includes('Duplicate entry')) {
         throw new Error('该订单已结算，无需重复验收')
       }
-      
+
       throw error
     }
   }
 
   /**
    * 每5分钟检查待接单超时--改成每分钟
-   * 
+   *
    * 条件：pending 状态 + accept_timeout_at 已过期（派单后超过指定时间未接单）
    * 处理：释放名额 + 发送通知 + 自动重新派单给其他分身
    */
@@ -233,7 +233,7 @@ export class OrderTimeoutService {
         `UPDATE content_generation_requests SET status = 'cancelled', updated_at = NOW() WHERE order_id = ? AND avatar_id = ? AND status NOT IN ('completed', 'awaiting_acceptance', 'settled', 'rejected', 'expired', 'failed', 'cancelled')`,
         [orderId, avatarId]
       )
-  
+
       // 2. 同步 Redis 计数器（已拒绝，所以需要减少计数）
       try {
         const redisKey = `order:accept:count:${orderId}`
@@ -278,7 +278,7 @@ export class OrderTimeoutService {
 
   /**
    * 每分钟检查接单超时
-   * 
+   *
    * 条件：pending/accepted 状态 + accept_timeout_at 已过期 + 内容未发布
    * 处理：释放名额 + 取消内容生成 + 发送通知（不静默用户）
    */
@@ -345,23 +345,23 @@ export class OrderTimeoutService {
     const orderId = dispatch.order_id || dispatch.orderId
     const avatarId = dispatch.avatar_id || dispatch.avatarId
     const userId = dispatch.user_id || dispatch.userId
-  
+
     try {
       // 1. 更新 dispatch 状态为 expired，记录 kick_type
       const updateResult = await client.query(
         `UPDATE order_dispatch_requests SET status = 'expired', kick_type = 'auto_timeout', reject_reason = '接单超时，未在规定时间内发布', updated_at = NOW() WHERE id = ? AND status IN ('pending', 'accepted')`,
         [dispatch.id]
       )
-  
+
       // 2. 取消对应的内容生成请求
       const cgrResult = await client.query(
         `UPDATE content_generation_requests SET status = 'cancelled', updated_at = NOW() WHERE order_id = ? AND avatar_id = ? AND status NOT IN ('completed', 'awaiting_acceptance', 'settled', 'rejected', 'expired', 'failed', 'cancelled')`,
         [orderId, avatarId]
       )
-  
+
       // 3. 释放该分身占用的素材
       const cgrRecords = await client.query(
-        `SELECT id FROM content_generation_requests WHERE order_id = ? AND avatar_id = ? LIMIT 1`,
+        `SELECT id FROM content_generation_requests WHERE order_id = ? AND avatar_id = ? and status NOT IN ('completed', 'awaiting_acceptance', 'settled', 'rejected', 'expired', 'failed', 'cancelled') LIMIT 1`,
         [orderId, avatarId]
       )
       const cgrId = (cgrRecords as any[])?.[0]?.id
@@ -421,7 +421,7 @@ export class OrderTimeoutService {
 
   /**
    * 每分钟检查验收超时
-   * 
+   *
    * 条件：order.status = 'awaiting_acceptance' + acceptance_timeout_at 已过期
    * 处理：自动验收 + 结算收益给接单用户
    */
@@ -458,13 +458,14 @@ export class OrderTimeoutService {
 
     // 查找验收超时的 dispatch（接单者提交验收后超时）
     const dispatches = await client.query(
-      `SELECT od.id, od.order_id, od.avatar_id, od.user_id, o.title, o.budget, o.base_amount, o.content_amount
+      `SELECT od.id, od.order_id, od.avatar_id, od.user_id, o.title, o.budget, o.base_amount, o.content_amount,
+        o.avatar_count
        FROM order_dispatch_requests od
        LEFT JOIN content_generation_requests cg ON od.order_id = cg.order_id AND od.avatar_id = cg.avatar_id
        LEFT JOIN orders o ON od.order_id = o.id
        WHERE od.acceptance_timeout_at IS NOT NULL
          AND od.acceptance_timeout_at < NOW()
-         AND od.status IN ('accepted', 'completed')
+         AND od.status IN ('accepted')
          AND cg.status = 'awaiting_acceptance'`
     )
 
@@ -475,6 +476,7 @@ export class OrderTimeoutService {
     for (const dispatch of dispatches) {
       await this.handleAcceptanceTimeout(dispatch)
     }
+
     return dispatches.length
   }
 
@@ -487,13 +489,14 @@ export class OrderTimeoutService {
     const orderId = dispatch.order_id || dispatch.orderId
     const avatarId = dispatch.avatar_id || dispatch.avatarId
     const userId = dispatch.user_id || dispatch.userId
+    const avatarCount = dispatch.avatar_count || dispatch.avatarCount
 
     try {
       this.logger.log(`[审核超时] 开始处理 dispatch: ${dispatchId}, orderId: ${orderId}`)
 
       // 1. 更新 dispatch 状态为 completed
       await client.query(
-        `UPDATE order_dispatch_requests SET status = 'completed', updated_at = NOW() WHERE id = ? AND status IN ('accepted', 'completed')`,
+        `UPDATE order_dispatch_requests SET status = 'completed', updated_at = NOW() WHERE id = ? AND status IN ('accepted')`,
         [dispatchId]
       )
 
@@ -516,7 +519,7 @@ export class OrderTimeoutService {
       }
 
       // 4. 检查订单是否所有 dispatch 都已完成
-      await this.checkAndCompleteOrder(orderId)
+      await this.checkAndCompleteOrder(orderId, avatarCount)
 
       this.logger.log(`[审核超时] 完成: dispatchId=${dispatchId}, orderId=${orderId}`)
     } catch (error) {
@@ -527,26 +530,34 @@ export class OrderTimeoutService {
   /**
    * 检查订单是否所有 dispatch 都已完成，若是则更新订单状态为 completed
    */
-  private async checkAndCompleteOrder(orderId: string): Promise<void> {
+  private async checkAndCompleteOrder(orderId: string, avatarCount: number): Promise<void> {
     const client = await getMySQLClient()
 
-    // 查询订单的所有 dispatch 状态
-    const dispatchResults = await client.query(
-      `SELECT status FROM order_dispatch_requests WHERE order_id = ?`,
+    const requiredCount = Number(avatarCount || 0)
+    if (!Number.isFinite(requiredCount) || requiredCount <= 0) {
+      this.logger.warn(`[审核超时] 订单分身数无效，跳过完成检查: orderId=${orderId}, avatarCount=${avatarCount}`)
+      return
+    }
+
+    const completedRows = await client.query(
+      `SELECT COUNT(1) as count
+       FROM order_dispatch_requests
+       WHERE order_id = ? AND status = 'completed'`,
       [orderId]
     )
 
-    const dispatchStatuses = (dispatchResults as any[]).map(d => d.status)
-    
-    // 如果所有 dispatch 都已完成（settled/done/completed），则更新订单状态为 completed
-    const allCompleted = dispatchStatuses.every(s => ['settled', 'done', 'completed', 'expired', 'rejected'].includes(s))
-    
-    if (allCompleted) {
+    const completedCount = Number((completedRows as any[])?.[0]?.count || 0)
+    if (completedCount >= requiredCount) {
       await client.query(
-        `UPDATE orders SET status = 'completed', completed_at = NOW(), updated_at = NOW() WHERE id = ? AND status = 'awaiting_acceptance'`,
+        `UPDATE orders
+         SET status = 'completed', completed_at = NOW(), updated_at = NOW()
+         WHERE id = ?`,
         [orderId]
       )
-      this.logger.log(`[审核超时] 订单已全部完成，更新状态为 completed: orderId=${orderId}`)
+      this.logger.log(`[审核超时] 订单已达到完成数量，更新状态为 completed: orderId=${orderId}, completed=${completedCount}, required=${requiredCount}`)
+      return
     }
+
+    this.logger.log(`[审核超时] 订单未达到完成数量，暂不完成: orderId=${orderId}, completed=${completedCount}, required=${requiredCount}`)
   }
 }
