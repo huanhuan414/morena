@@ -225,14 +225,12 @@ export class OrderService {
       const currentOrder = await this.getOrderById(orderId)
       if (!currentOrder) return
       const currentStatus = currentOrder.status
-      const expectedQuantity = Number(currentOrder.expectedQuantity)
+      // const expectedQuantity = Number(currentOrder.expectedQuantity)
       const avatarCount = Number(currentOrder.avatarCount)
       const requiredAvatarCount =
-        Number.isFinite(expectedQuantity) && expectedQuantity > 0
-          ? expectedQuantity
-          : Number.isFinite(avatarCount) && avatarCount > 0
-            ? avatarCount
-            : 1
+        Number.isFinite(avatarCount) && avatarCount > 0
+          ? avatarCount
+          : 1
 
       let newStatus: string | null = null
       
@@ -431,7 +429,7 @@ export class OrderService {
       `SELECT id, user_id, avatar_id, title, description, content_type, accept_regions,
        platforms, platform, requirements, budget, base_amount, content_amount, price, status, result, created_at, updated_at,
        completed_at, latitude, longitude, location_text, target_audience,
-       expected_quantity, deadline, order_type, priority, assigned_to,
+       expected_quantity, deadline, order_type, priority, assigned_to,custom_base_price,
        avatar_count, quantity_per_avatar, is_paid, acceptance_timeout, accept_timeout, personality
        FROM orders WHERE id = ? AND is_deleted = 0`,
       [orderId]
@@ -524,21 +522,20 @@ export class OrderService {
     const budget = Number(order.budget) || 0
     const baseAmount = Number(order.baseAmount || order.base_amount) || budget
     const contentAmount = Number(order.contentAmount || order.content_amount) || 0
-    const expectedQuantity = Number(order.expectedQuantity)
+    const customBasePrice = Number(order.customBasePrice || order.custom_base_price || 0)
+    // const expectedQuantity = Number(order.expectedQuantity)
     const avatarCount = Number(order.avatarCount)
     const requiredCount =
       Number.isFinite(avatarCount) && avatarCount > 0
         ? avatarCount
-        : Number.isFinite(expectedQuantity) && expectedQuantity > 0
-          ? expectedQuantity
-          : 1
+        : 1
     const expectedEarnings =
       baseAmount > 0 && requiredCount > 0
-        ? Math.round((baseAmount / requiredCount) * 100) / 100
-        : baseAmount
+        ? customBasePrice
+        : Math.round((baseAmount / requiredCount) * 100) / 100
     
     // 静默时间配置（毫秒，让前端计算合适的显示单位）
-    const silenceDurationMs = parseInt(process.env.ORDER_SILENCE_DURATION_MS || '86400000', 10)
+    const silenceDurationMs = parseInt(process.env.ORDER_SILENCE_DURATION_MS || '0', 10)
   
     return {
       ...order,
