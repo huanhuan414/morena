@@ -175,7 +175,7 @@ export default function OrderDetailPage() {
   const [events, setEvents] = useState<TimelineEventDto[]>([])
   const [loading, setLoading] = useState(true)
   const [paying, setPaying] = useState(false)
-  const [silenceDurationMs, setSilenceDurationMs] = useState(86400000)  // 默认24小时
+  const [silenceDurationMs, setSilenceDurationMs] = useState(0)  // 默认24小时
 
   const handleBack = useCallback(() => {
     const pages = Taro.getCurrentPages()
@@ -474,9 +474,10 @@ export default function OrderDetailPage() {
 
   const handleKickAvatar = useCallback(async (avatarId: string, avatarName: string) => {
     try {
+      const silenceText = silenceDurationMs <= 0 ? `确定踢出分身"${avatarName}"？踢出后名额将释放给其他分身接单!` : `确定踢出分身${avatarName}吗？踢出后名额将释放给其他分身接单，并将该接单者静默${formatSilenceDuration(silenceDurationMs)}！`
       const { confirm } = await Taro.showModal({
         title: '踢出分身',
-        content: `确定踢出分身"${avatarName}"吗？踢出后名额将释放给其他分身接单，并将该接单者静默${formatSilenceDuration(silenceDurationMs)}！`,
+        content: silenceText,
         confirmText: '确定踢出',
         confirmColor: '#DC2626',
         cancelText: '取消'
