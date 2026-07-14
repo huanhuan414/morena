@@ -8,6 +8,7 @@ import {
   Wallet, Crown, Trophy, Sparkles, FileText, Coins, MessageCircle
 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
+import { APP_VERSION } from '@/constants/app'
 import '@/styles/variables.css'
 import logoImage from '@/static/logo.jpg'
 import './index.css'
@@ -66,6 +67,17 @@ const typeColorMap: Record<string, string> = {
   silver: '#9CA3AF'
 }
 
+const getMiniProgramVersionParams = () => {
+  try {
+    const miniProgram = Taro.getAccountInfoSync?.()?.miniProgram
+    return {
+      version: miniProgram?.version || APP_VERSION,
+      envVersion: miniProgram?.envVersion || '',
+    }
+  } catch {
+    return { version: APP_VERSION, envVersion: '' }
+  }
+}
 const typeBgMap: Record<string, string> = {
   primary: '#F3E8FF',
   success: '#D1FAE5',
@@ -99,7 +111,7 @@ export default function ProfilePage() {
 
   const fetchMenuConfig = async () => {
     try {
-      const res = await Network.request({ url: '/api/menu-feature/enabled' })
+      const res = await Network.request({ url: '/api/menu-feature/enabled', data: getMiniProgramVersionParams() })
       if (res.data?.code === 200) {
         setEnabledMenuKeys(res.data.data || [])
       }

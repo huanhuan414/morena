@@ -9,8 +9,20 @@ import { useUserStore } from '@/stores/user'
 import { useNotifications } from '@/hooks/useNotifications'
 import { Avatar as UiAvatar } from '@/components/ui/avatar'
 import { getCapsuleButtonBottom } from '@/utils/safe-area'
+import { APP_VERSION } from '@/constants/app'
 import './index.css'
 
+const getMiniProgramVersionParams = () => {
+  try {
+    const miniProgram = Taro.getAccountInfoSync?.()?.miniProgram
+    return {
+      version: miniProgram?.version || APP_VERSION,
+      envVersion: miniProgram?.envVersion || '',
+    }
+  } catch {
+    return { version: APP_VERSION, envVersion: '' }
+  }
+}
 interface OrderItem {
   id: string
   title: string
@@ -645,7 +657,7 @@ const Index: React.FC = () => {
 
   const fetchMenuConfig = async () => {
     try {
-      const res = await Network.request({ url: '/api/menu-feature/enabled' })
+      const res = await Network.request({ url: '/api/menu-feature/enabled', data: getMiniProgramVersionParams() })
       if (res.data?.code === 200) {
         setEnabledMenuKeys(res.data.data || [])
       }
