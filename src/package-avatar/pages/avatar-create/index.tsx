@@ -59,7 +59,7 @@ const AVATAR_SKILLS = [
 // 创建分身的好处
 const BENEFITS = [
   { icon: Coins, title: '自动接单赚钱', desc: '开启托管后分身24h替你接单', color: '#F59E0B' },
-  { icon: Bot, title: 'AI智能创作', desc: '一键生成文案/图片/视频', color: '#8B5CF6' },
+  { icon: Bot, title: '创作辅助能力', desc: '支持后续进行文案、图片、视频创作辅助', color: '#8B5CF6' },
   { icon: Sparkles, title: '越用越强', desc: '接单越多，创作能力越强', color: '#3B82F6' },
   { icon: CircleDollarSign, title: '随时提现', desc: '收益实时到账，秒提现', color: '#10B981' },
 ]
@@ -644,7 +644,7 @@ export default function AvatarCreate() {
       <View className="benefits-card">
         <View className="benefits-header">
           <Sparkles size={18} color="#8B5CF6" />
-          <Text className="benefits-title">创建分身，你能获得什么</Text>
+          <Text className="benefits-title">创建分身，你可以获得什么</Text>
         </View>
         <View className="benefits-grid">
           {BENEFITS.map(b => (
@@ -1054,8 +1054,8 @@ export default function AvatarCreate() {
 
         {/* 价值主张 */}
         <View className="value-prop">
-          <Text className="value-prop-title">0成本创建，让AI替你赚钱</Text>
-          <Text className="value-prop-desc">只需3步，创建专属分身开启自动接单</Text>
+          <Text className="value-prop-title">0成本创建，开启自动接单</Text>
+          <Text className="value-prop-desc">只需3步，完成分身资料设置</Text>
         </View>
 
         {/* 步骤指示器 */}
