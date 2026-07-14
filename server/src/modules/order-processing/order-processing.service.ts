@@ -100,7 +100,7 @@ export class OrderProcessingService {
 
   private async hasOpenDispute(orderId?: string): Promise<boolean> {
     if (!orderId) return false
-    await this.ensureDisputesTable()
+    // await this.ensureDisputesTable()
     const db = getMySQLClient()
     const rows = await db.query(
       `SELECT id FROM order_disputes WHERE order_id = ? AND status = 'open' LIMIT 1`,
@@ -587,28 +587,10 @@ export class OrderProcessingService {
 
   private async updateRecordByIdentifier(identifier: string, patch: Record<string, any>): Promise<any | null> {
     // const record = await this.findRecordByIdentifier(identifier)
-    const db = getMySQLClient()
     const record = await this.findByRequestId(identifier)
     if (!record) {
       return null
     }
-    const currentStatus = String(record.status || '').trim().toLowerCase()
-    const terminalStatuses = ['rejected', 'settled', 'cancelled', 'failed']
-    if (terminalStatuses.includes(currentStatus)) {
-      const odrStatus = currentStatus === 'rejected' ? 'rejected' : 'settled'
-      await db.query(
-        `UPDATE order_dispatch_requests 
-         SET status = ?
-         WHERE order_id = ? and status not in ('expired')`,
-        [odrStatus, record.orderId || record.order_id]
-      )
-      const normalized = this.normalizeRecord(record)
-      setCache(normalized.requestId, normalized)
-      setCache(normalized.orderId, normalized)
-      this.logger.warn('忽略终态内容反馈提交: identifier=' + identifier + ', requestId=' + normalized.requestId + ', status=' + currentStatus)
-      return normalized
-    }
-
     const columns = await this.getTableColumns()
     const updates: string[] = []
     const params: any[] = []
@@ -764,6 +746,23 @@ export class OrderProcessingService {
     const submittedAt = new Date().toISOString()
 
     const db = getMySQLClient()
+    const currentStatus = String(record.status || '').trim().toLowerCase()
+    const terminalStatuses = ['rejected', 'settled', 'cancelled', 'failed']
+    if (terminalStatuses.includes(currentStatus)) {
+      const odrStatus = currentStatus === 'rejected' ? 'rejected' : 'expired'
+      await db.query(
+        `UPDATE order_dispatch_requests 
+         SET status = ?
+         WHERE order_id = ? and avatar_id = ? and status not in ('expired')`,
+        [odrStatus, record.orderId || record.order_id,record.avatarId || record.avatar_id]
+      )
+      const normalized = this.normalizeRecord(record)
+      setCache(normalized.requestId, normalized)
+      setCache(normalized.orderId, normalized)
+
+      const odrTitle = currentStatus === 'rejected' ? '已拒绝' : currentStatus === 'settled' ? '已完成' : currentStatus === 'cancelled' ? '已取消' : '失败'
+      throw new Error(`订单状态${odrTitle}，不能发布`)
+    }
     await db.query(
       'UPDATE content_generation_requests SET config = ?, updated_at = NOW() WHERE id = ?',
       [JSON.stringify({ ...config, stepResults, taskSubmittedAt: submittedAt }), record.id]
@@ -1062,12 +1061,28 @@ export class OrderProcessingService {
   }
 
   async acceptProcessing(identifier: string, currentUserId?: string): Promise<any> {
-    const current = await this.findRecordByIdentifier(identifier)
+    // const current = await this.findRecordByIdentifier(identifier)
+    const current = await this.findByRequestId(identifier)
     if (!current) return null
     const currentNormalized = this.normalizeRecord(current)
     const blocked = await this.hasOpenDispute(currentNormalized.orderId)
     if (blocked) {
       throw new Error('订单存在未处理争议，暂不可验收')
+    }
+
+    const currentStatus = String(current.status || '').trim().toLowerCase()
+    const terminalStatuses = ['rejected', 'settled', 'cancelled', 'failed']
+    if (terminalStatuses.includes(currentStatus)) {
+      const db = getMySQLClient()
+      const odrStatus = currentStatus === 'rejected' ? 'rejected' : 'expired'
+      await db.query(
+        `UPDATE order_dispatch_requests 
+         SET status = ?
+         WHERE order_id = ? and avatar_id = ? and status not in ('expired')`,
+        [odrStatus, current.orderId || current.order_id,current.avatarId || current.avatar_id]
+      )
+      const odrTitle = currentStatus === 'rejected' ? '已拒绝' : currentStatus === 'settled' ? '已完成' : currentStatus === 'cancelled' ? '已取消' : '失败'
+      throw new Error(`订单状态${odrTitle}，不能验收`)
     }
 
     // 校验验收权限：只有发单方可以验收，接单方不能验收自己接的单
@@ -1107,7 +1122,7 @@ export class OrderProcessingService {
 
     if (!userId && normalizedBefore.orderId && normalizedBefore.avatarId) {
       const dispatchRows = await db.query(
-        `SELECT user_id FROM order_dispatch_requests WHERE order_id = ? AND avatar_id = ? LIMIT 1`,
+        `SELECT user_id FROM order_dispatch_requests WHERE order_id = ? AND avatar_id = ? and status not in ('expired') LIMIT 1`,
         [normalizedBefore.orderId, normalizedBefore.avatarId]
       )
       const dispatchRow = Array.isArray(dispatchRows) ? dispatchRows[0] : (dispatchRows as any)?.data?.[0]
@@ -1135,7 +1150,7 @@ export class OrderProcessingService {
     if (normalized.orderId && normalized.avatarId) {
       await db.query(
         `UPDATE order_dispatch_requests SET status = 'completed', updated_at = NOW(), acceptance_timeout_at = NULL
-         WHERE order_id = ? AND avatar_id = ?`,
+         WHERE order_id = ? AND avatar_id = ? and status not in ('expired')`,
         [normalized.orderId, normalized.avatarId]
       )
       this.logger.log(`[验收] 已更新派单记录状态: orderId=${normalized.orderId}, avatarId=${normalized.avatarId}`)
@@ -1358,7 +1373,7 @@ export class OrderProcessingService {
       this.logger.log(`[驳回xxxxx] acceptTimeoutMinutes=${acceptTimeoutMinutes}, newAcceptTimeoutAt=${newAcceptTimeoutAt}`)
       
       await db.query(
-        `UPDATE order_dispatch_requests SET status = ?, reject_reason = ?, kick_type = ?, accept_timeout_at = ?, updated_at = NOW() WHERE order_id = ? AND avatar_id = ?`,
+        `UPDATE order_dispatch_requests SET status = ?, reject_reason = ?, kick_type = ?, accept_timeout_at = ?, updated_at = NOW() WHERE order_id = ? AND avatar_id = ? and status not in ('expired')`,
         [dispatchStatus, feedback.rejectReason || '', kickType, newAcceptTimeoutAt, normalized.orderId, normalized.avatarId]
       )
       this.logger.log(`[驳回xxxxx] 已更新派单记录状态: orderId=${normalized.orderId}, avatarId=${normalized.avatarId}, dispatchStatus=${dispatchStatus}`)
@@ -1393,6 +1408,11 @@ export class OrderProcessingService {
         // 最终驳回：设置用户静默期
         const silenceDurationMs = parseInt(process.env.ORDER_SILENCE_DURATION_MS, 10)
         if (isFinalRejection) {
+          await db.query(
+              `UPDATE orders SET status = 'in_progress' WHERE id = ? AND status not in ("draft", "cancelled", "completed")`,
+              [normalized.orderId]
+          )
+          this.logger.log(`[驳回] 已更新订单表: orderId=${normalized.orderId}`)
           if (silenceDurationMs > 0) {
             const silenceUntil = new Date(Date.now() + silenceDurationMs)
             await db.query(
