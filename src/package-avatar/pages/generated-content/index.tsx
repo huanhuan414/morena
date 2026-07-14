@@ -53,7 +53,7 @@ const CONTENT_STATUS_MAP: Record<string, { label: string; color: string; bgColor
   awaiting_acceptance: { label: '待验收', color: '#8B5CF6', bgColor: '#EDE9FE' },
   completed: { label: '已完成', color: '#10B981', bgColor: '#D1FAE5' },
   failed: { label: '生成失败', color: '#EF4444', bgColor: '#FEE2E2' },
-  rejected: { label: '已驳回', color: '#EF4444', bgColor: '#FEE2E2' },
+  rejected: { label: '已拒绝', color: '#EF4444', bgColor: '#FEE2E2' },
   cancelled: { label: '已取消', color: '#94A3B8', bgColor: '#F1F5F9' },
   revision_requested: { label: '待整改', color: '#EF4444', bgColor: '#F1F5F9' },
 }
@@ -66,7 +66,7 @@ const STATUS_TABS = [
   { key: 'published', label: '待反馈' },
   { key: 'awaiting_acceptance', label: '待验收' },
   { key: 'completed', label: '已完成' },
-  { key: 'rejected', label: '已驳回' },
+  { key: 'rejected', label: '已拒绝' },
   { key: 'failed', label: '生成失败' },
   { key: 'cancelled', label: '已取消' },
 ]
@@ -584,7 +584,7 @@ export default function GeneratedContentPage() {
                 ) : null}
 
                 {/* 超时倒计时（未发布且有超时时间） */}
-                {content.acceptTimeoutAt && formatRemainingTime(content.acceptTimeoutAt) && !['awaiting_acceptance', 'settled'].includes(content.status) && (
+                {content.acceptTimeoutAt && formatRemainingTime(content.acceptTimeoutAt) && !['awaiting_acceptance', 'settled', 'rejected', 'cancelled', 'failed'].includes(content.status) && (
                   <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
                     <Clock size={12} color="#EF4444" />
                     <Text style={{ fontSize: 11, color: "#EF4444", marginLeft: 4 }}>
