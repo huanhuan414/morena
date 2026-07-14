@@ -352,6 +352,23 @@
   background: var(--bg-page);
 }
 
+/* 客服菜单按钮样式重置 - 只覆盖 Button 特有的默认样式，保留 menu-item 的布局 */
+button.menu-item {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  line-height: normal;
+}
+
+button.menu-item::before {
+  display: none !important;
+}
+
+button.menu-item::after {
+  display: none !important;
+}
+
 .menu-icon-wrap {
   width: 56rpx;
   height: 56rpx;

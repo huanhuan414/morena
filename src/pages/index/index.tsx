@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { View, Text, ScrollView } from '@tarojs/components'
-import { Bell, Settings, Users, FileText, Coins, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye, ShoppingBag, ChevronRight, Gift, Clock, CircleCheckBig, ChevronDown } from 'lucide-react-taro'
+import { View, Text, ScrollView, Button } from '@tarojs/components'
+import { MessageCircle, Settings, Users, FileText, Coins, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye, ShoppingBag, ChevronRight, Gift, Clock, CircleCheckBig, ChevronDown } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { BANNER_TITLE, BANNER_DESC } from '@/constants/referral-rewards'
 import { PLATFORM_UI_ORDER, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
@@ -942,14 +942,23 @@ const Index: React.FC = () => {
             </View>
           </View>
           <View className="header-right">
-            <View className="icon-btn" onClick={() => Taro.navigateTo({ url: '/package-profile/pages/notifications/index' })}>
-              <Bell size={32} color="#FFFFFF" />
-              {unreadCount > 0 && (
-                <View className="notification-badge">
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </View>
-              )}
-            </View>
+            <Button
+              className="icon-btn"
+              openType="contact"
+              hoverClass="none"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                margin: 0,
+                lineHeight: 'normal',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <MessageCircle size={32} color="#FFFFFF" />
+            </Button>
             <View className="icon-btn" onClick={() => Taro.navigateTo({ url: '/package-profile/pages/settings/index' })}>
               <Settings size={32} color="#FFFFFF" />
             </View>
