@@ -195,11 +195,11 @@ export class OrderService {
     const db = getMySQLClient()
     try {
       const dispatches = await db.query(
-        'SELECT id, status FROM order_dispatch_requests WHERE order_id = ?',
+        'SELECT id, status FROM order_dispatch_requests WHERE order_id = ? AND status not in ("expired")',
         [orderId]
       )
       const contents = await db.query(
-        'SELECT id, status FROM content_generation_requests WHERE order_id = ?',
+        'SELECT id, status FROM content_generation_requests WHERE order_id = ? and status not in ("cancelled")',
         [orderId]
       )
 
@@ -220,6 +220,7 @@ export class OrderService {
       const allContentCompleted = totalContents > 0 && allContentStatuses.every(s => s === 'completed')
       const allContentAwaitingAcceptance = totalContents > 0 && allContentStatuses.every(s => ['awaiting_acceptance', 'completed'].includes(s))
       const allContentSubmitted = totalContents > 0 && allContentStatuses.every(s => ['completed', 'published', 'awaiting_acceptance'].includes(s))
+      
 
       const currentOrder = await this.getOrderById(orderId)
       if (!currentOrder) return
@@ -234,7 +235,7 @@ export class OrderService {
             : 1
 
       let newStatus: string | null = null
-
+      
       if (completedDispatchCount >= requiredAvatarCount) {
         newStatus = 'completed'
       } else if (hasRevisionRequested) {
@@ -275,7 +276,7 @@ export class OrderService {
         }
         const setClause = Object.keys(payload).map((key) => `${key} = ?`).join(', ')
         const params = [...Object.values(payload), orderId]
-        await db.query(`UPDATE orders SET ${setClause} WHERE id = ?`, params)
+        await db.query(`UPDATE orders SET ${setClause} WHERE id = ? and status not in ("draft", "cancelled", "completed")`, params)
       }
     } catch (error: any) {
       console.error(`[OrderService] 同步订单状态失败: orderId=${orderId}, error=${error.message}`)
@@ -1365,7 +1366,8 @@ export class OrderService {
       throw new Error('订单不存在')
     }
 
-    await db.query('UPDATE order_task_steps SET status = 0 WHERE order_id = ?', [orderId])
+    // await db.query('UPDATE order_task_steps SET status = 0 WHERE order_id = ?', [orderId])
+    await db.query('DELETE FROM order_task_steps WHERE order_id = ?', [orderId])
 
     const stepsWithSortOrder = steps.map((step, index) => ({ ...(step || {}), __sortOrder: index }))
     const materialSteps = stepsWithSortOrder.filter(step => this.MATERIAL_TYPES.includes(this.getTaskStepType(step)))
