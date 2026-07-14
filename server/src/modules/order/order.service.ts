@@ -326,7 +326,14 @@ export class OrderService {
     const budget = Number(orderData.total_price || orderData.budget || 0)
     const baseAmount = Number(orderData.base_price || orderData.basePrice || 0)
     const contentAmount = Number(orderData.content_price || orderData.contentPrice || 0)
-    const customBasePrice = orderData.customBasePrice ? Number(orderData.customBasePrice) : null
+    const customBasePriceRaw = orderData.customBasePrice ?? orderData.custom_base_price ?? orderData.price
+    const customBasePrice = customBasePriceRaw !== undefined && customBasePriceRaw !== null && customBasePriceRaw !== ''
+      ? Number(customBasePriceRaw)
+      : null
+    const priceRaw = orderData.price ?? orderData.customBasePrice ?? orderData.custom_base_price
+    const price = priceRaw !== undefined && priceRaw !== null && priceRaw !== ''
+      ? Number(priceRaw)
+      : 0
 
     const insertData: Record<string, any> = {
       id,
@@ -347,6 +354,7 @@ export class OrderService {
       budget,
       base_amount: baseAmount,
       content_amount: contentAmount,
+      price,
       custom_base_price: customBasePrice,
       status: orderData.status || 'pending_payment',
       expected_quantity: avatarCount,
