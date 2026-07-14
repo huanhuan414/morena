@@ -353,20 +353,22 @@
 }
 
 /* 客服菜单按钮样式重置 - 只覆盖 Button 特有的默认样式，保留 menu-item 的布局 */
-button.menu-item {
+.contact-menu-item,
+button.contact-menu-item {
   background: transparent !important;
-  border: none !important;
+  border: 0 !important;
   border-radius: 0 !important;
   margin: 0 !important;
-  line-height: normal;
+  line-height: normal !important;
+  text-align: left !important;
 }
 
-button.menu-item::before {
+.contact-menu-item::before,
+.contact-menu-item::after,
+button.contact-menu-item::before,
+button.contact-menu-item::after {
   display: none !important;
-}
-
-button.menu-item::after {
-  display: none !important;
+  border: 0 !important;
 }
 
 .menu-icon-wrap {

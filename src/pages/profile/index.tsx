@@ -287,7 +287,7 @@ export default function ProfilePage() {
                 return (
                   <Button
                     key={idx}
-                    className="menu-item"
+                    className="menu-item contact-menu-item"
                     openType="contact"
                     hoverClass="none"
                     style={{
@@ -298,10 +298,6 @@ export default function ProfilePage() {
                       margin: 0,
                       backgroundColor: 'transparent',
                       border: 'none',
-                      borderTop: 'none',
-                      borderLeft: 'none',
-                      borderRight: 'none',
-                      borderBottom: '1rpx solid rgba(0, 0, 0, 0.05)',
                       borderRadius: 0,
                       lineHeight: 'normal',
                       textAlign: 'left',
