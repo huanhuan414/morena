@@ -1,51 +1,57 @@
 /* Order Detail Page - od 前缀 */
 .od-page {
   min-height: 100vh;
-  background: #F5F5F7;
+  background: #F8FAFC;
   display: flex;
   flex-direction: column;
+  padding-bottom: calc(240rpx + env(safe-area-inset-bottom));
 }
 
 /* ═══════ Header ═══════ */
 .od-header {
-  background: linear-gradient(135deg, #6366F1, #8B5CF6, #A855F7);
-  padding: 0 0 48rpx 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 50%, #4F46E5 100%);
+  padding: 0 0 96rpx 0;
   border-radius: 0 0 40rpx 40rpx;
-  position: relative;
-  overflow: hidden;
+  overflow: visible;
+  z-index: 10;
+  flex-shrink: 0;
 }
 .od-header-deco1 {
   position: absolute;
-  top: -60rpx;
-  right: -40rpx;
-  width: 200rpx;
-  height: 200rpx;
+  top: -100rpx;
+  right: -50rpx;
+  width: 300rpx;
+  height: 300rpx;
   border-radius: 50%;
-  background: rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255, 0.08);
 }
 .od-header-deco2 {
   position: absolute;
-  bottom: 20rpx;
-  left: -60rpx;
-  width: 160rpx;
-  height: 160rpx;
+  bottom: -60rpx;
+  left: -40rpx;
+  width: 200rpx;
+  height: 200rpx;
   border-radius: 50%;
-  background: rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .od-header-bar {
   display: flex;
   flex-direction: row;
   align-items: center;
-  padding: 20rpx 28rpx;
+  padding: 36rpx 32rpx 24rpx;
   position: relative;
   z-index: 2;
 }
 .od-back-btn {
-  width: 56rpx;
-  height: 56rpx;
+  width: 64rpx;
+  height: 64rpx;
   border-radius: 50%;
-  background: rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -58,8 +64,8 @@
   justify-content: center;
 }
 .od-header-title {
-  font-size: 34rpx;
-  font-weight: 600;
+  font-size: 36rpx;
+  font-weight: 800;
   color: #fff;
 }
 .od-header-right {
@@ -115,10 +121,13 @@
 .od-body {
   flex: 1;
   padding: 0 24rpx;
-  margin-top: -24rpx;
+  margin-top: 300rpx;
   position: relative;
   z-index: 3;
   padding-bottom: 40rpx;
+}
+.od-body-with-pipeline {
+  margin-top: 480rpx;
 }
 
 /* ═══════ Cards ═══════ */
@@ -143,7 +152,7 @@
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* ═══════ 标签 ═══════ */
@@ -252,6 +261,20 @@
 .od-pipeline-card {
   padding: 24rpx 20rpx;
 }
+.od-header-pipeline-card {
+  position: absolute;
+  left: 28rpx;
+  right: 28rpx;
+  bottom: -62rpx;
+  z-index: 4;
+  margin: 0;
+  border-radius: 22rpx;
+  background: #fff;
+  box-shadow: 0 12rpx 32rpx rgba(15, 23, 42, 0.12);
+}
+.od-header-pipeline-card .od-pipeline {
+  margin-top: 0;
+}
 .od-pipeline {
   display: flex;
   flex-direction: row;
@@ -302,7 +325,18 @@
 
 /* ═══════ Action Buttons ═══════ */
 .od-actions {
-  padding: 8rpx 0;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  padding: 20rpx 32rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  background: #fff;
+  box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.06);
 }
 .od-action-btn {
   display: flex;
@@ -310,29 +344,33 @@
   align-items: center;
   justify-content: center;
   gap: 8rpx;
-  padding: 24rpx 0;
-  border-radius: 16rpx;
-  margin-bottom: 16rpx;
+  min-height: 88rpx;
+  padding: 0 32rpx;
+  border-radius: 48rpx;
+  margin-bottom: 0;
 }
 .od-action-btn:last-child {
   margin-bottom: 0;
 }
 .od-action-primary {
-  background: linear-gradient(135deg, #6366F1, #8B5CF6);
+  background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%);
+  box-shadow: 0 8rpx 24rpx rgba(99, 102, 241, 0.3);
 }
 .od-actions .od-action-btn.od-action-primary.od-action-disabled {
   background: #ccc !important;
   opacity: 0.6 !important;
 }
 .od-action-secondary {
-  background: #EEF2FF;
+  background: #F8FAFC;
+  border: 1rpx solid #E2E8F0;
 }
 .od-action-danger {
-  background: rgba(239,68,68,0.08);
+  background: #FFF1F2;
+  border: 1rpx solid #FECACA;
 }
 .od-action-text {
   font-size: 28rpx;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 /* ═══════ Loading ═══════ */
@@ -408,7 +446,7 @@
   line-height: 1.4;
   flex: 1;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -534,7 +572,7 @@
 .od-link-url {
   font-size: 24rpx;
   color: #6366F1;
-  overflow: hidden;
+  overflow: visible;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -742,14 +780,14 @@
   font-size: 26rpx;
   font-weight: 600;
   color: #1F2937;
-  overflow: hidden;
+  overflow: visible;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .od-av-reason {
   font-size: 22rpx;
   color: #EF4444;
-  overflow: hidden;
+  overflow: visible;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -832,7 +870,7 @@
   flex-direction: column;
   height: 72vh;
   width: 100%;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* ─── 弹窗头部 ─── */
@@ -840,7 +878,7 @@
   position: relative;
   padding: 36rpx 32rpx 28rpx 32rpx;
   flex-shrink: 0;
-  overflow: hidden;
+  overflow: visible;
   background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #A855F7 100%);
 }
 .od-dialog-header-bg {
@@ -888,7 +926,7 @@
   font-size: 34rpx;
   font-weight: 700;
   color: #FFFFFF;
-  overflow: hidden;
+  overflow: visible;
   text-overflow: ellipsis;
   white-space: nowrap;
   text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.1);
@@ -928,7 +966,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* ─── Tab 切换栏 ─── */
@@ -1054,7 +1092,7 @@
   width: calc((100% - 20rpx) / 3);
   aspect-ratio: 1;
   border-radius: 12rpx;
-  overflow: hidden;
+  overflow: visible;
   position: relative;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
@@ -1075,7 +1113,7 @@
   background: linear-gradient(135deg, #1E1B4B, #312E81);
   border-radius: 16rpx;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: 0 4rpx 16rpx rgba(49, 46, 129, 0.25);
 }
 .od-dialog-video-overlay {
@@ -1116,7 +1154,7 @@
   background: linear-gradient(135deg, #1E1B4B, #312E81);
   border-radius: 12rpx;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 .od-asset-video-thumb {
   width: 100%;
@@ -1184,7 +1222,7 @@
   flex: 1;
   min-width: 0;
   word-break: break-all;
-  overflow: hidden;
+  overflow: visible;
   text-overflow: ellipsis;
 }
 .od-dialog-feedback-link {
@@ -1349,7 +1387,7 @@
   width: calc(25% - 9rpx);
   aspect-ratio: 1;
   border-radius: 12rpx;
-  overflow: hidden;
+  overflow: visible;
 }
 .od-asset-thumb {
   width: 100%;

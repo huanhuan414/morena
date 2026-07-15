@@ -9,7 +9,6 @@ import {
   ChevronRight, TrendingUp, CircleCheckBig, Video, FileText, Play, ShieldAlert
 } from 'lucide-react-taro'
 import { getPlatformLabel } from '@/constants/publish-platform'
-import '../order-detail/index.css'
 import './index.css'
 
 const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
@@ -491,7 +490,7 @@ export default function OrderAcceptance() {
 
   if (selectedAvatar) {
     return (
-      <View className="od-page">
+      <View className="od-page acceptance-detail-page">
         {/* 头部 */}
         <View className="od-header">
           <View className="od-header-deco1" />
@@ -528,12 +527,9 @@ export default function OrderAcceptance() {
               )
             })()}
           </View>
-        </View>
 
-        {/* 内容 */}
-        <ScrollView scrollY className="od-body">
           {/* 分身信息卡 */}
-          <View className="od-card">
+          <View className="od-card acceptance-detail-avatar-card">
             <View className="od-avatar-header">
               <Image src={selectedAvatar.avatarUrl || ''} className="od-avatar-large" mode="aspectFill" />
               <View className="od-avatar-info">
@@ -556,7 +552,10 @@ export default function OrderAcceptance() {
           </View>
 
           {/* 生成内容 */}
-          {(isSelectedSpecialOrder || generatedContent) && (
+        </View>
+
+        {/* 内容 */}
+        <ScrollView scrollY className="od-body">          {(isSelectedSpecialOrder || generatedContent) && (
             <View className="od-card">
               <View className="od-stats-header" style={{ marginBottom: 12 }}>
                 <FileText size={16} color="#6366F1" />
@@ -1041,7 +1040,7 @@ export default function OrderAcceptance() {
   }
 
   return (
-    <View className="od-page">
+    <View className="od-page acceptance-overview-page">
       {/* 头部 */}
       <View className="od-header">
         <View className="od-header-deco1" />
@@ -1084,7 +1083,7 @@ export default function OrderAcceptance() {
             <>
               {/* 待验收 */}
               {awaitingAvatars.length > 0 && (
-                <View className="od-card">
+                <View className="od-card acceptance-avatar-group">
                   <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
                     <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#F59E0B', marginRight: 8 }} />
                     <Text className="block od-section-title" style={{ marginBottom: 0 }}>待验收 ({awaitingAvatars.length})</Text>

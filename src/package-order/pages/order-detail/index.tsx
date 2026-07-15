@@ -17,19 +17,21 @@ import {
 import { getStatusBarHeight } from '@/utils/safe-area'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
+import { canonicalizePlatforms, getPlatformLabel } from '@/constants/publish-platform'
 import './index.css'
 
-// ===== 平台名称映射 =====
-const PLATFORM_MAP: Record<string, string> = {
-  xiaohongshu: '小红书',
-  wechat_moments: '朋友圈',
-  douyin: '抖音',
-  weibo: '微博',
-  bilibili: 'B站',
-  zhihu: '知乎',
-  kuaishou: '快手',
-}
 
+function getOrderPlatforms(platforms: any): string[] {
+  if (Array.isArray(platforms)) return canonicalizePlatforms(platforms)
+  if (typeof platforms === 'string') {
+    try {
+      const parsed = JSON.parse(platforms)
+      if (Array.isArray(parsed)) return canonicalizePlatforms(parsed)
+    } catch { }
+    return canonicalizePlatforms(platforms)
+  }
+  return []
+}
 // ===== 内容类型映射 =====
 const CONTENT_TYPE_MAP: Record<string, { label: string; icon: any }> = {
   simple: { label: '简单任务', icon: CircleCheckBig },
@@ -570,7 +572,7 @@ export default function OrderDetailPage() {
   const orderUserId = order.userId
   const isOrderOwner = orderUserId && currentUserId && orderUserId === currentUserId
   const isPayable = order.status === 'pending_payment' && isOrderOwner
-  const isCancellable = ['pending_payment', 'pending'].includes(order.status) && isOrderOwner
+  const isCancellable = ['pending_payment'].includes(order.status) && isOrderOwner
   const isDeletable = ['cancelled', 'auto_cancelled', 'timeout', 'expired', 'completed'].includes(order.status) && isOrderOwner
   const isVerifiable = hasAwaitingAcceptance && !isAllVerified && !['cancelled', 'auto_cancelled', 'timeout', 'expired'].includes(order.status) && isOrderOwner
   const isAbnormal = statusCfg.phase === -1 && order.status !== 'pending_payment'
@@ -617,13 +619,9 @@ export default function OrderDetailPage() {
             {isNeedMatching ? '订单已支付，请匹配分身开始创作' : statusCfg.desc}
           </Text>
         </View>
-      </View>
-
-      {/* ===== 内容区 ===== */}
-      <ScrollView scrollY className="od-body">
         {/* 4阶段进度条 */}
         {currentPhase >= 0 && (
-          <View className="od-card od-pipeline-card">
+          <View className="od-card od-pipeline-card od-header-pipeline-card">
             <View className="od-pipeline">
               {PHASES.map((phase, idx) => {
                 const PhaseIcon = phase.icon
@@ -656,6 +654,10 @@ export default function OrderDetailPage() {
           </View>
         )}
 
+      </View>
+      {/* ===== 内容区 ===== */}
+      <ScrollView scrollY className={`od-body ${currentPhase >= 0 ? 'od-body-with-pipeline' : ''}`}>
+
         {/* 订单信息卡 */}
         <View className="od-card">
           <Text className="block od-card-title">{order.title || '未命名订单'}</Text>
@@ -668,11 +670,11 @@ export default function OrderDetailPage() {
               {(() => { const CTIcon = ctConfig.icon; return <CTIcon size={12} color="#9333EA" /> })()}
               <Text className="block od-pill-text od-pill-type-text">{ctConfig.label}</Text>
             </View>
-            {Array.isArray(order.platforms) ? order.platforms.map((p: string, i: number) => (
-              <View key={i} className="od-pill od-pill-platform">
-                <Text className="block od-pill-text od-pill-platform-text">{PLATFORM_MAP[p] || p}</Text>
+            {getOrderPlatforms(order.platforms).map((p: string, i: number) => (
+              <View key={`${p}-${i}`} className="od-pill od-pill-platform">
+                <Text className="block od-pill-text od-pill-platform-text">{getPlatformLabel(p)}</Text>
               </View>
-            )) : null}
+            ))}
           </View>
         </View>
 
@@ -1216,7 +1218,7 @@ export default function OrderDetailPage() {
                               feedbackPlatformKeys.map(platformKey => {
                                 const pf = publishFeedback[platformKey]
                                 if (!pf || typeof pf !== 'object') return null
-                                const pName = PLATFORM_MAP[platformKey] || platformKey
+                                const pName = getPlatformLabel(platformKey)
                                 return (
                                   <View key={platformKey} className="od-dialog-card">
                                     <View className="od-dialog-card-header">
