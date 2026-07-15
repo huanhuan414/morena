@@ -36,6 +36,8 @@ interface OrderItem {
   quantityPerAvatar: number
   urgency: 'urgent' | 'high' | 'normal' | 'low'
   isAcceptedByMe?: boolean
+  acceptedAvatarId?: string
+  requestId?: string
   acceptanceTimeout?: number
 }
 
@@ -311,6 +313,8 @@ const Index: React.FC = () => {
           quantityPerAvatar: o.quantityPerAvatar || o.quantity_per_avatar || 1,
           urgency: o.urgency || (o.priority >= 4 ? 'urgent' : o.priority >= 3 ? 'high' : o.priority >= 2 ? 'normal' : 'low'),
           isAcceptedByMe: Boolean(o.isAcceptedByMe || o.is_accepted_by_me),
+          acceptedAvatarId: o.acceptedAvatarId || o.accepted_avatar_id || o.odrAvatarId || o.odr_avatar_id || '',
+          requestId: o.requestId || o.request_id || '',
           acceptanceTimeout: Number(o.acceptanceTimeout || o.acceptance_timeout || 0),
           acceptRegions: Array.isArray(o.acceptRegions || o.accept_regions) ? (o.acceptRegions || o.accept_regions) : []
         }))
@@ -336,7 +340,43 @@ const Index: React.FC = () => {
     }
   }, [activePlatform])
 
+
   // 接单
+  const buildAcceptTaskQuery = (content: any) => ([
+    `orderId=${encodeURIComponent(content.orderId || content.order_id || '')}`,
+    content.avatarId || content.avatar_id ? `avatarId=${encodeURIComponent(content.avatarId || content.avatar_id)}` : '',
+    content.id || content.requestId || content.request_id ? `requestId=${encodeURIComponent(content.id || content.requestId || content.request_id)}` : '',
+  ].filter(Boolean).join('&'))
+
+  const handleAcceptedOrderClick = (order: OrderItem) => {
+    if (order.rawPlatform !== 'special') {
+      Taro.showModal({
+        title: '提示',
+        content: '您已接单，请到我的订单页面查看',
+        cancelText: '取消',
+        confirmText: '我的订单',
+        success: (res) => {
+          if (res.confirm) {
+            Taro.navigateTo({ url: '/package-avatar/pages/generated-content/index' })
+          }
+        },
+      })
+      return
+    }
+
+    if (!order.requestId) {
+      Taro.showToast({ title: '未找到接单记录', icon: 'none' })
+      return
+    }
+
+    Taro.navigateTo({
+      url: `/package-order/pages/order-accept-task/index?${buildAcceptTaskQuery({
+        orderId: order.id,
+        avatarId: order.acceptedAvatarId,
+        requestId: order.requestId,
+      })}`,
+    })
+  }
   const handleAcceptOrder = async (orderId: string, orderInfo?: OrderItem) => {
     if (orderId.startsWith('demo_')) {
       Taro.showToast({ title: '示例订单，请先创建分身', icon: 'none' })
@@ -797,107 +837,119 @@ const Index: React.FC = () => {
                       </View>
                       <ChevronDown size={16} color="#9CA3AF" style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
                     </View>
+                    <View
+                      className="po-card-accepted-zone"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (order.isAcceptedByMe) {
+                          handleAcceptedOrderClick(order)
+                        }
+                        else if (!acceptingOrderIds[order.id]) {
+                          handleAcceptOrder(order.id, order)
+                        }
+                      }}
+                    >
+                      {/* 标题 */}
+                      <Text className="po-card-title">{order.title}</Text>
 
-                    {/* 标题 */}
-                    <Text className="po-card-title" onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}>{order.title}</Text>
+                      {/* 描述 */}
+                      {order.description && (
+                        <Text className="po-card-desc">{order.description}</Text>
+                      )}
 
-                    {/* 描述 */}
-                    {order.description && (
-                      <Text className="po-card-desc" onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}>{order.description}</Text>
-                    )}
-
-                    {/* 回报卡片：收益 + 交付周期 */}
-                    <View className="po-reward-card" onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}>
-                      <View className="po-reward-left">
-                        <View className="po-reward-amount">
-                          {/* <Text className="po-reward-symbol">¥</Text> */}
-                          {/* <Text className="po-reward-value">{order.estimatedEarning.toFixed(2)}</Text> */}
-                          <Text className="po-reward-value">¥{calcEarningRange(order.customBasePrice)}</Text>
-                          <Text className="po-reward-unit">/单</Text>
+                      {/* 回报卡片：收益 + 交付周期 */}
+                      <View className="po-reward-card">
+                        <View className="po-reward-left">
+                          <View className="po-reward-amount">
+                            {/* <Text className="po-reward-symbol">¥</Text> */}
+                            {/* <Text className="po-reward-value">{order.estimatedEarning.toFixed(2)}</Text> */}
+                            <Text className="po-reward-value">¥{calcEarningRange(order.customBasePrice)}</Text>
+                            <Text className="po-reward-unit">/单</Text>
+                          </View>
+                          <Text className="po-reward-hint">预计创作收益</Text>
                         </View>
-                        <Text className="po-reward-hint">预计创作收益</Text>
-                      </View>
-                      <View className="po-reward-divider" />
-                      <View className="po-reward-right">
-                        <View className="po-reward-meta">
-                          <Clock size={16} color="#6366F1" />
-                          <Text className="po-reward-meta-text">{order.deliveryDays}天</Text>
-                        </View>
-                        <Text className="po-reward-meta-sub">交付周期</Text>
-                      </View>
-                      <>
                         <View className="po-reward-divider" />
                         <View className="po-reward-right">
                           <View className="po-reward-meta">
-                            <Users size={16} color="#6366F1" />
-                            <Text className="po-reward-meta-text">{order.acceptCount || 0}/{order.avatarCount || 1}</Text>
+                            <Clock size={16} color="#6366F1" />
+                            <Text className="po-reward-meta-text">{order.deliveryDays}天</Text>
                           </View>
-                          <Text className="po-reward-meta-sub">已接单</Text>
+                          <Text className="po-reward-meta-sub">交付周期</Text>
                         </View>
-                      </>
-                    </View>
+                        <>
+                          <View className="po-reward-divider" />
+                          <View className="po-reward-right">
+                            <View className="po-reward-meta">
+                              <Users size={16} color="#6366F1" />
+                              <Text className="po-reward-meta-text">{order.acceptCount || 0}/{order.avatarCount || 1}</Text>
+                            </View>
+                            <Text className="po-reward-meta-sub">已接单</Text>
+                          </View>
+                        </>
+                      </View>
 
-                    {/* 需求标签 */}
-                    {reqTags.length > 0 && (
-                      <View className="po-match-tags" onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}>
-                        {reqTags.map((req: string, idx: number) => (
-                          <Text key={idx} className="po-match-tag po-match-tag-skill">{req}</Text>
-                        ))}
-                      </View>
-                    )}
+                      {/* 需求标签 */}
+                      {reqTags.length > 0 && (
+                        <View className="po-match-tags">
+                          {reqTags.map((req: string, idx: number) => (
+                            <Text key={idx} className="po-match-tag po-match-tag-skill">{req}</Text>
+                          ))}
+                        </View>
+                      )}
 
-                    {/* 目标受众行 */}
-                    {order.targetAudience && (
-                      <View className="po-audience-row" onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}>
-                        <Users size={14} color="#9CA3AF" />
-                        <Text className="po-audience-text">目标受众：{order.targetAudience}</Text>
-                      </View>
-                    )}
+                      {/* 目标受众行 */}
+                      {order.targetAudience && (
+                        <View className="po-audience-row">
+                          <Users size={14} color="#9CA3AF" />
+                          <Text className="po-audience-text">目标受众：{order.targetAudience}</Text>
+                        </View>
+                      )}
 
-                    {/* 截止时间行 */}
-                    {/* {deadlineInfo && (
-                      <View className="po-deadline-row" onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}>
-                        <Clock size={14} color={deadlineInfo.color} />
-                        <Text className="po-deadline-text" style={{ color: deadlineInfo.color }}>
-                          截止：{deadlineInfo.text}
-                        </Text>
-                      </View>
-                    )} */}
+                      {/* 截止时间行 */}
+                      {/* {deadlineInfo && (
+                        <View className="po-deadline-row">
+                          <Clock size={14} color={deadlineInfo.color} />
+                          <Text className="po-deadline-text" style={{ color: deadlineInfo.color }}>
+                            截止：{deadlineInfo.text}
+                          </Text>
+                        </View>
+                      )} */}
 
-                    {/* 接单后流程（始终可见，一行展示） */}
-                    <View className="po-steps">
-                      <View className="po-step">
-                        <View className="po-step-dot po-step-dot-1"><Text className="po-step-num">1</Text></View>
-                        <Text className="po-step-text">订单创建</Text>
+                      {/* 接单后流程（始终可见，一行展示） */}
+                      <View className="po-steps">
+                        <View className="po-step">
+                          <View className="po-step-dot po-step-dot-1"><Text className="po-step-num">1</Text></View>
+                          <Text className="po-step-text">订单创建</Text>
+                        </View>
+                        <View className="po-step-line" />
+                        <View className="po-step">
+                          <View className="po-step-dot po-step-dot-2"><Text className="po-step-num">2</Text></View>
+                          <Text className="po-step-text">确认发布</Text>
+                        </View>
+                        <View className="po-step-line" />
+                        <View className="po-step">
+                          <View className="po-step-dot po-step-dot-3"><Text className="po-step-num">3</Text></View>
+                          <Text className="po-step-text">获得收益</Text>
+                        </View>
                       </View>
-                      <View className="po-step-line" />
-                      <View className="po-step">
-                        <View className="po-step-dot po-step-dot-2"><Text className="po-step-num">2</Text></View>
-                        <Text className="po-step-text">确认发布</Text>
-                      </View>
-                      <View className="po-step-line" />
-                      <View className="po-step">
-                        <View className="po-step-dot po-step-dot-3"><Text className="po-step-num">3</Text></View>
-                        <Text className="po-step-text">获得收益</Text>
-                      </View>
-                    </View>
 
-                    {/* 付出与回报（始终可见） */}
-                    <View className="po-cost-benefit">
-                      <View className="po-cb-card po-cb-cost">
-                        <Text className="block po-cb-card-label">创作数量</Text>
-                        <Text className="block po-cb-card-value">{order.quantityPerAvatar || 1}条/分身</Text>
-                      </View>
-                      <View className="po-cb-card po-cb-benefit">
-                        <Text className="block po-cb-card-label">预计收益</Text>
-                        <Text className="block po-cb-card-value po-cb-card-value-hl">¥{calcEarningRange(order.customBasePrice)}<Text className="po-cb-card-sub">({earningPlanInfo.proName}用户：{calcNetAmount(order.customBasePrice, earningPlanInfo.proRate)}元)</Text></Text>
-                        {/* <Text className="block po-cb-card-value po-cb-card-value-hl">¥{(order.estimatedEarning || 0).toFixed(2)}</Text> */}
+                      {/* 付出与回报（始终可见） */}
+                      <View className="po-cost-benefit">
+                        <View className="po-cb-card po-cb-cost">
+                          <Text className="block po-cb-card-label">创作数量</Text>
+                          <Text className="block po-cb-card-value">{order.quantityPerAvatar || 1}条/分身</Text>
+                        </View>
+                        <View className="po-cb-card po-cb-benefit">
+                          <Text className="block po-cb-card-label">预计收益</Text>
+                          <Text className="block po-cb-card-value po-cb-card-value-hl">¥{calcEarningRange(order.customBasePrice)}<Text className="po-cb-card-sub">({earningPlanInfo.proName}用户：{calcNetAmount(order.customBasePrice, earningPlanInfo.proRate)}元)</Text></Text>
+                          {/* <Text className="block po-cb-card-value po-cb-card-value-hl">¥{(order.estimatedEarning || 0).toFixed(2)}</Text> */}
+                        </View>
                       </View>
                     </View>
 
                     {/* 展开详情区 */}
                     {isExpanded && (
-                      <View className="po-expanded-area">
+                      <View className="po-expanded-area" onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}>
                         {/* 创作要求 */}
                         {order.description && (
                           <View className="po-req-block">
@@ -917,7 +969,10 @@ const Index: React.FC = () => {
                         className="po-btn po-btn-accept"
                         onClick={(e) => {
                           e.stopPropagation()
-                          if (!order.isAcceptedByMe && !acceptingOrderIds[order.id]) {
+                          if (order.isAcceptedByMe) {
+                            handleAcceptedOrderClick(order)
+                          }
+                          else if (!acceptingOrderIds[order.id]) {
                             handleAcceptOrder(order.id, order)
                           }
                         }}
