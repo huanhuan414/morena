@@ -890,7 +890,7 @@ export class OrderService {
               COALESCE(a_order.avatar_url, a_latest.avatar_url, u.avatar) as publisher_avatar,
               COALESCE(odc.accept_count, 0) as accept_count,
               GREATEST(COALESCE(NULLIF(o.avatar_count, 0), NULLIF(o.expected_quantity, 0), 1), 1) as required_count,
-              COALESCE(odm.is_accepted_by_me, 0) as is_accepted_by_me
+              COALESCE(odm.is_accepted_by_me, 0) as is_accepted_by_me, odm.odr_status, odm.odr_id, odm.odr_avatar_id, odm.request_id
        FROM orders o
        LEFT JOIN users u ON u.id = o.user_id
        LEFT JOIN avatars a_order ON a_order.id = o.avatar_id
@@ -914,10 +914,17 @@ export class OrderService {
          GROUP BY order_id
        ) odc ON odc.order_id = o.id
        LEFT JOIN (
-         SELECT r.order_id, 1 as is_accepted_by_me
+         SELECT
+           r.order_id,
+           1 as is_accepted_by_me,
+           r.status as odr_status,
+           r.id as odr_id,
+           r.avatar_id as odr_avatar_id,
+           cg.id as request_id
          FROM order_dispatch_requests r
          INNER JOIN avatars a ON a.id = r.avatar_id
-         WHERE r.status = 'accepted' AND a.user_id = ?
+         LEFT JOIN content_generation_requests cg ON cg.order_id = r.order_id AND cg.avatar_id = r.avatar_id  AND cg.status NOT IN ('cancelled','failed')
+         WHERE r.status in ('accepted','completed','rejected')  AND a.user_id = ?
          GROUP BY r.order_id
        ) odm ON odm.order_id = o.id
        ${whereClause}
@@ -991,6 +998,10 @@ export class OrderService {
       publisherAvatar: row.publisherAvatar || row.publisher_avatar || '',
       acceptCount: Number(row.acceptCount || row.accept_count || 0),
       isAcceptedByMe: Boolean(row.isAcceptedByMe ?? row.is_accepted_by_me ?? 0),
+      odrStatus: row.odrStatus || row.odr_status,
+      odrId: row.odrId || row.odr_id,
+      acceptedAvatarId: row.odrAvatarId || row.odr_avatar_id,
+      requestId: row.requestId || row.request_id,
       acceptRegions: this.safeParseJson<string[]>(row.acceptRegions || row.accept_regions, []),
       personality: this.safeParseJson<{ tags: string; niches: string }>(row.personality || '{}', { tags: '', niches: '' })
       })
