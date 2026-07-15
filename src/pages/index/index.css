@@ -1449,3 +1449,11 @@
   color: #1E293B;
   font-weight: 500;
 }
+
+.support-agent-icon {
+  width: 58rpx;
+  height: 58rpx;
+  display: block;
+  filter: brightness(0) invert(1);
+  opacity: 1;
+}

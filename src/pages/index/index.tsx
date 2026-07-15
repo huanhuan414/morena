@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { View, Text, ScrollView, Button } from '@tarojs/components'
-import { MessageCircle, Settings, Users, FileText, Coins, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye, ShoppingBag, ChevronRight, Gift, Clock, CircleCheckBig, ChevronDown } from 'lucide-react-taro'
+import { View, Text, ScrollView, Button, Image } from '@tarojs/components'
+import { Settings, Users, FileText, Coins, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye, ShoppingBag, ChevronRight, Gift, Clock, CircleCheckBig, ChevronDown } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { BANNER_TITLE, BANNER_DESC } from '@/constants/referral-rewards'
 import { PLATFORM_UI_ORDER, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
@@ -10,6 +10,7 @@ import { useNotifications } from '@/hooks/useNotifications'
 import { Avatar as UiAvatar } from '@/components/ui/avatar'
 import { getCapsuleButtonBottom } from '@/utils/safe-area'
 import { APP_VERSION } from '@/constants/app'
+import supportAgentIcon from '@/assets/support_agent.png'
 import './index.css'
 
 const getMiniProgramVersionParams = () => {
@@ -1009,7 +1010,7 @@ const Index: React.FC = () => {
                 justifyContent: 'center'
               }}
             >
-              <MessageCircle size={32} color="#FFFFFF" />
+              <Image className="support-agent-icon" src={supportAgentIcon} mode="aspectFit" />
             </Button>
             <View className="icon-btn" onClick={() => Taro.navigateTo({ url: '/package-profile/pages/settings/index' })}>
               <Settings size={32} color="#FFFFFF" />

@@ -357,6 +357,7 @@
 button.contact-menu-item {
   background: transparent !important;
   border: 0 !important;
+  border-bottom: 1rpx solid var(--border-light) !important;
   border-radius: 0 !important;
   margin: 0 !important;
   line-height: normal !important;
@@ -455,4 +456,11 @@ button.contact-menu-item::after {
 .menu-scroll {
   flex: 1;
   height: calc(100vh - 400rpx);
+}
+
+.profile-support-agent-icon {
+  width: 38rpx;
+  height: 38rpx;
+  display: block;
+  filter: brightness(0) saturate(100%) invert(62%) sepia(77%) saturate(2094%) hue-rotate(188deg) brightness(101%) contrast(96%);
 }

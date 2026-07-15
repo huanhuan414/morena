@@ -11,6 +11,7 @@ import { getStatusBarHeight } from '@/utils/safe-area'
 import { APP_VERSION } from '@/constants/app'
 import '@/styles/variables.css'
 import logoImage from '@/static/logo.jpg'
+import supportAgentIcon from '@/assets/support_agent.png'
 import './index.css'
 
 // 格式化静默时间
@@ -321,7 +322,7 @@ export default function ProfilePage() {
                     session-from="profile"
                   >
                     <View className="menu-icon-wrap" style={{ backgroundColor: bgColor }}>
-                      <Icon size={20} color={iconColor} />
+                      <Image className="profile-support-agent-icon" src={supportAgentIcon} mode="aspectFit" />
                     </View>
                     <View className="menu-content">
                       <Text className="menu-title">{item.title}</Text>
