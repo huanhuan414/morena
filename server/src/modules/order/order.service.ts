@@ -1382,13 +1382,10 @@ export class OrderService {
       throw new Error('订单不存在')
     }
 
-    // await db.query('UPDATE order_task_steps SET status = 0 WHERE order_id = ?', [orderId])
-    await db.query('DELETE FROM order_task_steps WHERE order_id = ?', [orderId])
-
     const stepsWithSortOrder = steps.map((step, index) => ({ ...(step || {}), __sortOrder: index }))
     const materialSteps = stepsWithSortOrder.filter(step => this.MATERIAL_TYPES.includes(this.getTaskStepType(step)))
     const order = orderRows[0] || {}
-    const rawAvatarCount = Number(order.avatar_count || order.avatarCount)
+    const rawAvatarCount = Number(order.avatar_count || order.avatarCount )
     const avatarCount = Number.isFinite(rawAvatarCount) && rawAvatarCount > 0 ? rawAvatarCount : 0
     if (avatarCount <= 0) {
       throw new Error('获取接单数量为空，请联系管理员查看！')
@@ -1398,7 +1395,7 @@ export class OrderService {
       const stepData = step.data || {}
       const distributeMode = stepData.distributeMode || stepData.distribute_mode || 'shared'
       if (distributeMode !== 'exclusive') return false
-      if (this.getTaskStepType(step) in ['material_text', 'material_image', 'material_video'] && (stepData.useAiMaterial === true || stepData.use_ai_material === true)) return false
+      if (stepData.useAiMaterial === true || stepData.use_ai_material === true) return false
       const materials = Array.isArray(stepData.materials) ? stepData.materials : []
       return materials.length < avatarCount
     })
@@ -1406,6 +1403,10 @@ export class OrderService {
       const stepIndex = Number(invalidExclusiveStep.__sortOrder ?? stepsWithSortOrder.findIndex(step => step === invalidExclusiveStep))
       throw new Error(`步骤${stepIndex + 1}：独占至少需要${avatarCount}个素材，不能比接单数少！`)
     }
+
+    // 校验通过后再清空旧步骤，避免保存失败时把原有配置删掉
+    // await db.query('UPDATE order_task_steps SET status = 0 WHERE order_id = ?', [orderId])
+    await db.query('DELETE FROM order_task_steps WHERE order_id = ?', [orderId])
 
     for (let index = 0; index < stepsWithSortOrder.length; index++) {
       const step = stepsWithSortOrder[index] || {}

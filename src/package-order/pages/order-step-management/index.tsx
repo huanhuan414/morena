@@ -886,35 +886,34 @@ export default function OrderStepManagement() {
       }
       data.copyData = modalCopyData.trim()
     } else if (modalType === 'collect_image') {
-      if (!modalImage) {
-        Taro.showToast({ title: '请上传图片示例', icon: 'none' })
-        return
-      }
-      data.exampleImage = modalImage
-    } else if (modalType === 'collect_info') {
-      if (!modalExampleText.trim()) {
-        Taro.showToast({ title: '请输入信息示例', icon: 'none' })
-        return
-      }
-      data.exampleText = modalExampleText.trim()
-    } else if (modalType === 'collect_url') {
-      if (!modalUrl.trim()) {
-        Taro.showToast({ title: '请输入链接地址', icon: 'none' })
-        return
-      }
-      // if (!isValidUrl(modalUrl.trim())) {
-      //   Taro.showToast({ title: '请输入正确的链接地址', icon: 'none' })
+      // if (!modalImage) {
+      //   Taro.showToast({ title: '请上传图片示例', icon: 'none' })
       //   return
       // }
-      if (collectUrlVerifyStatus === 'verifying') {
-        Taro.showToast({ title: '链接验证中，请稍候', icon: 'none' })
-        return
+      data.exampleImage = modalImage
+    } else if (modalType === 'collect_info') {
+      // if (!modalExampleText.trim()) {
+      //   Taro.showToast({ title: '请输入信息示例', icon: 'none' })
+      //   return
+      // }
+      data.exampleText = modalExampleText.trim()
+    } else if (modalType === 'collect_url') {
+      const collectUrl = modalUrl.trim()
+      // if (!collectUrl) {
+      //   Taro.showToast({ title: '请输入链接地址', icon: 'none' })
+      //   return
+      // }
+      if (collectUrl) {
+        if (collectUrlVerifyStatus === 'verifying') {
+          Taro.showToast({ title: '链接验证中，请稍候', icon: 'none' })
+          return
+        }
+        if (collectUrlVerifyStatus !== 'success') {
+          Taro.showToast({ title: collectUrlVerifyMessage || '请先输入有效的目标平台链接', icon: 'none' })
+          return
+        }
       }
-      if (collectUrlVerifyStatus !== 'success') {
-        Taro.showToast({ title: collectUrlVerifyMessage || '请先输入有效的目标平台链接', icon: 'none' })
-        return
-      }
-      data.exampleUrl = modalUrl.trim()
+      data.exampleUrl = collectUrl
     } else if (modalType === 'material_text' || modalType === 'material_image' || modalType === 'material_video') {
       if (!modalUseAiMaterial && modalMaterials.length === 0) {
         Taro.showToast({ title: '请至少添加一个素材', icon: 'none' })
