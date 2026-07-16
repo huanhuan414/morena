@@ -872,6 +872,16 @@ export default function OrderAcceptTask() {
                 <Text className="accept-revision-text">{revisionReason}</Text>
               </View>
             )}
+            {/* 已拒绝 - 仅 rejected 状态显示 */}
+            {taskStatus === 'rejected' && revisionReason && (
+              <View className="accept-revision-box">
+                <View className="accept-revision-header">
+                  <ShieldAlert size={18} color="#EA580C" />
+                  <Text className="accept-revision-title">已拒绝原因</Text>
+                </View>
+                <Text className="accept-revision-text">{revisionReason}</Text>
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
