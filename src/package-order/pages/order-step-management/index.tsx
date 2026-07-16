@@ -382,54 +382,55 @@ export default function OrderStepManagement() {
     }
   }
 
-  useEffect(() => {
-    if (collectUrlVerifyTimerRef.current) {
-      clearTimeout(collectUrlVerifyTimerRef.current)
-      collectUrlVerifyTimerRef.current = null
-    }
-    collectUrlVerifySeqRef.current += 1
+  // useEffect(() => {
+  //   if (collectUrlVerifyTimerRef.current) {
+  //     clearTimeout(collectUrlVerifyTimerRef.current)
+  //     collectUrlVerifyTimerRef.current = null
+  //   }
+  //   collectUrlVerifySeqRef.current += 1
 
-    if (modalType !== 'collect_url') {
-      setCollectUrlVerifyStatus('idle')
-      setCollectUrlVerifyMessage('')
-      return
-    }
+  //   if (modalType !== 'collect_url') {
+  //     setCollectUrlVerifyStatus('idle')
+  //     setCollectUrlVerifyMessage('')
+  //     return
+  //   }
 
-    const platform = getTargetPlatform()
-    const postUrl = modalUrl.trim()
-    if (!postUrl) {
-      setCollectUrlVerifyStatus('idle')
-      setCollectUrlVerifyMessage('')
-      return
-    }
-    // if (!isValidUrl(postUrl)) {
-    //   setCollectUrlVerifyStatus('failed')
-    //   setCollectUrlVerifyMessage('请输入正确的链接地址')
-    //   return
-    // }
-    if (!platform) {
-      setCollectUrlVerifyStatus('failed')
-      setCollectUrlVerifyMessage('缺少目标平台')
-      return
-    }
-    if (!isVerifyRequiredPlatform(platform)) {
-      setCollectUrlVerifyStatus('success')
-      setCollectUrlVerifyMessage('链接格式正确')
-      return
-    }
+  //   const platform = getTargetPlatform()
+  //   const postUrl = modalUrl.trim()
+  //   if (!postUrl) {
+  //     setCollectUrlVerifyStatus('idle')
+  //     setCollectUrlVerifyMessage('')
+  //     return
+  //   }
+  //   // if (!isValidUrl(postUrl)) {
+  //   //   setCollectUrlVerifyStatus('failed')
+  //   //   setCollectUrlVerifyMessage('请输入正确的链接地址')
+  //   //   return
+  //   // }
+  //   if (!platform) {
+  //     setCollectUrlVerifyStatus('failed')
+  //     setCollectUrlVerifyMessage('缺少目标平台')
+  //     return
+  //   }
+  //   if (!isVerifyRequiredPlatform(platform)) {
+  //     setCollectUrlVerifyStatus('success')
+  //     setCollectUrlVerifyMessage('链接格式正确')
+  //     return
+  //   }
 
-    const seq = collectUrlVerifySeqRef.current
-    setCollectUrlVerifyStatus('verifying')
-    setCollectUrlVerifyMessage('验证中...')
-    collectUrlVerifyTimerRef.current = setTimeout(() => verifyCollectUrl(platform, postUrl, seq), 600)
+  //   const seq = collectUrlVerifySeqRef.current
+  //   setCollectUrlVerifyStatus('verifying')
+  //   setCollectUrlVerifyMessage('验证中...')
+  //   collectUrlVerifyTimerRef.current = setTimeout(() => verifyCollectUrl(platform, postUrl, seq), 600)
 
-    return () => {
-      if (collectUrlVerifyTimerRef.current) {
-        clearTimeout(collectUrlVerifyTimerRef.current)
-        collectUrlVerifyTimerRef.current = null
-      }
-    }
-  }, [modalType, modalUrl, orderInfo])
+  //   return () => {
+  //     if (collectUrlVerifyTimerRef.current) {
+  //       clearTimeout(collectUrlVerifyTimerRef.current)
+  //       collectUrlVerifyTimerRef.current = null
+  //     }
+  //   }
+  // }, [modalType, modalUrl, orderInfo])
+
   const calculatePrice = () => {
     const draftData = Taro.getStorageSync(DRAFT_STORAGE_KEY)
     const avatarCount = draftData?.payload?.avatarCount || draftData?.payload?.avatar_count || orderInfo?.avatarCount || 1
@@ -873,16 +874,16 @@ export default function OrderStepManagement() {
       //   Taro.showToast({ title: '请输入链接地址', icon: 'none' })
       //   return
       // }
-      if (collectUrl) {
-        if (collectUrlVerifyStatus === 'verifying') {
-          Taro.showToast({ title: '链接验证中，请稍候', icon: 'none' })
-          return
-        }
-        if (collectUrlVerifyStatus !== 'success') {
-          Taro.showToast({ title: collectUrlVerifyMessage || '请先输入有效的目标平台链接', icon: 'none' })
-          return
-        }
-      }
+      // if (collectUrl) {
+      //   if (collectUrlVerifyStatus === 'verifying') {
+      //     Taro.showToast({ title: '链接验证中，请稍候', icon: 'none' })
+      //     return
+      //   }
+      //   if (collectUrlVerifyStatus !== 'success') {
+      //     Taro.showToast({ title: collectUrlVerifyMessage || '请先输入有效的目标平台链接', icon: 'none' })
+      //     return
+      //   }
+      // }
       data.exampleUrl = collectUrl
     } else if (modalType === 'material_text' || modalType === 'material_image' || modalType === 'material_video') {
       if (!modalUseAiMaterial && modalMaterials.length === 0) {

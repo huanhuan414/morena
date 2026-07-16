@@ -179,7 +179,6 @@ export default function OrderAcceptTask() {
 
   const isVerifyRequiredPlatform = (platform: string) => VERIFY_REQUIRED_PLATFORMS.includes(platform)
 
-  const isValidUrl = (url: string) => /^https?:\/\/\S+\.\S+/.test(url.trim())
 
   const setCollectVerifyState = (stepId: string, status: 'idle' | 'verifying' | 'success' | 'failed', message = '') => {
     setCollectUrlVerifyStatus(prev => ({ ...prev, [stepId]: status }))
@@ -221,10 +220,6 @@ export default function OrderAcceptTask() {
       setCollectVerifyState(stepId, 'idle', '')
       return
     }
-    if (!isValidUrl(postUrl)) {
-      setCollectVerifyState(stepId, 'failed', '请输入正确的链接地址')
-      return
-    }
     const platform = getTargetPlatform()
     if (!platform) {
       setCollectVerifyState(stepId, 'failed', '缺少目标平台')
@@ -239,16 +234,16 @@ export default function OrderAcceptTask() {
     collectUrlVerifyTimerRef.current[stepId] = setTimeout(() => verifyCollectUrl(stepId, platform, postUrl, seq), 600)
   }
 
-  useEffect(() => {
-    if (previewOnly) return
-    steps.forEach((step) => {
-      if (getStepType(step) !== 'collect_url') return
-      const result = getStepResult(stepResults, step)
-      const value = String(result.value || '').trim()
-      if (!value || collectUrlVerifyStatus[step.id]) return
-      scheduleCollectUrlVerify(step, value)
-    })
-  }, [steps, stepResults, taskInfo, previewOnly])
+  // useEffect(() => {
+  //   if (previewOnly) return
+  //   steps.forEach((step) => {
+  //     if (getStepType(step) !== 'collect_url') return
+  //     const result = getStepResult(stepResults, step)
+  //     const value = String(result.value || '').trim()
+  //     if (!value || collectUrlVerifyStatus[step.id]) return
+  //     scheduleCollectUrlVerify(step, value)
+  //   })
+  // }, [steps, stepResults, taskInfo, previewOnly])
   const saveStepResult = async (step: TaskStep, valueType: string, value: any) => {
     const stepId = step.id
     const next = {
@@ -798,7 +793,7 @@ export default function OrderAcceptTask() {
               onInput={(event) => {
                 const value = event.detail.value
                 saveStepResult(step, 'url', value)
-                scheduleCollectUrlVerify(step, value)
+                // scheduleCollectUrlVerify(step, value)
               }}
             />
             {collectUrlVerifyStatus[step.id] && collectUrlVerifyStatus[step.id] !== 'idle' && (
