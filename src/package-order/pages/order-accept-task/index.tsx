@@ -487,22 +487,22 @@ export default function OrderAcceptTask() {
       return
     }
 
-    const invalidCollectUrlStep = steps.find((step) => {
-      if (getStepType(step) !== 'collect_url') return false
-      const result = getStepResult(stepResults, step)
-      if (!hasStepResultValue(result.value)) return false
-      return collectUrlVerifyStatus[step.id] !== 'success'
-    })
-    if (invalidCollectUrlStep) {
-      const stepIndex = steps.findIndex((step) => step.id === invalidCollectUrlStep.id)
-      Taro.showToast({
-        title: `步骤${stepIndex + 1}：请先输入有效的目标平台链接!`,
-        icon: 'none',
-        duration: 2400,
-      })
-      submitLockRef.current = false
-      return
-    }
+    // const invalidCollectUrlStep = steps.find((step) => {
+    //   if (getStepType(step) !== 'collect_url') return false
+    //   const result = getStepResult(stepResults, step)
+    //   if (!hasStepResultValue(result.value)) return false
+    //   return collectUrlVerifyStatus[step.id] !== 'success'
+    // })
+    // if (invalidCollectUrlStep) {
+    //   const stepIndex = steps.findIndex((step) => step.id === invalidCollectUrlStep.id)
+    //   Taro.showToast({
+    //     title: `步骤${stepIndex + 1}：请先输入有效的目标平台链接!`,
+    //     icon: 'none',
+    //     duration: 2400,
+    //   })
+    //   submitLockRef.current = false
+    //   return
+    // }
     const confirm = await new Promise<boolean>((resolve) => {
       Taro.showModal({
         title: '确认发布',
