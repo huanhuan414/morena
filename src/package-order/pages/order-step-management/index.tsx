@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Network } from '@/network'
 import { canonicalizePlatforms, getPlatformLabel } from '@/constants/publish-platform'
 import { getStatusBarHeight } from '@/utils/safe-area'
+import { STEP_GROUPS, MATERIAL_TYPES as MATERIAL_TYPES_CONFIG } from '@/constants/stepTypes'
 import './index.css'
 
 type StepItem = {
@@ -49,7 +50,7 @@ const STEP_EXT_CONFIG: Record<string, Record<string, string>> = {
   material_video: { save_button_video: '保存' },
 }
 
-const MATERIAL_TYPES = ['material_text', 'material_image', 'material_video']
+const MATERIAL_TYPES = MATERIAL_TYPES_CONFIG
 const ACCEPTANCE_STEP_TYPES = ['collect_image', 'collect_info', 'collect_url']
 // #wechat_moments朋友圈/wechat_mp公众号/xiaohongshu小红书/douyin抖音/wechat_channel视频号/kuaishou快手
 const VERIFY_REQUIRED_PLATFORMS = ['douyin', 'kuaishou', 'xiaohongshu', 'wechat_mp', 'wechat_channel']
@@ -138,37 +139,6 @@ const transformTaskSteps = (steps: any[], materialRecord: any): StepItem[] => {
     return resultStep
   })
 }
-
-const STEP_GROUPS = [
-  {
-    title: '任务说明',
-    items: [
-      { label: '输入网址', type: 'input_url' },
-      { label: '传二维码', type: 'upload_qrcode' },
-      { label: '文字说明', type: 'text_instruction' },
-      { label: '图片说明', type: 'image_instruction' },
-      { label: '视频说明', type: 'video_instruction' },
-      { label: '复制数据', type: 'copy_data' },
-    ],
-  },
-  {
-    title: '发布素材',
-    items: [
-      { label: '文字素材', type: 'material_text' },
-      { label: '图片素材', type: 'material_image' },
-      { label: '视频素材', type: 'material_video' },
-    ],
-  },
-  {
-    title: '验收内容',
-    items: [
-      { label: '收集截图', type: 'collect_image' },
-      { label: '收集信息', type: 'collect_info' },
-      { label: '收集链接', type: 'collect_url' },
-    ],
-  },
-]
-
 
 const getStepsStorageKey = (orderId: string) => `order_steps_${orderId || 'draft'}`
 const DRAFT_STORAGE_KEY = 'order_create_step_draft' // 上一步传递的订单信息 Taro.getStorageSync(storageKey)步骤管理页的步骤列表数据

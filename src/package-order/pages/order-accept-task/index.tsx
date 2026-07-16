@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Network } from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import { canonicalizePlatform, canonicalizePlatforms, getPlatformLabel } from '@/constants/publish-platform'
+import { getStepTypeColor } from '@/constants/stepTypes'
 import './index.css'
 
 type MaterialItem = {
@@ -837,9 +838,12 @@ export default function OrderAcceptTask() {
                       <Text className="accept-step-index-text">{index + 1}</Text>
                     </View>
                     <View className="accept-step-info">
-                      {/* <Text className="accept-step-name">{getStepTitle(step)}</Text> */}
                       <View className="accept-step-title-row">
-                        <Text className="accept-step-name">步骤{getChineseNumber(index + 1)}：{getStepType(step) === 'upload_qrcode' ? '二维码识别' : getStepTitle(step)}</Text>
+                        <View className="accept-step-type-tag" style={{ color: getStepTypeColor(getStepType(step)).color, backgroundColor: getStepTypeColor(getStepType(step)).bgColor }}>
+                          <Text className="accept-step-type-tag-text">步骤{getChineseNumber(index + 1)}：</Text>
+                        </View>
+                        <Text className="accept-step-name">{getStepType(step) === 'upload_qrcode' ? '二维码识别' : getStepTitle(step)}</Text>
+
                         <View className="accept-step-title-actions">
                           {getStepType(step) === 'material_image' && !previewOnly && getImageMaterialItems(step).length > 1 && (
                             <View className={`accept-save-all-btn ${savingAllStepId === step.id ? 'disabled' : ''}`} onClick={() => handleSaveAllImages(step)}>

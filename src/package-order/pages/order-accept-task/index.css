@@ -159,6 +159,26 @@
   color: #111827;
 }
 
+.accept-step-type-tag {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 4rpx 4rpx 4rpx 16rpx;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.accept-step-type-tag-text {
+  color: inherit;
+  font-size: 24rpx;
+}
+
+.accept-step-type-tag .accept-step-name {
+  color: inherit;
+}
+
 .accept-step-desc {
   display: block;
   font-size: 22rpx;
@@ -630,8 +650,8 @@
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
+  flex-wrap: wrap;
+  gap: 6rpx;
 }
 
 .accept-platform-badge {
