@@ -321,7 +321,7 @@ export class ContentGenerationService implements OnModuleInit {
       // 统一使用 INSERT 创建记录（不管是否传入 requestId）
       // 因为 requestId 是在 _doStartContentGeneration 中新生成的，记录一定不存在
       try {
-        await db.insert('content_generation_requests', {
+        const insertResult = await db.insert('content_generation_requests', {
           id: requestId,
           avatar_id: input.avatarId,
           order_id: input.orderId,
@@ -344,6 +344,7 @@ export class ContentGenerationService implements OnModuleInit {
             contentType: effectiveContentType,
           }),
         })
+        if (insertResult.error) throw insertResult.error
         this.logger.log(`创建生成记录: ${requestId}, platform=${platform}, assignedImages=${input.assignedImages?.length || 0}, assignedVideoUrl=${input.assignedVideoUrl || 'none'}`)
       } catch (dbError: any) {
         // 如果主键冲突，尝试 UPDATE
@@ -366,9 +367,11 @@ export class ContentGenerationService implements OnModuleInit {
             this.logger.log(`复用生成记录: ${requestId}, 状态: processing`)
           } catch (updateError: any) {
             this.logger.warn(`更新记录失败: ${updateError.message}`)
+            throw updateError
           }
         } else {
           this.logger.warn(`数据库创建记录失败: ${dbError.message}`)
+          throw dbError
         }
       }
 

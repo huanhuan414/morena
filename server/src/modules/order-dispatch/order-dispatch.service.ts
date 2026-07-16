@@ -2156,7 +2156,7 @@ async getExecutionProgress(orderId: string) {
         const dispatchResult = await db.query(
           `UPDATE order_dispatch_requests
           SET status = 'expired',
-            kick_type = 'content_generation_failed',
+            kick_type = 'generation_failed',
             reject_reason = ?,
             updated_at = NOW()
           WHERE id = ? AND status = 'accepted'`,
@@ -2174,7 +2174,7 @@ async getExecutionProgress(orderId: string) {
         const fallbackRequestId = requestId || `req_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
         await db.query(
           'UPDATE content_generation_requests SET status = ?, error = ?, updated_at = NOW() WHERE id = ?',
-          ['failed', `内容生成启动失败(${MAX_RETRIES}次重试): ${lastError?.message || '未知错误'}`, fallbackRequestId]
+          ['cancelled', `内容生成启动失败(${MAX_RETRIES}次重试): ${lastError?.message || '未知错误'}`, fallbackRequestId]
         )
       } catch (fallbackErr: any) {
         console.error('[startContentGeneration] 创建兜底记录也失败:', fallbackErr.message)
