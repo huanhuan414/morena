@@ -960,10 +960,12 @@ export default function OrderStepManagement() {
         },
       ]
     }
-    const exclusiveWarning = getExclusiveMaterialWarning(nextSteps, false)
-    if (exclusiveWarning) {
-      Taro.showToast({ title: exclusiveWarning, icon: 'none' })
-      return
+    if (MATERIAL_TYPES.includes(modalType)) {
+      const exclusiveWarning = getExclusiveMaterialWarning(nextSteps, false)
+      if (exclusiveWarning) {
+        Taro.showToast({ title: exclusiveWarning, icon: 'none' })
+        return
+      }
     }
     persistSteps(nextSteps)
     setShowModal(false)
