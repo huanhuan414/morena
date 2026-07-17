@@ -23,6 +23,7 @@ type AssignedMaterialGroup = {
 }
 
 type TaskInfo = {
+  orderId?: string
   platform?: string
   platforms?: string[]
   title?: string
@@ -80,8 +81,10 @@ export default function OrderAcceptTask() {
   const router = useRouter()
   const statusBarHeight = getStatusBarHeight()
   const requestId = String(router.params?.requestId || router.params?.id || '')
+  const routeOrderId = String(router.params?.orderId || router.params?.order_id || '')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [urgingReview, setUrgingReview] = useState(false)
   const [savingAllStepId, setSavingAllStepId] = useState('')
   const submitLockRef = useRef(false)
   const [taskStatus, setTaskStatus] = useState('')
@@ -129,6 +132,7 @@ export default function OrderAcceptTask() {
         const config = data.config || {}
         const request = data.request || {}
         setTaskInfo({
+          orderId: request.orderId || request.order_id || config.orderId || config.order_id || routeOrderId,
           platform: request.platform || config.platform || '',
           platforms: canonicalizePlatforms(config.platforms || request.platforms || []),
           title: config.title || data.title || '',
@@ -467,6 +471,27 @@ export default function OrderAcceptTask() {
     }
   }
 
+  const handleUrgeReview = async () => {
+    const targetOrderId = taskInfo.orderId || routeOrderId
+    if (!targetOrderId || urgingReview) return
+    setUrgingReview(true)
+    try {
+      const res = await Network.request({
+        url: '/api/notifications/urge-review',
+        method: 'POST',
+        data: { orderId: targetOrderId, contentTitle: taskInfo.title?.substring(0, 20) || '' },
+      })
+      if (res?.data?.code === 200) {
+        Taro.showToast({ title: '催验收提醒已发送', icon: 'success' })
+      } else {
+        Taro.showToast({ title: res?.data?.message || '发送失败', icon: 'none' })
+      }
+    } catch {
+      Taro.showToast({ title: '发送失败，请重试', icon: 'none' })
+    } finally {
+      setUrgingReview(false)
+    }
+  }
   const handlePublishTask = async () => {
     if (!requestId || submitting || submitLockRef.current) return
     submitLockRef.current = true
@@ -885,14 +910,20 @@ export default function OrderAcceptTask() {
           </View>
         )}
       </ScrollView>
-      {!previewOnly && !isAiTextGenerating && (
+      {(taskStatus === 'awaiting_acceptance' || (!previewOnly && !isAiTextGenerating)) && (
         <View
           className="accept-bottom-bar"
           style={{ position: 'fixed', display: 'flex' }}
         >
-          <Button className="accept-submit-btn" onClick={handlePublishTask} disabled={loading || submitting}>
-            <Text className="accept-submit-text">{submitting ? '发布中...' : '发布'}</Text>
-          </Button>
+          {taskStatus === 'awaiting_acceptance' ? (
+            <Button className="accept-submit-btn" onClick={handleUrgeReview} disabled={loading || urgingReview}>
+              <Text className="accept-submit-text">{urgingReview ? '发送中...' : '催验收'}</Text>
+            </Button>
+          ) : (
+            <Button className="accept-submit-btn" onClick={handlePublishTask} disabled={loading || submitting}>
+              <Text className="accept-submit-text">{submitting ? '发布中...' : '发布'}</Text>
+            </Button>
+          )}
         </View>
       )}
     </View>
