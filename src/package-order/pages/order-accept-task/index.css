@@ -701,6 +701,7 @@
 }
 
 .accept-step-title-actions {
+  margin-left: auto;
   display: flex;
   align-items: center;
   gap: 12rpx;
@@ -724,4 +725,28 @@
   font-size: 22rpx;
   color: #3b82f6;
   font-weight: 500;
+}
+
+.accept-url-box.single-action {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12rpx;
+}
+
+.accept-url-box.single-action .accept-url-text {
+  margin-bottom: 0;
+}
+
+.accept-action-row.single-action {
+  flex-shrink: 0;
+  margin-top: 0;
+  width: 100%;
+  justify-content: flex-end;
+}
+
+.accept-action-row.single-action .accept-action-btn {
+  flex: none;
+  width: 144rpx;
+  padding: 0;
 }

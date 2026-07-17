@@ -651,6 +651,7 @@ export default function OrderAcceptTask() {
     const mediaList = getMediaList(step)
     const extConfig = getExtConfig(step)
     const result = getStepResult(stepResults, step)
+    const inputUrlActionCount = ['open_button_text', 'copy_button_text'].filter(key => !!extConfig[key]).length
     const sampleImage = mediaList.find((item: any) => item.type === 'sample_image' || item.type === 'image' || item.type === 'qrcode')?.url
     const video = mediaList.find((item: any) => item.type === 'video')?.url
 
@@ -658,9 +659,9 @@ export default function OrderAcceptTask() {
       <>
         {step.isMaterial && renderMaterialContent(step, extConfig)}
         {mainContent && ['input_url'].includes(stepType) && (
-          <View className="accept-url-box">
+          <View className={`accept-url-box ${inputUrlActionCount === 1 ? 'single-action' : ''}`}>
             <Text className="accept-url-text">{mainContent}</Text>
-            <View className="accept-action-row">
+            <View className={`accept-action-row ${inputUrlActionCount === 1 ? 'single-action' : ''}`}>
               {!previewOnly && extConfig.open_button_text && (
                 <Button className="accept-action-btn" onClick={() => openUrl(mainContent)}>
                   <ExternalLink size={14} color="#fff" />

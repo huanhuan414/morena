@@ -40,7 +40,8 @@ const truncateStr = (str: string | undefined, maxLen = 20) => {
 };
 
 const STEP_EXT_CONFIG: Record<string, Record<string, string>> = {
-  input_url: { open_button_text: '打开链接', copy_button_text: '复制' },
+  // input_url: { open_button_text: '打开链接', copy_button_text: '复制' },
+  input_url: {copy_button_text: '复制' },
   upload_qrcode: { save_button_image: '保存' },
   copy_data: { copy_button_text: '复制' },
   collect_image: { upload_button_image: '上传图片' },
