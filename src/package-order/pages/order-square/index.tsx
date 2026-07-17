@@ -883,7 +883,6 @@ const Index: React.FC = () => {
                           })}
                         </View>
                         <View className="po-summary-metrics">
-                          <View className="po-summary-separator" />
                           <View className="po-summary-metric">
                             <View className="po-summary-metric-value-row">
                               <Clock size={18} color="#6366F1" />
@@ -947,7 +946,7 @@ const Index: React.FC = () => {
                           <>
                             <Sparkles size={16} color="#fff" />
                             {/* <Text className="po-btn-label po-btn-label-primary">接单赚¥{order.estimatedEarning.toFixed(2)}</Text> */}
-                            <Text className="po-btn-label po-btn-label-primary">接单预收益¥{calcEarningRange(order.customBasePrice || order.estimatedEarning)}</Text>
+                            <Text className="po-btn-label po-btn-label-primary">立即接单</Text>
                             <ChevronRight size={14} color="rgba(255,255,255,0.7)" />
                           </>
                         )}
