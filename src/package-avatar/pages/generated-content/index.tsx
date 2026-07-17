@@ -34,6 +34,30 @@ const BACKEND_STATUS_TO_TAB: Record<string, string> = {
   cancelled: 'cancelled',
 }
 
+// 后端原始状态 → 前端搜索状态
+const BACKEND_STATUS_TO_TAB_SEARCH: Record<string, string> = {
+  ready: 'preview',
+  queuing: 'preview',
+  pending: 'preview',
+  processing: 'preview',
+  generating: 'preview',
+  generating_text: 'preview',
+  generating_images: 'preview',
+  generating_video: 'preview',
+  preview: 'preview',
+  revision_requested: 'preview',
+  publishing: 'preview',
+  published: 'preview',
+  feedback_submitted: 'awaiting_acceptance',
+  awaiting_acceptance: 'awaiting_acceptance',
+  settled: 'completed',
+  done: 'completed',
+  failed: 'stop',
+  partial_failed: 'stop',
+  rejected: 'rejected',
+  cancelled: 'stop',
+}
+
 // 生成中的子阶段文案映射（用于进度提示）
 const GENERATING_PHASE: Record<string, string> = {
   queuing: '排队等待中...',
@@ -60,14 +84,15 @@ const CONTENT_STATUS_MAP: Record<string, { label: string; color: string; bgColor
 // Tab 状态筛选
 const STATUS_TABS = [
   { key: 'all', label: '全部' },
-  { key: 'generating', label: '生成中' },
+  // { key: 'generating', label: '生成中' },
   { key: 'preview', label: '待发布' },
-  { key: 'published', label: '待反馈' },
+  // { key: 'published', label: '待反馈' },
   { key: 'awaiting_acceptance', label: '待验收' },
   { key: 'completed', label: '已完成' },
   { key: 'rejected', label: '已拒绝' },
-  { key: 'failed', label: '生成失败' },
-  { key: 'cancelled', label: '已取消' },
+  { key: 'stop', label: '已终止' },
+  // { key: 'failed', label: '生成失败' },
+  // { key: 'cancelled', label: '已取消' },
 ]
 
 // 安全解析 JSON
@@ -207,7 +232,7 @@ export default function GeneratedContentPage() {
 
   // 筛选
   const filteredContents = contents.filter(c => {
-    const tabKey = BACKEND_STATUS_TO_TAB[c.status] || c.status
+    const tabKey = BACKEND_STATUS_TO_TAB_SEARCH[c.status] || c.status
     const statusMatch = activeTab === 'all' || tabKey === activeTab
     const avatarMatch = !selectedAvatarId || c.avatarId === selectedAvatarId
     return statusMatch && avatarMatch
@@ -368,7 +393,6 @@ export default function GeneratedContentPage() {
     const status = BACKEND_STATUS_TO_TAB[rawStatus] || rawStatus
     const isVideo = ['video_text', 'video_script', 'video'].includes(contentType || '')
     const isSimpleTask = contentType === 'simple'
-    console.log('*********orderPlatform', orderPlatform)
     if (orderPlatform === 'special') {
       switch (status) {
         case 'failed':

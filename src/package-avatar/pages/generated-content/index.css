@@ -1,7 +1,10 @@
 /* 页面容器 */
 .generated-content-page {
-  min-height: 100vh;
+  height: 100vh;
   background: #f5f6fa;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* 顶部蓝色背景 */
@@ -11,6 +14,8 @@
   padding: 0 32rpx 40rpx;
   border-radius: 0 0 40rpx 40rpx;
   overflow: hidden;
+  z-index: 10;
+  flex-shrink: 0;
 }
 
 .header-decoration {
@@ -84,6 +89,7 @@
 /* Tab 筛选 */
 .tab-filter {
   padding: 20rpx 32rpx 0;
+  flex-shrink: 0;
 }
 
 .tab-scroll {
@@ -119,6 +125,7 @@
   padding: 20rpx 32rpx 0;
   position: relative;
   z-index: 200;
+  flex-shrink: 0;
 }
 
 .avatar-selector {
@@ -214,8 +221,9 @@
 
 /* 内容列表 */
 .content-list {
+  flex: 1;
+  min-height: 0;
   padding: 20rpx 32rpx;
-  height: calc(100vh - 360rpx);
 }
 
 /* 内容卡片 */
@@ -324,12 +332,23 @@
 }
 
 /* 内容预览 */
+.content-preview-wrap {
+  margin-bottom: 16rpx;
+}
+
 .content-preview {
   display: block;
   font-size: 26rpx;
   color: #334155;
   line-height: 1.6;
-  margin-bottom: 16rpx;
+}
+
+.content-preview-toggle {
+  display: inline-block;
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #6366F1;
+  font-weight: 600;
 }
 
 /* 图片预览 */
