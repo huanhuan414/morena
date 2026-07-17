@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { View, Text, ScrollView, Button, Image } from '@tarojs/components'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Settings, Users, FileText, Coins, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye, ShoppingBag, ChevronRight, Gift, Clock, CircleCheckBig, ChevronDown } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { BANNER_TITLE, BANNER_DESC } from '@/constants/referral-rewards'
@@ -8,6 +8,7 @@ import { PLATFORM_UI_ORDER, getPlatformLabel, getPlatformMeta, canonicalizePlatf
 import { useUserStore } from '@/stores/user'
 import { useNotifications } from '@/hooks/useNotifications'
 import { Avatar as UiAvatar } from '@/components/ui/avatar'
+import { WeappButton } from '@/components/ui/weapp-button'
 import { getCapsuleButtonBottom } from '@/utils/safe-area'
 import { APP_VERSION } from '@/constants/app'
 import supportAgentIcon from '@/assets/support_agent.png'
@@ -172,11 +173,19 @@ const Index: React.FC = () => {
 
   // 格式化审核时间（小时转天数）
   const formatReviewTime = (hours: number): string => {
-    if (hours >= 24) {
-      const days = Math.floor(hours / 24)
-      return `${days}天`
+    const safeHours = Math.max(Number(hours || 0), 0)
+    if (safeHours >= 24) {
+      return `${Math.ceil(safeHours / 24)}天`
     }
-    return `${Math.ceil(hours)}小时`
+    return `${Math.ceil(safeHours)}小时`
+  }
+
+  const formatEarningAmount = (amount: number): string => Number(amount || 0).toFixed(2)
+
+  const formatPlanEarningRatio = (rate: number, freeRate: number): string => {
+    const diff = Number(freeRate || 0) - Number(rate || 0)
+    if (Math.abs(diff) < 0.000001) return ''
+    return `(+${Math.round((1 + diff) * 100)}%)`
   }
 
   const fetchEarningPlanInfo = useCallback(async (): Promise<EarningPlanInfo> => {
@@ -995,7 +1004,7 @@ const Index: React.FC = () => {
             </View>
           </View>
           <View className="header-right">
-            <Button
+            <WeappButton
               className="icon-btn"
               openType="contact"
               hoverClass="none"
@@ -1011,7 +1020,7 @@ const Index: React.FC = () => {
               }}
             >
               <Image className="support-agent-icon" src={supportAgentIcon} mode="aspectFit" />
-            </Button>
+            </WeappButton>
             <View className="icon-btn" onClick={() => Taro.navigateTo({ url: '/package-profile/pages/settings/index' })}>
               <Settings size={32} color="#FFFFFF" />
             </View>
@@ -1236,12 +1245,13 @@ const Index: React.FC = () => {
                 const contentTypeTag = getContentTypeTag(order)
                 const priorityColor = urgencyTag ? urgencyTag.color : '#6366F1'
                 const isExpanded = expandedOrderId === order.id
+                const earningPlans = [
+                  { planId: 'plan_free', name: earningPlanInfo.freeName.replace('版', '用户'), rate: earningPlanInfo.freeRate },
+                  { planId: 'plan_basic', name: earningPlanInfo.basicName.replace('版', '用户'), rate: earningPlanInfo.basicRate },
+                  { planId: 'plan_pro', name: earningPlanInfo.proName.replace('版', '用户'), rate: earningPlanInfo.proRate },
+                  { planId: 'plan_enterprise', name: earningPlanInfo.enterpriseName.replace('版', '用户'), rate: earningPlanInfo.enterpriseRate },
+                ]
                 void formatDeadline(order.deadline || order.contentDeadlineAt) // deadlineInfo (unused)
-                const reqTags = Array.isArray(order.requirements)
-                  ? (order.requirements as string[]).slice(0, 4)
-                  : (typeof order.requirements === 'object' && order.requirements?.skills)
-                    ? (order.requirements.skills as string[]).slice(0, 4)
-                    : []
 
                 return (
                   <View
@@ -1312,98 +1322,42 @@ const Index: React.FC = () => {
                         <Text className="po-card-desc">{order.description}</Text>
                       )}
 
-                      {/* 回报卡片：收益 + 交付周期 */}
-                      <View className="po-reward-card">
-                        <View className="po-reward-left">
-                          <View className="po-reward-amount">
-                            {/* <Text className="po-reward-symbol">¥</Text> */}
-                            {/* <Text className="po-reward-value">{order.estimatedEarning.toFixed(2)}</Text> */}
-                            <Text className="po-reward-value">¥{calcEarningRange(order.customBasePrice)}</Text>
-
-                            <Text className="po-reward-unit">/单</Text>
-                          </View>
-                          <Text className="po-reward-hint">预计创作收益</Text>
+                      {/* 订单收益与关键指标 */}
+                      <View className="po-order-summary-panel">
+                        <View className="po-earning-compare">
+                          {earningPlans.map((plan) => {
+                            const amount = calcNetAmount(order.customBasePrice, plan.rate)
+                            const isCurrent = earningPlanInfo.currentPlanId === plan.planId
+                            return (
+                              <View key={plan.planId} className={`po-earning-tier ${isCurrent ? 'current' : ''}`}>
+                                {isCurrent && <Text className="po-earning-current-tag">当前收益</Text>}
+                                <Text className="po-earning-plan-name">{plan.name}</Text>
+                                <Text className="po-earning-plan-amount">收益¥{formatEarningAmount(amount)}</Text>
+                                <Text className="po-earning-plan-ratio">{formatPlanEarningRatio(plan.rate, earningPlanInfo.freeRate)}</Text>
+                              </View>
+                            )
+                          })}
                         </View>
-                        <View className="po-reward-divider" />
-                        <View className="po-reward-right">
-                          <View className="po-reward-meta">
-                            <Clock size={16} color="#6366F1" />
-                            <Text className="po-reward-meta-text">{order.deliveryDays}天</Text>
-                          </View>
-                          <Text className="po-reward-meta-sub">交付周期</Text>
-                        </View>
-                        <>
-                          <View className="po-reward-divider" />
-                          <View className="po-reward-right">
-                            <View className="po-reward-meta">
-                              <Users size={16} color="#6366F1" />
-                              <Text className="po-reward-meta-text">{order.acceptCount || 0}/{order.avatarCount || 1}</Text>
+                        <View className="po-summary-metrics">
+                          <View className="po-summary-separator" />
+                          <View className="po-summary-metric">
+                            <View className="po-summary-metric-value-row">
+                              <Clock size={18} color="#6366F1" />
+                              <Text className="po-summary-metric-value">{formatReviewTime(Number(order.acceptanceTimeout || 0))}</Text>
                             </View>
-                            <Text className="po-reward-meta-sub">已接单</Text>
+                            <Text className="po-summary-metric-label">审核时间</Text>
                           </View>
-                        </>
-                      </View>
-
-                      {/* 需求标签 */}
-                      {reqTags.length > 0 && (
-                        <View className="po-match-tags">
-                          {reqTags.map((req: string, idx: number) => (
-                            <Text key={idx} className="po-match-tag po-match-tag-skill">{req}</Text>
-                          ))}
-                        </View>
-                      )}
-
-                      {/* 目标受众行 */}
-                      {order.targetAudience && (
-                        <View className="po-audience-row">
-                          <Users size={14} color="#9CA3AF" />
-                          <Text className="po-audience-text">目标受众：{order.targetAudience}</Text>
-                        </View>
-                      )}
-
-                      {/* 截止时间行 */}
-                      {/* {deadlineInfo && (
-                        <View className="po-deadline-row">
-                          <Clock size={14} color={deadlineInfo.color} />
-                          <Text className="po-deadline-text" style={{ color: deadlineInfo.color }}>
-                            截止：{deadlineInfo.text}
-                          </Text>
-                        </View>
-                      )} */}
-
-                      {/* 接单后流程（始终可见，一行展示） */}
-                      <View className="po-steps">
-                        <View className="po-step">
-                          <View className="po-step-dot po-step-dot-1"><Text className="po-step-num">1</Text></View>
-                          <Text className="po-step-text">订单创建</Text>
-                        </View>
-                        <View className="po-step-line" />
-                        <View className="po-step">
-                          <View className="po-step-dot po-step-dot-2"><Text className="po-step-num">2</Text></View>
-                          <Text className="po-step-text">确认发布</Text>
-                        </View>
-                        <View className="po-step-line" />
-                        <View className="po-step">
-                          <View className="po-step-dot po-step-dot-3"><Text className="po-step-num">3</Text></View>
-                          <Text className="po-step-text">获得收益</Text>
-                        </View>
-                      </View>
-
-                      {/* 付出与回报（始终可见） */}
-                      <View className="po-cost-benefit">
-                        <View className="po-cb-card po-cb-cost">
-                          <Text className="block po-cb-card-label">创作数量</Text>
-                          <Text className="block po-cb-card-value">{order.quantityPerAvatar || 1}条/分身</Text>
-                        </View>
-                        <View className="po-cb-card po-cb-benefit">
-                          <Text className="block po-cb-card-label">预计收益</Text>
-                          <Text className="block po-cb-card-value po-cb-card-value-hl">¥{calcEarningRange(order.customBasePrice)}<Text className="po-cb-card-sub">({earningPlanInfo.proName}用户：{calcNetAmount(order.customBasePrice, earningPlanInfo.proRate)}元)</Text></Text>
-                          {/* <Text className="block po-cb-card-value po-cb-card-value-hl">¥{(order.estimatedEarning || 0).toFixed(2)}</Text> */}
-                          {/* <Text className="block po-cb-card-tip">(预收益{calcEarningRange(order.estimatedEarning)})</Text> */}
+                          <View className="po-summary-separator" />
+                          <View className="po-summary-metric">
+                            <View className="po-summary-metric-value-row">
+                              <Users size={18} color="#6366F1" />
+                              <Text className="po-summary-metric-value">{order.acceptCount || 0}/{order.avatarCount || 1}</Text>
+                            </View>
+                            <Text className="po-summary-metric-label">已接单</Text>
+                          </View>
                         </View>
                       </View>
                     </View>
-
                     {/* 展开详情区 */}
                     {isExpanded && (
                       <View className="po-expanded-area" onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}>
@@ -1419,7 +1373,6 @@ const Index: React.FC = () => {
                         )}
                       </View>
                     )}
-
                     {/* 操作按钮 */}
                     <View className="po-card-actions">
                       <View

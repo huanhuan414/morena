@@ -1225,3 +1225,145 @@
   color: #1E293B;
   font-weight: 500;
 }
+
+/* 订单关键指标 + 收益对比 */
+.po-order-summary-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+
+.po-summary-metrics {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  background: linear-gradient(135deg, #F8FAFC, #EEF2FF);
+  border: 1rpx solid rgba(99, 102, 241, 0.08);
+  border-radius: 18rpx;
+  padding: 18rpx 16rpx;
+  box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.9);
+}
+
+.po-summary-metric {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+}
+
+.po-summary-metric-main {
+  flex: 1.15;
+}
+
+.po-summary-metric-value-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  min-height: 36rpx;
+}
+
+.po-summary-metric-value {
+  display: block;
+  max-width: 100%;
+  font-size: 28rpx;
+  line-height: 1.15;
+  font-weight: 700;
+  color: #1E293B;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.po-summary-metric-label {
+  display: block;
+  font-size: 22rpx;
+  line-height: 1.2;
+  font-weight: 600;
+  color: #94A3B8;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.po-summary-separator {
+  width: 2rpx;
+  height: 56rpx;
+  background: #E2E8F0;
+  margin: 0 8rpx;
+  flex-shrink: 0;
+}
+
+.po-earning-compare {
+  display: flex;
+  flex-direction: row;
+  gap: 10rpx;
+}
+
+.po-earning-tier {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 116rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4rpx;
+  padding: 18rpx 10rpx 14rpx;
+  border-radius: 14rpx;
+  background: #F8FAFC;
+  border: 1rpx solid #EEF2F7;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.po-earning-tier.current {
+  background: linear-gradient(135deg, #FEF3C7, #FFF7ED);
+  border-color: rgba(245, 158, 11, 0.22);
+}
+
+.po-earning-current-tag {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 3rpx 8rpx;
+  border-bottom-right-radius: 10rpx;
+  background: #F59E0B;
+  color: #FFFFFF;
+  font-size: 18rpx;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.po-earning-plan-name {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #334155;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.po-earning-plan-amount {
+  display: block;
+  font-size: 20rpx;
+  line-height: 1.2;
+  color: #0F172A;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.po-earning-plan-ratio {
+  display: block;
+  min-height: 22rpx;
+  font-size: 18rpx;
+  line-height: 1.2;
+  color: #6366F1;
+  white-space: nowrap;
+  text-align: center;
+}
