@@ -19,7 +19,6 @@ const BACKEND_STATUS_TO_TAB: Record<string, string> = {
   generating_images: 'generating',
   generating_video: 'generating',
   preview: 'preview',
-  completed: 'preview',
   revision_requested: 'revision_requested',
   publishing: 'published',
   published: 'published',
@@ -365,66 +364,81 @@ export default function GeneratedContentPage() {
   }
 
   // 获取卡片底部按钮配置
-  const getCardActions = (rawStatus: string, contentType?: string, content?: any) => {
+  const getCardActions = (rawStatus: string, contentType?: string, content?: any, orderPlatform?: string) => {
     const status = BACKEND_STATUS_TO_TAB[rawStatus] || rawStatus
     const isVideo = ['video_text', 'video_script', 'video'].includes(contentType || '')
     const isSimpleTask = contentType === 'simple'
-    switch (status) {
-      case 'preview':
-        if (isSimpleTask) {
+    console.log('*********orderPlatform', orderPlatform)
+    if (orderPlatform === 'special') {
+      switch (status) {
+        case 'failed':
           return [
-            { key: 'feedback', label: '上传截图', icon: ImagePlus, type: 'primary' },
+            { key: 'delete', label: '删除', icon: Trash2, type: 'danger' },
+            // { key: 'regenerate', label: '重新生成', icon: RefreshCw, type: 'primary' },
+          ]
+        case 'cancelled':
+          return [
+            { key: 'delete', label: '删除', icon: Trash2, type: 'danger' },
+          ]
+      }
+    } else {
+      switch (status) {
+        case 'preview':
+          if (isSimpleTask) {
+            return [
+              { key: 'feedback', label: '上传截图', icon: ImagePlus, type: 'primary' },
+              { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
+            ]
+          }
+          return [
+            { key: 'publish', label: '发布', icon: Send, type: 'primary' },
             { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
           ]
-        }
-        return [
-          { key: 'publish', label: '发布', icon: Send, type: 'primary' },
-          { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
-        ]
-      case 'published':
-        return [
-          { key: 'feedback', label: '反馈', icon: MessageSquare, type: 'primary' },
-          { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
-        ]
-      case 'revision_requested':
-        return [
-          { key: 'feedback', label: '反馈', icon: MessageSquare, type: 'primary' },
-          { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
-        ]
-      case 'awaiting_acceptance':
-        return [
-          { key: 'urge', label: '催验收', icon: Bell, type: 'primary' },
-          { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
-        ]
-      case 'generating':
-        return [
-          { key: 'view', label: isVideo ? '查看生成进度' : '查看进度', icon: Eye, type: 'default' },
-        ]
-      case 'completed':
-        return [
-          { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
-        ]
-      case 'failed':
-        return [
-          { key: 'delete', label: '删除', icon: Trash2, type: 'danger' },
-          // { key: 'regenerate', label: '重新生成', icon: RefreshCw, type: 'primary' },
-        ]
-      case 'rejected':
-        if (content && (content.revisionCount || content.revision_count || 0) >= 2) {
+        case 'published':
+          return [
+            { key: 'feedback', label: '反馈', icon: MessageSquare, type: 'primary' },
+            { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
+          ]
+        case 'revision_requested':
+          return [
+            { key: 'feedback', label: '反馈', icon: MessageSquare, type: 'primary' },
+            { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
+          ]
+        case 'awaiting_acceptance':
+          return [
+            { key: 'urge', label: '催验收', icon: Bell, type: 'primary' },
+            { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
+          ]
+        case 'generating':
+          return [
+            { key: 'view', label: isVideo ? '查看生成进度' : '查看进度', icon: Eye, type: 'default' },
+          ]
+        case 'completed':
           return [
             { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
           ]
-        }
-        return [
-          // { key: 'regenerate', label: '重新生成', icon: RefreshCw, type: 'primary' },
-          { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
-        ]
-      case 'cancelled':
-        return [
-          { key: 'delete', label: '删除', icon: Trash2, type: 'danger' },
-        ]
-      default:
-        return [{ key: 'view', label: '查看详情', icon: Eye, type: 'default' }]
+        case 'failed':
+          return [
+            { key: 'delete', label: '删除', icon: Trash2, type: 'danger' },
+            // { key: 'regenerate', label: '重新生成', icon: RefreshCw, type: 'primary' },
+          ]
+        case 'rejected':
+          if (content && (content.revisionCount || content.revision_count || 0) >= 2) {
+            return [
+              { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
+            ]
+          }
+          return [
+            // { key: 'regenerate', label: '重新生成', icon: RefreshCw, type: 'primary' },
+            { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
+          ]
+        case 'cancelled':
+          return [
+            { key: 'delete', label: '删除', icon: Trash2, type: 'danger' },
+          ]
+        default:
+          return [{ key: 'view', label: '查看详情', icon: Eye, type: 'default' }]
+      }
     }
   }
 
@@ -545,78 +559,96 @@ export default function GeneratedContentPage() {
             const platformKey = content.platform || (content.platforms?.[0]) || ''
             const platformInfo = getPlatformInfo(platformKey)
             const contentText = content.content || ''
+            const orderPlatform = content.order_platform || content.orderPlatform // "special"
+
             let videoUrls: string[] = []
             try {
               const rawVideoUrl = content.video_url || content.videoUrl || ''
               videoUrls = Array.isArray(rawVideoUrl) ? rawVideoUrl : (typeof rawVideoUrl === 'string' && rawVideoUrl.trim() ? (rawVideoUrl.startsWith('[') ? JSON.parse(rawVideoUrl) : [rawVideoUrl]) : [])
             } catch { videoUrls = [] }
             const avatarName = content.avatar_name || content.avatarName || '我的分身'
-            const actions = getCardActions(content.status, content.contentType, content)
+            const actions = getCardActions(content.status, content.contentType, content, orderPlatform)
             const isVideo = ['video', 'video_text'].includes(content.contentType)
 
             return (
               <View key={content.id} className="content-card">
                 {/* 卡片头部：分身+平台+状态 */}
-                <View className="card-header">
-                  <View className="avatar-tag">
-                    <View className="avatar-dot">
-                      <Text style={{ fontSize: 10, color: '#fff' }}>{avatarName.charAt(0)}</Text>
-                    </View>
-                    <Text className="avatar-name">{avatarName}</Text>
-                  </View>
-                  <View className="header-right">
-                    {platformKey && (
-                      <View className="platform-badge" style={{ background: `${platformInfo.color}15`, borderColor: `${platformInfo.color}30` }}>
-                        <Text className="platform-badge-text" style={{ color: platformInfo.color }}>{platformInfo.name}</Text>
+                <View
+                  className="po-btn po-btn-details"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (orderPlatform === 'special') {
+                      handleView(content)
+                    }
+                  }}
+                >
+                  <View className="card-header">
+                    <View className="avatar-tag">
+                      <View className="avatar-dot">
+                        <Text style={{ fontSize: 10, color: '#fff' }}>{avatarName.charAt(0)}</Text>
                       </View>
-                    )}
-                    <View className="status-badge" style={{ backgroundColor: statusInfo.bgColor }}>
-                      <Text className="status-badge-text" style={{ color: statusInfo.color }}>{statusInfo.label}</Text>
+                      <Text className="avatar-name">{avatarName}</Text>
+                    </View>
+                    <View className="header-right">
+                      {platformKey && (
+                        <View className="platform-badge" style={{ background: `${platformInfo.color}15`, borderColor: `${platformInfo.color}30` }}>
+                          <Text className="platform-badge-text" style={{ color: platformInfo.color }}>{platformInfo.name}</Text>
+                        </View>
+                      )}
+                      <View className="status-badge" style={{ backgroundColor: statusInfo.bgColor }}>
+                        <Text className="status-badge-text" style={{ color: statusInfo.color }}>{statusInfo.label}</Text>
+                      </View>
                     </View>
                   </View>
+
+                  {/* 订单标题 */}
+                  {content.orderTitle || content.order_title ? (
+                    <View className="order-title">
+                      <Text className="order-title-text">{content.orderTitle || content.order_title}</Text>
+                    </View>
+                  ) : null}
+
+                  {/* 超时倒计时（未发布且有超时时间） */}
+                  {content.acceptTimeoutAt && formatRemainingTime(content.acceptTimeoutAt) && !['awaiting_acceptance', 'settled', 'rejected', 'cancelled', 'failed'].includes(content.status) && (
+                    <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                      <Clock size={12} color="#EF4444" />
+                      <Text style={{ fontSize: 11, color: "#EF4444", marginLeft: 4 }}>
+                        {formatRemainingTime(content.acceptTimeoutAt) ? `剩余 ${formatRemainingTime(content.acceptTimeoutAt)}不发布，将自动释放名额！` : ''}
+                      </Text>
+                    </View>
+                  )}
+                  {content.acceptTimeoutAt && ['cancelled', 'expired'].includes(content.status) && (
+                    <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                      <Clock size={12} color="#EF4444" />
+                      <Text style={{ fontSize: 11, color: "#EF4444", marginLeft: 4 }}>
+                        超时未发布，名额已释放
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* 内容类型标签 */}
+                  <View className="type-tag">
+                    <TypeIcon size={12} color="#6366F1" />
+                    <Text className="type-tag-text">{typeInfo.name}</Text>
+                  </View>
+
+                  {/* 内容描述 */}
+                  <Text className="content-preview">
+                    {contentText.length > 120 ? contentText.substring(0, 120) + '...' : contentText}
+                  </Text>
                 </View>
 
-                {/* 订单标题 */}
-                {content.orderTitle || content.order_title ? (
-                  <View className="order-title">
-                    <Text className="order-title-text">{content.orderTitle || content.order_title}</Text>
-                  </View>
-                ) : null}
 
-                {/* 超时倒计时（未发布且有超时时间） */}
-                {content.acceptTimeoutAt && formatRemainingTime(content.acceptTimeoutAt) && !['awaiting_acceptance', 'settled', 'rejected', 'cancelled', 'failed'].includes(content.status) && (
-                  <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                    <Clock size={12} color="#EF4444" />
-                    <Text style={{ fontSize: 11, color: "#EF4444", marginLeft: 4 }}>
-                      {formatRemainingTime(content.acceptTimeoutAt) ? `剩余 ${formatRemainingTime(content.acceptTimeoutAt)}不发布，将自动释放名额！` : ''}
-                    </Text>
-                  </View>
-                )}
-                {content.acceptTimeoutAt && ['cancelled', 'expired'].includes(content.status) && (
-                  <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                    <Clock size={12} color="#EF4444" />
-                    <Text style={{ fontSize: 11, color: "#EF4444", marginLeft: 4 }}>
-                      超时未发布，名额已释放
-                    </Text>
-                  </View>
-                )}
-
-                {/* 内容类型标签 */}
-                <View className="type-tag">
-                  <TypeIcon size={12} color="#6366F1" />
-                  <Text className="type-tag-text">{typeInfo.name}</Text>
-                </View>
-
-                {/* 视频生成中状态提示 */}
+                {/* 视频生成中状态提示
                 {isVideo && videoUrls.length === 0 && BACKEND_STATUS_TO_TAB[content.status] === 'generating' && (
                   <View className="generating-phase-hint">
                     <View className="generating-spinner" />
                     <Text className="generating-phase-text">{GENERATING_PHASE[content.status] || '内容生成中...'}</Text>
                   </View>
-                )}
+                )} */}
 
                 {/* 视频内容卡片：只显示视频封面+简要文案 */}
-                {isVideo ? (
+                {/* {isVideo ? (
                   <View>
                     {contentText && (
                       <Text className="content-preview">
@@ -642,7 +674,7 @@ export default function GeneratedContentPage() {
                   </View>
                 ) : (
                   <View>
-                    {/* 图文内容卡片：显示文案+图片缩略图（图片异步加载） */}
+                     图文内容卡片：显示文案+图片缩略图（图片异步加载） 
                     <Text className="content-preview">
                       {contentText.length > 120 ? contentText.substring(0, 120) + '...' : contentText}
                     </Text>
@@ -673,7 +705,7 @@ export default function GeneratedContentPage() {
                       </View>
                     ) : null}
                   </View>
-                )}
+                )} */}
 
                 {/* 底部信息+操作按钮 */}
                 <View className="card-footer">
@@ -682,7 +714,7 @@ export default function GeneratedContentPage() {
                     <Text className="footer-time">{formatDateTime(content.createdAt)}</Text>
                   </View>
                   <View className="footer-actions">
-                    {actions.map(action => {
+                    {actions?.map(action => {
                       const ActionIcon = action.icon
                       return (
                         <View
