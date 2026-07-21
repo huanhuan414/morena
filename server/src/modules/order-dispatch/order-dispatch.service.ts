@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import { Injectable, Inject, Logger, forwardRef, HttpException, HttpStatus, ConflictException, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common'
 import { getMySQLClient, getPool } from '../../storage/database/mysql-client'
 import { SmsService } from '../sms/sms.service'
@@ -1558,7 +1558,7 @@ async getExecutionProgress(orderId: string) {
         [orderId]
       )
       const matchedPendingCount = Number((matchedPendingRows as any[])?.[0]?.count || 0)
-      const shouldKick = !isMatchedAvatar && (acceptedCount + matchedPendingCount) >= requiredCount
+      const shouldKick = (acceptedCount + matchedPendingCount) >= requiredCount
       if (shouldKick) {
         const [pendingDispatches] = await conn.query(
           `SELECT d.id, d.avatar_id, d.user_id

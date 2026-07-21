@@ -9,6 +9,9 @@ interface ImageGenParams {
   style?: string;
   size?: string;
   n?: number;
+  recordId?: string;
+  coinConsumed?: number;
+  attempts?: number;
 }
 
 interface ImageGenResult {
@@ -30,17 +33,36 @@ export class ImageGenService {
     @Inject(VolcengineService) private readonly volcengineService: VolcengineService,
   ) {}
 
+  async startGenerate(params: ImageGenParams) {
+    const recordId = crypto.randomUUID();
+    const { userId, prompt, style = 'realistic', size = '1024x1536', coinConsumed = 0 } = params;
+    const pool = getPool();
+    await pool.query(
+      `INSERT INTO generated_content (id, user_id, avatar_id, task_id, type, order_id, content_type, prompt, result, images, video_url, status, metadata, created_at, updated_at)
+       VALUES (?, ?, NULL, NULL, 'image', NULL, 'image', ?, ?, NULL, NULL, 'pending', ?, NOW(), NOW())`,
+      [
+        recordId,
+        userId,
+        prompt,
+        JSON.stringify({}),
+        JSON.stringify({ style, size, model: this.model, coinConsumed, attempts: 0, maxAttempts: 3 }),
+      ],
+    );
+    return { id: recordId, status: 'pending' };
+  }
+
   /**
    * 生成图片 - 直接将用户描述发送给图片生成API
    */
   async generate(params: ImageGenParams): Promise<ImageGenResult> {
-    const { userId, prompt, style = 'realistic', size = '1024x1536', n = 1 } = params;
+    const { userId, prompt, style = 'realistic', size = '1024x1536', n = 1, coinConsumed = 0, attempts = 1 } = params;
 
 
     const apiUrl = `${this.baseUrl}/v1/images/generations`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',
+      signal: AbortSignal.timeout(120000),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${this.apiKey}`,
@@ -90,10 +112,24 @@ export class ImageGenService {
 
 
     // 保存记录到数据库
-    const recordId = crypto.randomUUID();
+    const recordId = params.recordId || crypto.randomUUID();
     try {
       const pool = getPool();
-      await pool.query(
+      if (params.recordId) {
+        const [updateResult] = await pool.query(
+          `UPDATE generated_content SET result = ?, images = ?, status = 'completed', metadata = ?, updated_at = NOW()
+           WHERE id = ? AND status = 'generating'`,
+          [
+            JSON.stringify({ url: imageUrl, style, size, model: this.model }),
+            imageUrl,
+            JSON.stringify({ style, size, model: this.model, coinConsumed, attempts, maxAttempts: 3, apiResponse: { created: result.created } }),
+            recordId,
+          ],
+        );
+        if (Number((updateResult as any)?.affectedRows || 0) !== 1) {
+          throw new Error('图片任务状态已结束');
+        }
+      } else await pool.query(
         `INSERT INTO generated_content (id, user_id, avatar_id, task_id, type, order_id, content_type, prompt, result, images, video_url, status, metadata, created_at)
          VALUES (?, ?, NULL, NULL, ?, NULL, ?, ?, ?, ?, NULL, ?, ?, NOW())`,
         [
@@ -105,11 +141,12 @@ export class ImageGenService {
           JSON.stringify({ url: imageUrl, style, size, model: this.model }),
           imageUrl,
           'completed',
-          JSON.stringify({ style, size, model: this.model, apiResponse: { created: result.created } }),
+          JSON.stringify({ style, size, model: this.model, coinConsumed, attempts, maxAttempts: 3, apiResponse: { created: result.created } }),
         ]
       );
     } catch (dbError: any) {
       console.error('[ImageGenService] 保存记录失败:', dbError.message);
+      if (params.recordId) throw dbError;
     }
 
     return {
@@ -130,10 +167,10 @@ export class ImageGenService {
     const pool = getPool();
 
     const [rows] = await pool.query(
-      `SELECT id, prompt, images, content_type, metadata, status, created_at 
-       FROM generated_content 
-       WHERE user_id = ? AND content_type = 'image' 
-       ORDER BY created_at DESC 
+      `SELECT id, prompt, images, result, content_type, metadata, status, created_at
+       FROM generated_content
+       WHERE user_id = ? AND content_type = 'image'
+       ORDER BY created_at DESC
        LIMIT ? OFFSET ?`,
       [userId, pageSize, offset]
     );
@@ -157,6 +194,7 @@ export class ImageGenService {
           style: meta?.style,
           size: meta?.size,
           status: r.status,
+          errorMessage: typeof r.result === 'string' ? (() => { try { return JSON.parse(r.result)?.errorMessage; } catch { return undefined; } })() : r.result?.errorMessage,
           createdAt: r.created_at,
         };
       }),
@@ -192,6 +230,7 @@ export class ImageGenService {
       prompt: record.prompt,
       url: record.images,
       result: resultData,
+      errorMessage: resultData?.errorMessage,
       metadata: meta,
       status: record.status,
       createdAt: record.created_at,

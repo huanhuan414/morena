@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { View, Text, Input, Image, ScrollView } from '@tarojs/components'
-import Taro, { useRouter, useDidShow } from '@tarojs/taro'
-import { ArrowLeft, Sparkles, RefreshCw, ImagePlus, History, Trash2, Image as ImageIcon, TrendingUp } from 'lucide-react-taro'
+import Taro, { useRouter, useDidHide, useDidShow } from '@tarojs/taro'
+import { ArrowLeft, Sparkles, RefreshCw, ImagePlus, History, Trash2, Image as ImageIcon, TrendingUp, Video as VideoIcon } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { checkSkillPermission } from '@/utils/permission'
 import { getStatusBarHeight } from '@/utils/safe-area'
+import { subscribeManagedPolling } from '@/utils/polling'
+import { formatDateTime } from '@/utils/time'
 import './index.css'
 
 const CATEGORY_CONFIG: Record<string, { label: string; placeholder: string; examples: string[] }> = {
@@ -50,6 +52,7 @@ interface ImageRecord {
   url: string
   style?: string
   status: string
+  errorMessage?: string
   createdAt: string
 }
 
@@ -75,6 +78,12 @@ export default function SkillTryPage() {
 
   const [activeTab, setActiveTab] = useState<'generate' | 'history'>('generate')
   const [historyList, setHistoryList] = useState<ImageRecord[]>([])
+  const pollCtlRef = useRef<{
+    pause: () => void
+    resume: () => void
+    unsubscribe: () => void
+    cancel: () => void
+  } | null>(null)
 
   const isImageCategory = category === 'image'
   const isVideoCategory = category === 'video'
@@ -101,10 +110,72 @@ export default function SkillTryPage() {
     }
   }
 
+  const startPolling = (recordId: string, mediaType: 'image' | 'video') => {
+    let attempts = 0
+    const maxAttempts = mediaType === 'video' ? 480 : 60
+
+    pollCtlRef.current?.cancel()
+    const ctl = subscribeManagedPolling({
+      key: mediaType + '-gen:record:' + recordId,
+      baseIntervalMs: 3000,
+      maxIntervalMs: 30_000,
+      backoffFactor: 2,
+      fetcher: async () => {
+        attempts += 1
+        if (attempts > maxAttempts) throw new Error('timeout')
+        const res = await Network.request({
+          url: '/api/' + mediaType + '-gen/' + recordId,
+          dedupKey: mediaType + '-gen:record:' + recordId,
+        })
+        return res.data
+      },
+      onData: (payload: any) => {
+        const data = payload?.data
+        if (!data) return
+
+        if (data.status === 'completed' && data.url) {
+          ctl.cancel()
+          if (pollCtlRef.current === ctl) pollCtlRef.current = null
+          if (mediaType === 'image') setGeneratedImageUrl(data.url)
+          else setGeneratedVideoUrl(data.url)
+          setHasResult(true)
+          setLoading(false)
+          Taro.showToast({ title: '生成成功', icon: 'success' })
+          loadHistory()
+          return
+        }
+
+        if (data.status === 'failed') {
+          ctl.cancel()
+          if (pollCtlRef.current === ctl) pollCtlRef.current = null
+          setLoading(false)
+          const message = data.errorMessage || '生成失败，积分已退回'
+          Taro.showToast({ title: message, icon: 'none' })
+          loadHistory()
+        }
+      },
+      onError: (error: unknown) => {
+        if ((error as any)?.message !== 'timeout') return
+        ctl.cancel()
+        if (pollCtlRef.current === ctl) pollCtlRef.current = null
+        setLoading(false)
+        Taro.showToast({ title: '生成超时，请稍后在历史记录中查看', icon: 'none' })
+        loadHistory()
+      },
+    })
+
+    pollCtlRef.current = ctl
+  }
+
   useDidShow(() => {
     if (isImageCategory || isVideoCategory) {
       loadHistory()
     }
+    pollCtlRef.current?.resume()
+  })
+
+  useDidHide(() => {
+    pollCtlRef.current?.pause()
   })
 
   // 文本类技能体验
@@ -147,9 +218,9 @@ export default function SkillTryPage() {
       return
     }
 
-    const allowed = await checkSkillPermission(0)
-    if (!allowed) return
-
+    // 次数限制
+    // const allowed = await checkSkillPermission(0)
+    // if (!allowed) return
     setLoading(true)
     setGeneratedImageUrl('')
     setHasResult(false)
@@ -162,20 +233,22 @@ export default function SkillTryPage() {
       })
 
       const data = res.data?.data
-      if (res.data?.code === 200 && data?.url) {
+      if (res.data?.code === 200 && data?.id && (data.status === 'generating' || data.status === 'pending')) {
+        loadHistory()
+        startPolling(data.id, 'image')
+      } else if (res.data?.code === 200 && data?.url) {
         setGeneratedImageUrl(data.url)
-
         setHasResult(true)
-        // 刷新历史
+        setLoading(false)
         loadHistory()
       } else {
-        Taro.showToast({ title: res.data?.msg || '图片生成失败', icon: 'none' })
+        setLoading(false)
+        Taro.showToast({ title: res.data?.msg || '图片生成任务提交失败', icon: 'none' })
       }
     } catch (err) {
+      setLoading(false)
       console.error('[SkillTry] 图片生成错误:', err)
       Taro.showToast({ title: '网络异常，请重试', icon: 'none' })
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -186,37 +259,38 @@ export default function SkillTryPage() {
       Taro.showToast({ title: '请输入视频描述', icon: 'none' })
       return
     }
-
-    const allowed = await checkSkillPermission(0)
-    if (!allowed) return
+    // 限制次数
+    // const allowed = await checkSkillPermission(0)
+    // if (!allowed) return
 
     setLoading(true)
     setGeneratedVideoUrl('')
     setHasResult(false)
 
     try {
-      Taro.showLoading({ title: '视频生成中...', mask: true })
       const res = await Network.request({
         url: '/api/video-gen/generate',
         method: 'POST',
         data: { prompt: input.trim(), duration: 5, ratio: '9:16' },
       })
 
-      Taro.hideLoading()
       const data = res.data?.data
-      if (res.data?.code === 200 && data?.url) {
+      if (res.data?.code === 200 && data?.id && (data.status === 'generating' || data.status === 'pending')) {
+        loadHistory()
+        startPolling(data.id, 'video')
+      } else if (res.data?.code === 200 && data?.url) {
         setGeneratedVideoUrl(data.url)
         setHasResult(true)
+        setLoading(false)
         loadHistory()
       } else {
-        Taro.showToast({ title: res.data?.msg || '视频生成失败', icon: 'none' })
+        setLoading(false)
+        Taro.showToast({ title: res.data?.msg || '视频生成任务提交失败', icon: 'none' })
       }
     } catch (err) {
-      Taro.hideLoading()
+      setLoading(false)
       console.error('[SkillTry] 视频生成错误:', err)
       Taro.showToast({ title: '网络异常，请重试', icon: 'none' })
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -281,7 +355,7 @@ export default function SkillTryPage() {
       </View>
 
       {(isImageCategory || isVideoCategory) && (
-        <View style={{ paddingLeft: '32rpx', paddingRight: '32rpx', marginTop: '-24rpx', position: 'relative', zIndex: 10 }}>
+        <View style={{ paddingLeft: '32rpx', paddingRight: '32rpx', marginTop: '16rpx', position: 'relative', zIndex: 10 }}>
           <View style={{ display: 'flex', flexDirection: 'row', backgroundColor: PRIMARY_FAINT, borderRadius: '24rpx', padding: '6rpx' }}>
             <View
               style={{
@@ -374,12 +448,12 @@ export default function SkillTryPage() {
                   <View className="try-loading-dot" />
                 </View>
                 <Text className="block try-loading-text">
-                  {isImageCategory ? 'AI正在为你绘制精彩图片，预计15-30秒...' : 'AI正在为你生成精彩内容...'}
+                  {isImageCategory ? 'AI正在绘制中，预计15-30秒，可退出等待...' : 'AI正在生成中，可退出等待...'}
                 </Text>
               </View>
             )}
 
-            {hasResult && !loading && !isImageCategory && (
+            {hasResult && !loading && !isImageCategory && !isVideoCategory && (
               <View className="try-result-card">
                 <View className="try-result-header">
                   <View className="try-result-icon">
@@ -456,7 +530,7 @@ export default function SkillTryPage() {
               </View>
             )}
 
-            {hasResult && !loading && (
+            {/* {hasResult && !loading && (
               <View className="try-cta-card">
                 <Text className="block try-cta-title">喜欢这个技能？</Text>
                 <Text className="block try-cta-desc">为你的AI分身装配这个技能，自动接单赚钱</Text>
@@ -467,7 +541,7 @@ export default function SkillTryPage() {
                   去装配技能
                 </View>
               </View>
-            )}
+            )} */}
           </View>
         )}
 
@@ -479,7 +553,7 @@ export default function SkillTryPage() {
                   <ImageIcon size={28} color={PRIMARY_BORDER} />
                 </View>
                 <Text className="block try-history-empty-text">暂无生成记录</Text>
-                <Text className="block try-history-empty-sub">输入描述开始AI绘画</Text>
+                <Text className="block try-history-empty-sub">{isVideoCategory ? '输入描述开始生成AI视频' : '输入描述开始AI绘画'}</Text>
                 <View className="try-history-empty-btn" onClick={() => setActiveTab('generate')}>
                   <Text style={{ color: '#fff', fontSize: '26rpx', fontWeight: 600 }}>去生成</Text>
                 </View>
@@ -489,7 +563,7 @@ export default function SkillTryPage() {
                 {historyList.map((item) => (
                   <View key={item.id} className="try-history-record">
                     <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
-                      {item.url ? (
+                      {item.url && !isVideoCategory ? (
                         <Image
                           src={item.url}
                           style={{ width: '104rpx', height: '104rpx', borderRadius: '16rpx', flexShrink: 0 }}
@@ -497,7 +571,11 @@ export default function SkillTryPage() {
                         />
                       ) : (
                         <View style={{ width: '104rpx', height: '104rpx', borderRadius: '16rpx', backgroundColor: PRIMARY_FAINT, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <ImageIcon size={20} color={PRIMARY_BORDER} />
+                          {isVideoCategory ? (
+                            <VideoIcon size={20} color={PRIMARY_BORDER} />
+                          ) : (
+                            <ImageIcon size={20} color={PRIMARY_BORDER} />
+                          )}
                         </View>
                       )}
                       <View style={{ flex: 1, marginLeft: '24rpx', marginRight: '16rpx', overflow: 'hidden' }}>
@@ -510,10 +588,13 @@ export default function SkillTryPage() {
                             }}
                           />
                           <Text className="block" style={{ fontSize: '24rpx', color: '#999' }}>
-                            {item.status === 'completed' ? '已完成' : item.status === 'failed' ? '失败' : '生成中'}
+                            {item.status === 'completed' ? '已完成' : item.status === 'failed' ? '失败' : item.status === 'pending' ? '待处理' : '生成中'}
                           </Text>
                         </View>
-                        <Text className="block" style={{ fontSize: '22rpx', color: '#ccc', marginTop: '6rpx' }}>{item.createdAt}</Text>
+                        {item.status === 'failed' && item.errorMessage && (
+                          <Text className="block" style={{ fontSize: '22rpx', color: '#EF4444', marginTop: '6rpx' }}>{item.errorMessage}</Text>
+                        )}
+                        <Text className="block" style={{ fontSize: '22rpx', color: '#ccc', marginTop: '6rpx' }}>{formatDateTime(item.createdAt)}</Text>
                       </View>
                       <View
                         style={{ width: '64rpx', height: '64rpx', borderRadius: '16rpx', backgroundColor: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
@@ -523,13 +604,23 @@ export default function SkillTryPage() {
                       </View>
                     </View>
                     {item.status === 'completed' && item.url && (
-                      <View style={{ marginTop: '20rpx', borderRadius: '16rpx', overflow: 'hidden' }} onClick={() => handlePreviewImage(item.url)}>
-                        <Image
-                          src={item.url}
-                          style={{ width: '100%', height: '320rpx' }}
-                          mode="aspectFill"
-                        />
-                      </View>
+                      isVideoCategory ? (
+                        <View style={{ marginTop: '20rpx', borderRadius: '16rpx', overflow: 'hidden' }}>
+                          <video
+                            src={item.url}
+                            controls
+                            style={{ width: '100%', height: '320rpx' }}
+                          />
+                        </View>
+                      ) : (
+                        <View style={{ marginTop: '20rpx', borderRadius: '16rpx', overflow: 'hidden' }} onClick={() => handlePreviewImage(item.url)}>
+                          <Image
+                            src={item.url}
+                            style={{ width: '100%', height: '320rpx' }}
+                            mode="aspectFill"
+                          />
+                        </View>
+                      )
                     )}
                   </View>
                 ))}
