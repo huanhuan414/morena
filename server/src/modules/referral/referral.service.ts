@@ -55,22 +55,22 @@ export class ReferralService {
    */
   async checkInviterIpLimit(inviterIp: string): Promise<{ allowed: boolean; current: number; limit: number }> {
     const db = getMySQLClient()
-    
+
     if (!inviterIp) {
       return { allowed: true, current: 0, limit: 10 }
     }
-    
+
     // 查询今天同一IP下有多少个不同的邀请人
     const result = await db.query(
-      `SELECT COUNT(*) as count 
-       FROM users 
+      `SELECT COUNT(*) as count
+       FROM users
        WHERE (last_login_ip = ? OR ip_address = ?) AND DATE(created_at) = CURDATE()`,
       [inviterIp, inviterIp]
     ) as any[]
-    
+
     const currentCount = Number(result?.[0]?.count || 0)
-    const IP_DAILY_LIMIT = 50  // 同一IP每天最多50个不同的邀请人
-    
+    const IP_DAILY_LIMIT = 500  // 同一IP每天最多500个不同的邀请人
+
     return {
       allowed: currentCount < IP_DAILY_LIMIT,
       current: currentCount,
@@ -109,7 +109,14 @@ export class ReferralService {
     }
     
     // ✅ 检查邀请人的IP每日限制（VIP用户跳过）
-    const VIP_INVITER_IDS = ['acf59e3f-3a38-45af-95e7-056c91fc1771', '0f0fcfa8-9a0b-4168-898c-a55939ca62a1']  // 玲子 17885624676, 青～甜 18200383164
+    const VIP_INVITER_IDS = [
+      'acf59e3f-3a38-45af-95e7-056c91fc1771',  // 玲子 17885624676
+      '0f0fcfa8-9a0b-4168-898c-a55939ca62a1',  // 青～甜 18200383164
+      'ff5c3e20-24df-4c2b-94dc-157f878f5150',  // 招财猫 17585476712
+      '8617da2d-05fd-4f8a-91ba-f18667bc3901',  // 多多 15692717857
+      'b78b770e-005b-4cc8-b0d3-a7013c1af65f',  // 丧彪 13078584090
+      '2db4258f-23da-4cb4-bbde-1286a4d28ad1',  // 用户3172 13595193172
+    ]
     const inviterIp = inviter.last_login_ip || inviter.ip_address
     if (inviterIp && !VIP_INVITER_IDS.includes(inviter.id)) {
       const ipLimitInfo = await this.checkInviterIpLimit(inviterIp)
@@ -363,28 +370,35 @@ export class ReferralService {
   }
 
   /**
-   * 检查每日邀请限制（每人每日最多50人）
+   * 检查每日邀请限制（每人每日最多500人）
    */
   async checkDailyInviteLimit(userId: string): Promise<{ allowed: boolean; current: number; limit: number }> {
     // VIP用户无限制
-    const VIP_INVITER_IDS = ['acf59e3f-3a38-45af-95e7-056c91fc1771', '0f0fcfa8-9a0b-4168-898c-a55939ca62a1']  // 玲子 17885624676, 青～甜 18200383164
+    const VIP_INVITER_IDS = [
+      'acf59e3f-3a38-45af-95e7-056c91fc1771',  // 玲子 17885624676
+      '0f0fcfa8-9a0b-4168-898c-a55939ca62a1',  // 青～甜 18200383164
+      'ff5c3e20-24df-4c2b-94dc-157f878f5150',  // 招财猫 17585476712
+      '8617da2d-05fd-4f8a-91ba-f18667bc3901',  // 多多 15692717857
+      'b78b770e-005b-4cc8-b0d3-a7013c1af65f',  // 丧彪 13078584090
+      '2db4258f-23da-4cb4-bbde-1286a4d28ad1',  // 用户3172 13595193172
+    ]
     if (VIP_INVITER_IDS.includes(userId)) {
       return { allowed: true, current: 0, limit: 999999 }
     }
-    
+
     const db = getMySQLClient()
     const today = new Date().toISOString().split('T')[0]
-    
+
     const result = await db.query(
-      `SELECT COUNT(*) as count 
-       FROM referrals 
+      `SELECT COUNT(*) as count
+       FROM referrals
        WHERE referrer_id = ? AND DATE(created_at) = ? AND status = 'completed'`,
       [userId, today]
     ) as any[]
-    
+
     const currentCount = Number(result?.[0]?.count || 0)
-    const DAILY_LIMIT = 50
-    
+    const DAILY_LIMIT = 500
+
     return {
       allowed: currentCount < DAILY_LIMIT,
       current: currentCount,
