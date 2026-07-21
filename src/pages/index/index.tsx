@@ -8,6 +8,7 @@ import { PLATFORM_UI_ORDER, getPlatformLabel, getPlatformMeta, canonicalizePlatf
 import { useUserStore } from '@/stores/user'
 import { useNotifications } from '@/hooks/useNotifications'
 import { Avatar as UiAvatar } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 import { WeappButton } from '@/components/ui/weapp-button'
 import { getCapsuleButtonBottom } from '@/utils/safe-area'
 import { APP_VERSION } from '@/constants/app'
@@ -95,6 +96,7 @@ const Index: React.FC = () => {
   const [invitedCount, setInvitedCount] = useState(0)
   const [totalEarnings, setTotalEarnings] = useState(0)
   const [pendingOrders, setPendingOrders] = useState(0)
+  const [generatedContents, setGeneratedContents] = useState(0)
   const [growthCampaign, setGrowthCampaign] = useState<any>(null)
   const [trackedCampaignId, setTrackedCampaignId] = useState('')
   const [enabledMenuKeys, setEnabledMenuKeys] = useState<string[]>([])
@@ -666,6 +668,7 @@ const Index: React.FC = () => {
         setInvitedCount(d.invitedCount || 0)
         setTotalEarnings(Number(d.totalEarnings || 0))
         setPendingOrders(d.pendingOrders || 0)
+        setGeneratedContents(d.generatedContents || 0)
         // 获取静默信息
         if (d.silenceUntil) {
           setSilenceUntil(d.silenceUntil)
@@ -787,7 +790,7 @@ const Index: React.FC = () => {
 
   const getValueProp = () => {
     if (mindClones === 0) return '创建AI分身，开始自动赚钱'
-    if (!allHostingEnabled) return '开启托管，让分身24h替你接单'
+    if (!allHostingEnabled) return '分身添加技能，自动创收'
     if (pendingOrders > 0) return `${pendingOrders}个新订单等你来接`
     return '分身正在努力为你赚钱中'
   }
@@ -1097,12 +1100,18 @@ const Index: React.FC = () => {
             <View className="stat-item" onClick={() => goToPage('/package-order/pages/pending-order/index')}>
               <View className="stat-icon-small" style={{ background: '#FFFBEB' }}>
                 <ShoppingBag size={28} color="#F59E0B" />
+                <Badge className="stat-count-badge stat-count-badge-pending">
+                  <Text className="stat-count-text">{pendingOrders > 99 ? '99+' : pendingOrders}</Text>
+                </Badge>
               </View>
-              <Text className="stat-label-small">待接订单</Text>
+              <Text className="stat-label-small">接单赚钱</Text>
             </View>
             <View className="stat-item" onClick={() => goToPage('/package-avatar/pages/generated-content/index')}>
               <View className="stat-icon-small" style={{ background: '#ECFDF5' }}>
                 <FileText size={28} color="#10B981" />
+                <Badge className="stat-count-badge stat-count-badge-orders">
+                  <Text className="stat-count-text">{generatedContents > 99 ? '99+' : generatedContents}</Text>
+                </Badge>
               </View>
               <Text className="stat-label-small">我的订单</Text>
             </View>
@@ -1122,7 +1131,7 @@ const Index: React.FC = () => {
               <View className="stat-icon-small" style={{ background: '#F5F3FF' }}>
                 <MessagesSquare size={28} color="#10B981" />
               </View>
-              <Text className="stat-label-small">公众号文章</Text>
+              <Text className="stat-label-small">公众号图文</Text>
             </View>
             <View
               className="stat-item"
