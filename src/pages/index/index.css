@@ -235,19 +235,19 @@
   color: #059669;
 }
 .stats-row {
-  display: flex;
-  flex-direction: row;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16rpx;
 }
 .stat-item {
-  flex: 1;
+  min-width: 0;
   background: #FFFFFF;
   border-radius: 20rpx;
-  padding: 20rpx 12rpx;
+  padding: 24rpx 8rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6rpx;
+  gap: 12rpx;
   box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.03);
 }
 .stat-icon-small {
@@ -258,17 +258,9 @@
   align-items: center;
   justify-content: center;
 }
-.stat-value-small {
-  font-size: 32rpx;
-  font-weight: 700;
-}
 .stat-label-small {
   font-size: 22rpx;
   color: #94A3B8;
-}
-.stat-hint {
-  font-size: 20rpx;
-  margin-top: 2rpx;
 }
 
 /* ===== Banner ===== */

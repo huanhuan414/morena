@@ -1,6 +1,6 @@
 import Taro, { useDidShow, navigateTo, reLaunch, showModal } from '@tarojs/taro'
 import { useState } from 'react'
-import { View, Text, ScrollView, Image, Button } from '@tarojs/components'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
 import {
@@ -8,6 +8,7 @@ import {
   Wallet, Crown, Trophy, Sparkles, FileText, Coins, MessageCircle
 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
+import { WeappButton } from '@/components/ui/weapp-button'
 import { APP_VERSION } from '@/constants/app'
 import '@/styles/variables.css'
 import logoImage from '@/static/logo.jpg'
@@ -298,7 +299,7 @@ export default function ProfilePage() {
               // 客服菜单项使用 Button open-type="contact"
               if (item.key === 'customer_service') {
                 return (
-                  <Button
+                  <WeappButton
                     key={idx}
                     className="menu-item contact-menu-item"
                     openType="contact"
@@ -329,7 +330,7 @@ export default function ProfilePage() {
                       <Text className="menu-desc">{item.desc}</Text>
                     </View>
                     <ChevronRight size={20} color="#cccccc" />
-                  </Button>
+                  </WeappButton>
                 )
               }
               // 普通菜单项
