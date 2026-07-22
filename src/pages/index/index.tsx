@@ -294,7 +294,21 @@ const Index: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const ordersFetchInFlightRef = useRef(false)
   const lastOrdersFetchAtRef = useRef(0)
+  const skipNextDidShowRefreshRef = useRef(false)
 
+  const scrollToTop = () => {
+    Taro.createSelectorQuery()
+      .select('#home-content-scroll')
+      .node()
+      .exec((res) => {
+        const scrollView = res?.[0]?.node
+        scrollView?.scrollTo?.({
+          top: 0,
+          animated: true,
+          duration: 300,
+        })
+      })
+  }
 
   const platformTabs = [
     { key: 'all', label: '全部' },
@@ -441,7 +455,13 @@ const Index: React.FC = () => {
         confirmText: '我的订单',
         success: (res) => {
           if (res.confirm) {
-            Taro.navigateTo({ url: '/package-avatar/pages/generated-content/index' })
+            skipNextDidShowRefreshRef.current = true
+            Taro.navigateTo({
+              url: '/package-avatar/pages/generated-content/index',
+              fail: () => {
+                skipNextDidShowRefreshRef.current = false
+              },
+            })
           }
         },
       })
@@ -453,12 +473,16 @@ const Index: React.FC = () => {
       return
     }
 
+    skipNextDidShowRefreshRef.current = true
     Taro.navigateTo({
       url: `/package-order/pages/order-accept-task/index?${buildAcceptTaskQuery({
         orderId: order.id,
         avatarId: order.acceptedAvatarId,
         requestId: order.requestId,
       })}`,
+      fail: () => {
+        skipNextDidShowRefreshRef.current = false
+      },
     })
   }
 
@@ -611,7 +635,10 @@ const Index: React.FC = () => {
           })
         }, 500)
       } else {
-        Taro.showToast({ title: res.data?.message || '接单失败', icon: 'none' })
+        Taro.showToast({
+          title: res.data?.message
+            || '接单失败', icon: 'none'
+        })
       }
     } catch (err) {
       console.error('接单失败:', err)
@@ -720,6 +747,11 @@ const Index: React.FC = () => {
   }
 
   useDidShow(() => {
+    if (skipNextDidShowRefreshRef.current) {
+      skipNextDidShowRefreshRef.current = false
+      return
+    }
+
     loadUserFromStorage().then(() => {
       fetchStats()
       fetchGrowthCampaign()
@@ -1031,6 +1063,7 @@ const Index: React.FC = () => {
 
       {/* 主内容区 */}
       <ScrollView
+        id="home-content-scroll"
         scrollY
         className="content"
         enhanced
@@ -1264,7 +1297,7 @@ const Index: React.FC = () => {
 
           {/* 订单列表 - 待接订单风格卡片 orders.length=${orders.length} */}
           <View className="home-order-list">
-            {ordersLoading ? (
+            {ordersLoading && orders.length === 0 ? (
               <View className="po-loading">
                 <View className="po-spinner" />
                 <Text className="po-loading-text">加载中...</Text>
@@ -1455,8 +1488,12 @@ const Index: React.FC = () => {
         <View className="bottom-spacer" />
       </ScrollView>
 
-      {acceptConfirmData && (
-        <View className="accept-confirm-overlay" onClick={() => closeAcceptConfirm(false)}>
+      <View
+        className="accept-confirm-overlay"
+        style={{ display: acceptConfirmData ? 'flex' : 'none' }}
+        onClick={() => closeAcceptConfirm(false)}
+      >
+        {acceptConfirmData && (
           <View className="accept-confirm-modal" onClick={(e) => e.stopPropagation()}>
             <View className="accept-confirm-main">
               <View className="accept-confirm-row">
@@ -1508,8 +1545,8 @@ const Index: React.FC = () => {
               </View>
             </View>
           </View>
-        </View>
-      )}
+        )}
+      </View>
 
       {/* 订单通知弹窗 */}
       {showOrderModal && orderModalData && (
