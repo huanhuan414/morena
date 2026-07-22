@@ -1,13 +1,14 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
-import { Settings, Users, FileText, Coins, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye, ShoppingBag, ChevronRight, Gift, Clock, CircleCheckBig, ChevronDown } from 'lucide-react-taro'
+import { Settings, Users, FileText, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye, ShoppingBag, ChevronRight, Gift, Clock, CircleCheckBig, ChevronDown, ImagePlus, MessagesSquare, Video, Shirt, Hand } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { BANNER_TITLE, BANNER_DESC } from '@/constants/referral-rewards'
 import { PLATFORM_UI_ORDER, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
 import { useUserStore } from '@/stores/user'
 import { useNotifications } from '@/hooks/useNotifications'
 import { Avatar as UiAvatar } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 import { WeappButton } from '@/components/ui/weapp-button'
 import { getCapsuleButtonBottom } from '@/utils/safe-area'
 import { APP_VERSION } from '@/constants/app'
@@ -789,7 +790,7 @@ const Index: React.FC = () => {
 
   const getValueProp = () => {
     if (mindClones === 0) return '创建AI分身，开始自动赚钱'
-    if (!allHostingEnabled) return '开启托管，让分身24h替你接单'
+    if (!allHostingEnabled) return '分身添加技能，自动创收'
     if (pendingOrders > 0) return `${pendingOrders}个新订单等你来接`
     return '分身正在努力为你赚钱中'
   }
@@ -1096,48 +1097,77 @@ const Index: React.FC = () => {
             </View>
           )}
           <View className="stats-row">
-            <View className="stat-item" onClick={() => goToPage('/pages/mind-chat/index')}>
-              <View className="stat-icon-small" style={{ background: '#EEF2FF' }}>
-                <Users size={28} color="#6366F1" />
-              </View>
-              <Text className="stat-value-small" style={{ color: '#6366F1' }}>{mindClones}</Text>
-              <Text className="stat-label-small">我的分身</Text>
-              <Text className="stat-hint" style={{ color: mindClones > 0 ? '#6366F1' : '#94A3B8' }}>
-                {mindClones > 0 ? '管理分身' : '创建分身'}
-              </Text>
-            </View>
             <View className="stat-item" onClick={() => goToPage('/package-order/pages/pending-order/index')}>
               <View className="stat-icon-small" style={{ background: '#FFFBEB' }}>
                 <ShoppingBag size={28} color="#F59E0B" />
+                <Badge className="stat-count-badge stat-count-badge-pending">
+                  <Text className="stat-count-text">{pendingOrders > 99 ? '99+' : pendingOrders}</Text>
+                </Badge>
               </View>
-              <Text className="stat-value-small" style={{ color: '#F59E0B' }}>{pendingOrders}</Text>
-              <Text className="stat-label-small">待接订单</Text>
-              <Text className="stat-hint" style={{ color: pendingOrders > 0 ? '#F59E0B' : '#94A3B8' }}>
-                {pendingOrders > 0 ? '去接单赚钱' : '暂无待接'}
-              </Text>
+              <Text className="stat-label-small">接单赚钱</Text>
             </View>
             <View className="stat-item" onClick={() => goToPage('/package-avatar/pages/generated-content/index')}>
               <View className="stat-icon-small" style={{ background: '#ECFDF5' }}>
                 <FileText size={28} color="#10B981" />
+                <Badge className="stat-count-badge stat-count-badge-orders">
+                  <Text className="stat-count-text">{generatedContents > 99 ? '99+' : generatedContents}</Text>
+                </Badge>
               </View>
-              <Text className="stat-value-small" style={{ color: '#10B981' }}>{generatedContents}</Text>
               <Text className="stat-label-small">我的订单</Text>
-              <Text className="stat-hint" style={{ color: generatedContents > 0 ? '#10B981' : '#94A3B8' }}>
-                {generatedContents > 0 ? '去发布' : '暂无内容'}
-              </Text>
+            </View>
+            <View
+              className="stat-item"
+              onClick={() => goToPage(`/package-skill/pages/skill-try/index?skillId=image_gen&skillName=${encodeURIComponent('图片生成')}&category=image`)}
+            >
+              <View className="stat-icon-small" style={{ background: '#ECFEFF' }}>
+                <ImagePlus size={28} color="#8B5CF6" />
+              </View>
+              <Text className="stat-label-small">图片生成</Text>
+            </View>
+            <View
+              className="stat-item"
+              onClick={() => goToPage(`/package-skill/pages/wechat-mp-article/index?skillId=content_writing&skillName=${encodeURIComponent('公众号文章')}`)}
+            >
+              <View className="stat-icon-small" style={{ background: '#F5F3FF' }}>
+                <MessagesSquare size={28} color="#10B981" />
+              </View>
+              <Text className="stat-label-small">公众号图文</Text>
+            </View>
+            <View
+              className="stat-item"
+              onClick={() => goToPage(`/package-skill/pages/skill-try/index?skillId=video_gen&skillName=${encodeURIComponent('视频生成')}&category=video`)}
+            >
+              <View className="stat-icon-small" style={{ background: '#FDF2F8' }}>
+                <Video size={28} color="#FB7185" />
+              </View>
+              <Text className="stat-label-small">视频生成</Text>
+            </View>
+            <View
+              className="stat-item"
+              onClick={() => goToPage(`/package-skill/pages/fashion-makeover/index?skillId=fashion_advice&skillName=${encodeURIComponent('衣品改造')}`)}
+            >
+              <View className="stat-icon-small" style={{ background: '#FFF1F2' }}>
+                <Shirt size={28} color="#F59E0B" />
+              </View>
+              <Text className="stat-label-small">衣品改造</Text>
+            </View>
+            <View
+              className="stat-item"
+              onClick={() => goToPage(`/package-skill/pages/palm-reading/index?skillId=palm_reading&skillName=${encodeURIComponent('看手相')}`)}
+            >
+              <View className="stat-icon-small" style={{ background: '#ECFDF5' }}>
+                <Hand size={28} color="#7C3AED" />
+              </View>
+              <Text className="stat-label-small">看手相</Text>
             </View>
             <View
               className="stat-item"
               onClick={() => (enabledMenuKeys.length === 0 || enabledMenuKeys.includes('earning_center')) && goToPage('/package-profile/pages/earning-center/index')}
             >
               <View className="stat-icon-small" style={{ background: '#FDF2F8' }}>
-                <Coins size={28} color="#EC4899" />
+                <CircleDollarSign size={28} color="#EC4899" />
               </View>
-              <Text className="stat-value-small" style={{ color: '#EC4899' }}>¥{totalEarnings > 0 ? totalEarnings.toFixed(2) : '0.00'}</Text>
-              <Text className="stat-label-small">累计收益</Text>
-              <Text className="stat-hint" style={{ color: totalEarnings > 0 ? '#EC4899' : '#94A3B8' }}>
-                {totalEarnings > 0 ? '去提现' : '开始赚取'}
-              </Text>
+              <Text className="stat-label-small">收益中心</Text>
             </View>
           </View>
         </View>
@@ -1399,7 +1429,7 @@ const Index: React.FC = () => {
                         ) : (
                           <>
                             <Sparkles size={16} color="#fff" />
-                              <Text className="po-btn-label po-btn-label-primary">立即接单</Text>
+                            <Text className="po-btn-label po-btn-label-primary">立即接单</Text>
 
                             <ChevronRight size={14} color="rgba(255,255,255,0.7)" />
                           </>

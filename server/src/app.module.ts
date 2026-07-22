@@ -39,6 +39,7 @@ import { SkillModule } from './modules/skill/skill.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { ImageGenModule } from './modules/image-gen/image-gen.module';
 import { VideoGenModule } from './modules/video-gen/video-gen.module';
+import { GenerationQueueModule } from './modules/generation-queue/generation-queue.module';
 import { AiSkillModule } from './modules/ai-skill/ai-skill.module';
 import { OrderAssetsModule } from './modules/order-assets/order-assets.module';
 import { RedisModule } from './modules/redis/redis.module';
@@ -86,6 +87,7 @@ import { MenuFeatureModule } from './modules/menu-feature/menu-feature.module';
     PaymentModule,
     ImageGenModule,
     VideoGenModule,
+    GenerationQueueModule,
     AiSkillModule,
     OrderAssetsModule,
     CoinModule,

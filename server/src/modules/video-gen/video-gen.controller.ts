@@ -2,6 +2,7 @@ import { Controller, Get, Post, Delete, Query, Body, Param, Req, HttpCode, HttpS
 import { VideoGenService } from './video-gen.service';
 import { CoinService } from '../coin/coin.service';
 import { AiSkillService } from '../ai-skill/ai-skill.service';
+import { getPool } from '../../storage/database/mysql-client';
 
 const SKILL_NAME = '视频生成';
 
@@ -30,21 +31,32 @@ export class VideoGenController {
     try {
       const skillType = 'video_gen';
 
-      const limitCheck = await this.aiSkillService.checkDailyLimit(userId, skillType);
-      if (limitCheck.remaining <= 0) {
-        return { 
-          code: 429, 
-          msg: `今日使用次数已达上限（${limitCheck.limit}次/天）`, 
-          data: { remaining: 0, limit: limitCheck.limit, used: limitCheck.used } 
-        };
+      const [activeTasks] = await getPool().query(
+        `SELECT id FROM generated_content
+         WHERE user_id = ? AND content_type = 'video' AND status IN ('pending', 'generating')
+         LIMIT 1`,
+        [userId],
+      );
+      if ((activeTasks as any[]).length > 0) {
+        return { code: 409, msg: '请等待前面的作品完成', data: null };
       }
+
+
+      // const limitCheck = await this.aiSkillService.checkDailyLimit(userId, skillType);
+      // if (limitCheck.remaining <= 0) {
+      //   return {
+      //     code: 429,
+      //     msg: `今日使用次数已达上限（${limitCheck.limit}次/天）`,
+      //     data: { remaining: 0, limit: limitCheck.limit, used: limitCheck.used }
+      //   };
+      // }
 
       const canConsume = await this.coinService.canConsume(userId, skillType);
       if (!canConsume.canConsume) {
-        return { 
-          code: 402, 
-          msg: `积分余额不足，当前 ${canConsume.balance} 积分，需要 ${canConsume.price} 积分`, 
-          data: { balance: canConsume.balance, price: canConsume.price } 
+        return {
+          code: 402,
+          msg: `积分余额不足，当前 ${canConsume.balance} 积分，需要 ${canConsume.price} 积分`,
+          data: { balance: canConsume.balance, price: canConsume.price }
         };
       }
 
@@ -57,29 +69,32 @@ export class VideoGenController {
       }
 
       try {
-        const result = await this.videoGenService.generate({
+        const task = await this.videoGenService.startGenerate({
           userId,
           prompt: body.prompt.trim(),
           duration: body.duration || 5,
           ratio: body.ratio || '9:16',
+          coinConsumed: consumeResult.amount,
         });
-        return { 
-          code: 200, 
-          msg: '生成成功', 
+
+        return {
+          code: 200,
+          msg: '已进入待处理队列',
           data: {
-            ...result,
+            id: task.id,
+            status: task.status,
             coinConsumed: consumeResult.amount,
             balanceAfter: consumeResult.balanceAfter
           }
         };
       } catch (generateError: any) {
-        console.error('[VideoGenController] 生成失败，退款:', generateError.message);
+        console.error('[VideoGenController] 提交失败，退款:', generateError.message);
         try {
-          await this.coinService.gift(userId, consumeResult.amount, `${SKILL_NAME}生成失败退款`);
+          await this.coinService.gift(userId, consumeResult.amount, SKILL_NAME + '提交失败退款');
         } catch (refundError: any) {
           console.error('[VideoGenController] 退款失败:', refundError.message);
         }
-        return { code: 500, msg: generateError.message || '视频生成失败', data: null };
+        return { code: 500, msg: generateError.message || '视频生成任务提交失败', data: null };
       }
     } catch (error: any) {
       console.error('[VideoGenController] generate error:', error.message);

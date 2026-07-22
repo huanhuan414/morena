@@ -1,19 +1,27 @@
 .index-page {
-  min-height: 100vh;
+  height: 100vh;
   background: #F8FAFC;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* ===== 顶部通栏 ===== */
 .header {
   position: relative;
+  width: 100%;
   padding-bottom: 24rpx;
+  background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 50%, #4F46E5 100%);
+  border-radius: 0 0 40rpx 40rpx;
+  overflow: hidden;
+  z-index: 10;
+  flex-shrink: 0;
 }
 .header-bg {
   position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 500rpx;
-  background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #7C3AED 100%);
-  border-radius: 0 0 48rpx 48rpx;
+  inset: 0;
+  background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 50%, #4F46E5 100%);
+  pointer-events: none;
 }
 .header-content {
   position: relative;
@@ -113,8 +121,11 @@
 
 /* ===== 主内容区 ===== */
 .content {
-  height: calc(100vh - 200rpx);
+  height: 0;
+  flex: 1;
+  min-height: 0;
   padding: 0 24rpx;
+  box-sizing: border-box;
 }
 
 /* ===== 新手引导 ===== */
@@ -235,40 +246,65 @@
   color: #059669;
 }
 .stats-row {
-  display: flex;
-  flex-direction: row;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16rpx;
 }
 .stat-item {
-  flex: 1;
+  min-width: 0;
   background: #FFFFFF;
   border-radius: 20rpx;
-  padding: 20rpx 12rpx;
+  padding: 24rpx 8rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6rpx;
+  gap: 12rpx;
   box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.03);
 }
 .stat-icon-small {
+  position: relative;
   width: 56rpx;
   height: 56rpx;
   border-radius: 16rpx;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: visible;
 }
-.stat-value-small {
-  font-size: 32rpx;
+.stat-count-badge {
+  position: absolute;
+  top: -12rpx;
+  right: -18rpx;
+  z-index: 2;
+  min-width: 34rpx !important;
+  height: 34rpx !important;
+  padding: 0 6rpx !important;
+  border: 2rpx solid #FFFFFF !important;
+  border-radius: 9999rpx !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  overflow: visible;
+}
+.stat-count-badge-pending {
+  background: #F59E0B;
+}
+.stat-count-badge-orders {
+  background: #10B981;
+}
+.stat-count-text {
+  display: block;
+  color: #FFFFFF !important;
+  font-size: 18rpx;
   font-weight: 700;
+  line-height: 30rpx;
+  text-align: center;
+  white-space: nowrap;
 }
 .stat-label-small {
   font-size: 22rpx;
   color: #94A3B8;
-}
-.stat-hint {
-  font-size: 20rpx;
-  margin-top: 2rpx;
 }
 
 /* ===== Banner ===== */

@@ -2,6 +2,7 @@ import { Controller, Get, Post, Delete, Query, Body, Param, Req, HttpCode, HttpS
 import { ImageGenService } from './image-gen.service';
 import { CoinService } from '../coin/coin.service';
 import { AiSkillService } from '../ai-skill/ai-skill.service';
+import { getPool } from '../../storage/database/mysql-client';
 
 const SKILL_NAMES: Record<string, string> = {
   text: '文本生成',
@@ -53,23 +54,34 @@ export class ImageGenController {
     try {
       const skillType = 'image_gen';
 
-      // 检查每日使用次数限制
-      const limitCheck = await this.aiSkillService.checkDailyLimit(userId, skillType);
-      if (limitCheck.remaining <= 0) {
-        return { 
-          code: 429, 
-          msg: `今日使用次数已达上限（${limitCheck.limit}次/天）`, 
-          data: { remaining: 0, limit: limitCheck.limit, used: limitCheck.used } 
-        };
+      const [activeTasks] = await getPool().query(
+        `SELECT id FROM generated_content
+         WHERE user_id = ? AND content_type = 'image' AND status IN ('pending', 'generating')
+         LIMIT 1`,
+        [userId],
+      );
+      if ((activeTasks as any[]).length > 0) {
+        return { code: 409, msg: '请等待前面的作品完成', data: null };
       }
+
+
+      // // 检查每日使用次数限制
+      // const limitCheck = await this.aiSkillService.checkDailyLimit(userId, skillType);
+      // if (limitCheck.remaining <= 0) {
+      //   return {
+      //     code: 429,
+      //     msg: `今日使用次数已达上限（${limitCheck.limit}次/天）`,
+      //     data: { remaining: 0, limit: limitCheck.limit, used: limitCheck.used }
+      //   };
+      // }
 
       // 检查积分余额是否充足
       const canConsume = await this.coinService.canConsume(userId, skillType);
       if (!canConsume.canConsume) {
-        return { 
-          code: 402, 
-          msg: `积分余额不足，当前 ${canConsume.balance} 积分，需要 ${canConsume.price} 积分`, 
-          data: { balance: canConsume.balance, price: canConsume.price } 
+        return {
+          code: 402,
+          msg: `积分余额不足，当前 ${canConsume.balance} 积分，需要 ${canConsume.price} 积分`,
+          data: { balance: canConsume.balance, price: canConsume.price }
         };
       }
 
@@ -82,36 +94,38 @@ export class ImageGenController {
         return { code: 402, msg: coinError.message || '扣积分失败', data: null };
       }
 
-      // 生成图片
+      // 创建异步生成任务，立即返回任务 ID
       try {
-        const result = await this.imageGenService.generate({
+        const task = await this.imageGenService.startGenerate({
           userId,
           prompt: body.prompt.trim(),
           style: body.style || 'realistic',
           size: body.size || '1024x1024',
+          coinConsumed: consumeResult.amount,
         });
-        return { 
-          code: 200, 
-          msg: '生成成功', 
+
+        return {
+          code: 200,
+          msg: '已进入待处理队列',
           data: {
-            ...result,
+            id: task.id,
+            status: task.status,
             coinConsumed: consumeResult.amount,
             balanceAfter: consumeResult.balanceAfter
           }
         };
       } catch (generateError: any) {
-        // 生成失败，退款
-        console.error('[ImageGenController] 生成失败，退款:', generateError.message);
+        console.error('[ImageGenController] 提交失败，退款:', generateError.message);
         try {
           await this.coinService.gift(
-            userId, 
-            consumeResult.amount, 
-            `${SKILL_NAMES[skillType] || skillType}生成失败退款`
+            userId,
+            consumeResult.amount,
+            (SKILL_NAMES[skillType] || skillType) + '提交失败退款'
           );
         } catch (refundError: any) {
           console.error('[ImageGenController] 退款失败:', refundError.message);
         }
-        return { code: 500, msg: generateError.message || '图片生成失败', data: null };
+        return { code: 500, msg: generateError.message || '图片生成任务提交失败', data: null };
       }
     } catch (error: any) {
       console.error('[ImageGenController] generate error:', error.message);

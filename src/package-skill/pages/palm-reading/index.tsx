@@ -7,6 +7,7 @@ import { Network } from '@/network'
 import { subscribeManagedPolling } from '@/utils/polling'
 import { Upload, Sparkles, History, Hand, ArrowLeft, Image as ImageIcon, Save, Expand, Trash2 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
+import { formatDateTime } from '@/utils/time'
 
 interface HistoryRecord {
   id: string
@@ -548,7 +549,7 @@ export default function PalmReadingPage() {
                               {item.status === 'completed' ? '已完成' : item.status === 'failed' ? '失败' : '生成中'}
                             </Text>
                           </View>
-                          <Text className="block text-xs mt-1" style={{ color: '#cccccc' }}>{item.createdAt}</Text>
+                          <Text className="block text-xs mt-1" style={{ color: '#cccccc' }}>{formatDateTime(item.createdAt)}</Text>
                         </View>
                         {/* 删除按钮 */}
                         <View
