@@ -308,9 +308,19 @@ export class UserStatsService {
   /**
    * 获取用户指定分身的内容列表
    */
-  async getAvatarContents(userId: string, avatarId?: string) {
+  async getAvatarContents(
+    userId: string,
+    avatarId?: string,
+    status?: string,
+    page = 1,
+    pageSize = 20
+  ) {
     let avatarList: any[] = []
     let contents: any[] = []
+    let total = 0
+    const safePage = Math.max(1, Math.floor(page) || 1)
+    const safePageSize = Math.min(50, Math.max(1, Math.floor(pageSize) || 20))
+    const offset = (safePage - 1) * safePageSize
     
     // 尝试使用数据库
     try {
@@ -324,19 +334,51 @@ export class UserStatsService {
       avatarList = avatars || []
       const avatarIds = avatarList.map((a: any) => a.id)
       
-      let where = ''
-      if (avatarId) {
-        where = `avatar_id = '${avatarId}'`
-      } else if (avatarIds.length > 0) {
-        const avatarIdList = avatarIds.map((id: string) => `'${id}'`).join(',')
-        where = `avatar_id IN (${avatarIdList})`
-      } else {
-        return { contents: [], avatars: [] }
+      const selectedAvatarIds = avatarId
+        ? avatarIds.filter((id: string) => id === avatarId)
+        : avatarIds
+      if (selectedAvatarIds.length === 0) {
+        return {
+          contents: [],
+          avatars: avatarList.map((a: any) => ({ id: a.id, name: a.name, avatarUrl: a.avatar_url || '' })),
+          total: 0,
+          page: safePage,
+          pageSize: safePageSize,
+          hasMore: false
+        }
       }
-      
+
+      const statusFilters: Record<string, string[]> = {
+        preview: ['ready', 'preview', 'pending', 'generating', 'generating_text', 'generating_images', 'generating_video','revision_requested','published'],
+        awaiting_acceptance: ['awaiting_acceptance'],
+        completed: ['settled'],
+        rejected: ['rejected'],
+        stop: ['failed', 'partial_failed', 'cancelled']
+      }
+      const statusValues = status && status !== 'all' ? statusFilters[status] : undefined
+      if (status && status !== 'all' && !statusValues) {
+        return {
+          contents: [],
+          avatars: avatarList.map((a: any) => ({ id: a.id, name: a.name, avatarUrl: a.avatar_url || '' })),
+          total: 0,
+          page: safePage,
+          pageSize: safePageSize,
+          hasMore: false
+        }
+      }
+
       try {
         // 选择列表展示需要的字段（base64 图片已迁移到 TOS，images 字段现在只存 URL）
-        const avatarIdParams = avatarIds.map(() => '?').join(',')
+        const conditions = [
+          `cgr.avatar_id IN (${selectedAvatarIds.map(() => '?').join(',')})`,
+          'cgr.status != ?'
+        ]
+        const queryParams: any[] = [...selectedAvatarIds, 'expired']
+        if (statusValues?.length) {
+          conditions.push(`cgr.status IN (${statusValues.map(() => '?').join(',')})`)
+          queryParams.push(...statusValues)
+        }
+        const whereClause = conditions.join(' AND ')
         const sql = `SELECT cgr.id, cgr.order_id, cgr.avatar_id, cgr.content_type, cgr.platform, cgr.platforms, cgr.status
         , cgr.revision_count, cgr.created_at, cgr.updated_at, cgr.video_url, cgr.images, cgr.publish_feedback
         , SUBSTRING(cgr.content, 1, 200) as ai_content, CASE WHEN cgr.images IS NOT NULL AND cgr.images != '' AND cgr.images != '[]' THEN JSON_LENGTH(cgr.images) ELSE 0 END as image_count
@@ -344,12 +386,21 @@ export class UserStatsService {
         FROM content_generation_requests cgr
         LEFT JOIN orders o ON cgr.order_id = o.id
         LEFT JOIN order_dispatch_requests dr ON cgr.order_id = dr.order_id AND cgr.avatar_id = dr.avatar_id and dr.status not in ('expired')
-        WHERE cgr.avatar_id IN (${avatarIdParams}) and cgr.status != 'expired' ORDER BY cgr.created_at DESC LIMIT 50`
-        const t0 = Date.now()
-        const result = await db.query(sql, avatarIds) as any
+        WHERE ${whereClause}
+        ORDER BY cgr.created_at DESC
+        LIMIT ? OFFSET ?`
+        const result = await db.query(sql, [...queryParams, safePageSize, offset]) as any
         contents = Array.isArray(result) ? result : (result?.data || [])
+
+        const countResult = await db.query(
+          `SELECT COUNT(*) AS total FROM content_generation_requests cgr WHERE ${whereClause}`,
+          queryParams
+        ) as any
+        const countRows = Array.isArray(countResult) ? countResult : (countResult?.data || [])
+        total = Number(countRows[0]?.total || 0)
       } catch (e) {
         contents = []
+        total = 0
       }
       
       // 存入内存缓存
@@ -406,7 +457,11 @@ export class UserStatsService {
         id: a.id,
         name: a.name,
         avatarUrl: a.avatar_url || ''
-      }))
+      })),
+      total,
+      page: safePage,
+      pageSize: safePageSize,
+      hasMore: safePage * safePageSize < total
     }
   }
 }

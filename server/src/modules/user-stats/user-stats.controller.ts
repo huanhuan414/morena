@@ -44,17 +44,32 @@ export class UserStatsController {
   @Get('contents')
   async getContents(
     @Headers('x-user-id') userId: string,
-    @Query('avatarId') avatarId?: string
+    @Query('avatarId') avatarId?: string,
+    @Query('status') status?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string
   ) {
     if (!userId) return { code: 401, data: null, message: '未登录' }
+    const safePage = Math.max(1, parseInt(page || '1', 10) || 1)
+    const safePageSize = Math.min(50, Math.max(1, parseInt(pageSize || '20', 10) || 20))
     try {
       if (this.userStatsService) {
-        const result = await this.userStatsService.getAvatarContents(userId, avatarId)
+        const result = await this.userStatsService.getAvatarContents(
+          userId,
+          avatarId,
+          status,
+          safePage,
+          safePageSize
+        )
         return { code: 200, data: result, message: '获取成功' }
       }
     } catch (e) {
       console.error('[UserStatsController] getContents error:', e.message)
     }
-    return { code: 200, data: { list: [], total: 0 }, message: '获取成功' }
+    return {
+      code: 200,
+      data: { contents: [], avatars: [], total: 0, page: safePage, pageSize: safePageSize, hasMore: false },
+      message: '获取成功'
+    }
   }
 }

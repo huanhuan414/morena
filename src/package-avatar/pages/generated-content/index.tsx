@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { ArrowLeft, Clock, FileText, ImagePlus, Play, Eye, Send, MessageSquare, Bell, Trash2, CircleCheckBig } from 'lucide-react-taro'
@@ -11,51 +11,21 @@ import './index.css'
 // 内容状态映射
 // 后端原始状态 → 前端展示状态
 const BACKEND_STATUS_TO_TAB: Record<string, string> = {
-  queuing: 'generating',
   pending: 'generating',
-  processing: 'generating',
   generating: 'generating',
   generating_text: 'generating',
   generating_images: 'generating',
   generating_video: 'generating',
   preview: 'preview',
   revision_requested: 'revision_requested',
-  publishing: 'published',
   published: 'published',
-  feedback_submitted: 'awaiting_acceptance',
-  reviewing: 'awaiting_acceptance',
   awaiting_acceptance: 'awaiting_acceptance',
   settled: 'completed',
-  done: 'completed',
   failed: 'failed',
   ready: 'preview',
   partial_failed: 'failed',
   rejected: 'rejected',
   cancelled: 'cancelled',
-}
-
-// 后端原始状态 → 前端搜索状态
-const BACKEND_STATUS_TO_TAB_SEARCH: Record<string, string> = {
-  ready: 'preview',
-  queuing: 'preview',
-  pending: 'preview',
-  processing: 'preview',
-  generating: 'preview',
-  generating_text: 'preview',
-  generating_images: 'preview',
-  generating_video: 'preview',
-  preview: 'preview',
-  revision_requested: 'preview',
-  publishing: 'preview',
-  published: 'preview',
-  feedback_submitted: 'awaiting_acceptance',
-  awaiting_acceptance: 'awaiting_acceptance',
-  settled: 'completed',
-  done: 'completed',
-  failed: 'stop',
-  partial_failed: 'stop',
-  rejected: 'rejected',
-  cancelled: 'stop',
 }
 
 // 生成中的子阶段文案映射（用于进度提示）
@@ -123,9 +93,14 @@ export default function GeneratedContentPage() {
   const [contents, setContents] = useState<any[]>([])
   const [avatars, setAvatars] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const [page, setPage] = useState(1)
   const [activeTab, setActiveTab] = useState('all')
   const [selectedAvatarId, setSelectedAvatarId] = useState<string | null>(null)
   const [avatarDropdownOpen, setAvatarDropdownOpen] = useState(false)
+  const loadingMoreRef = useRef(false)
+  const requestIdRef = useRef(0)
 
   // 格式化剩余时间
   const formatRemainingTime = (timeoutAt: string | null): string | null => {
@@ -143,13 +118,39 @@ export default function GeneratedContentPage() {
     loadData()
   })
 
-  const loadData = async () => {
-    setLoading(true)
+  const loadData = async (
+    targetPage = 1,
+    append = false,
+    status = activeTab,
+    avatarId = selectedAvatarId
+  ) => {
+    if (append && loadingMoreRef.current) return
+
+    const requestId = append ? requestIdRef.current : ++requestIdRef.current
+    if (append) {
+      loadingMoreRef.current = true
+      setLoadingMore(true)
+    } else {
+      setLoading(true)
+    }
+
     try {
-      const res = await Network.request({ url: '/api/user-stats/contents' })
+      const res = await Network.request({
+        url: '/api/user-stats/contents',
+        method: 'GET',
+        data: {
+          page: targetPage,
+          pageSize: 20,
+          ...(status !== 'all' ? { status } : {}),
+          ...(avatarId ? { avatarId } : {})
+        }
+      })
+      if (requestId !== requestIdRef.current) return
+
       if (res.data?.code === 200) {
-        const rawAvatars = res.data.data.avatars || []
-        const rawContents = res.data.data.contents || []
+        const responseData = res.data.data || {}
+        const rawAvatars = responseData.avatars || []
+        const rawContents = responseData.contents || []
 
         const parsedAvatars = rawAvatars.map((a: any) => ({
           id: a.id,
@@ -161,7 +162,6 @@ export default function GeneratedContentPage() {
           const platforms = safeParseJSON(c.platforms)
           return {
             ...c,
-            // 确保关键字段存在（兼容 camelCase 和 snake_case）
             id: c.id,
             orderId: c.orderId || c.order_id || '',
             avatarId: c.avatarId || c.avatar_id || '',
@@ -179,19 +179,52 @@ export default function GeneratedContentPage() {
         })
 
         setAvatars(parsedAvatars)
-        setContents(parsedContents)
-
-        // 对图片为空的记录异步加载（列表API可能未返回images，或base64尚未迁移）
-        // const needLoadImages = parsedContents.filter((c: any) => !Array.isArray(c.images) || c.images.length === 0)
-        // if (needLoadImages.length > 0) {
-        //   loadImagesForContents(needLoadImages)
-        // }
+        if (append) {
+          setContents((previous) => {
+            const existingIds = new Set(previous.map(item => item.id))
+            return [...previous, ...parsedContents.filter((item: any) => !existingIds.has(item.id))]
+          })
+        } else {
+          setContents(parsedContents)
+        }
+        setPage(targetPage)
+        const total = Number(responseData.total || 0)
+        setHasMore(responseData.hasMore ?? targetPage * 20 < total)
+      } else if (!append) {
+        setContents([])
+        setHasMore(false)
       }
     } catch (err) {
       console.error('[已生成内容] 加载失败:', err)
+      if (requestId === requestIdRef.current && !append) {
+        setContents([])
+        setHasMore(false)
+      }
     } finally {
-      setLoading(false)
+      if (requestId === requestIdRef.current) setLoading(false)
+      if (append) {
+        setLoadingMore(false)
+        loadingMoreRef.current = false
+      }
     }
+  }
+
+  const handleTabChange = (status: string) => {
+    if (status === activeTab) return
+    setActiveTab(status)
+    setAvatarDropdownOpen(false)
+    void loadData(1, false, status, selectedAvatarId)
+  }
+
+  const handleAvatarChange = (avatarId: string | null) => {
+    setSelectedAvatarId(avatarId)
+    setAvatarDropdownOpen(false)
+    void loadData(1, false, activeTab, avatarId)
+  }
+
+  const handleLoadMore = () => {
+    if (loading || loadingMore || !hasMore) return
+    void loadData(page + 1, true, activeTab, selectedAvatarId)
   }
 
   // 异步加载图片：逐条请求，避免一次性传输大量数据
@@ -229,14 +262,6 @@ export default function GeneratedContentPage() {
       }
     }
   }
-
-  // 筛选
-  const filteredContents = contents.filter(c => {
-    const tabKey = BACKEND_STATUS_TO_TAB_SEARCH[c.status] || c.status
-    const statusMatch = activeTab === 'all' || tabKey === activeTab
-    const avatarMatch = !selectedAvatarId || c.avatarId === selectedAvatarId
-    return statusMatch && avatarMatch
-  })
 
   const getStatusInfo = (status: string) => {
     const tabKey = BACKEND_STATUS_TO_TAB[status] || status
@@ -514,7 +539,7 @@ export default function GeneratedContentPage() {
             <View
               key={tab.key}
               className={`tab-item ${activeTab === tab.key ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => handleTabChange(tab.key)}
             >
               <Text className={`tab-text ${activeTab === tab.key ? 'active' : ''}`}>{tab.label}</Text>
             </View>
@@ -540,7 +565,7 @@ export default function GeneratedContentPage() {
               <View className="avatar-dropdown-list">
                 <View
                   className={`avatar-dropdown-item ${!selectedAvatarId ? 'active' : ''}`}
-                  onClick={() => { setSelectedAvatarId(null); setAvatarDropdownOpen(false) }}
+                  onClick={() => handleAvatarChange(null)}
                 >
                   <Text className="avatar-dropdown-text">全部分身</Text>
                 </View>
@@ -548,7 +573,7 @@ export default function GeneratedContentPage() {
                   <View
                     key={a.id}
                     className={`avatar-dropdown-item ${selectedAvatarId === a.id ? 'active' : ''}`}
-                    onClick={() => { setSelectedAvatarId(a.id); setAvatarDropdownOpen(false) }}
+                    onClick={() => handleAvatarChange(a.id)}
                   >
                     <View className="dropdown-avatar-dot" style={{ backgroundColor: '#6366F1' }}>
                       <Text style={{ fontSize: 10, color: '#fff' }}>{a.name.charAt(0)}</Text>
@@ -563,20 +588,25 @@ export default function GeneratedContentPage() {
       )}
 
       {/* 内容列表 */}
-      <ScrollView className="content-list" scrollY>
+      <ScrollView
+        className="content-list"
+        scrollY
+        lowerThreshold={100}
+        onScrollToLower={handleLoadMore}
+      >
         {loading ? (
           <View className="loading-state">
             <View className="loading-spinner" />
             <Text className="loading-text">加载中...</Text>
           </View>
-        ) : filteredContents.length === 0 ? (
+        ) : contents.length === 0 ? (
           <View className="empty-state">
             <FileText size={64} color="#CBD5E1" />
             <Text className="empty-title">暂无内容</Text>
             <Text className="empty-desc">{activeTab === 'all' ? '还没有生成任何内容' : '该状态下暂无内容'}</Text>
           </View>
         ) : (
-          filteredContents.map(content => {
+          contents.map(content => {
             const statusInfo = getStatusInfo(content.status)
             const typeInfo = getContentTypeInfo(content.contentType)
             const TypeIcon = typeInfo.icon
@@ -756,6 +786,14 @@ export default function GeneratedContentPage() {
               </View>
             )
           })
+        )}
+
+        {!loading && contents.length > 0 && (
+          <View className="flex items-center justify-center py-4">
+            <Text className="text-sm text-slate-400">
+              {loadingMore ? '正在加载...' : hasMore ? '上拉加载更多' : '没有更多了'}
+            </Text>
+          </View>
         )}
 
         {/* 底部占位 */}
