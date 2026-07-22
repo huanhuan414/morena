@@ -102,10 +102,22 @@ export class ReferralService {
       throw new Error('您已被邀请过')
     }
     
-    // 检查每日邀请限制（每人每日最多10人）
+    // 检查每日邀请限制（每人每日最多500人）
     const limitInfo = await this.checkDailyInviteLimit(inviter.id)
     if (!limitInfo.allowed) {
-      throw new Error(`今日邀请已达上限（${limitInfo.current}/${limitInfo.limit}人），邀请人无法得到奖励，不影响用户注册`)
+      // ✅ 超限仍更新users表，但不建立referrals记录
+      await db.updateWhere('users', { id: inviteeId }, {
+        referred_by: inviter.id,
+        invited_by: inviter.id,
+        updated_at: new Date()
+      })
+
+      return {
+        inviterId: inviter.id,
+        reward: 0,
+        success: true,
+        message: `邀请关系已建立，但邀请人今日已达上限（${limitInfo.current}/${limitInfo.limit}人），不发放奖励`
+      }
     }
     
     // ✅ 检查邀请人的IP每日限制（VIP用户跳过）
@@ -121,7 +133,19 @@ export class ReferralService {
     if (inviterIp && !VIP_INVITER_IDS.includes(inviter.id)) {
       const ipLimitInfo = await this.checkInviterIpLimit(inviterIp)
       if (!ipLimitInfo.allowed) {
-        throw new Error(`同一IP今日邀请人数过多（${ipLimitInfo.current}/${ipLimitInfo.limit}人），邀请人无法得到奖励，不影响用户注册`)
+        // ✅ IP超限仍更新users表，但不建立referrals记录
+        await db.updateWhere('users', { id: inviteeId }, {
+          referred_by: inviter.id,
+          invited_by: inviter.id,
+          updated_at: new Date()
+        })
+
+        return {
+          inviterId: inviter.id,
+          reward: 0,
+          success: true,
+          message: `邀请关系已建立，但同一IP今日邀请人数过多（${ipLimitInfo.current}/${ipLimitInfo.limit}人），不发放奖励`
+        }
       }
     }
     
