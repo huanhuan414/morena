@@ -73,13 +73,15 @@ export class OrderController {
     @Headers('x-user-id') userId: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
-    @Query('platform') platform?: string
+    @Query('platform') platform?: string,
+    @Query('availableOnly') availableOnly?: string
   ) {
     const result = await this.orderService.getOpenOrders(
       page ? parseInt(page) : 1,
       pageSize ? parseInt(pageSize) : 20,
       platform,
-      userId
+      userId,
+      availableOnly === '1' || availableOnly === 'true'
     )
     return { code: 200, data: result, message: '获取成功' }
   }

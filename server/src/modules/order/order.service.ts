@@ -855,10 +855,11 @@ export class OrderService {
     return this.getOrderById(orderId)
   }
 
-  async getOpenOrders(page: number = 1, pageSize: number = 20, platform?: string, userId?: string) {
+  async getOpenOrders(page: number = 1, pageSize: number = 20, platform?: string, userId?: string, availableOnly: boolean = false) {
     const db = getMySQLClient()
     const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1
     const safePageSize = Number.isFinite(pageSize) && pageSize > 0 ? Math.min(Math.floor(pageSize), 100) : 20
+
     const offset = (safePage - 1) * safePageSize
 
     const platformParams: any[] = []
@@ -877,7 +878,30 @@ export class OrderService {
           SELECT 1 FROM order_assets oa
           WHERE oa.order_id COLLATE utf8mb4_general_ci = o.id AND oa.status NOT IN ('ready')
         )
-      )${platformClause}
+      )${availableOnly ? `
+        AND COALESCE(odm.is_accepted_by_me, 0) != 1
+        AND COALESCE(odc.accept_count, 0) < o.avatar_count
+        AND (
+          o.accept_regions IS NULL
+          OR o.accept_regions = ''
+          OR o.accept_regions = '[]'
+          OR EXISTS (
+            SELECT 1
+            FROM avatars region_avatar
+            WHERE region_avatar.user_id = ?
+              AND region_avatar.status = 'active'
+              AND COALESCE(region_avatar.location_text, '') <> ''
+              AND o.accept_regions LIKE CONCAT(
+                '%',
+                TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(SUBSTRING_INDEX(SUBSTRING_INDEX(
+                  region_avatar.location_text, CONVERT(0xE79C81 USING utf8mb4), 1
+                ), CONVERT(0xE5B882 USING utf8mb4), 1
+                ), CONVERT(0xE58CBA USING utf8mb4), 1
+                ), CONVERT(0xE58EBF USING utf8mb4), 1)),
+                '%'
+              )
+          )
+        )` : ''}${platformClause}
     `
 
     const rows = await db.query(
@@ -930,14 +954,29 @@ export class OrderService {
        ${whereClause}
        ORDER BY o.priority DESC, o.created_at DESC
        LIMIT ? OFFSET ?`,
-      [userId || null, ...platformParams, safePageSize, offset]
+      [userId || null, ...(availableOnly ? [userId || ''] : []), ...platformParams, safePageSize, offset]
     )
 
     const totalRows = await db.query(
       `SELECT COUNT(*) as total
        FROM orders o
+       ${availableOnly ? `
+         LEFT JOIN (
+           SELECT order_id,
+                  COUNT(DISTINCT CASE WHEN status IN ('pending', 'accepted', 'in_progress', 'completed') THEN avatar_id END) as accept_count
+           FROM order_dispatch_requests
+           GROUP BY order_id
+         ) odc ON odc.order_id = o.id
+         LEFT JOIN (
+           SELECT r.order_id, 1 as is_accepted_by_me
+           FROM order_dispatch_requests r
+           INNER JOIN avatars a ON a.id = r.avatar_id
+           WHERE r.status IN ('accepted', 'completed', 'rejected') AND a.user_id = ?
+           GROUP BY r.order_id
+         ) odm ON odm.order_id = o.id
+       ` : ''}
        ${whereClause}`,
-      [...platformParams]
+      [...(availableOnly ? [userId || '', userId || ''] : []), ...platformParams]
     )
     const total = Number(totalRows?.[0]?.total || 0)
     

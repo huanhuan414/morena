@@ -71,6 +71,7 @@ interface AcceptConfirmData {
 }
 
 const Index: React.FC = () => {
+  const isAvailableMode = Taro.getCurrentInstance().router?.params?.mode === 'available'
   const [, setUserName] = useState('用户')
   const [, setMindClones] = useState(0)
   const [, setUserAvatar] = useState('')
@@ -94,13 +95,13 @@ const Index: React.FC = () => {
   const [ordersLoading, setOrdersLoading] = useState(false)
   const [acceptingOrderIds, setAcceptingOrderIds] = useState<Record<string, boolean>>({})
   const [orderPage, setOrderPage] = useState(1)
-  const [, setOrderTotal] = useState(0)
+  const [orderTotal, setOrderTotal] = useState(0)
   const [hasMoreOrders, setHasMoreOrders] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const ordersFetchInFlightRef = useRef(false)
   const lastOrdersFetchAtRef = useRef(0)
+  const skipNextDidShowRefreshRef = useRef(false)
   const [showBackToTop, setShowBackToTop] = useState(false)
-  const [scrollTop, setScrollTop] = useState(0)
 
   const [earningPlanInfo, setEarningPlanInfo] = useState<EarningPlanInfo>({
     currentPlanId: 'plan_free',
@@ -127,6 +128,14 @@ const Index: React.FC = () => {
     const cents = Math.round(Number(amount || 0) * 100)
     return Math.round(cents * (1 - Number(rate || 0))) / 100
   }
+
+  const totalBudget = orders.reduce((sum, order) => sum + Number(order.budget || 0), 0)
+  const netEarnings = orders
+    .filter(order => order.customBasePrice > 0)
+    .map(order => calcNetAmount(order.customBasePrice, earningPlanInfo.currentRate))
+  const minEarning = netEarnings.length > 0 ? Math.min(...netEarnings) : 0
+  const maxEarning = netEarnings.length > 0 ? Math.max(...netEarnings) : 0
+
 
   const netAmount = (amount: number, rate: number) => {
     const cents = Math.round(Number(amount || 0) * 100)
@@ -279,6 +288,7 @@ const Index: React.FC = () => {
         url: '/api/order/open',
         data: {
           page,
+          ...(isAvailableMode ? { availableOnly: 1 } : {}),
           pageSize,
           ...(activePlatform !== 'all' ? { platform: activePlatform } : {})
         }
@@ -338,7 +348,7 @@ const Index: React.FC = () => {
       setIsRefreshing(false)
       ordersFetchInFlightRef.current = false
     }
-  }, [activePlatform])
+  }, [activePlatform, isAvailableMode])
 
 
   // 接单
@@ -357,7 +367,13 @@ const Index: React.FC = () => {
         confirmText: '我的订单',
         success: (res) => {
           if (res.confirm) {
-            Taro.navigateTo({ url: '/package-avatar/pages/generated-content/index' })
+            skipNextDidShowRefreshRef.current = true
+            Taro.navigateTo({
+              url: '/package-avatar/pages/generated-content/index',
+              fail: () => {
+                skipNextDidShowRefreshRef.current = false
+              },
+            })
           }
         },
       })
@@ -369,12 +385,16 @@ const Index: React.FC = () => {
       return
     }
 
+    skipNextDidShowRefreshRef.current = true
     Taro.navigateTo({
       url: `/package-order/pages/order-accept-task/index?${buildAcceptTaskQuery({
         orderId: order.id,
         avatarId: order.acceptedAvatarId,
         requestId: order.requestId,
       })}`,
+      fail: () => {
+        skipNextDidShowRefreshRef.current = false
+      },
     })
   }
   const handleAcceptOrder = async (orderId: string, orderInfo?: OrderItem) => {
@@ -612,6 +632,11 @@ const Index: React.FC = () => {
   }, [])
 
   useDidShow(() => {
+    if (skipNextDidShowRefreshRef.current) {
+      skipNextDidShowRefreshRef.current = false
+      return
+    }
+
     loadUserFromStorage().then(() => {
       fetchStats()
       fetchOrders()
@@ -627,19 +652,30 @@ const Index: React.FC = () => {
     fetchOrders()
   }, [activePlatform])
 
+
   // 滚动监听（只用于显示按钮）
   const handleScroll = (e: any) => {
     const currentScrollTop = e.detail.scrollTop
     setShowBackToTop(currentScrollTop > 300)
   }
-  // 回到顶部（通过改变 scrollTop 值触发滚动）
+  // 通过增强型 ScrollView 实例执行一次性滚动，不使用受控滚动属性
   const scrollToTop = () => {
-    setScrollTop(prev => prev === 0 ? 0.001 : 0)
+    Taro.createSelectorQuery()
+      .select('#order-square-content-scroll')
+      .node()
+      .exec((res) => {
+        const scrollView = res?.[0]?.node
+        scrollView?.scrollTo?.({
+          top: 0,
+          animated: true,
+          duration: 300,
+        })
+      })
   }
   // 切换平台并回到顶部
   const handlePlatformChange = (platform: string) => {
     setActivePlatform(platform)
-    setScrollTop(prev => prev === 0 ? 0.001 : 0)
+    scrollToTop()
   }
   // 下拉刷新
   const handleRefresh = useCallback(async () => {
@@ -721,29 +757,29 @@ const Index: React.FC = () => {
             <ArrowLeft size={22} color="#fff" />
           </View>
           <View className="header-center">
-            <Text className="header-title block">订单广场</Text>
+            <Text className="header-title block">{isAvailableMode ? '可接订单' : '订单广场'}</Text>
             <Text className="header-sub block">接单赚钱，AI替你创作</Text>
           </View>
           <View className="header-right" />
         </View>
 
         {/* 统计概览 */}
-        <View className="header-stats">
+        {true && <View className="header-stats">
           <View className="header-stat">
-            <Text className="header-stat-value block">{DEMO_ORDERS.length}+</Text>
+            <Text className="header-stat-value block">{orderTotal}+</Text>
             <Text className="header-stat-label block">在线订单</Text>
           </View>
           <View className="header-stat-divider" />
           <View className="header-stat">
-            <Text className="header-stat-value block">¥{DEMO_ORDERS.reduce((s, o) => s + o.budget, 0)}+</Text>
+            <Text className="header-stat-value block">¥{totalBudget}+</Text>
             <Text className="header-stat-label block">总预算金额</Text>
           </View>
           <View className="header-stat-divider" />
           <View className="header-stat">
-            <Text className="header-stat-value block">¥120~1200</Text>
+            <Text className="header-stat-value block">¥{minEarning.toFixed(2)}~{maxEarning.toFixed(2)}</Text>
             <Text className="header-stat-label block">单笔收益</Text>
           </View>
-        </View>
+        </View>}
 
         {/* 平台筛选 */}
         <View className="order-square-filter">
@@ -762,6 +798,7 @@ const Index: React.FC = () => {
       </View>
       {/* 主内容区 */}
       <ScrollView
+        id="order-square-content-scroll"
         scrollY
         className="content"
         enhanced
@@ -772,7 +809,6 @@ const Index: React.FC = () => {
         onScrollToLower={handleLoadMore}
         lowerThreshold={200}
         onScroll={handleScroll}
-        scrollTop={scrollTop}
         scrollWithAnimation
       >
         {/* ===== 订单广场板块 ===== */}
@@ -796,7 +832,7 @@ const Index: React.FC = () => {
                   { planId: 'plan_enterprise', name: earningPlanInfo.enterpriseName.replace('版', '用户'), rate: earningPlanInfo.enterpriseRate },
                 ]
                 void formatDeadline(order.deadline || order.contentDeadlineAt) // deadlineInfo (unused)
-                
+
                 return (
                   <View
                     key={order.id}
@@ -980,12 +1016,18 @@ const Index: React.FC = () => {
           </View>
         )}
 
+
         {/* 底部留白 */}
         <View className="bottom-spacer" />
       </ScrollView>
 
-      {acceptConfirmData && (
-        <View className="accept-confirm-overlay" onClick={() => closeAcceptConfirm(false)}>
+
+      <View
+        className="accept-confirm-overlay"
+        style={{ display: acceptConfirmData ? 'flex' : 'none' }}
+        onClick={() => closeAcceptConfirm(false)}
+      >
+        {acceptConfirmData && (
           <View className="accept-confirm-modal" onClick={(e) => e.stopPropagation()}>
             <View className="accept-confirm-main">
               <View className="accept-confirm-row">
@@ -1037,8 +1079,9 @@ const Index: React.FC = () => {
               </View>
             </View>
           </View>
-        </View>
-      )}
+        )}
+      </View>
+
 
       {showBackToTop && (
         <View className="back-to-top" onClick={scrollToTop}>

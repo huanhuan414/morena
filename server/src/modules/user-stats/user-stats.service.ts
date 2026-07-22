@@ -64,21 +64,74 @@ export class UserStatsService {
       avatarCount = avatarList.length
       
       // 2. 统计待接订单数（从 order_dispatch_requests 关联 orders，只统计订单仍有效的分派请求）
-      if (avatarIds.length > 0) {
-        const avatarIdList = avatarIds.map((id: string) => `'${id}'`).join(',')
-        try {
-          const pendingResult = await db.query(
-            `SELECT COUNT(*) as cnt FROM order_dispatch_requests r
-             INNER JOIN orders o ON r.order_id = o.id
-               AND o.status IN ('pending', 'pending_payment', 'awaiting_acceptance', 'pending_acceptance', 'accepted', 'in_progress')
-             WHERE r.avatar_id IN (${avatarIdList}) AND r.status = 'pending'`
-          ) as any[]
-          pendingOrders = pendingResult?.[0]?.cnt || 0
-        } catch (e) {
-          console.error('[UserStats] 查询待接订单失败:', e.message)
-          pendingOrders = 0
+      // if (avatarIds.length > 0) {
+      //   const avatarIdList = avatarIds.map((id: string) => `'${id}'`).join(',')
+      //   try {
+      //     const pendingResult = await db.query(
+      //       `SELECT COUNT(*) as cnt FROM order_dispatch_requests r
+      //        INNER JOIN orders o ON r.order_id = o.id
+      //          AND o.status IN ('pending', 'pending_payment', 'awaiting_acceptance', 'pending_acceptance', 'accepted', 'in_progress')
+      //        WHERE r.avatar_id IN (${avatarIdList}) AND r.status = 'pending'`
+      //     ) as any[]
+      //     pendingOrders = pendingResult?.[0]?.cnt || 0
+      //   } catch (e) {
+      //     console.error('[UserStats] 查询待接订单失败:', e.message)
+      //     pendingOrders = 0
+      //   }
+      // }
+      try {
+        const totalRows = await db.query(
+            `
+            SELECT COUNT(*) as total
+            FROM orders o
+            LEFT JOIN (
+              SELECT order_id,
+                      COUNT(DISTINCT CASE WHEN status IN ('pending', 'accepted', 'in_progress', 'completed') THEN avatar_id END) as accept_count
+              FROM order_dispatch_requests
+              GROUP BY order_id
+            ) odc ON odc.order_id = o.id
+            LEFT JOIN (
+              SELECT r.order_id, 1 as is_accepted_by_me
+              FROM order_dispatch_requests r
+              INNER JOIN avatars a ON a.id = r.avatar_id
+              WHERE r.status IN ('accepted', 'completed', 'rejected') AND a.user_id = ?
+              GROUP BY r.order_id
+            ) odm ON odm.order_id = o.id
+            WHERE 
+              o.is_paid = 1
+              AND o.is_deleted = 0
+              AND o.status IN ('pending', 'in_progress','awaiting_acceptance', 'submitted','pending_acceptance')
+              AND COALESCE(odm.is_accepted_by_me, 0) != 1
+              AND COALESCE(odc.accept_count, 0) < o.avatar_count
+              AND (
+                o.accept_regions IS NULL
+                OR o.accept_regions = ''
+                OR o.accept_regions = '[]'
+                OR EXISTS (
+                  SELECT 1
+                  FROM avatars region_avatar
+                  WHERE region_avatar.user_id = ?
+                    AND region_avatar.status = 'active'
+                    AND COALESCE(region_avatar.location_text, '') <> ''
+                    AND o.accept_regions LIKE CONCAT(
+                      '%',
+                      TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(SUBSTRING_INDEX(SUBSTRING_INDEX(
+                        region_avatar.location_text, CONVERT(0xE79C81 USING utf8mb4), 1
+                      ), CONVERT(0xE5B882 USING utf8mb4), 1
+                      ), CONVERT(0xE58CBA USING utf8mb4), 1
+                      ), CONVERT(0xE58EBF USING utf8mb4), 1)),
+                      '%'
+                    )
+                )
+              )
+            `,
+            [userId || '', userId || '']
+        ) as any[]
+          console.log('[UserStats] 查询可接订单结果:', totalRows)
+          pendingOrders = Number(totalRows?.[0]?.total || 0)
+      } catch (e) {
+        console.log('[UserStats] 查询可接订单失败.....',e)
         }
-      }
       
       // 3. 统计生成内容数（只统计已完成的内容，排除 pending/failed）
       if (avatarIds.length > 0) {
@@ -87,8 +140,9 @@ export class UserStatsService {
           const contentResult = await db.query(
             `SELECT COUNT(*) as cnt FROM content_generation_requests
              WHERE avatar_id IN (${avatarIdList})
-               AND status NOT IN ('pending', 'failed', 'cancelled')`
+               AND status NOT IN ('rejected', 'cancelled','settled','failed', 'partial_failed')`
           ) as any[]
+          console.log('[UserStats] 查询生成内容数结果:', avatarIdList)
           generatedContents = contentResult?.[0]?.cnt || 0
         } catch (e) {
           generatedContents = 0
@@ -118,18 +172,18 @@ export class UserStatsService {
       }
       
       // 6. 统计分身总工作时长（只统计有效完成的任务，每个任务约30分钟）
-      if (avatarIds.length > 0) {
-        const avatarIdList = avatarIds.map((id: string) => `'${id}'`).join(',')
-        try {
-          const contentResult = await db.query(
-            `SELECT COUNT(*) as cnt FROM content_generation_requests
-             WHERE avatar_id IN (${avatarIdList})
-               AND status IN ('completed', 'approved', 'published', 'awaiting_acceptance', 'settled', 'done')`
-          ) as any[]
-          const completedCount = contentResult?.[0]?.cnt || 0
-          totalWorkHours = Math.round(completedCount * 0.5 * 10) / 10 // 每个任务约30分钟
-        } catch (e) {}
-      }
+      // if (avatarIds.length > 0) {
+      //   const avatarIdList = avatarIds.map((id: string) => `'${id}'`).join(',')
+      //   try {
+      //     const contentResult = await db.query(
+      //       `SELECT COUNT(*) as cnt FROM content_generation_requests
+      //        WHERE avatar_id IN (${avatarIdList})
+      //          AND status IN ('completed', 'approved', 'published', 'awaiting_acceptance', 'settled', 'done')`
+      //     ) as any[]
+      //     const completedCount = contentResult?.[0]?.cnt || 0
+      //     totalWorkHours = Math.round(completedCount * 0.5 * 10) / 10 // 每个任务约30分钟
+      //   } catch (e) {}
+      // }
       
       // 存入内存缓存
       sharedMemoryAvatars.set(userId, avatarList)

@@ -1097,7 +1097,7 @@ const Index: React.FC = () => {
             </View>
           )}
           <View className="stats-row">
-            <View className="stat-item" onClick={() => goToPage('/package-order/pages/pending-order/index')}>
+            <View className="stat-item" onClick={() => goToPage('/package-order/pages/order-square/index?mode=available')}>
               <View className="stat-icon-small" style={{ background: '#FFFBEB' }}>
                 <ShoppingBag size={28} color="#F59E0B" />
                 <Badge className="stat-count-badge stat-count-badge-pending">
