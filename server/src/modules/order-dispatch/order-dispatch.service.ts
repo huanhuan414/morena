@@ -1458,21 +1458,43 @@ async getExecutionProgress(orderId: string) {
     // }
     // requiredCount = effectiveRequired
 
-    const requiredSet = await this.redisService.setNX(redisKeyRequired, String(requiredCount), OrderDispatchService.REDIS_TTL_SECONDS * 1000)
-    if (requiredSet) {
-      const acceptedSetResult = await this.redisService.getClient().set(
-        redisKeyAccepted, '0', 'NX', 'EX', OrderDispatchService.REDIS_TTL_SECONDS
-      )
-      if (!acceptedSetResult) {
-        this.logger.log(`redisKeyAccepted已存在，跳过初始化: orderId=${orderId}`)
-      }
-    }
+    const redisClient = this.redisService.getClient()
+    const requiredSet = await this.redisService.setNX(
+      redisKeyRequired,
+      String(requiredCount),
+      OrderDispatchService.REDIS_TTL_SECONDS * 1000
+    )
 
     redisRequiredCount = await this.redisService.getCounter(redisKeyRequired)
-    slotNumber = await this.redisService.getClient().incr(redisKeyAccepted)
+    if (!requiredSet && redisRequiredCount !== requiredCount) {
+      const oldRequiredCount = redisRequiredCount
+      await redisClient.set(
+        redisKeyRequired,
+        String(requiredCount),
+        'EX',
+        OrderDispatchService.REDIS_TTL_SECONDS
+      )
+      redisRequiredCount = requiredCount
+      this.logger.warn(
+        `[acceptOrder] 修正接单名额缓存: orderId=${orderId}, redisRequired=${oldRequiredCount}, avatarCount=${requiredCount}`
+      )
+    }
+
+    const acceptedSetResult = await redisClient.set(
+      redisKeyAccepted,
+      '0',
+      'NX',
+      'EX',
+      OrderDispatchService.REDIS_TTL_SECONDS
+    )
+    if (!acceptedSetResult && requiredSet) {
+      this.logger.log(`redisKeyAccepted已存在，跳过初始化: orderId=${orderId}`)
+    }
+
+    slotNumber = await redisClient.incr(redisKeyAccepted)
     redisOccupied = true
     if (slotNumber > redisRequiredCount && redisRequiredCount > 0) {
-      await this.redisService.getClient().decr(redisKeyAccepted)
+      await redisClient.decr(redisKeyAccepted)
       redisOccupied = false
       throw new ConflictException('名额已满，请抢其他订单')
     }
