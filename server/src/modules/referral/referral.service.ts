@@ -69,7 +69,7 @@ export class ReferralService {
     ) as any[]
 
     const currentCount = Number(result?.[0]?.count || 0)
-    const IP_DAILY_LIMIT = 500  // 同一IP每天最多500个不同的邀请人
+    const IP_DAILY_LIMIT = 10  // 同一IP每天最多500个不同的邀请人
 
     return {
       allowed: currentCount < IP_DAILY_LIMIT,
@@ -421,7 +421,7 @@ export class ReferralService {
     ) as any[]
 
     const currentCount = Number(result?.[0]?.count || 0)
-    const DAILY_LIMIT = 500
+    const DAILY_LIMIT = 10
 
     return {
       allowed: currentCount < DAILY_LIMIT,
