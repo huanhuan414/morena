@@ -881,6 +881,7 @@ export class OrderService {
       )${availableOnly ? `
         AND COALESCE(odm.is_accepted_by_me, 0) != 1
         AND COALESCE(odc.accept_count, 0) < o.avatar_count
+        AND COALESCE(odm.odr_status, '') <> 'rejected'
         AND (
           o.accept_regions IS NULL
           OR o.accept_regions = ''
@@ -946,9 +947,8 @@ export class OrderService {
            r.avatar_id as odr_avatar_id,
            cg.id as request_id
          FROM order_dispatch_requests r
-         INNER JOIN avatars a ON a.id = r.avatar_id
          LEFT JOIN content_generation_requests cg ON cg.order_id = r.order_id AND cg.avatar_id = r.avatar_id  AND cg.status NOT IN ('cancelled','failed')
-         WHERE r.status in ('accepted','completed','rejected')  AND a.user_id = ?
+         WHERE r.status in ('accepted','completed','rejected')  AND r.user_id = ?
          GROUP BY r.order_id
        ) odm ON odm.order_id = o.id
        ${whereClause}
@@ -968,7 +968,7 @@ export class OrderService {
            GROUP BY order_id
          ) odc ON odc.order_id = o.id
          LEFT JOIN (
-           SELECT r.order_id, 1 as is_accepted_by_me
+           SELECT r.order_id, 1 as is_accepted_by_me, r.status AS odr_status
            FROM order_dispatch_requests r
            INNER JOIN avatars a ON a.id = r.avatar_id
            WHERE r.status IN ('accepted', 'completed', 'rejected') AND a.user_id = ?

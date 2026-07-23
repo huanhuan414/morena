@@ -91,10 +91,9 @@ export class UserStatsService {
               GROUP BY order_id
             ) odc ON odc.order_id = o.id
             LEFT JOIN (
-              SELECT r.order_id, 1 as is_accepted_by_me
+              SELECT r.order_id, 1 as is_accepted_by_me, r.status AS odr_status
               FROM order_dispatch_requests r
-              INNER JOIN avatars a ON a.id = r.avatar_id
-              WHERE r.status IN ('accepted', 'completed', 'rejected') AND a.user_id = ?
+              WHERE r.status IN ('accepted', 'completed', 'rejected') AND r.user_id = ?
               GROUP BY r.order_id
             ) odm ON odm.order_id = o.id
             WHERE 
@@ -103,6 +102,7 @@ export class UserStatsService {
               AND o.status IN ('pending', 'in_progress','awaiting_acceptance', 'submitted','pending_acceptance')
               AND COALESCE(odm.is_accepted_by_me, 0) != 1
               AND COALESCE(odc.accept_count, 0) < o.avatar_count
+              AND COALESCE(odm.odr_status, '') <> 'rejected'
               AND (
                 o.accept_regions IS NULL
                 OR o.accept_regions = ''
