@@ -240,7 +240,7 @@ export default function NotificationsPage() {
                   <View
                     key={idx}
                     className={`noti-item ${notification.is_read ? 'read' : 'unread'}`}
-                    onClick={() => handleNotificationClick(notification)}
+                  // onClick={() => handleNotificationClick(notification)}
                   >
                     <View className="noti-icon-wrap" style={{ backgroundColor: `${color}12` }}>
                       <Icon size={18} color={color} />

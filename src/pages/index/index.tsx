@@ -277,9 +277,10 @@ const Index: React.FC = () => {
     }
   }, [])
 
-  const { unreadCount, showModal, currentNotification, closeModal } = useNotifications({
-    pollInterval: 10000
-  })
+  //#region 通知相关状态
+  // const { unreadCount, showModal, currentNotification, closeModal } = useNotifications({
+  //   pollInterval: 10000
+  // })
 
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null)
   const [feeRateRange, setFeeRateRange] = useState<{ min: number; max: number }>({ min: 0.05, max: 0.20 })
@@ -1592,7 +1593,7 @@ const Index: React.FC = () => {
       )}
 
       {/* 通知弹窗 */}
-      {showModal && currentNotification && (
+      {/* {showModal && currentNotification && (
         <View className="notification-modal-overlay" onClick={closeModal}>
           <View className="notification-modal" onClick={(e) => e.stopPropagation()}>
             <View className="notification-modal-header">
@@ -1614,7 +1615,7 @@ const Index: React.FC = () => {
             </View>
           </View>
         </View>
-      )}
+      )} */}
 
       {/* 分身选择弹窗 */}
       {showAvatarPicker && avatarPickerData.avatars.length > 0 && (

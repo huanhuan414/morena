@@ -1,10 +1,11 @@
 /* 消息通知页面 - 统一紫蓝风格 */
 
 .notifications-page {
-  min-height: 100vh;
+  height: 100vh;
   background: var(--bg-page);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 /* 头部渐变 */
@@ -14,6 +15,8 @@
   overflow: hidden;
   border-radius: 0 0 40rpx 40rpx;
   padding-bottom: 24rpx;
+  z-index: 10;
+  flex-shrink: 0;
 }
 
 .header-decor-1 {
@@ -111,6 +114,7 @@
 /* 滚动区 */
 .noti-scroll {
   flex: 1;
+  overflow: hidden;
   padding: 24rpx 32rpx;
 }
 
