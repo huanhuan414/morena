@@ -69,7 +69,7 @@ export class ReferralService {
     ) as any[]
 
     const currentCount = Number(result?.[0]?.count || 0)
-    const IP_DAILY_LIMIT = 10  // 同一IP每天最多500个不同的邀请人
+    const IP_DAILY_LIMIT = 50  // 同一IP每天最多500个不同的邀请人
 
     return {
       allowed: currentCount < IP_DAILY_LIMIT,
@@ -128,6 +128,9 @@ export class ReferralService {
       '8617da2d-05fd-4f8a-91ba-f18667bc3901',  // 多多 15692717857
       'b78b770e-005b-4cc8-b0d3-a7013c1af65f',  // 丧彪 13078584090
       '2db4258f-23da-4cb4-bbde-1286a4d28ad1',  // 用户3172 13595193172
+      'bae9efa7-b5a9-4b8b-8476-764563b299dd',  // 二姐 15767788629
+      'a616dbd6-e7e4-4db1-b34a-57862fb01056',  // tx. 19236149546
+       '9e9dc929-e091-4769-9a25-39fc789792d0',   // 用户0512 17817810512
     ]
     const inviterIp = inviter.last_login_ip || inviter.ip_address
     if (inviterIp && !VIP_INVITER_IDS.includes(inviter.id)) {
@@ -406,7 +409,8 @@ export class ReferralService {
       'b78b770e-005b-4cc8-b0d3-a7013c1af65f',  // 丧彪 13078584090
       '2db4258f-23da-4cb4-bbde-1286a4d28ad1',  // 用户3172 13595193172
       'bae9efa7-b5a9-4b8b-8476-764563b299dd',  // 二姐 15767788629
-      'f708d44c-0acc-402e-a5a3-3d048ab3bdda',  // 醒落 15089709107ss
+      'a616dbd6-e7e4-4db1-b34a-57862fb01056',   // tx. 19236149546
+      '9e9dc929-e091-4769-9a25-39fc789792d0',   // 用户0512 17817810512
     ]
     if (VIP_INVITER_IDS.includes(userId)) {
       return { allowed: true, current: 0, limit: 999999 }
@@ -423,7 +427,7 @@ export class ReferralService {
     ) as any[]
 
     const currentCount = Number(result?.[0]?.count || 0)
-    const DAILY_LIMIT = 10
+    const DAILY_LIMIT = 50
 
     return {
       allowed: currentCount < DAILY_LIMIT,
