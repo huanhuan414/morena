@@ -769,7 +769,7 @@ export class OrderProcessingService {
     )
 
     return this.submitFeedback(record.id, {
-      step_results: stepResults,
+      // step_results: stepResults,
       task_submitted_at: submittedAt,
     })
   }
@@ -891,6 +891,9 @@ export class OrderProcessingService {
       {}
     )
     const mergedFeedback = this.mergeFeedback(existingFeedback, feedback || {})
+    // stepResults 统一存放在 config 中，不重复存入 publish_feedback
+    delete mergedFeedback.step_results
+    delete mergedFeedback.stepResults
 
     const record = await this.updateRecordByIdentifier(identifier, {
       status: 'awaiting_acceptance',

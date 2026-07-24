@@ -405,6 +405,8 @@ export class ReferralService {
       '8617da2d-05fd-4f8a-91ba-f18667bc3901',  // 多多 15692717857
       'b78b770e-005b-4cc8-b0d3-a7013c1af65f',  // 丧彪 13078584090
       '2db4258f-23da-4cb4-bbde-1286a4d28ad1',  // 用户3172 13595193172
+      'bae9efa7-b5a9-4b8b-8476-764563b299dd',  // 二姐 15767788629
+      'f708d44c-0acc-402e-a5a3-3d048ab3bdda',  // 醒落 15089709107ss
     ]
     if (VIP_INVITER_IDS.includes(userId)) {
       return { allowed: true, current: 0, limit: 999999 }
