@@ -1,8 +1,9 @@
 import { Controller, Get, Post, Delete, Body, Param, Query, HttpCode, HttpStatus, Inject, forwardRef } from '@nestjs/common'
 import { ContentGenerationService } from './content-generation.service'
-import { getMySQLClient } from '../../storage/database/mysql-client'
+import { getMySQLClient, getPool } from '../../storage/database/mysql-client'
 import { OrderService } from '../order/order.service'
 import { OrderDispatchService } from '../order-dispatch/order-dispatch.service'
+import { RedisService } from '../redis/redis.service'
 
 @Controller('content-generation')
 export class ContentGenerationController {
@@ -12,6 +13,7 @@ export class ContentGenerationController {
     @Inject(ContentGenerationService) private readonly contentGenerationService: ContentGenerationService,
     @Inject(forwardRef(() => OrderService)) private readonly orderService: OrderService,
     @Inject(forwardRef(() => OrderDispatchService)) private readonly orderDispatchService: OrderDispatchService,
+    @Inject(RedisService) private readonly redisService: RedisService,
   ) {}
 
   private async getContentGenerationColumns(db: any) {
@@ -546,19 +548,64 @@ export class ContentGenerationController {
    */
   @Delete('content/:contentId')
   async deleteContent(@Param('contentId') contentId: string) {
+    const connection = await getPool().getConnection()
+    let redisKeyToRelease: string | null = null
     try {
-      const pool = await getMySQLClient()
-      const result: any = await getMySQLClient().query(
+      await connection.beginTransaction()
+      const [records]: any = await connection.query(
+        `SELECT id, status, order_id, avatar_id
+         FROM content_generation_requests
+         WHERE id = ?
+         FOR UPDATE`,
+        [contentId]
+      )
+      const record = records?.[0]
+      if (!record) {
+        await connection.rollback()
+        return { code: 404, message: '内容不存在' }
+      }
+
+      const noReleaseStatuses = ['failed', 'partial_failed', 'cancelled']
+      if (!noReleaseStatuses.includes(record.status) && record.order_id && record.avatar_id) {
+        const [dispatchResult]: any = await connection.query(
+          `UPDATE order_dispatch_requests
+           SET status = 'expired', reject_reason = '用户主动删除创作内容', updated_at = NOW()
+           WHERE order_id = ? AND avatar_id = ? AND status = 'accepted'`,
+          [record.order_id, record.avatar_id]
+        )
+        if (Number(dispatchResult?.affectedRows || 0) > 0) {
+          redisKeyToRelease = `order:accept:count:${record.order_id}`
+        }
+      }
+
+      const [result]: any = await connection.query(
         'DELETE FROM content_generation_requests WHERE id = ?',
         [contentId]
       )
       const affected = result?.affectedRows || 0
       if (affected === 0) {
+        await connection.rollback()
         return { code: 404, message: '内容不存在' }
+      }
+      await connection.commit()
+
+      if (redisKeyToRelease) {
+        await this.redisService.getClient().eval(
+          `local value = tonumber(redis.call('GET', KEYS[1]) or '0')
+           if value > 0 then
+             return redis.call('DECR', KEYS[1])
+           end
+           return value`,
+          1,
+          redisKeyToRelease
+        )
       }
       return { code: 200, message: '删除成功' }
     } catch (error: any) {
-      return { code: 500, message: '删除失败', error: error.message }
+      await connection.rollback()
+      return { code: 500, message: '删除失败，请稍后重试', error: error.message }
+    } finally {
+      connection.release()
     }
   }
 

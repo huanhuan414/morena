@@ -413,23 +413,25 @@ export default function GeneratedContentPage() {
     Taro.navigateTo({ url: `/package-order/pages/order-publish-feedback/index?requestId=${encodeURIComponent(content.id)}&orderId=${encodeURIComponent(content.orderId || '')}` })
   }
 
+  // const statusFilters: Record<string, string[]> = {
+  //   preview: ['ready', 'preview', 'pending', 'generating', 'generating_text', 'generating_images', 'generating_video', 'revision_requested', 'published'],
+  //   awaiting_acceptance: ['awaiting_acceptance'],
+  //   completed: ['settled'],
+  //   rejected: ['rejected'],
+  //   stop: ['failed', 'partial_failed', 'cancelled']
+  // }
   // 获取卡片底部按钮配置
   const getCardActions = (rawStatus: string, contentType?: string, content?: any, orderPlatform?: string) => {
     const status = BACKEND_STATUS_TO_TAB[rawStatus] || rawStatus
     const isVideo = ['video_text', 'video_script', 'video'].includes(contentType || '')
     const isSimpleTask = contentType === 'simple'
     if (orderPlatform === 'special') {
-      switch (status) {
-        case 'failed':
-          return [
-            { key: 'delete', label: '删除', icon: Trash2, type: 'danger' },
-            // { key: 'regenerate', label: '重新生成', icon: RefreshCw, type: 'primary' },
-          ]
-        case 'cancelled':
-          return [
-            { key: 'delete', label: '删除', icon: Trash2, type: 'danger' },
-          ]
+      if (['awaiting_acceptance', 'settled', 'rejected'].includes(rawStatus)) {
+        return []
       }
+      return [
+        { key: 'delete', label: '删除', icon: Trash2, type: 'danger' },
+      ]
     } else {
       switch (status) {
         case 'preview':
