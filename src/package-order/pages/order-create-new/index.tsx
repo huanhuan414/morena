@@ -718,7 +718,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           <View
             className="timeout-select-section"
             onClick={() => {
-              setCustomAcceptTimeoutInput(form.acceptTimeout ? String(form.acceptTimeout) : '')
+              setCustomAcceptTimeoutInput(form.acceptTimeout ? String(form.acceptTimeout / 60) : '')
               setShowAcceptTimeoutModal(true)
             }}
           >
@@ -1097,7 +1097,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                       className={`modal-option ${form.acceptTimeout === option.value ? 'active' : ''}`}
                       onClick={() => {
                         setForm(prev => ({ ...prev, acceptTimeout: option.value }))
-                        setCustomAcceptTimeoutInput(String(option.value))
+                        setCustomAcceptTimeoutInput(String(option.value / 60))
                       }}
                     >
                       <Text className="option-label">{option.label}</Text>
@@ -1110,23 +1110,25 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
 
                 {/* 自定义输入 */}
                 <View className="modal-custom-section">
-                  <Text className="custom-label">自定义时间（分钟）</Text>
+                  <Text className="custom-label">自定义时间（小时）</Text>
                   <View className="custom-input-row">
                     <TaroInput
-                      type="number"
+                      type="digit"
                       className="custom-input"
-                      placeholder="输入分钟数"
+                      placeholder="输入小时数"
                       value={customAcceptTimeoutInput}
                       onInput={(e: any) => {
                         const value = e.detail.value
-                        // 过滤非数字字符，只保留数字
-                        const filteredValue = String(value || '').replace(/[^\d]/g, '')
+                        // 过滤非数字字符，仅保留数字和一个小数点
+                        const filteredValue = String(value || '')
+                          .replace(/[^\d.]/g, '')
+                          .replace(/(\..*)\./g, '$1')
                         setCustomAcceptTimeoutInput(filteredValue)
                       }}
                     />
-                    <Text className="custom-unit">分钟</Text>
+                    <Text className="custom-unit">小时</Text>
                   </View>
-                  <Text className="custom-hint">范围：30-4320分钟（3天），仅支持整数</Text>
+                  <Text className="custom-hint">范围：0.5-72小时（3天）</Text>
                 </View>
 
               </View>
@@ -1142,19 +1144,19 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                       setShowAcceptTimeoutModal(false)
                       return
                     }
-                    const inputValue = parseInt(inputStr, 10)
-                    if (inputValue < 30) {
-                      Taro.showToast({ title: '最小30分钟', icon: 'none' })
-                      setCustomAcceptTimeoutInput('30')
+                    const inputValue = parseFloat(inputStr)
+                    if (!Number.isFinite(inputValue) || inputValue < 0.5) {
+                      Taro.showToast({ title: '最小0.5小时', icon: 'none' })
+                      setCustomAcceptTimeoutInput('0.5')
                       setForm(prev => ({ ...prev, acceptTimeout: 30 }))
                       setShowAcceptTimeoutModal(false)
-                    } else if (inputValue > 4320) {
+                    } else if (inputValue > 72) {
                       Taro.showToast({ title: '最大3天', icon: 'none' })
-                      setCustomAcceptTimeoutInput('4320')
+                      setCustomAcceptTimeoutInput('72')
                       setForm(prev => ({ ...prev, acceptTimeout: 4320 }))
                       setShowAcceptTimeoutModal(false)
                     } else {
-                      setForm(prev => ({ ...prev, acceptTimeout: inputValue }))
+                      setForm(prev => ({ ...prev, acceptTimeout: Math.round(inputValue * 60) }))
                       setShowAcceptTimeoutModal(false)
                     }
                   }}
