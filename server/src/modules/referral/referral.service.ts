@@ -130,7 +130,8 @@ export class ReferralService {
       '2db4258f-23da-4cb4-bbde-1286a4d28ad1',  // 用户3172 13595193172
       'bae9efa7-b5a9-4b8b-8476-764563b299dd',  // 二姐 15767788629
       'a616dbd6-e7e4-4db1-b34a-57862fb01056',  // tx. 19236149546
-       '9e9dc929-e091-4769-9a25-39fc789792d0',   // 用户0512 17817810512
+      '9e9dc929-e091-4769-9a25-39fc789792d0',  // 用户0512 17817810512
+      '29c5c66d-6826-4492-bc6b-bb9f55d22f31',  // 用户1709 18984811709
     ]
     const inviterIp = inviter.last_login_ip || inviter.ip_address
     if (inviterIp && !VIP_INVITER_IDS.includes(inviter.id)) {
@@ -409,8 +410,9 @@ export class ReferralService {
       'b78b770e-005b-4cc8-b0d3-a7013c1af65f',  // 丧彪 13078584090
       '2db4258f-23da-4cb4-bbde-1286a4d28ad1',  // 用户3172 13595193172
       'bae9efa7-b5a9-4b8b-8476-764563b299dd',  // 二姐 15767788629
-      'a616dbd6-e7e4-4db1-b34a-57862fb01056',   // tx. 19236149546
-      '9e9dc929-e091-4769-9a25-39fc789792d0',   // 用户0512 17817810512
+      'a616dbd6-e7e4-4db1-b34a-57862fb01056',  // tx. 19236149546
+      '9e9dc929-e091-4769-9a25-39fc789792d0',  // 用户0512 17817810512
+      '29c5c66d-6826-4492-bc6b-bb9f55d22f31',  // 用户1709 18984811709
     ]
     if (VIP_INVITER_IDS.includes(userId)) {
       return { allowed: true, current: 0, limit: 999999 }
