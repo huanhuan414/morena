@@ -1,10 +1,12 @@
 /* Order Detail Page - od 前缀 */
 .od-page {
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
   background: #F8FAFC;
   display: flex;
   flex-direction: column;
-  padding-bottom: calc(240rpx + env(safe-area-inset-bottom));
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 /* ═══════ Header ═══════ */
@@ -119,15 +121,20 @@
 
 /* ═══════ Body ═══════ */
 .od-body {
-  flex: 1;
-  padding: 0 24rpx;
-  margin-top: 300rpx;
-  position: relative;
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 300rpx;
+  bottom: 0;
+  height: auto;
+  margin-top: 0;
+  padding: 0 24rpx calc(240rpx + env(safe-area-inset-bottom));
   z-index: 3;
-  padding-bottom: 40rpx;
+  box-sizing: border-box;
 }
 .od-body-with-pipeline {
-  margin-top: 480rpx;
+  top: 480rpx;
+  margin-top: 0;
 }
 
 /* ═══════ Cards ═══════ */
@@ -849,12 +856,20 @@
 
 /* 遮罩层加深，突出弹窗与页面的层次感 */
 .od-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  align-items: center;
+  justify-content: center;
+  padding: 32rpx;
+  box-sizing: border-box;
   background: rgba(0, 0, 0, 0.5) !important;
   backdrop-filter: blur(4px) !important;
 }
 
 /* 弹窗容器 - 固定宽高、整体感 */
 .od-dialog-content {
+  position: relative;
   overflow: hidden !important;
   border-radius: 28rpx !important;
   border: none !important;
@@ -1086,13 +1101,19 @@
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
-  gap: 10rpx;
+  width: 100%;
+  gap: 0;
 }
 .od-dialog-img-wrap {
-  width: calc((100% - 20rpx) / 3);
+  width: 32%;
+  flex: 0 0 32%;
+  min-width: 0;
+  box-sizing: border-box;
+  margin-right: 2%;
+  margin-bottom: 10rpx;
   aspect-ratio: 1;
   border-radius: 12rpx;
-  overflow: visible;
+  overflow: hidden;
   position: relative;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
@@ -1115,6 +1136,20 @@
   position: relative;
   overflow: visible;
   box-shadow: 0 4rpx 16rpx rgba(49, 46, 129, 0.25);
+}
+.od-dialog-video-grid .od-dialog-video-card {
+  width: 32%;
+  flex: 0 0 32%;
+  min-width: 0;
+  box-sizing: border-box;
+  margin-right: 2%;
+  margin-bottom: 10rpx;
+  aspect-ratio: 1;
+  border-radius: 12rpx;
+}
+.od-dialog-images-grid > .od-dialog-img-wrap:nth-child(3n),
+.od-dialog-video-grid > .od-dialog-video-card:nth-child(3n) {
+  margin-right: 0;
 }
 .od-dialog-video-overlay {
   position: absolute;
@@ -1313,8 +1348,13 @@
 
 /* 弹窗关闭按钮 - 白色适配深色头部 */
 .od-dialog-close-btn {
+  position: absolute;
   top: 28rpx !important;
   right: 24rpx !important;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 48rpx !important;
   height: 48rpx !important;
   border-radius: 50% !important;

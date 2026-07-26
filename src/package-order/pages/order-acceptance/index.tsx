@@ -6,7 +6,7 @@ import { View, Text, ScrollView, Image, Input, Textarea } from '@tarojs/componen
 import { Network } from '@/network'
 import {
   ArrowLeft, Check, CircleAlert, Image as ImageIcon, ExternalLink,
-  ChevronRight, TrendingUp, CircleCheckBig, Video, FileText, Play, ShieldAlert
+  ChevronRight, TrendingUp, CircleCheckBig, Video, FileText, Play, ShieldAlert, Package
 } from 'lucide-react-taro'
 import { getPlatformLabel } from '@/constants/publish-platform'
 import './index.css'
@@ -119,10 +119,16 @@ export default function OrderAcceptance() {
   ]
   const [generatedContent, setGeneratedContent] = useState<{ content?: string; images?: string[]; videos?: string[]; status?: string } | null>(null)
   const [rawOrderPlatform, setRawOrderPlatform] = useState('')
-  const [specialTaskView, setSpecialTaskView] = useState<{ loading: boolean; steps: any[]; stepResults: Record<string, any> }>({
+  const [specialTaskView, setSpecialTaskView] = useState<{
+    loading: boolean
+    steps: any[]
+    stepResults: Record<string, any>
+    assignedMaterials: Record<string, { items?: Array<{ type?: string; content?: string }> }>
+  }>({
     loading: false,
     steps: [],
     stepResults: {},
+    assignedMaterials: {},
   })
   const [hasPermission, setHasPermission] = useState(true)
   const [acceptanceTimeout, setAcceptanceTimeout] = useState<number>(24)  // 审核超时时间（小时）
@@ -252,7 +258,7 @@ export default function OrderAcceptance() {
   const handleSelectAvatar = async (avatar: AvatarStat) => {
     setSelectedAvatar(avatar)
     setGeneratedContent(null)
-    setSpecialTaskView({ loading: false, steps: [], stepResults: {} })
+    setSpecialTaskView({ loading: false, steps: [], stepResults: {}, assignedMaterials: {} })
     if (avatar.requestId) {
       try {
         const isSpecialOrder = rawOrderPlatform === 'special'
@@ -265,9 +271,10 @@ export default function OrderAcceptance() {
               loading: false,
               steps: Array.isArray(data.steps) ? data.steps : [],
               stepResults: data.stepResults || data.step_results || {},
+              assignedMaterials: data.assignedMaterials || data.assigned_materials || {},
             })
           } else {
-            setSpecialTaskView({ loading: false, steps: [], stepResults: {} })
+            setSpecialTaskView({ loading: false, steps: [], stepResults: {}, assignedMaterials: {} })
             showToast({ title: res.data?.message || '收集信息加载失败', icon: 'none' })
           }
           return
@@ -284,7 +291,7 @@ export default function OrderAcceptance() {
           })
         }
       } catch (error) {
-        setSpecialTaskView({ loading: false, steps: [], stepResults: {} })
+        setSpecialTaskView({ loading: false, steps: [], stepResults: {}, assignedMaterials: {} })
         console.error('获取生成内容失败:', error)
       }
     }
@@ -441,6 +448,15 @@ export default function OrderAcceptance() {
 
   const isSelectedSpecialOrder = rawOrderPlatform === 'special'
   const specialSteps = specialTaskView.steps.filter(step => COLLECT_STEP_TYPES.includes(step.step_type || step.stepType))
+  const assignedMaterials = specialTaskView.assignedMaterials
+  const textMaterials = (Array.isArray(assignedMaterials.text?.items) ? assignedMaterials.text.items : [])
+    .filter(item => item.type === 'text' && item.content)
+  const imageMaterials = (Array.isArray(assignedMaterials.image?.items) ? assignedMaterials.image.items : [])
+    .filter(item => item.type === 'image' && item.content)
+  const videoMaterials = (Array.isArray(assignedMaterials.video?.items) ? assignedMaterials.video.items : [])
+    .filter(item => item.type === 'video' && item.content)
+  const materialImageUrls = imageMaterials.map(item => item.content as string)
+  const hasAssignedMaterials = textMaterials.length > 0 || imageMaterials.length > 0 || videoMaterials.length > 0
 
   if (loading) {
     return (
@@ -555,11 +571,12 @@ export default function OrderAcceptance() {
         </View>
 
         {/* 内容 */}
-        <ScrollView scrollY className="od-body">          {(isSelectedSpecialOrder || generatedContent) && (
+        <ScrollView scrollY className="od-body">
+          {(isSelectedSpecialOrder || generatedContent) && (
             <View className="od-card">
               <View className="od-stats-header" style={{ marginBottom: 12 }}>
                 <FileText size={16} color="#6366F1" />
-                <Text className="block od-stats-title">分身创作内容</Text>
+                <Text className="block od-stats-title">反馈内容</Text>
               </View>
 
               {/* 文案内容 */}
@@ -622,6 +639,7 @@ export default function OrderAcceptance() {
                   {!specialTaskView.loading && specialSteps.length === 0 && (
                     <Text className="block" style={{ fontSize: '13px', color: '#9CA3AF' }}>暂无收集信息</Text>
                   )}
+
                 </View>
               ) : (
                 <>
@@ -692,6 +710,71 @@ export default function OrderAcceptance() {
             </View>
           )}
 
+          {!specialTaskView.loading && isSelectedSpecialOrder && hasAssignedMaterials && (
+            <View className="od-card od-material-card">
+              <View className="od-stats-header od-material-card-header">
+                <Package size={14} color="#6366F1" />
+                <Text className="block od-stats-title">素材信息</Text>
+                <Text className="block od-material-count">
+                  {textMaterials.length + imageMaterials.length + videoMaterials.length}项
+                </Text>
+              </View>
+
+              {textMaterials.length > 0 && (
+                <View className="od-material-section">
+                  <Text className="block od-material-label">文字素材</Text>
+                  {textMaterials.map((item, index) => (
+                    <View key={`material-text-${index}`} className="od-material-text">
+                      <Text className="block od-material-text-content">{item.content}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {imageMaterials.length > 0 && (
+                <View className="od-material-section">
+                  <Text className="block od-material-label">图片素材</Text>
+                  <View className="od-images-grid">
+                    {imageMaterials.map((item, index) => (
+                      <Image
+                        key={`material-image-${index}`}
+                        src={item.content as string}
+                        className="od-preview-image"
+                        mode="aspectFill"
+                        onClick={() => previewImage({ current: item.content as string, urls: materialImageUrls })}
+                      />
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {videoMaterials.length > 0 && (
+                <View className="od-material-section">
+                  <Text className="block od-material-label">视频素材</Text>
+                  <View className="od-images-grid">
+                    {videoMaterials.map((item, index) => (
+                      <View
+                        key={`material-video-${index}`}
+                        className="od-material-video-card"
+                        onClick={() => {
+                          const isMiniApp = ([Taro.ENV_TYPE.WEAPP, Taro.ENV_TYPE.TT] as string[]).includes(Taro.getEnv())
+                          if (isMiniApp) {
+                            Taro.previewMedia({ sources: [{ url: item.content as string, type: 'video' }] })
+                          }
+                        }}
+                      >
+                        <View className="od-material-video-overlay" />
+                        <View className="od-material-video-play">
+                          <Text className="block od-material-video-play-icon">▶</Text>
+                        </View>
+                        <Text className="block od-material-video-label">点击播放视频</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </View>
+          )}
           {/* 发布反馈 */}
           {selectedAvatar.publishFeedback && (() => {
             const pf = selectedAvatar.publishFeedback

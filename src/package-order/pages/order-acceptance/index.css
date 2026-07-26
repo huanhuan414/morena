@@ -1204,6 +1204,93 @@
   border-radius: 12rpx;
 }
 
+/* 特殊订单素材信息 */
+.od-material-card {
+  padding: 24rpx;
+}
+
+.od-material-card-header {
+  margin-bottom: 20rpx;
+}
+
+.od-material-count {
+  margin-left: auto;
+  font-size: 22rpx;
+  color: #8b5cf6;
+}
+
+.od-material-section + .od-material-section {
+  margin-top: 24rpx;
+}
+
+.od-material-label {
+  margin-bottom: 10rpx;
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+.od-material-text + .od-material-text {
+  margin-top: 12rpx;
+}
+
+.od-material-text {
+  padding: 20rpx;
+  border-radius: 12rpx;
+  background: #f9fafb;
+}
+
+.od-material-text-content {
+  font-size: 26rpx;
+  line-height: 1.6;
+  color: #1f2937;
+  word-break: break-all;
+}
+
+.od-material-video-card {
+  position: relative;
+  width: calc(33.33% - 8rpx);
+  height: 180rpx;
+  overflow: hidden;
+  border-radius: 12rpx;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+}
+
+.od-material-video-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.od-material-video-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  transform: translate(-50%, -60%);
+}
+
+.od-material-video-play-icon {
+  margin-left: 4rpx;
+  font-size: 24rpx;
+  color: #6366f1;
+}
+
+.od-material-video-label {
+  position: absolute;
+  right: 8rpx;
+  bottom: 8rpx;
+  left: 8rpx;
+  font-size: 20rpx;
+  color: #fff;
+  text-align: center;
+}
+
 /* 视频播放器 */
 .pg-video-wrapper {
   width: 100%;
