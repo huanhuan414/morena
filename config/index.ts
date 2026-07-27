@@ -172,6 +172,9 @@ export default defineConfig<'vite'>(async (merge, _env) => {
     copy: {
       patterns: [
         { from: 'public/assets', to: 'dist/assets' },
+        ...(process.env.TARO_ENV === 'weapp'
+          ? [{ from: 'mini_shop', to: `${outputRoot}/mini_shop` }]
+          : []),
       ],
       options: {},
     },
@@ -298,6 +301,51 @@ export default defineConfig<'vite'>(async (merge, _env) => {
                 name: 'generate-weapp-project-config',
                 closeBundle() {
                   generateWeappProjectConfig(outputRoot);
+                },
+              },
+              {
+                name: 'register-mini-shop-independent-subpackage',
+                closeBundle() {
+                  const appConfigPath = path.resolve(
+                    __dirname,
+                    '..',
+                    outputRoot,
+                    'app.json',
+                  );
+                  if (!fs.existsSync(appConfigPath)) {
+                    throw new Error(
+                      `[mini-shop] 未找到构建产物：${appConfigPath}`,
+                    );
+                  }
+
+                  const appConfig = JSON.parse(
+                    fs.readFileSync(appConfigPath, 'utf8'),
+                  );
+                  const subPackages = Array.isArray(appConfig.subPackages)
+                    ? appConfig.subPackages
+                    : [];
+
+                  appConfig.subPackages = [
+                    ...subPackages.filter(
+                      (subpackage: { root?: string }) =>
+                        subpackage.root !== 'mini_shop',
+                    ),
+                    {
+                      root: 'mini_shop',
+                      independent: true,
+                      pages: [
+                        'pages/product/index',
+                        'pages/success/index',
+                        'pages/order-query/index',
+                      ],
+                    },
+                  ];
+
+                  fs.writeFileSync(
+                    appConfigPath,
+                    JSON.stringify(appConfig, null, 2),
+                    'utf8',
+                  );
                 },
               },
               {
