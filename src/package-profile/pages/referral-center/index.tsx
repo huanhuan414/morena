@@ -75,9 +75,9 @@ export default function ReferralCenter() {
       const limitRes = await Network.request({ url: '/api/referral/daily-limit' })
       const limitData = limitRes.data?.data || limitRes.data || {}
       setDailyLimit({
-        allowed: limitData.allowed || true,
-        current: limitData.current || 0,
-        limit: limitData.limit || 10,
+        allowed: limitData.allowed ?? true,
+        current: limitData.current ?? 0,
+        limit: limitData.limit ?? 10,
       })
 
       // 加载邀请列表
@@ -780,7 +780,7 @@ export default function ReferralCenter() {
             <View className="ref-rule-icon" style={{ background: '#3B82F6' }}>
               <Zap size={12} color="#fff" />
             </View>
-            <Text className="ref-rule-text">每人每日最多邀请10人，超出部分不计入奖励</Text>
+            <Text className="ref-rule-text">{dailyLimit.limit ? `每人每日最多邀请${dailyLimit.limit}人，超出部分不计入奖励` : '无邀请限制'}</Text>
           </View>
           <View className="ref-rule-item">
             <View className="ref-rule-icon" style={{ background: '#EF4444' }}>

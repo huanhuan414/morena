@@ -15,6 +15,12 @@ export class ReferralService {
     @Inject(WechatSubscribeMessageService) private readonly wechatService: WechatSubscribeMessageService
   ) {}
 
+    private normalizeInviteLimit(experience: unknown): number {
+      if (experience === null || experience === undefined || experience === '') return 0
+      const limit = Number(experience)
+      return Number.isInteger(limit) && limit >= 0 ? limit : 50
+    }
+
   /**
    * 生成邀请码
    */
@@ -53,14 +59,14 @@ export class ReferralService {
    * @param inviterIp 邀请人的IP地址
    * @returns 是否允许邀请
    */
-  async checkInviterIpLimit(inviterIp: string): Promise<{ allowed: boolean; current: number; limit: number }> {
+  async checkInviterIpLimit(inviterIp: string, inviteLimit: number): Promise<{ allowed: boolean; current: number; limit: number }> {
     const db = getMySQLClient()
+    const limit = this.normalizeInviteLimit(inviteLimit)
 
-    if (!inviterIp) {
-      return { allowed: true, current: 0, limit: 10 }
+    if (!inviterIp || limit === 0) {
+      return { allowed: true, current: 0, limit }
     }
 
-    // 查询今天同一IP下有多少个不同的邀请人
     const result = await db.query(
       `SELECT COUNT(*) as count
        FROM users
@@ -69,12 +75,10 @@ export class ReferralService {
     ) as any[]
 
     const currentCount = Number(result?.[0]?.count || 0)
-    const IP_DAILY_LIMIT = 50  // 同一IP每天最多500个不同的邀请人
-
     return {
-      allowed: currentCount < IP_DAILY_LIMIT,
+      allowed: currentCount <= limit,
       current: currentCount,
-      limit: IP_DAILY_LIMIT
+      limit
     }
   }
 
@@ -85,7 +89,7 @@ export class ReferralService {
     ipAddress?: string
   ) {
     const db = getMySQLClient()
-    
+    console.log('useReferralCode', inviteeId, code, deviceId, ipAddress)
     const inviter = await db.queryOne('users', { referral_code: code }) as any
     
     if (!inviter) {
@@ -102,9 +106,11 @@ export class ReferralService {
       throw new Error('您已被邀请过')
     }
     
-    // 检查每日邀请限制（每人每日最多500人）
-    const limitInfo = await this.checkDailyInviteLimit(inviter.id)
+    // Apply the inviter's dynamic daily limit
+    const inviteLimit = this.normalizeInviteLimit(inviter.experience)
+    const limitInfo = await this.checkDailyInviteLimit(inviter.id, inviteLimit)
     if (!limitInfo.allowed) {
+      console.log(`${inviter.id}, ${inviteLimit}：邀请关系已建立，但邀请人今日已达上限（${limitInfo.current}/${limitInfo.limit}人），不发放奖励`)
       // ✅ 超限仍更新users表，但不建立referrals记录
       await db.updateWhere('users', { id: inviteeId }, {
         referred_by: inviter.id,
@@ -120,23 +126,12 @@ export class ReferralService {
       }
     }
     
-    // ✅ 检查邀请人的IP每日限制（VIP用户跳过）
-    const VIP_INVITER_IDS = [
-      'acf59e3f-3a38-45af-95e7-056c91fc1771',  // 玲子 17885624676
-      '0f0fcfa8-9a0b-4168-898c-a55939ca62a1',  // 青～甜 18200383164
-      'ff5c3e20-24df-4c2b-94dc-157f878f5150',  // 招财猫 17585476712
-      '8617da2d-05fd-4f8a-91ba-f18667bc3901',  // 多多 15692717857
-      'b78b770e-005b-4cc8-b0d3-a7013c1af65f',  // 丧彪 13078584090
-      '2db4258f-23da-4cb4-bbde-1286a4d28ad1',  // 用户3172 13595193172
-      'bae9efa7-b5a9-4b8b-8476-764563b299dd',  // 二姐 15767788629
-      'a616dbd6-e7e4-4db1-b34a-57862fb01056',  // tx. 19236149546
-      '9e9dc929-e091-4769-9a25-39fc789792d0',  // 用户0512 17817810512
-      '29c5c66d-6826-4492-bc6b-bb9f55d22f31',  // 用户1709 18984811709
-    ]
-    const inviterIp = inviter.last_login_ip || inviter.ip_address
-    if (inviterIp && !VIP_INVITER_IDS.includes(inviter.id)) {
-      const ipLimitInfo = await this.checkInviterIpLimit(inviterIp)
+    // experience = 0 skips the IP daily limit
+    const inviterIp = inviter.lastLoginIp || inviter.last_login_ip || inviter.ipAddress || inviter.ip_address
+    if (inviterIp && inviteLimit > 0) {
+      const ipLimitInfo = await this.checkInviterIpLimit(inviterIp, inviteLimit)
       if (!ipLimitInfo.allowed) {
+        console.log(`${inviter.id}, ${inviteLimit}, ${inviterIp}, ${ipLimitInfo.allowed}：邀请关系已建立，但同一IP今日邀请人数过多（${ipLimitInfo.current}/${ipLimitInfo.limit}人），不发放奖励`)
         // ✅ IP超限仍更新users表，但不建立referrals记录
         await db.updateWhere('users', { id: inviteeId }, {
           referred_by: inviter.id,
@@ -156,6 +151,7 @@ export class ReferralService {
     // 注册时创建邀请记录，标记为pending（待发放奖励）
     // 同时记录设备ID和IP地址
     const id = crypto.randomUUID()
+    
     await db.query(
       `INSERT INTO referrals 
        (id, referrer_id, referred_id, referral_code, status, reward_amount, 
@@ -398,27 +394,22 @@ export class ReferralService {
   }
 
   /**
-   * 检查每日邀请限制（每人每日最多500人）
+   * Use users.experience as the daily invite limit; 0 means unlimited
    */
-  async checkDailyInviteLimit(userId: string): Promise<{ allowed: boolean; current: number; limit: number }> {
-    // VIP用户无限制
-    const VIP_INVITER_IDS = [
-      'acf59e3f-3a38-45af-95e7-056c91fc1771',  // 玲子 17885624676
-      '0f0fcfa8-9a0b-4168-898c-a55939ca62a1',  // 青～甜 18200383164
-      'ff5c3e20-24df-4c2b-94dc-157f878f5150',  // 招财猫 17585476712
-      '8617da2d-05fd-4f8a-91ba-f18667bc3901',  // 多多 15692717857
-      'b78b770e-005b-4cc8-b0d3-a7013c1af65f',  // 丧彪 13078584090
-      '2db4258f-23da-4cb4-bbde-1286a4d28ad1',  // 用户3172 13595193172
-      'bae9efa7-b5a9-4b8b-8476-764563b299dd',  // 二姐 15767788629
-      'a616dbd6-e7e4-4db1-b34a-57862fb01056',  // tx. 19236149546
-      '9e9dc929-e091-4769-9a25-39fc789792d0',  // 用户0512 17817810512
-      '29c5c66d-6826-4492-bc6b-bb9f55d22f31',  // 用户1709 18984811709
-    ]
-    if (VIP_INVITER_IDS.includes(userId)) {
-      return { allowed: true, current: 0, limit: 999999 }
+  async checkDailyInviteLimit(userId: string, configuredLimit?: number): Promise<{ allowed: boolean; current: number; limit: number }> {
+    const db = getMySQLClient()
+    let dailyLimit = configuredLimit
+    if (dailyLimit === undefined) {
+      const user = await db.queryOne('users', { id: userId }) as any
+      dailyLimit = this.normalizeInviteLimit(user?.experience)
+    } else {
+      dailyLimit = this.normalizeInviteLimit(dailyLimit)
     }
 
-    const db = getMySQLClient()
+    if (dailyLimit === 0) {
+      return { allowed: true, current: 0, limit: 0 }
+    }
+
     const today = new Date().toISOString().split('T')[0]
 
     const result = await db.query(
@@ -429,12 +420,11 @@ export class ReferralService {
     ) as any[]
 
     const currentCount = Number(result?.[0]?.count || 0)
-    const DAILY_LIMIT = 50
 
     return {
-      allowed: currentCount < DAILY_LIMIT,
+      allowed: currentCount < dailyLimit,
       current: currentCount,
-      limit: DAILY_LIMIT
+      limit: dailyLimit
     }
   }
 
