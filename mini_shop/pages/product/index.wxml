@@ -1,0 +1,109 @@
+<view class="page-shell">
+  <view wx:if="{{loading}}" class="loading-state"><text>正在加载商品信息…</text></view>
+  <view wx:elif="{{error}}" class="empty-state">
+    <text>{{error}}</text>
+    <button class="retry-button" bindtap="loadProduct">重新加载</button>
+  </view>
+
+  <form wx:else class="product-form" bindsubmit="submitOrder">
+    <swiper class="product-swiper" indicator-dots="{{gallery.length > 1}}" circular="{{gallery.length > 1}}">
+      <swiper-item class="product-slide" wx:for="{{gallery}}" wx:key="*this">
+        <image class="product-image" src="{{item}}" mode="aspectFill"></image>
+      </swiper-item>
+      <swiper-item class="product-slide" wx:if="{{!gallery.length}}">
+        <view class="image-placeholder">暂无商品图片</view>
+      </swiper-item>
+    </swiper>
+
+    <view class="card product-summary">
+      <view class="product-title">{{product.product_name}}</view>
+      <view class="product-subtitle">{{product.subtitle}}</view>
+      <view class="price-line"><text class="currency">¥</text><text class="price">{{displayPrice}}</text></view>
+      <view class="product-meta">已售 {{product.sold_total}} · {{product.delivery_type}} · {{product.free_shipping ? '包邮' : '运费 ¥' + product.shipping_fee}}</view>
+    </view>
+
+    <view class="card">
+      <view class="section-title">选择商品规格</view>
+      <view class="spec-group" wx:for="{{specGroups}}" wx:for-item="group" wx:for-index="groupIndex" wx:key="name">
+        <view class="spec-name">{{group.name}}</view>
+        <view class="spec-options">
+          <button
+            wx:for="{{group.values}}"
+            wx:for-item="option"
+            wx:key="value"
+            class="spec-option {{option.selected ? 'active' : ''}}"
+            data-group-index="{{groupIndex}}"
+            data-value="{{option.value}}"
+            bindtap="selectSpec"
+          >{{option.value}}</button>
+        </view>
+      </view>
+      <view class="stock-tip" wx:if="{{selectedSku}}">库存 {{selectedSku.stock}}</view>
+      <view class="stock-tip muted" wx:else>请选择完整规格</view>
+
+      <view class="field">
+        <text class="field-label">购买数量</text>
+        <input class="field-input quantity-input" type="number" value="{{quantity}}" min="{{product.min_quantity}}" max="{{product.max_quantity || (selectedSku ? selectedSku.stock : 9999)}}" bindblur="changeQuantity" />
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="section-title">收货信息</view>
+      <view class="two-columns">
+        <view class="field">
+          <text class="field-label">收货人</text>
+          <input class="field-input" name="receiver_name" maxlength="100" placeholder="请输入姓名" />
+        </view>
+        <view class="field">
+          <text class="field-label">手机号</text>
+          <input class="field-input" name="phone" type="number" maxlength="30" placeholder="请输入手机号" />
+        </view>
+      </view>
+
+      <block wx:if="{{product.delivery_type === '快递配送'}}">
+        <view class="address-tabs">
+          <view class="address-tab {{addressType === 'domestic' ? 'active' : ''}}" data-type="domestic" bindtap="changeAddressType">国内地址</view>
+          <view class="address-tab {{addressType === 'overseas' ? 'active' : ''}}" data-type="overseas" bindtap="changeAddressType">海外地址</view>
+        </view>
+        <block wx:if="{{addressType === 'domestic'}}">
+          <view class="field">
+            <text class="field-label">省 / 市 / 区</text>
+            <picker mode="region" bindchange="changeRegion">
+              <view class="field-picker {{region.length ? '' : 'muted'}}">{{regionText}}</view>
+            </picker>
+          </view>
+        </block>
+        <block wx:else>
+          <view class="field"><text class="field-label">国家 / 地区</text><input class="field-input" name="overseas_country" maxlength="50" placeholder="例如：美国" /></view>
+          <view class="two-columns">
+            <view class="field"><text class="field-label">州 / 省</text><input class="field-input" name="overseas_region" maxlength="50" placeholder="可以不填" /></view>
+            <view class="field"><text class="field-label">城市</text><input class="field-input" name="overseas_city" maxlength="50" placeholder="请输入城市" /></view>
+          </view>
+        </block>
+        <view class="field"><text class="field-label">详细地址</text><input class="field-input" name="detail_address" maxlength="255" placeholder="街道、门牌号等详细地址" /></view>
+      </block>
+      <view class="field"><text class="field-label">买家备注</text><textarea class="field-textarea" name="buyer_remark" maxlength="500" placeholder="选填，可填写配送或商品要求" /></view>
+    </view>
+
+    <view class="card description-card" wx:if="{{product.description_blocks.length}}">
+      <view class="section-title detail-title">商品详情</view>
+      <block wx:for="{{product.description_blocks}}" wx:key="index">
+        <image wx:if="{{item.type === 'image'}}" class="detail-image" src="{{item.url}}" mode="widthFix" />
+        <view wx:else class="detail-text detail-{{item.tag}}">{{item.text}}</view>
+      </block>
+    </view>
+
+    <view class="card service-card">
+      <view class="section-title">配送与售后</view>
+      <view class="service-row"><text>配送</text><text>{{product.delivery_description || product.delivery_type}}</text></view>
+      <view class="service-row"><text>售后</text><text>{{product.after_sales_description || '如有问题请联系商家处理'}}</text></view>
+      <view class="query-link" bindtap="openOrderQuery">查询已有订单与物流 ></view>
+    </view>
+
+    <view class="fixed-action">
+      <button class="primary-button" form-type="submit" loading="{{submitting}}" disabled="{{submitting || !selectedSku || selectedSku.stock < quantity}}">
+        {{selectedSku ? (selectedSku.stock < quantity ? '库存不足' : '微信支付') : '请选择规格'}}
+      </button>
+    </view>
+  </form>
+</view>

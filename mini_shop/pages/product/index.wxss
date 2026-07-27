@@ -1,0 +1,41 @@
+@import "../../styles/common.wxss";
+
+.product-form { display: block; width: 100%; margin: 0; padding: 0; }
+.product-swiper { display: block; box-sizing: border-box; width: 100vw; height: 750rpx; margin: 0; padding: 0; overflow: hidden; background: #000; }
+.product-slide { position: relative; box-sizing: border-box; width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: #000; }
+.product-image { position: absolute; top: 0; right: -2rpx; bottom: 0; left: -2rpx; display: block; width: auto; height: 100%; margin: 0; padding: 0; }
+.image-placeholder { width: 100%; height: 100%; }
+.image-placeholder { display: flex; align-items: center; justify-content: center; color: var(--muted); }
+.product-summary { margin-top: 0; border-radius: 0 0 24rpx 24rpx; }
+.product-title { font-size: 40rpx; font-weight: 800; line-height: 1.35; }
+.product-subtitle { margin-top: 10rpx; color: var(--muted); line-height: 1.55; }
+.price-line { display: flex; margin-top: 20rpx; align-items: baseline; color: #b12235; }
+.currency { margin-right: 4rpx; font-size: 26rpx; }
+.price { font-size: 50rpx; font-weight: 800; }
+.product-meta { margin-top: 14rpx; color: var(--muted); font-size: 23rpx; }
+.section-title { font-size: 31rpx; font-weight: 800; }
+.spec-group { margin-top: 26rpx; }
+.spec-name { margin-bottom: 14rpx; font-weight: 700; }
+.spec-options { display: flex; flex-wrap: wrap; gap: 14rpx; }
+.spec-option {
+  min-width: 110rpx; margin: 0; padding: 13rpx 24rpx; border: 1rpx solid var(--line);
+  border-radius: 999rpx; background: #fff; color: var(--ink); font-size: 25rpx; line-height: 1.4;
+}
+.spec-option::after { border: 0; }
+.spec-option.active { border-color: var(--wine-700); background: var(--wine-100); color: var(--wine-800); font-weight: 700; }
+.stock-tip { margin-top: 22rpx; font-size: 24rpx; }
+.quantity-input { width: 220rpx; }
+.address-tabs { display: inline-flex; margin-top: 28rpx; padding: 6rpx; border-radius: 16rpx; background: #f5f1f2; }
+.address-tab { padding: 14rpx 25rpx; border-radius: 12rpx; color: var(--muted); font-size: 24rpx; }
+.address-tab.active { background: var(--wine-700); color: #fff; }
+.description-card { padding: 0; overflow: hidden; }
+.detail-title { padding: 28rpx; border-bottom: 1rpx solid var(--line); }
+.detail-image { display: block; width: 100%; margin: 0; padding: 0; }
+.detail-text { padding: 12rpx 28rpx; line-height: 1.8; }
+.detail-h2, .detail-h3, .detail-h4 { padding-top: 28rpx; font-weight: 800; }
+.detail-h2 { font-size: 34rpx; }
+.detail-h3 { font-size: 30rpx; }
+.detail-li { padding-left: 50rpx; }
+.service-row { display: grid; grid-template-columns: 100rpx 1fr; gap: 18rpx; margin-top: 24rpx; line-height: 1.6; }
+.service-row > text:first-child { color: var(--muted); }
+.query-link { margin-top: 30rpx; padding-top: 24rpx; border-top: 1rpx solid var(--line); color: var(--wine-700); text-align: center; font-weight: 700; }

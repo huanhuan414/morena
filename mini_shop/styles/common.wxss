@@ -1,0 +1,48 @@
+page {
+  --wine-950: #3f0710;
+  --wine-900: #560b17;
+  --wine-800: #711322;
+  --wine-700: #8f1d2d;
+  --wine-100: #f6e9ec;
+  --wine-50: #fcf6f7;
+  --ink: #2b2527;
+  --muted: #84767b;
+  --line: #eadfe2;
+  background: #f5f1f2;
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+  font-size: 28rpx;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+view, form, input, textarea, button, image { box-sizing: border-box; }
+.page-shell { width: 100%; min-height: 100vh; margin: 0; padding: 0 0 150rpx; overflow-x: hidden; }
+.card { display: block; width: auto; margin: 20rpx; padding: 28rpx; border: 1rpx solid var(--line); border-radius: 24rpx; background: #fff; }
+.primary-button { border: 0; border-radius: 18rpx; background: var(--wine-700); color: #fff; font-weight: 700; }
+.primary-button::after { border: 0; }
+.muted { color: var(--muted); }
+.empty-state, .loading-state {
+  display: flex; min-height: 55vh; padding: 40rpx; align-items: center; justify-content: center;
+  flex-direction: column; color: var(--muted); text-align: center;
+}
+.empty-state text, .loading-state text { margin-top: 20rpx; }
+.retry-button { margin-top: 28rpx; color: var(--wine-700); background: var(--wine-50); }
+.field { margin-top: 24rpx; }
+.field-label { display: block; margin-bottom: 12rpx; font-size: 25rpx; font-weight: 700; }
+.field-input, .field-textarea, .field-picker {
+  box-sizing: border-box; width: 100%; min-height: 88rpx; padding: 22rpx 24rpx;
+  border: 1rpx solid var(--line); border-radius: 16rpx; background: #fff;
+}
+.field-textarea { min-height: 150rpx; }
+.two-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 18rpx; }
+.status-chip {
+  display: inline-flex; padding: 9rpx 16rpx; border-radius: 999rpx;
+  background: var(--wine-100); color: var(--wine-800); font-size: 22rpx; font-weight: 700;
+}
+.fixed-action {
+  position: fixed; z-index: 20; right: 0; bottom: 0; left: 0; padding: 18rpx 24rpx calc(18rpx + env(safe-area-inset-bottom));
+  border-top: 1rpx solid var(--line); background: rgba(255, 255, 255, .96);
+}
+.fixed-action button { height: 90rpx; line-height: 90rpx; }

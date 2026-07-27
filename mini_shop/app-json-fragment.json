@@ -1,0 +1,9 @@
+{
+  "root": "mini_shop",
+  "independent": true,
+  "pages": [
+    "pages/product/index",
+    "pages/success/index",
+    "pages/order-query/index"
+  ]
+}

@@ -1,0 +1,18 @@
+@import "../../styles/common.wxss";
+
+.success-page { display: flex; align-items: flex-start; justify-content: center; padding: 40rpx 24rpx; }
+.success-card { box-sizing: border-box; width: 100%; padding: 50rpx 34rpx; border-radius: 28rpx; background: #fff; text-align: center; }
+.success-icon { display: grid; width: 116rpx; height: 116rpx; margin: 0 auto; place-items: center; border-radius: 50%; background: #e5f2ea; color: #3f7654; font-size: 62rpx; font-weight: 800; }
+.success-icon.pending { background: #fff2d9; color: #956b1f; }
+.success-title { margin-top: 25rpx; font-size: 39rpx; font-weight: 800; }
+.success-tip { margin-top: 10rpx; color: var(--muted); }
+.order-product { display: flex; margin-top: 38rpx; padding: 22rpx; align-items: center; gap: 20rpx; border-radius: 18rpx; background: #faf7f8; text-align: left; }
+.order-product image { width: 100rpx; height: 100rpx; border-radius: 14rpx; }
+.order-product view { display: flex; min-width: 0; flex-direction: column; gap: 8rpx; }
+.product-name { font-weight: 700; }
+.result-row { display: flex; padding: 26rpx 6rpx; justify-content: space-between; border-bottom: 1rpx solid var(--line); text-align: left; }
+.result-row > text:first-child { color: var(--muted); }
+.order-no { max-width: 66%; font-size: 23rpx; overflow-wrap: anywhere; }
+.amount { color: var(--wine-800); font-size: 34rpx; font-weight: 800; }
+.pay-button { margin-top: 38rpx; }
+.query-button { margin-top: 18rpx; background: #fff; color: #711322; border: 1rpx solid #cda5ac; }

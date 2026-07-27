@@ -1,0 +1,50 @@
+<view class="page-shell query-page">
+  <view class="card query-header">
+    <view class="query-icon">🚚</view>
+    <view><view class="query-title">订单与物流查询</view><view class="muted">输入下单时填写的收货人姓名和手机号</view></view>
+  </view>
+
+  <view class="card query-form-card">
+    <form class="query-form" bindsubmit="queryOrders">
+      <view class="query-field">
+        <text class="query-label">收货人姓名</text>
+        <input class="query-input" name="receiver_name" maxlength="100" placeholder="请输入收货人姓名"></input>
+      </view>
+      <view class="query-field">
+        <text class="query-label">收货人手机号</text>
+        <input class="query-input" name="phone" type="number" maxlength="30" placeholder="请输入收货手机号"></input>
+      </view>
+      <button class="primary-button submit-query" form-type="submit" loading="{{querying}}" disabled="{{querying}}">查询订单</button>
+    </form>
+  </view>
+
+  <view wx:if="{{error}}" class="card query-error">{{error}}</view>
+  <view wx:if="{{orders.length}}" class="result-count">共找到 {{orders.length}} 笔订单</view>
+
+  <view class="card order-card" wx:for="{{orders}}" wx:key="order_no">
+    <view class="order-top">
+      <view><text class="muted">订单号</text><text class="order-no">{{item.order_no}}</text></view>
+      <text class="status-chip">{{item.order_status}}</text>
+    </view>
+    <view class="order-product">
+      <image wx:if="{{item.image}}" src="{{item.image}}" mode="aspectFill" />
+      <view><text class="product-name">{{item.product_name}}</text><text class="muted">{{item.sku_name}} × {{item.quantity}}</text><text class="amount">¥{{item.order_amount}}</text></view>
+    </view>
+    <view class="timeline">
+      <view class="timeline-item {{step.completed ? 'done' : ''}}" wx:for="{{item.timeline}}" wx:for-item="step" wx:key="status">
+        <view class="timeline-dot"></view>
+        <view><text>{{step.status}}</text><text class="muted">{{step.time || '等待处理'}}</text></view>
+      </view>
+    </view>
+    <view wx:if="{{item.tracking_no}}" class="tracking-box">
+      <view><text>物流公司</text><text>{{item.express_company}}</text></view>
+      <view><text>运单号</text><text>{{item.tracking_no}}</text></view>
+    </view>
+    <view wx:elif="{{item.order_status === '待发货'}}" class="waiting-box">商家正在准备商品，发货后将在这里显示物流信息。</view>
+  </view>
+
+  <view wx:if="{{searched && !orders.length && !error}}" class="card query-empty">
+    <text class="query-empty-title">未查询到订单</text>
+    <text>请确认姓名和手机号与下单时填写的内容完全一致</text>
+  </view>
+</view>

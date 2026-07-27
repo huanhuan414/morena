@@ -1,0 +1,18 @@
+<view class="page-shell success-page">
+  <view wx:if="{{loading}}" class="loading-state"><text>正在读取订单结果…</text></view>
+  <view wx:elif="{{error}}" class="empty-state"><text>{{error}}</text></view>
+  <view wx:else class="success-card">
+    <view class="success-icon {{order.is_paid ? '' : 'pending'}}">{{order.is_paid ? '✓' : '¥'}}</view>
+    <view class="success-title">{{order.is_paid ? '支付成功' : '等待付款'}}</view>
+    <view class="success-tip">{{order.is_paid ? '商家将尽快安排发货' : '订单已保留，请完成微信支付'}}</view>
+    <view class="order-product">
+      <image wx:if="{{order.image}}" src="{{order.image}}" mode="aspectFill" />
+      <view><text class="product-name">{{order.product_name}}</text><text class="muted">{{order.sku_name}} × {{order.quantity}}</text></view>
+    </view>
+    <view class="result-row"><text>订单号</text><text class="order-no">{{order.order_no}}</text></view>
+    <view class="result-row"><text>应付金额</text><text class="amount">¥{{order.order_amount}}</text></view>
+    <view class="result-row"><text>支付状态</text><text>{{order.payment_status}}</text></view>
+    <button wx:if="{{!order.is_paid}}" class="primary-button pay-button" loading="{{paying}}" disabled="{{paying}}" bindtap="retryPayment">继续微信支付</button>
+    <button class="primary-button query-button" bindtap="openQuery">查询订单与物流</button>
+  </view>
+</view>
