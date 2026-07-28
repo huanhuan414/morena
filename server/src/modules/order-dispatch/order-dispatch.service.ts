@@ -1512,7 +1512,7 @@ async getExecutionProgress(orderId: string) {
                 o.expected_quantity, o.quantity_per_avatar, o.target_audience
         FROM order_dispatch_requests r
         LEFT JOIN orders o ON r.order_id = o.id
-        WHERE r.avatar_id = ? AND r.order_id = ? AND r.status = 'pending'
+        WHERE r.avatar_id = ? AND r.order_id = ?
         ORDER BY r.created_at DESC, r.updated_at DESC
         LIMIT 1`,
         [avatarId, orderId]
@@ -1529,11 +1529,11 @@ async getExecutionProgress(orderId: string) {
                accept_timeout_at = ?,
                responded_at = NOW(),
                updated_at = NOW()
-           WHERE id = ? AND status = 'pending'`,
+           WHERE id = ?`,
           [acceptTimeoutAt, request.id]
         )
         if (!updateResult || Number((updateResult as any).affectedRows || 0) !== 1) {
-          throw new ConflictException('该派单已处理，请刷新后重试')
+          throw new ConflictException('接单失败，请刷新后重试')
         }
         request.status = 'accepted'
       } else {
@@ -1564,44 +1564,44 @@ async getExecutionProgress(orderId: string) {
 
       actualAvatarId = request.avatarId || request.avatar_id || avatarId
 
-      const [acceptedCountRows] = await conn.query(
-        `SELECT COUNT(DISTINCT avatar_id) as count
-         FROM order_dispatch_requests
-         WHERE order_id = ? AND status IN ('accepted', 'completed')`,
-        [orderId]
-      )
-      const acceptedCount = Number((acceptedCountRows as any[])?.[0]?.count || 0)
+      // const [acceptedCountRows] = await conn.query(
+      //   `SELECT COUNT(DISTINCT avatar_id) as count
+      //    FROM order_dispatch_requests
+      //    WHERE order_id = ? AND status IN ('accepted', 'completed')`,
+      //   [orderId]
+      // )
+      // const acceptedCount = Number((acceptedCountRows as any[])?.[0]?.count || 0)
 
-      const isMatchedAvatar = request._isMatchedAvatar === true
-      const [matchedPendingRows] = await conn.query(
-        `SELECT COUNT(*) as count
-         FROM order_dispatch_requests
-         WHERE order_id = ? AND status = 'pending'`,
-        [orderId]
-      )
-      const matchedPendingCount = Number((matchedPendingRows as any[])?.[0]?.count || 0)
-      const shouldKick = (acceptedCount + matchedPendingCount) >= requiredCount
-      if (shouldKick) {
-        const [pendingDispatches] = await conn.query(
-          `SELECT d.id, d.avatar_id, d.user_id
-           FROM order_dispatch_requests d
-           WHERE d.order_id = ? AND d.status = 'pending'
-           ORDER BY d.created_at ASC
-           LIMIT 1`,
-          [orderId]
-        )
-        const kickedDispatch: any = (pendingDispatches as any[])?.[0]
-        if (kickedDispatch) {
-          await conn.query(
-            `UPDATE order_dispatch_requests
-             SET status = 'expired',
-                 reject_reason = '订单已被其他分身抢先接单，名额已满',
-                 updated_at = NOW()
-             WHERE id = ? AND status = 'pending'`,
-            [kickedDispatch.id]
-          )
-        }
-      }
+      // const isMatchedAvatar = request._isMatchedAvatar === true
+      // const [matchedPendingRows] = await conn.query(
+      //   `SELECT COUNT(*) as count
+      //    FROM order_dispatch_requests
+      //    WHERE order_id = ? AND status = 'pending'`,
+      //   [orderId]
+      // )
+      // const matchedPendingCount = Number((matchedPendingRows as any[])?.[0]?.count || 0)
+      // const shouldKick = (acceptedCount + matchedPendingCount) >= requiredCount
+      // if (shouldKick) {
+      //   const [pendingDispatches] = await conn.query(
+      //     `SELECT d.id, d.avatar_id, d.user_id
+      //      FROM order_dispatch_requests d
+      //      WHERE d.order_id = ? AND d.status = 'pending'
+      //      ORDER BY d.created_at ASC
+      //      LIMIT 1`,
+      //     [orderId]
+      //   )
+      //   const kickedDispatch: any = (pendingDispatches as any[])?.[0]
+      //   if (kickedDispatch) {
+      //     await conn.query(
+      //       `UPDATE order_dispatch_requests
+      //        SET status = 'expired',
+      //            reject_reason = '订单已被其他分身抢先接单，名额已满',
+      //            updated_at = NOW()
+      //        WHERE id = ? AND status = 'pending'`,
+      //       [kickedDispatch.id]
+      //     )
+      //   }
+      // }
 
       // if (acceptedCount >= requiredCount) {
       //   await conn.query(
@@ -1624,12 +1624,15 @@ async getExecutionProgress(orderId: string) {
     } catch (error) {
       try {
         await conn.rollback()
-      } catch {}
+      } catch { }
       if (redisOccupied) {
         await this.redisService.getClient().decr(redisKeyAccepted)
         redisOccupied = false
       }
-      throw error
+      if (String(error?.code || '') === 'ER_DUP_ENTRY') {
+        throw new ConflictException('该分身已接单，不能重复接单')
+      }
+      throw error 
     } finally {
       conn.release()
     }
