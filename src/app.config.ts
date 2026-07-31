@@ -3,6 +3,8 @@ export default defineAppConfig({
     // 主包：TabBar页面（第一个为默认页）+ 必须在主包的页面
     'pages/index/index',
     'pages/mind-chat/index',
+    'pages/avatar-square/index',
+    'pages/work-square/index',
     'pages/profile/index',
     'pages/login/index',
     'pages/user-agreement/index',
@@ -125,6 +127,16 @@ export default defineAppConfig({
         'pages/transactions/index',
       ],
     },
+    {
+      root: 'package-avatar-square',
+      name: 'avatar-square',
+      pages: [
+        'pages/avatar-public-detail/index',
+        'pages/avatar-owner-detail/index',
+        'pages/avatar-work-manage/index',
+        'pages/avatar-work-detail/index',
+      ],
+    },
   ],
   window: {
     backgroundTextStyle: 'light',
@@ -155,6 +167,18 @@ export default defineAppConfig({
         text: '分身',
         iconPath: './tabbar-icons/message-circle.png',
         selectedIconPath: './tabbar-icons/message-circle-active.png',
+      },
+      {
+        pagePath: 'pages/avatar-square/index',
+        text: '分身广场',
+        iconPath: './tabbar-icons/users.png',
+        selectedIconPath: './tabbar-icons/users-active.png',
+      },
+      {
+        pagePath: 'pages/work-square/index',
+        text: '动态广场',
+        iconPath: './tabbar-icons/sparkles.png',
+        selectedIconPath: './tabbar-icons/sparkles-active.png',
       },
       {
         pagePath: 'pages/profile/index',
