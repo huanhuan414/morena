@@ -911,3 +911,59 @@ create(@Body() body: unknown) {
   return this.userService.create(result.data);
 }
 ```
+
+---
+
+## 开发日志
+
+### 2026-07-28 — 我的页面新增「我的分身」菜单项
+
+**会话目的**：在「我的」页面（profile）中，于订阅中心按钮上方新增「我的分身」菜单入口。
+
+**完成任务**：
+1. 在 `menuItems` 配置数组头部插入「我的分身」菜单项，位置在「订阅中心」之前。
+2. 使用 `Bot` 图标（来自 `lucide-react-taro`），配色与「订阅中心」保持一致（`type: 'primary'`，紫色系）。
+3. 点击跳转至 `/package-avatar/pages/avatar-manage/index`（已有分身管理页，路由已在 `app.config.ts` 中注册）。
+4. 与现有菜单项一致：需登录（`requireLogin: true`），菜单可见性受后端 `menu-feature/enabled` 接口控制（`key: 'my_avatar'`）。
+
+**修改文件**：
+- `src/pages/profile/index.tsx`：import 增加 `Bot`，`menuItems` 数组头部插入「我的分身」配置项。
+
+---
+
+### 2026-07-28 — 修复小程序 `invalid url` 网络请求报错
+
+**会话目的**：排查并修复微信小程序开发环境中所有接口请求报 `request:fail invalid url "/api/..."` 的问题。
+
+**根因分析**：
+- `src/network.ts` 的 `createUrl()` 函数在 URL 不含 `http(s)://` 时，会在前面拼接 `PROJECT_DOMAIN` 编译常量。
+- `PROJECT_DOMAIN` 由构建时读取 `.env.local` 中的同名变量注入。
+- `.env.local` 中未配置 `PROJECT_DOMAIN`，导致该常量编译为空字符串。
+- 最终请求 URL 仍为相对路径（如 `/api/user-stats/overview`），微信小程序不支持相对路径，报 `invalid url` 错误。
+
+**完成任务**：
+1. 在 `.env.local` 中新增 `PROJECT_DOMAIN=http://127.0.0.1:3000`，指向本地后端服务地址。
+2. 重启 `pnpm dev:weapp` 使编译常量生效，请求 URL 将被正确拼接为完整地址。
+
+**修改文件**：
+- `.env.local`：新增 `PROJECT_DOMAIN=http://127.0.0.1:3000`。
+
+---
+
+### 2026-07-28 — 修复后端 VolcengineService 无 AK/SK 时启动崩溃
+
+**会话目的**：排查 `ERR_CONNECTION_REFUSED`，后端服务无法在 3000 端口监听的原因。
+
+**根因分析**：
+- `server/.env.local` 中已有 `STORAGE_MOCK=1`，但 `VolcengineService` 和 `StorageService` 的 `constructor` 不感知该标志。
+- `ImageXClient` 在 AK/SK 为空时直接抛出异常，发生在 NestJS 依赖注入阶段，导致整个应用无法启动。
+- 后端进程崩溃退出，3000 端口无服务，小程序所有请求均报 `ERR_CONNECTION_REFUSED`。
+
+**完成任务**：
+1. `VolcengineService.constructor`：在 `STORAGE_MOCK=1` 时跳过 `ImageXClient` 初始化，赋值 `null`。
+2. `StorageService.constructor`：在 `STORAGE_MOCK=1` 时跳过 `S3Storage` 和 `VolcengineService` 实例化。
+3. 修改保存后，`tsc --watch` 自动重编译，NestJS 热重载，后端成功在 `http://localhost:3000` 启动。
+
+**修改文件**：
+- `server/src/modules/upload/volcengine.service.ts`：constructor 增加 Mock 守卫。
+- `server/src/modules/storage/storage.service.ts`：constructor 增加 Mock 守卫。
