@@ -618,6 +618,64 @@
   text-align: center;
 }
 
+.pd-name-dialog {
+  width: calc(100vw - 64rpx);
+  max-width: 680rpx;
+  padding: 28rpx;
+  border: 1rpx solid #ede9fe;
+  border-radius: 28rpx;
+  background: #fff;
+}
+
+.pd-name-field {
+  position: relative;
+  margin-top: 22rpx;
+  padding: 4rpx 14rpx 34rpx;
+  border: 1rpx solid #ddd6fe;
+  border-radius: 18rpx;
+  background: #faf8ff;
+}
+
+.pd-name-input {
+  width: 100%;
+  height: 76rpx;
+  color: #334155;
+  border: 0;
+  background: transparent;
+  font-size: 24rpx;
+}
+
+.pd-name-count {
+  position: absolute;
+  right: 14rpx;
+  bottom: 10rpx;
+  color: #a8a0bb;
+  font-size: 18rpx;
+}
+
+.pd-name-actions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+
+.pd-name-button {
+  height: 76rpx;
+  flex: 1;
+  color: #6d4cd8;
+  border-color: #c4b5fd;
+  border-radius: 18rpx;
+  background: #fff;
+  font-size: 24rpx;
+}
+
+.pd-name-button.is-primary {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg, #7c3aed, #6d4cd8);
+  box-shadow: 0 8rpx 20rpx rgb(109 76 216 / 22%);
+}
+
 .pd-work-scroll {
   max-height: 62vh;
 }

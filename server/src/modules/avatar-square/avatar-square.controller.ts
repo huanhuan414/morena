@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, Req } from '@nestjs/common'
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query, Req } from '@nestjs/common'
 import { AvatarSquareService } from './avatar-square.service'
 
 @Controller('avatar-square')
@@ -312,6 +312,100 @@ export class AvatarSquareController {
         msg: error instanceof Error ? error.message : '服务器错误',
         data: null,
       }
+    }
+  }
+
+  @Get(':id/settings')
+  async getOwnedAvatarSettings(@Param('id') id: string, @Req() req: any) {
+    try {
+      const avatarId = Number(id)
+      if (!Number.isInteger(avatarId) || avatarId <= 0) {
+        return { code: 400, msg: '分身ID无效', data: null }
+      }
+      const rawUserId = req.headers['x-user-id']
+      const userId = Array.isArray(rawUserId) ? rawUserId[0] : rawUserId
+      if (!userId) return { code: 401, msg: '请先登录', data: null }
+
+      const result = await this.avatarSquareService.getOwnedAvatarSettings(avatarId, userId)
+      if (!result) return { code: 404, msg: '分身不存在或无权管理', data: null }
+      return { code: 200, msg: 'success', data: result }
+    } catch (error) {
+      console.error('获取分身设置失败:', error)
+      return { code: 500, msg: error instanceof Error ? error.message : '服务器错误', data: null }
+    }
+  }
+
+  @Put(':id/settings')
+  @HttpCode(200)
+  async updateOwnedAvatarSettings(
+    @Param('id') id: string,
+    @Body() body: Record<string, unknown>,
+    @Req() req: any,
+  ) {
+    try {
+      const avatarId = Number(id)
+      if (!Number.isInteger(avatarId) || avatarId <= 0) {
+        return { code: 400, msg: '分身ID无效', data: null }
+      }
+      const rawUserId = req.headers['x-user-id']
+      const userId = Array.isArray(rawUserId) ? rawUserId[0] : rawUserId
+      if (!userId) return { code: 401, msg: '请先登录', data: null }
+
+      const allowedKeys = ['avatarName', 'avatarUrl', 'description', 'publicStatus', 'status']
+      const bodyKeys = Object.keys(body || {})
+      if (bodyKeys.length === 0 || bodyKeys.some(key => !allowedKeys.includes(key))) {
+        return { code: 400, msg: '设置参数无效', data: null }
+      }
+
+      const updates: {
+        avatarName?: string
+        avatarUrl?: string
+        description?: string
+        publicStatus?: '公开' | '私有'
+        status?: '已上线' | '已下线'
+      } = {}
+      if (Object.prototype.hasOwnProperty.call(body, 'avatarName')) {
+        if (typeof body.avatarName !== 'string' || !body.avatarName.trim() || body.avatarName.trim().length > 50) {
+          return { code: 400, msg: '分身名称需为1-50个字符', data: null }
+        }
+        updates.avatarName = body.avatarName.trim()
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'avatarUrl')) {
+        if (typeof body.avatarUrl !== 'string' || body.avatarUrl.length > 2048 || !body.avatarUrl.startsWith('https://')) {
+          return { code: 400, msg: '分身头像地址无效', data: null }
+        }
+        updates.avatarUrl = body.avatarUrl
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'description')) {
+        if (typeof body.description !== 'string' || body.description.length > 500) {
+          return { code: 400, msg: '分身介绍不能超过500个字符', data: null }
+        }
+        updates.description = body.description.trim()
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'publicStatus')) {
+        if (body.publicStatus !== '公开' && body.publicStatus !== '私有') {
+          return { code: 400, msg: '公开状态无效', data: null }
+        }
+        updates.publicStatus = body.publicStatus
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'status')) {
+        if (body.status !== '已上线' && body.status !== '已下线') {
+          return { code: 400, msg: '上线状态无效', data: null }
+        }
+        updates.status = body.status
+      }
+
+      const result = await this.avatarSquareService.updateOwnedAvatarSettings(avatarId, userId, updates)
+      if (result.state === 'not_found') {
+        return { code: 404, msg: '分身不存在或无权管理', data: null }
+      }
+      if (result.state === 'status_locked') {
+        return { code: 409, msg: '已封禁分身不能修改上线状态', data: result.data }
+      }
+      return { code: 200, msg: '保存成功', data: result.data }
+    } catch (error) {
+      console.error('更新分身设置失败:', error)
+      return { code: 500, msg: error instanceof Error ? error.message : '服务器错误', data: null }
     }
   }
 

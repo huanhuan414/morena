@@ -27,6 +27,14 @@ type ManagedWorksQuery = {
   page: number
   pageSize: number
 }
+type AvatarSettingsUpdate = {
+  avatarName?: string
+  avatarUrl?: string
+  description?: string
+  publicStatus?: '公开' | '私有'
+  status?: '已上线' | '已下线'
+}
+
 export const WORK_VIEW_SOURCES = [
   'avatar_public_detail',
   'work_detail',
@@ -91,6 +99,27 @@ export class AvatarSquareService {
     }
   }
  
+  private mapAvatarSettings(row: Record<string, unknown>) {
+    const tagsJson = this.safeParseJson<Record<string, string>>(row.tagsJson, {})
+    return {
+      id: Number(row.id || 0),
+      userId: String(row.userId || ''),
+      avatarName: String(row.avatarName || ''),
+      avatarUrl: String(row.avatarUrl || ''),
+      description: String(row.description || ''),
+      tags: [tagsJson.gender, tagsJson.age, tagsJson.location, tagsJson.occupation].filter(Boolean),
+      publicStatus: String(row.publicStatus || '私有'),
+      status: String(row.status || '已下线'),
+      skillType: String(row.skillType || ''),
+      updatedAt: row.updatedAt || '',
+      useCount: Number(row.useCount || 0),
+      workCount: Number(row.workCount || 0),
+      viewCount: Number(row.viewCount || 0),
+      favoriteCount: Number(row.favoriteCount || 0),
+      incomePointsTotal: Number(row.incomePointsTotal || 0),
+    }
+  }
+
   private mapWorkPreview(row: Record<string, unknown>) {
     const contentJson = this.safeParseJson<Record<string, unknown>>(row.contentJson, {})
     const rawImages = Array.isArray(contentJson.images)
@@ -576,6 +605,90 @@ export class AvatarSquareService {
     }
   }
 
+  /**
+   * 获取分身所有者设置
+   */
+  async getOwnedAvatarSettings(avatarId: number, userId: string) {
+    const db = getMySQLClient()
+    const rows = await db.query(`
+      SELECT
+        id,
+        user_id,
+        avatar_name,
+        avatar_url,
+        description,
+        tags_json,
+        public_status,
+        status,
+        skill_type,
+        updated_at,
+        use_count,
+        work_count,
+        view_count,
+        favorite_count,
+        income_points_total
+      FROM ai_avatar
+      WHERE id = ?
+        AND user_id = ?
+        AND deleted_at IS NULL
+      LIMIT 1
+    `, [avatarId, userId])
+    const row = rows[0] as Record<string, unknown> | undefined
+    return row ? this.mapAvatarSettings(row) : null
+  }
+
+  /**
+   * 更新分身所有者设置
+   */
+  async updateOwnedAvatarSettings(
+    avatarId: number,
+    userId: string,
+    updates: AvatarSettingsUpdate,
+  ) {
+    const current = await this.getOwnedAvatarSettings(avatarId, userId)
+    if (!current) return { state: 'not_found' as const, data: null }
+    if (updates.status && current.status === '已封禁') {
+      return { state: 'status_locked' as const, data: current }
+    }
+
+    const columns: string[] = []
+    const values: unknown[] = []
+    const updateFields: Array<[keyof AvatarSettingsUpdate, string]> = [
+      ['avatarName', 'avatar_name'],
+      ['avatarUrl', 'avatar_url'],
+      ['description', 'description'],
+      ['publicStatus', 'public_status'],
+      ['status', 'status'],
+    ]
+    updateFields.forEach(([key, column]) => {
+      if (updates[key] !== undefined) {
+        columns.push(`${column} = ?`)
+        values.push(updates[key])
+      }
+    })
+
+    const db = getMySQLClient()
+    const statusGuard = updates.status ? "AND status <> '已封禁'" : ''
+    const result = await db.query(`
+      UPDATE ai_avatar
+      SET ${columns.join(', ')}, updated_at = NOW()
+      WHERE id = ?
+        AND user_id = ?
+        AND deleted_at IS NULL
+        ${statusGuard}
+    `, [...values, avatarId, userId])
+
+    if (Number((result as any)?.affectedRows || 0) === 0) {
+      const latest = await this.getOwnedAvatarSettings(avatarId, userId)
+      if (!latest) return { state: 'not_found' as const, data: null }
+      if (updates.status && latest.status === '已封禁') {
+        return { state: 'status_locked' as const, data: latest }
+      }
+    }
+
+    const updated = await this.getOwnedAvatarSettings(avatarId, userId)
+    return { state: 'updated' as const, data: updated }
+  }
   /**
    * 获取公开分身广场详情
    * @param avatarId 分身ID

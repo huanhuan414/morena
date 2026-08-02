@@ -24,12 +24,13 @@
   top: 0;
   right: 0;
   left: 0;
-  height: 260rpx;
+  height: calc(var(--as-status-bar-height) + 140rpx);
   overflow: hidden;
   pointer-events: none;
+  border-radius: 0 0 32rpx 32rpx;
   background:
-    radial-gradient(92% 130% at 100% 0%, rgba(196, 181, 253, 0.4) 0%, transparent 64%),
-    linear-gradient(180deg, #f8f7ff 0%, #f8fafc 100%);
+    radial-gradient(90% 150% at 86% 0%, rgba(196, 181, 253, 0.62) 0%, transparent 64%),
+    linear-gradient(118deg, #6d28d9 0%, #7c3aed 48%, #a855f7 100%);
 }
 
 .as-header-glow {
@@ -42,7 +43,7 @@
   right: -96rpx;
   width: 320rpx;
   height: 320rpx;
-  background: rgba(221, 214, 254, 0.32);
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .as-header-glow.is-left {
@@ -50,7 +51,7 @@
   left: -128rpx;
   width: 256rpx;
   height: 256rpx;
-  background: rgba(224, 231, 255, 0.3);
+  background: rgba(196, 181, 253, 0.2);
 }
 
 .as-header-content {

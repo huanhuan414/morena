@@ -1,5 +1,5 @@
 import { Image, ScrollView, Text, View } from '@tarojs/components'
-import Taro, { useRouter } from '@tarojs/taro'
+import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
 import {
@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Network } from '@/network'
 import { formatDateTime, formatDate } from '@/utils/time'
@@ -106,24 +107,24 @@ export default function AvatarOwnerDetailPage() {
   const [selectedWorkCategory, setSelectedWorkCategory] = useState<WorkCategory>('全部')
   const [previewWork, setPreviewWork] = useState<WorkRow | null>(null)
   const [workPreviewOpen, setWorkPreviewOpen] = useState(false)
+  const [nameEditorOpen, setNameEditorOpen] = useState(false)
+  const [nameDraft, setNameDraft] = useState('')
+  const [savingName, setSavingName] = useState(false)
   const [loadFailed, setLoadFailed] = useState(!detailId)
   const [headHeight, setHeadHeight] = useState(0)
   const statusBarHeight = Taro.getWindowInfo().statusBarHeight || 20
 
-  useEffect(() => {
+  useDidShow(() => {
     if (!detailId) return
 
-    let active = true
     const loadDetail = async () => {
       setLoadFailed(false)
       try {
         const res = await Network.request({
-          url: `/api/avatar-square/${encodeURIComponent(detailId)}`,
+          url: `/api/avatar-square/${encodeURIComponent(detailId)}/settings`,
         })
-        // console.log('[AvatarOwnerDetailPage] avatar detail response:', res.data)
         const responseBody = res.data as { data?: AvatarPreview | null }
         const detail = responseBody?.data
-        if (!active) return
 
         if (detail) {
           setAvatar(current => current ? { ...current, ...detail } : detail)
@@ -132,15 +133,12 @@ export default function AvatarOwnerDetailPage() {
         }
       } catch (error) {
         console.error('[AvatarOwnerDetailPage] load avatar detail failed:', error)
-        if (active) setLoadFailed(true)
+        setLoadFailed(true)
       }
     }
 
     void loadDetail()
-    return () => {
-      active = false
-    }
-  }, [detailId])
+  })
 
   useEffect(() => {
     if (!detailId) return
@@ -185,6 +183,57 @@ export default function AvatarOwnerDetailPage() {
         .exec()
     })
   }, [avatar])
+
+  const navigateToSettings = () => {
+    if (!detailId) return
+    void Taro.navigateTo({
+      url: '/package-avatar-square/pages/avatar-settings/index?id=' + encodeURIComponent(detailId),
+    })
+  }
+
+  const openNameEditor = () => {
+    if (!avatar) return
+    setNameDraft(avatar.avatarName)
+    setNameEditorOpen(true)
+  }
+
+  const saveAvatarName = async () => {
+    const nextName = nameDraft.trim()
+    if (!detailId || !avatar || savingName) return
+    if (!nextName) {
+      void Taro.showToast({ title: '请输入分身名称', icon: 'none' })
+      return
+    }
+    if (nextName === avatar.avatarName) {
+      setNameEditorOpen(false)
+      return
+    }
+
+    setSavingName(true)
+    try {
+      const res = await Network.request({
+        url: '/api/avatar-square/' + encodeURIComponent(detailId) + '/settings',
+        method: 'PUT',
+        data: { avatarName: nextName },
+      })
+      const responseBody = res.data as { code?: number; msg?: string; data?: AvatarPreview | null }
+      if (responseBody?.code !== 200 || !responseBody.data) {
+        throw new Error(responseBody?.msg || '保存失败')
+      }
+
+      const updatedAvatar = responseBody.data
+      setAvatar(current => current ? { ...current, ...updatedAvatar } : updatedAvatar)
+      setNameEditorOpen(false)
+      void Taro.showToast({ title: '名称已保存', icon: 'success' })
+    } catch (error) {
+      void Taro.showToast({
+        title: error instanceof Error ? error.message : '保存失败',
+        icon: 'none',
+      })
+    } finally {
+      setSavingName(false)
+    }
+  }
 
   const pageStyle = {
     '--avatar-owner-status-bar': `${statusBarHeight}px`,
@@ -288,7 +337,7 @@ export default function AvatarOwnerDetailPage() {
             )}
           </View>
           <View className="pd-grow">
-            <View className="pd-name-row">
+            <View className="pd-name-row" onClick={openNameEditor}>
               <Text className="pd-name">{avatar.avatarName}</Text>
               <PenLine size={14} color="#6D4CD8" />
             </View>
@@ -307,7 +356,7 @@ export default function AvatarOwnerDetailPage() {
                 <Share2 size={12} color="#6D4CD8" />
                 <Text>分享分身</Text>
               </Button>
-              <Button size="sm" className="pd-act is-primary">
+              <Button size="sm" className="pd-act is-primary" onClick={navigateToSettings}>
                 <Settings size={12} color="#FFFFFF" />
                 <Text>管理分身</Text>
               </Button>
@@ -487,6 +536,43 @@ export default function AvatarOwnerDetailPage() {
           </View>
         </View>
       </ScrollView>
+
+      <Dialog open={nameEditorOpen} onOpenChange={open => { if (!open && !savingName) setNameEditorOpen(false) }}>
+        <DialogContent className="pd-name-dialog" overlayClassName="pd-work-overlay">
+          <DialogHeader>
+            <DialogTitle className="pd-dialog-title">
+              <Text>修改分身名称</Text>
+            </DialogTitle>
+          </DialogHeader>
+          <View className="pd-name-field">
+            <Input
+              value={nameDraft}
+              className="pd-name-input"
+              maxlength={50}
+              placeholder="请输入分身名称"
+              onInput={event => setNameDraft(event.detail.value)}
+            />
+            <Text className="pd-name-count">{nameDraft.length}/50</Text>
+          </View>
+          <View className="pd-name-actions">
+            <Button
+              variant="outline"
+              className="pd-name-button"
+              disabled={savingName}
+              onClick={() => setNameEditorOpen(false)}
+            >
+              <Text>取消</Text>
+            </Button>
+            <Button
+              className="pd-name-button is-primary"
+              disabled={savingName}
+              onClick={() => void saveAvatarName()}
+            >
+              <Text>{savingName ? '保存中...' : '保存'}</Text>
+            </Button>
+          </View>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={workPreviewOpen} onOpenChange={setWorkPreviewOpen}>
         <DialogContent className="pd-work-dialog" overlayClassName="pd-work-overlay">

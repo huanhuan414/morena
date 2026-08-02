@@ -133,6 +133,7 @@ export default defineAppConfig({
       pages: [
         'pages/avatar-public-detail/index',
         'pages/avatar-owner-detail/index',
+        'pages/avatar-settings/index',
         'pages/avatar-work-manage/index',
         'pages/avatar-work-detail/index',
       ],
