@@ -7,6 +7,7 @@ import { ChatModule } from './modules/chat/chat.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AvatarModule } from './modules/avatar/avatar.module';
 import { AvatarSquareModule } from './modules/avatar-square/avatar-square.module';
+import { MyAvatarModule } from './modules/my-avatar/my-avatar.module';
 import { UserModule } from './modules/user/user.module';
 import { TaskModule } from './modules/task/task.module';
 import { SocialModule } from './modules/social/social.module';
@@ -58,6 +59,7 @@ import { MenuFeatureModule } from './modules/menu-feature/menu-feature.module';
     AuthModule,
     AvatarModule,
     AvatarSquareModule,
+    MyAvatarModule,
     UserModule,
     TaskModule,
     SocialModule,

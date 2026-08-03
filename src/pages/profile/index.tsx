@@ -49,7 +49,7 @@ interface UserSubscription {
 
 // 菜单项配置（定义基础菜单）
 const menuItems = [
-  { title: '我的分身', icon: Bot, desc: '管理我的 AI 分身', type: 'primary', path: '/package-avatar/pages/avatar-manage/index', requireLogin: true, key: 'my_avatar' },
+  { title: '我的分身', icon: Bot, desc: '管理我的 AI 分身', type: 'primary', path: '/package-my-avatar/pages/my-avatar/index', requireLogin: true, key: 'my_avatar' },
   { title: '订阅中心', icon: Crown, desc: '升级解锁更多功能', type: 'primary', path: '/package-avatar/pages/subscription/index', requireLogin: true, key: 'subscription_center' },
   { title: '积分中心', icon: Coins, desc: '充值和交易记录', type: 'warning', path: '/package-coin/pages/index/index', requireLogin: true, key: 'coin_center' },
   { title: '收益中心', icon: Wallet, desc: '查看收益和提现', type: 'warning', path: '/package-profile/pages/earning-center/index', requireLogin: true, key: 'earning_center' },
@@ -335,12 +335,28 @@ export default function ProfilePage() {
                 )
               }
               // 普通菜单项
-              const handleMenuClick = () => {
+              const handleMenuClick = async () => {
                 if (!item.path) return
                 if (item.requireLogin && !isLoggedIn) {
                   navigateTo({ url: `/pages/login/index?redirect=${encodeURIComponent(item.path)}` })
                   return
                 }
+                if (item.key === 'my_avatar') {
+                  try {
+                    const res = await Network.request({
+                      url: '/api/my-avatars',
+                      data: { filter: 'all' }
+                    })
+                    const avatarCount = Number(res.data?.data?.summary?.avatarCount || 0)
+                    if (res.data?.code === 200 && avatarCount === 0) {
+                      navigateTo({ url: '/package-my-avatar/pages/avatar-onboarding/index' })
+                      return
+                    }
+                  } catch (error) {
+                    console.error('Failed to load my avatar count:', error)
+                  }
+                }
+
                 navigateTo({ url: item.path })
               }
               return (

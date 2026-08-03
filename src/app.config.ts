@@ -138,6 +138,14 @@ export default defineAppConfig({
         'pages/avatar-work-detail/index',
       ],
     },
+    {
+      root: 'package-my-avatar',
+      name: 'my-avatar',
+      pages: [
+        'pages/my-avatar/index',
+        'pages/avatar-onboarding/index',
+      ],
+    },
   ],
   window: {
     backgroundTextStyle: 'light',
