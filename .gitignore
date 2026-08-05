@@ -48,4 +48,5 @@ server/cert/*.key
 .cozeproj/reduction
 doc/
 sql/
-
+设计图/
+web/

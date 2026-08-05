@@ -138,9 +138,10 @@ export function getStatusBarHeight(): number {
   let statusBarHeight = 44
 
   try {
-    // 统一使用 getSystemInfoSync，兼容性最好
-    const systemInfo = Taro.getSystemInfoSync()
-    statusBarHeight = systemInfo.statusBarHeight || 44
+    const windowInfo = Taro.getWindowInfo?.() as any
+    if (windowInfo?.statusBarHeight) {
+      statusBarHeight = windowInfo.statusBarHeight
+    }
   } catch (error) {
     console.error('[SafeArea] 获取状态栏高度失败，使用默认值:', error)
     statusBarHeight = 44

@@ -1,0 +1,473 @@
+.acs2-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #ffffff;
+}
+
+.acs2-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18rpx 32rpx;
+  flex-shrink: 0;
+}
+
+.acs2-back {
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.acs2-header-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.acs2-header-right {
+  width: 60rpx;
+}
+
+/* 进度条 */
+.acs2-progress {
+  padding: 0 32rpx 24rpx;
+  flex-shrink: 0;
+}
+
+.acs2-progress-bar {
+  height: 6rpx;
+  background: #e5e7eb;
+  border-radius: 3rpx;
+  overflow: hidden;
+}
+
+.acs2-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #7c3aed, #8b5cf6);
+  border-radius: 3rpx;
+  transition: width 0.3s ease;
+}
+
+/* 内容区域 */
+.acs2-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.acs2-content-inner {
+  padding: 0 32rpx 220rpx;
+}
+
+/* ===== 技能类型选择视图 ===== */
+.acs2-skill-section {
+  margin-bottom: 32rpx;
+}
+
+.acs2-title {
+  display: block;
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 12rpx;
+}
+
+.acs2-subtitle {
+  display: block;
+  font-size: 26rpx;
+  color: #6b7280;
+  margin-bottom: 32rpx;
+}
+
+.acs2-skill-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20rpx;
+}
+
+.acs2-skill-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32rpx 16rpx;
+  background: #f9fafb;
+  border-radius: 16rpx;
+  border: 2rpx solid #f3f4f6;
+  transition: all 0.2s;
+}
+
+.acs2-skill-card.selected {
+  background: #f3e8ff;
+  border-color: #7c3aed;
+}
+
+.acs2-skill-icon {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16rpx;
+}
+
+.acs2-skill-name {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1a1a2e;
+  text-align: center;
+  margin-bottom: 8rpx;
+}
+
+.acs2-skill-desc {
+  display: block;
+  font-size: 22rpx;
+  color: #6b7280;
+  text-align: center;
+}
+
+.acs2-skill-select-btn {
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  color: #7c3aed;
+  padding: 8rpx 24rpx;
+  background: rgba(124, 58, 237, 0.08);
+  border-radius: 20rpx;
+}
+
+.acs2-skill-card.selected .acs2-skill-select-btn {
+  background: #7c3aed;
+  color: #ffffff;
+}
+
+.acs2-skill-hint {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 32rpx;
+  padding: 20rpx 24rpx;
+  background: #faf5ff;
+  border-radius: 12rpx;
+}
+
+.acs2-skill-hint-text {
+  font-size: 24rpx;
+  color: #6b21a8;
+  line-height: 1.5;
+}
+
+/* ===== 模板库视图 ===== */
+.acs2-tpl-header {
+  margin-bottom: 28rpx;
+  padding: 24rpx;
+  background: #faf5ff;
+  border-radius: 16rpx;
+  border: 2rpx solid #ede9fe;
+}
+
+.acs2-tpl-type-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16rpx;
+}
+
+.acs2-tpl-type-icon {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 12rpx;
+  background: #ede9fe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.acs2-tpl-type-info {
+  flex: 1;
+}
+
+/* 模板列表：两列网格 */
+.acs2-tpl-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20rpx;
+  margin-bottom: 24rpx;
+}
+
+/* 单个模板卡片 */
+.acs2-tpl-item {
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-radius: 16rpx;
+  border: 2rpx solid #f3f4f6;
+  overflow: hidden;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+}
+
+.acs2-tpl-item.selected {
+  border-color: #7c3aed;
+  box-shadow: 0 2rpx 12rpx rgba(124, 58, 237, 0.12);
+}
+
+/* 封面区域 */
+.acs2-tpl-item-cover {
+  width: 100%;
+  height: 160rpx;
+  background: #f3f4f6;
+  overflow: hidden;
+}
+
+.acs2-tpl-item-img {
+  width: 100%;
+  height: 160rpx;
+}
+
+.acs2-tpl-item-placeholder {
+  width: 100%;
+  height: 160rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+}
+
+/* 信息区域 */
+.acs2-tpl-item-body {
+  padding: 16rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.acs2-tpl-item-name {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #1a1a2e;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 标签行 */
+.acs2-tpl-item-tags {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8rpx;
+}
+
+.acs2-tpl-item-tag {
+  display: inline-block;
+  padding: 4rpx 12rpx;
+  background: #f3f4f6;
+  border-radius: 6rpx;
+  font-size: 20rpx;
+  color: #6b7280;
+}
+
+/* 使用次数 */
+.acs2-tpl-item-usage {
+  display: block;
+  font-size: 22rpx;
+  color: #9ca3af;
+}
+
+/* 价格 */
+.acs2-tpl-item-price {
+  display: block;
+  font-size: 24rpx;
+  color: #7c3aed;
+  font-weight: 600;
+}
+
+/* 添加按钮 */
+.acs2-tpl-item-btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  margin-top: 8rpx;
+  padding: 12rpx 0;
+  border-radius: 24rpx;
+  border: 2rpx solid #e5e7eb;
+  background: #ffffff;
+}
+
+.acs2-tpl-item-btn.added {
+  border-color: #7c3aed;
+  background: #faf5ff;
+}
+
+.acs2-tpl-item-btn-text {
+  font-size: 22rpx;
+  color: #7c3aed;
+  font-weight: 500;
+}
+
+.acs2-tpl-item-btn-text-added {
+  font-size: 22rpx;
+  color: #7c3aed;
+  font-weight: 500;
+}
+
+/* 创建自定义模板入口 */
+.acs2-custom-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx;
+  background: #faf5ff;
+  border-radius: 12rpx;
+  margin-bottom: 24rpx;
+}
+
+.acs2-custom-left {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.acs2-custom-text {
+  font-size: 26rpx;
+  color: #6b21a8;
+  font-weight: 500;
+}
+
+.acs2-custom-desc {
+  font-size: 22rpx;
+  color: #9ca3af;
+}
+
+/* ===== 底部操作区 ===== */
+.acs2-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20rpx 32rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  background: #ffffff;
+  border-top: 1rpx solid #f3f4f6;
+  z-index: 100;
+}
+
+.acs2-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.acs2-footer-selected {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.acs2-footer-info {
+  font-size: 26rpx;
+  color: #6b7280;
+}
+
+.acs2-footer-count {
+  color: #7c3aed;
+  font-weight: 600;
+}
+
+.acs2-footer-thumbs {
+  display: flex;
+  flex-direction: row;
+  gap: 8rpx;
+}
+
+.acs2-footer-thumb {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 8rpx;
+  overflow: hidden;
+  background: #f3f4f6;
+}
+
+.acs2-footer-thumb-img {
+  width: 48rpx;
+  height: 48rpx;
+}
+
+.acs2-footer-thumb-placeholder {
+  width: 48rpx;
+  height: 48rpx;
+  background: #ede9fe;
+}
+
+.acs2-footer-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20rpx 48rpx;
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  border-radius: 40rpx;
+  border: none;
+}
+
+.acs2-footer-btn.disabled {
+  opacity: 0.5;
+}
+
+.acs2-footer-btn-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+/* 技能选择态的底部 */
+.acs2-skill-footer {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+
+.acs2-skip-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26rpx;
+  color: #6b7280;
+  padding: 20rpx 24rpx;
+}
+
+.acs2-next-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24rpx;
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  border-radius: 40rpx;
+  border: none;
+}
+
+.acs2-next-btn.disabled {
+  opacity: 0.5;
+}
+
+.acs2-next-btn-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.acs2-footer-hint {
+  display: block;
+  text-align: center;
+  font-size: 22rpx;
+  color: #9ca3af;
+  margin-top: 12rpx;
+}

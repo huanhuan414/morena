@@ -967,3 +967,253 @@ create(@Body() body: unknown) {
 **修改文件**：
 - `server/src/modules/upload/volcengine.service.ts`：constructor 增加 Mock 守卫。
 - `server/src/modules/storage/storage.service.ts`：constructor 增加 Mock 守卫。
+
+---
+
+### 2026-08-03 — 创建分身模块一期：创建分身页面（第1步-基础信息）
+
+**会话目的**：基于 ai_avatar 新表结构，开发「创建分身」第1步页面（基础信息填写），包含前后端全链路。
+
+**完成任务**：
+1. 新建前端页面 `src/package-my-avatar/pages/avatar-create-step1/`，实现设计图中的 UI 布局（头像上传、昵称输入、标签选择弹窗、个性描述）
+2. 新建后端 NestJS 模块 `server/src/modules/ai-avatar/`，提供 `POST /api/ai-avatar` 接口，直接写入 `ai_avatar` 表
+3. 注册页面路由到 `app.config.ts` 的 `package-my-avatar` 分包
+4. 修改引导页 `avatar-onboarding` 的「开始创建」按钮跳转到新页面
+5. 前后端联调完成：点击「下一步」→ 调用接口 → 保存成功提示 → 返回上一页
+
+**修改/新增文件**：
+- `src/package-my-avatar/pages/avatar-create-step1/index.tsx`（新增）
+- `src/package-my-avatar/pages/avatar-create-step1/index.css`（新增）
+- `src/package-my-avatar/pages/avatar-create-step1/index.config.ts`（新增）
+- `server/src/modules/ai-avatar/ai-avatar.controller.ts`（新增）
+- `server/src/modules/ai-avatar/ai-avatar.service.ts`（新增）
+- `server/src/modules/ai-avatar/ai-avatar.module.ts`（新增）
+- `server/src/app.module.ts`（添加 AiAvatarModule 导入）
+- `src/app.config.ts`（package-my-avatar 分包添加新页面路径）
+- `src/package-my-avatar/pages/avatar-onboarding/index.tsx`（跳转路径修改）
+
+---
+
+### 2026-08-04 — 分身编辑模式 + 标签必填校验
+
+**会话目的**：实现分身编辑功能——草稿/待测试状态的分身点击后进入编辑页面修改已有内容（而非新建），以及将分身标签设为必填项。
+
+**完成任务**：
+1. **后端新增接口**：`GET /api/ai-avatar/:id` 查询分身详情（仅本人）、`PUT /api/ai-avatar/:id` 更新分身基础信息
+2. **后端新增方法**：`AiAvatarService.updateAvatar()` 更新分身 avatar_name/avatar_url/description/tags_json/skill_type
+3. **我的分身页编辑跳转**：点击分身卡片时，草稿/待测试状态跳转到 step1 编辑页面（携带 avatarId），已上线状态跳转到分身详情页
+4. **step1 编辑模式**：通过 URL 参数 `avatarId` 判断编辑模式，调用详情接口回填表单数据，下一步时调用 PUT 更新接口
+5. **分身标签必填校验**：年龄、性别、职业、地理位置四项标签均为必填，未填写时提示对应项
+6. **step2 返回保持编辑**：step2 点击返回按钮时使用 `redirectTo` 携带 avatarId 回到 step1，保持编辑模式而不新增数据
+7. **页面标题适配**：编辑模式下标题显示"编辑分身（1/3）"/"编辑分身（2/3）"
+
+**修改文件**：
+- `server/src/modules/ai-avatar/ai-avatar.controller.ts`（新增 GET :id、PUT :id 路由）
+- `server/src/modules/ai-avatar/ai-avatar.service.ts`（新增 updateAvatar 方法）
+- `src/package-my-avatar/pages/my-avatar/index.tsx`（openAvatar 方法改为根据状态跳转编辑或详情）
+- `src/package-my-avatar/pages/avatar-create-step1/index.tsx`（新增 editAvatarId 状态、useLoad 加载回填、validateForm 标签必填校验、handleNext 区分创建/更新）
+- `src/package-my-avatar/pages/avatar-create-step2/index.tsx`（handleBack 携带 avatarId 返回 step1、标题适配）
+
+---
+
+### 2026-08-04 — 技能认证生成任务完整流程（积分扣除+作品入库+模板启用）
+
+**会话目的**：将技能认证页面的"立即使用并认证"按钮从调试运行（debug-run，不扣积分不落库）改为完整的生成任务流程：校验→扣积分→调用模型→成功创建作品+分身提供者收益+模板状态→已启用 / 失败全额退款。
+
+**完成任务**：
+
+1. **扩展 CoinService**：
+   - `consume()` 增加可选 `options.description`、`options.metadata`、`options.connection` 参数
+   - `gift()` 增加可选 `options.metadata`、`options.connection` 参数
+   - 支持外部传入数据库连接以参与外部事务
+   - 积分流水写入 `coin_transactions.metadata` 字段（JSON），包含 `business_type`、`task_no`、`avatar_id` 等业务追溯信息
+
+2. **后端新增方法（AiAvatarService）**：
+   - `createGenerationTask()` — 完整生成任务流程（校验→幂等检查→事务扣积分+插入 ai_generation_task→调用模型→成功/失败处理）
+   - `pollGenerationTask()` — 异步任务轮询，成功后创建作品
+   - `getTaskByNo()` — 查询任务状态
+   - `handleGenerationSuccess()` — 创建 ai_generated_work + 分身提供者收益 + 更新统计 + 模板状态→已启用
+   - `handleGenerationFailure()` — 全额退款 + 更新任务失败状态
+
+3. **后端新增接口（AiAvatarController）**：
+   - `POST /api/ai-avatar/generation-tasks` — 创建生成任务
+   - `GET /api/ai-avatar/generation-tasks/:taskNo` — 查询任务状态
+   - `POST /api/ai-avatar/generation-tasks/:taskNo/poll` — 轮询异步任务
+
+4. **前端 skill-certify 页面改造**：
+   - `handleSubmit` 改为调用 `/api/ai-avatar/generation-tasks` 接口
+   - 提交前显示积分确认弹窗（模型成本 + 创作者收益）
+   - 新增"费用说明"区域展示积分明细
+   - 增加提交中禁用状态
+
+5. **前端 skill-certify-result 页面改造**：
+   - 通过 `taskNo` 参数查询/轮询任务状态（替代旧的 debug-run + filledPrompt 方式）
+   - 生成失败时显示"已自动退还 xx 积分"
+   - 认证信息区域增加消耗积分展示
+   - 保留旧流程兼容（filledPrompt 参数仍可用）
+
+6. **AiAvatarModule 引入 CoinModule 依赖注入**
+
+**核心业务规则**：
+- 用户支付积分 = 模型成本积分 + 创作者收益积分
+- 分身所有者使用自己的分身时只扣模型成本，不产生自我收益
+- 模型失败全额退款（模型成本 + 创作者收益）
+- 任务成功后创建一条作品（ai_generated_work），模板状态从"待测试"→"已启用"
+- 支持幂等键防止重复提交
+- 积分流水 metadata 包含完整业务追溯信息
+
+**修改文件**：
+- `server/src/modules/coin/coin.service.ts`（扩展 consume/gift 方法签名）
+- `server/src/modules/ai-avatar/ai-avatar.service.ts`（新增生成任务完整流程方法）
+- `server/src/modules/ai-avatar/ai-avatar.controller.ts`（新增 3 个生成任务接口）
+- `server/src/modules/ai-avatar/ai-avatar.module.ts`（引入 CoinModule）
+- `src/package-my-avatar/pages/skill-certify/index.tsx`（handleSubmit 改用生成任务接口 + 积分确认 + 费用说明）
+- `src/package-my-avatar/pages/skill-certify/index.css`（新增费用说明和禁用状态样式）
+- `src/package-my-avatar/pages/skill-certify-result/index.tsx`（改用 taskNo 轮询 + 退款提示 + 积分展示）
+- `src/package-my-avatar/pages/skill-certify-result/index.css`（新增退款提示样式）
+
+### 2026-08-04 技能认证流程恢复与优化
+
+**会话目的**：恢复原有的"技能认证→体验结果页"交互流程，同时在流程中嵌入积分扣除和作品入库逻辑
+
+**完成的任务**：
+
+将后端 `createGenerationTask`（一体化）拆分为前后端解耦的两步流程，恢复原有 UI 交互体验：
+
+1. **后端拆分为两步接口**：
+   - `createTaskAndDeductPoints`：仅创建任务+扣积分，不调用模型，返回 `taskNo`
+   - `completeGenerationTask`：前端拿到模型结果后提交，后端负责落作品或退款
+   - 对应 Controller 接口：`POST /generation-tasks`（创建+扣积分）、`POST /generation-tasks/:taskNo/complete`（提交结果）
+
+2. **前端 skill-certify 页面恢复**：
+   - 恢复原来的 `filledPrompt` 构建逻辑（本地替换 `{{变量}}` 占位符）
+   - 点击按钮后积分确认弹窗 → 构建 filledPrompt → 直接跳转到 result 页面
+   - 保留费用说明展示区域
+
+3. **前端 skill-certify-result 页面重构**：
+   - 进入页面后自动执行完整流程：创建任务→扣积分→调模型(debug-run)→提交结果(complete)
+   - 恢复原有 `debug-run` / `debug-poll` 调用链路
+   - 模型成功/失败后自动调用 `complete` 接口落作品或退款
+
+**完整流程**：`创建任务` → `扣除积分` → `调用模型(debug-run)` → `成功创建作品(complete)` → `结算分身收益`
+
+**修改文件**：
+- `server/src/modules/ai-avatar/ai-avatar.service.ts`（拆分为 createTaskAndDeductPoints + completeGenerationTask）
+- `server/src/modules/ai-avatar/ai-avatar.controller.ts`（替换接口为拆分版本）
+- `src/package-my-avatar/pages/skill-certify/index.tsx`（恢复 filledPrompt 跳转逻辑）
+- `src/package-my-avatar/pages/skill-certify-result/index.tsx`（恢复 debug-run/poll + 嵌入扣积分落作品）
+
+### 2026-08-04 等待页面动态化 + content_json 规范修正
+
+**会话目的**：解决 `request:fail timeout` 用户体验问题；按数据库文档规范修正作品写入逻辑
+
+**完成的任务**：
+
+1. **等待页面动态化重设计**：
+   - 添加读秒计时器，实时显示已等待秒数（`0s, 1s, 2s...`）
+   - 添加流程步骤进度条：创建任务 → 扣除积分 → 调用模型 → 生成完成
+   - 每个步骤实时切换状态（等待/进行中/已完成），使用不同图标和颜色
+   - 旋转加载动画 + 脉冲效果
+   - 底部动态提示文字（随步骤变化）
+
+2. **content_json 规范修正（按文档 9.3 节）**：
+   - 文字作品：`{ text }`
+   - 图片作品：`{ images: [url, ...] }`（原来错误地用了 `items: [{url}]`）
+   - 视频作品：`{ video_url, cover_url }`
+   - 图文作品：`{ title, text, images: [url, ...] }`（原来错误地用了 `items`）
+
+3. **source_snapshot_json 规范修正（按文档 9.2 节）**：
+   - 补齐 `avatar_url`、`template_cover_url` 字段
+   - 从 `ai_avatar` 表查询真实分身名称和头像
+
+4. **作品写入补充 tags_json**：继承模板的标签到作品
+
+**修改文件**：
+- `src/package-my-avatar/pages/skill-certify-result/index.tsx`（等待页动态化 + 步骤进度）
+- `src/package-my-avatar/pages/skill-certify-result/index.css`（动画样式）
+- `server/src/modules/ai-avatar/ai-avatar.service.ts`（content_json + source_snapshot_json + tags_json 修正）
+
+### 2026-08-04 修复 complete 接口超时导致作品丢失
+
+**会话目的**：修复 `request:fail timeout` 导致大模型已生成成功但 `ai_generated_work` 无数据、`ai_generation_task.status` 仍为"生成中"的问题
+
+**根因分析**：
+- 微信小程序 `Taro.request` 默认超时 60s
+- `complete` 接口需执行事务（查询任务+模板+分身 → 更新任务状态 → 插入作品 → 创作者收益积分 → 更新统计 → 模板状态变更），数据库连接池繁忙时可能超过 60s
+- 超时后前端 catch 只 console.error，无重试机制，作品数据永久丢失
+
+**修复措施**：
+1. `submitCompletion` 超时设为 120s + 最多 3 次重试（间隔递增 2s/4s/6s）
+2. 3 次全部失败后 Toast 提示用户"作品保存异常，请稍后在「我的作品」中查看"
+3. `debug-run` 模型调用超时也设为 120s（模型生成本身耗时不定）
+4. 创建任务接口超时设为 60s
+
+**修改文件**：
+- `src/package-my-avatar/pages/skill-certify-result/index.tsx`（submitCompletion 重试机制 + 各请求超时配置）
+
+### 2026-08-05 修复 complete 接口事务报错导致作品未落库
+
+**会话目的**：彻底解决"大模型已生成成功返回页面，但 `ai_generated_work` 无数据、`ai_generation_task.status` 仍为生成中"问题
+
+**根因分析**：
+1. `CoinService.consume()` 和 `CoinService.gift()` 的 INSERT 语句包含了 `coin_transactions` 表**不存在的列**（`skill_type`、`metadata`），导致 SQL 执行报错
+2. `handleGenerationSuccess` 事务 rollback，但错误只打印到 console 未传回前端
+3. `completeGenerationTask` 查询条件 `status = '生成中'` 导致重试时如果任务已被其他调用改为成功状态则查不到（幂等问题）
+4. 前端 complete 失败后无用户可见的重试入口
+
+**修复措施**：
+1. **CoinService SQL 修复**：移除 `coin_transactions` INSERT 中不存在的 `skill_type` 和 `metadata` 列，仅保留表中确实有的基础列
+2. **completeGenerationTask 幂等保护**：查询不再限定 `status = '生成中'`，若任务已是"生成成功"则直接返回成功
+3. **handleGenerationSuccess 事务内逐步日志**：每个关键 SQL 执行后打印日志，精准定位失败步骤
+4. **completeGenerationTask try-catch 细化**：`handleGenerationSuccess` 异常被内部 catch 并返回具体错误信息（而非向上冒泡导致 500）
+5. **Controller 增加时间和日志**：记录 complete 请求的处理耗时和结果
+6. **前端增加重试 UI**：complete 失败后显示"作品保存失败"提示和"重新保存"按钮，用户可手动重试
+
+**修改文件**：
+- `server/src/modules/coin/coin.service.ts`（移除不存在的列 skill_type/metadata）
+- `server/src/modules/ai-avatar/ai-avatar.service.ts`（幂等查询 + try-catch 细化 + 逐步日志）
+- `server/src/modules/ai-avatar/ai-avatar.controller.ts`（complete 接口增加日志和耗时记录）
+- `src/package-my-avatar/pages/skill-certify-result/index.tsx`（complete 失败 UI + 手动重试按钮）
+- `src/package-my-avatar/pages/skill-certify-result/index.css`（重试区域样式）
+
+### 2026-08-05 重构生成任务架构——后端一步到位
+
+**会话目的**：彻底解决 complete 接口反复失败（code=500 msg=处理失败）、setData 2038KB 性能问题、重试按钮表面成功实际未写入的问题
+
+**根因分析**：
+1. 前端将完整模型结果（含 2MB base64 图片）通过 POST body 传给 complete 接口，导致：
+   - `setData` 传输 2038KB 触发小程序性能警告
+   - 大数据量 POST 传输不稳定，超时/截断概率高
+   - 后端 INSERT 的 content_json 字段包含超大 base64 可能触发连接问题
+2. 前端 `submitCompletion` 使用 `void`（fire-and-forget）触发，多次重试与手动重试互相竞争 `completeFailed` 状态
+3. `CoinService.consume/gift` 中 `skill_type` 和 `metadata` 列之前被误删
+
+**修复措施（架构重构）**：
+1. **新增 `executeGenerationTask` 接口**：前端只传 taskNo + filledPrompt，后端自己调用 debugRun → handleGenerationSuccess → 返回精简预览（不含 base64）
+2. **移除前端中转大数据**：前端不再调 debugRun + submitCompletion，改为调后端 execute 一步到位
+3. **精简 genResult**：前端 state 只存展示摘要（文本前 500 字 / 图片 URL），不存原始 base64
+4. **新增 `retrySaveWork` 接口**：模型成功但落作品失败时，缓存 modelResult 到 task，重试时从缓存读取
+5. **新增 `poll` 接口**：异步任务轮询由后端统一处理（pollGenerationTask 已包含落作品逻辑）
+6. **恢复 CoinService**：`consume` 写入 `skill_type` 和 `metadata`，`gift` 写入 `metadata`
+
+**API 变更**：
+- 新增 `POST /api/ai-avatar/generation-tasks/:taskNo/execute`（替代前端调 debugRun + complete）
+- 新增 `GET /api/ai-avatar/generation-tasks/:taskNo/poll`（异步任务轮询）
+- 新增 `POST /api/ai-avatar/generation-tasks/:taskNo/retry-save`（重试保存）
+- `POST /api/ai-avatar/generation-tasks/:taskNo/complete` 保留但不再是主流程
+
+**修改文件**：
+- `server/src/modules/coin/coin.service.ts`（恢复 skill_type + metadata 写入）
+- `server/src/modules/ai-avatar/ai-avatar.service.ts`（新增 executeGenerationTask、retrySaveWork、buildResultPreview）
+- `server/src/modules/ai-avatar/ai-avatar.controller.ts`（新增 execute、poll、retry-save 接口 + 日志优化）
+- `src/package-my-avatar/pages/skill-certify-result/index.tsx`（重构 runFullFlow 使用 execute、精简 state、移除 submitCompletion）
+
+### 2026-08-05 Base64 图片自动上传 TOS
+
+**会话目的**：解决大模型返回 4MB+ base64 图片导致 `cover_url` VARCHAR(500) 溢出、`content_json` 存储效率低下的问题
+
+**方案**：在 `handleGenerationSuccess` 执行前，自动将 base64 图片上传到 TOS 对象存储，替换为持久化 URL
+
+**修改文件**：
+- `server/src/modules/ai-avatar/ai-avatar.module.ts`（导入 UploadModule）
+- `server/src/modules/ai-avatar/ai-avatar.service.ts`（注入 UploadService、新增 `convertBase64ToUrls` 方法、在 `executeGenerationTask` 和 `retrySaveWork` 中调用）

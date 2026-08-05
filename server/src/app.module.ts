@@ -48,6 +48,7 @@ import { RedisModule } from './modules/redis/redis.module';
 import { CoinModule } from './modules/coin/coin.module';
 import { WithdrawModule } from './modules/withdraw/withdraw.module';
 import { MenuFeatureModule } from './modules/menu-feature/menu-feature.module';
+import { AiAvatarModule } from './modules/ai-avatar/ai-avatar.module';
 
 @Module({
   imports: [
@@ -96,7 +97,8 @@ import { MenuFeatureModule } from './modules/menu-feature/menu-feature.module';
     OrderAssetsModule,
     CoinModule,
     WithdrawModule,
-    MenuFeatureModule
+    MenuFeatureModule,
+    AiAvatarModule,
   ],
   controllers: [AppController],
   providers: [AppService],

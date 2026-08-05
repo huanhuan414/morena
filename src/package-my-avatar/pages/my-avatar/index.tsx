@@ -134,6 +134,12 @@ export default function MyAvatarPage() {
   const [deleteTarget, setDeleteTarget] = useState<MyAvatarItem | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [previewWork, setPreviewWork] = useState<MyAvatarWork | null>(null)
+  const [pendingTestInfo, setPendingTestInfo] = useState<{
+    avatarId: number
+    avatarName: string
+    count: number
+    firstTemplateId: number
+  } | null>(null)
   const loadRequestIdRef = useRef(0)
 
   const loadPage = useCallback(async (filter: AvatarFilter) => {
@@ -175,8 +181,40 @@ export default function MyAvatarPage() {
     void loadPage(nextFilter)
   }
 
-  const createAvatar = () => {
-    // void Taro.navigateTo({ url: '/package-avatar/pages/avatar-create/index' })
+  const createAvatar = async () => {
+    try {
+      Taro.showLoading({ title: '检查中...' })
+      const res = await Network.request({ url: '/api/ai-avatar/quota' })
+      Taro.hideLoading()
+
+      const quota = (res.data as ApiResponse<{
+        level: number
+        levelName: string
+        currentCount: number
+        maxCount: number
+        canCreate: boolean
+      }>)?.data
+
+      if (!quota) {
+        void Taro.showToast({ title: '获取配额失败', icon: 'none' })
+        return
+      }
+
+      if (!quota.canCreate) {
+        void Taro.showModal({
+          title: '分身数量已达上限',
+          content: `当前${quota.levelName}最多可创建${quota.maxCount}个分身，您已创建${quota.currentCount}个。升级版本可解锁更多名额。`,
+          confirmText: '我知道了',
+          showCancel: false,
+        })
+        return
+      }
+
+      void Taro.navigateTo({ url: '/package-my-avatar/pages/avatar-create-step1/index' })
+    } catch {
+      Taro.hideLoading()
+      void Taro.showToast({ title: '网络错误', icon: 'none' })
+    }
   }
 
   const enterSkill = (avatarId: number) => {
@@ -185,10 +223,43 @@ export default function MyAvatarPage() {
     })
   }
 
-  const openAvatar = (avatarId: number) => {
-    void Taro.navigateTo({
-      url: `/package-avatar-square/pages/avatar-owner-detail/index?id=${encodeURIComponent(String(avatarId))}`,
-    })
+  const openAvatar = async (avatar: MyAvatarItem) => {
+    if (avatar.status === '待测试') {
+      try {
+        Taro.showLoading({ title: '检查中...' })
+        const res = await Network.request({
+          url: `/api/ai-avatar/${encodeURIComponent(String(avatar.id))}/pending-templates`,
+        })
+        Taro.hideLoading()
+        const responseBody = res.data as ApiResponse<{ count: number; firstTemplateId: number }>
+        const pending = responseBody?.data
+        if (pending && pending.count > 0) {
+          setPendingTestInfo({
+            avatarId: avatar.id,
+            avatarName: avatar.avatarName || '该分身',
+            count: pending.count,
+            firstTemplateId: pending.firstTemplateId,
+          })
+          return
+        }
+      } catch {
+        Taro.hideLoading()
+      }
+      void Taro.navigateTo({
+        url: `/package-my-avatar/pages/avatar-create-step1/index?avatarId=${encodeURIComponent(String(avatar.id))}`,
+      })
+      return
+    }
+
+    if (avatar.status === '草稿') {
+      void Taro.navigateTo({
+        url: `/package-my-avatar/pages/avatar-create-step1/index?avatarId=${encodeURIComponent(String(avatar.id))}`,
+      })
+    } else {
+      void Taro.navigateTo({
+        url: `/package-avatar-square/pages/avatar-owner-detail/index?id=${encodeURIComponent(String(avatar.id))}`,
+      })
+    }
   }
 
   const openWork = (work: MyAvatarWork) => {
@@ -345,7 +416,7 @@ export default function MyAvatarPage() {
               {pageData.list.map((avatar, index) => {
                 const works = avatar.works || []
                 return (
-                  <Card key={avatar.id} className="mya-avatar-card" onClick={() => openAvatar(avatar.id)}>
+                  <Card key={avatar.id} className="mya-avatar-card" onClick={() => openAvatar(avatar)}>
                     <CardContent className="mya-avatar-content">
                       <View className="mya-avatar-main">
                         <View className="mya-avatar-wrap">
@@ -365,7 +436,7 @@ export default function MyAvatarPage() {
                             <ChevronRight size={16} color="#9B8BC5" />
                           </View>
                           <Text className="mya-skill-type">{avatar.skillType || '待添加技能'}</Text>
-                          {avatar.tags.length > 0 && (
+                          {Array.isArray(avatar.tags) && avatar.tags.length > 0 && (
                             <View className="mya-tags">
                               {avatar.tags.map(tag => (
                                 <Badge key={tag} variant="secondary" className="mya-tag"><Text>{tag}</Text></Badge>
@@ -457,6 +528,52 @@ export default function MyAvatarPage() {
             <AlertDialogCancel className="mya-dialog-cancel"><Text>取消</Text></AlertDialogCancel>
             <AlertDialogAction className="mya-dialog-confirm" onClick={() => void confirmDelete()}>
               <Text>{deleting ? '删除中...' : '确认删除'}</Text>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={Boolean(pendingTestInfo)}
+        onOpenChange={open => { if (!open) setPendingTestInfo(null) }}
+      >
+        <AlertDialogContent className="mya-delete-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="mya-delete-title"><Text>待测试提醒</Text></AlertDialogTitle>
+            <AlertDialogDescription className="mya-delete-description">
+              <Text>
+                "{pendingTestInfo?.avatarName}"有{pendingTestInfo?.count}个模版等待测试，是否进入测试？
+              </Text>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mya-delete-footer">
+            <AlertDialogCancel
+              className="mya-dialog-cancel"
+              onClick={() => {
+                const info = pendingTestInfo
+                setPendingTestInfo(null)
+                if (info) {
+                  void Taro.navigateTo({
+                    url: `/package-my-avatar/pages/avatar-create-step1/index?avatarId=${encodeURIComponent(String(info.avatarId))}`,
+                  })
+                }
+              }}
+            >
+              <Text>否</Text>
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="mya-dialog-confirm"
+              onClick={() => {
+                const info = pendingTestInfo
+                setPendingTestInfo(null)
+                if (info) {
+                  void Taro.navigateTo({
+                    url: `/package-my-avatar/pages/skill-certify/index?templateId=${encodeURIComponent(String(info.firstTemplateId))}&avatarId=${encodeURIComponent(String(info.avatarId))}`,
+                  })
+                }
+              }}
+            >
+              <Text>是</Text>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -313,9 +313,10 @@ export default defineConfig<'vite'>(async (merge, _env) => {
                     'app.json',
                   );
                   if (!fs.existsSync(appConfigPath)) {
-                    throw new Error(
+                    console.warn(
                       `[mini-shop] 未找到构建产物：${appConfigPath}`,
                     );
+                    return;
                   }
 
                   const appConfig = JSON.parse(

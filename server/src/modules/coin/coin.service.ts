@@ -78,11 +78,19 @@ export class CoinService {
    * @param userId 用户ID
    * @param skillType 技能类型
    * @param customAmount 自定义金额（可选，默认从数据库读取技能价格）
+   * @param options.description 自定义描述（可选，默认自动生成）
+   * @param options.metadata 业务追溯元数据（可选，写入 coin_transactions.metadata）
+   * @param options.connection 外部传入的数据库连接（可选，用于外部事务）
    */
   async consume(
     userId: string,
     skillType: string,
-    customAmount?: number
+    customAmount?: number,
+    options?: {
+      description?: string
+      metadata?: Record<string, any>
+      connection?: any
+    }
   ): Promise<{
     success: boolean
     balanceBefore: number
@@ -97,9 +105,10 @@ export class CoinService {
       throw new BadRequestException('消费金额必须大于0')
     }
 
-    const connection = await pool.getConnection()
+    const externalConn = options?.connection
+    const connection = externalConn || await pool.getConnection()
     try {
-      await connection.beginTransaction()
+      if (!externalConn) await connection.beginTransaction()
 
       const [userRows] = await connection.query(
         'SELECT coins FROM users WHERE id = ? FOR UPDATE',
@@ -125,21 +134,16 @@ export class CoinService {
         [balanceAfter, userId]
       )
 
+      const desc = options?.description || `使用${SKILL_NAMES[skillType] || skillType}消费 ${amount} 积分`
+      const metadataStr = options?.metadata ? JSON.stringify(options.metadata) : null
+
       await connection.query(
-        `INSERT INTO coin_transactions (id, user_id, type, amount, balance_before, balance_after, skill_type, description, created_at)
-         VALUES (?, ?, 'consume', ?, ?, ?, ?, ?, NOW())`,
-        [
-          transactionId,
-          userId,
-          -amount,
-          balanceBefore,
-          balanceAfter,
-          skillType,
-          `使用${SKILL_NAMES[skillType] || skillType}消费 ${amount} 积分`
-        ]
+        `INSERT INTO coin_transactions (id, user_id, type, amount, balance_before, balance_after, skill_type, description, metadata, created_at)
+         VALUES (?, ?, 'consume', ?, ?, ?, ?, ?, ?, NOW())`,
+        [transactionId, userId, -amount, balanceBefore, balanceAfter, skillType, desc, metadataStr]
       )
 
-      await connection.commit()
+      if (!externalConn) await connection.commit()
 
       return {
         success: true,
@@ -149,20 +153,26 @@ export class CoinService {
         transactionId
       }
     } catch (error) {
-      await connection.rollback()
+      if (!externalConn) await connection.rollback()
       throw error
     } finally {
-      connection.release()
+      if (!externalConn) connection.release()
     }
   }
 
   /**
-   * 赠送积分（新用户注册、活动奖励等）
+   * 赠送积分（新用户注册、活动奖励、生成失败退款等）
+   * @param options.metadata 业务追溯元数据（可选）
+   * @param options.connection 外部传入的数据库连接（可选，用于外部事务）
    */
   async gift(
     userId: string,
     amount: number,
-    description: string
+    description: string,
+    options?: {
+      metadata?: Record<string, any>
+      connection?: any
+    }
   ): Promise<{
     success: boolean
     balanceBefore: number
@@ -175,9 +185,10 @@ export class CoinService {
       throw new BadRequestException('赠送金额必须大于0')
     }
 
-    const connection = await pool.getConnection()
+    const externalConn = options?.connection
+    const connection = externalConn || await pool.getConnection()
     try {
-      await connection.beginTransaction()
+      if (!externalConn) await connection.beginTransaction()
 
       const [userRows] = await connection.query(
         'SELECT coins FROM users WHERE id = ? FOR UPDATE',
@@ -198,13 +209,15 @@ export class CoinService {
         [balanceAfter, userId]
       )
 
+      const metadataStr = options?.metadata ? JSON.stringify(options.metadata) : null
+
       await connection.query(
-        `INSERT INTO coin_transactions (id, user_id, type, amount, balance_before, balance_after, description, created_at)
-         VALUES (?, ?, 'gift', ?, ?, ?, ?, NOW())`,
-        [transactionId, userId, amount, balanceBefore, balanceAfter, description]
+        `INSERT INTO coin_transactions (id, user_id, type, amount, balance_before, balance_after, description, metadata, created_at)
+         VALUES (?, ?, 'gift', ?, ?, ?, ?, ?, NOW())`,
+        [transactionId, userId, amount, balanceBefore, balanceAfter, description, metadataStr]
       )
 
-      await connection.commit()
+      if (!externalConn) await connection.commit()
 
       return {
         success: true,
@@ -213,10 +226,10 @@ export class CoinService {
         transactionId
       }
     } catch (error) {
-      await connection.rollback()
+      if (!externalConn) await connection.rollback()
       throw error
     } finally {
-      connection.release()
+      if (!externalConn) connection.release()
     }
   }
 

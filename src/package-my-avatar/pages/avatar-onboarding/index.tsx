@@ -63,7 +63,7 @@ export default function AvatarOnboardingPage() {
       </View>
 
       <View className="ao-footer">
-        <Button className="ao-start-button" onClick={() => Taro.navigateTo({ url: '/package-avatar/pages/avatar-create/index' })}>
+        <Button className="ao-start-button" onClick={() => Taro.navigateTo({ url: '/package-my-avatar/pages/avatar-create-step1/index' })}>
           <Text>开始创建</Text>
           <ArrowRight size={19} color="#FFFFFF" />
         </Button>

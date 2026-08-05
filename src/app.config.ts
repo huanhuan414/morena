@@ -144,6 +144,10 @@ export default defineAppConfig({
       pages: [
         'pages/my-avatar/index',
         'pages/avatar-onboarding/index',
+        'pages/avatar-create-step1/index',
+        'pages/avatar-create-step2/index',
+        'pages/skill-certify/index',
+        'pages/skill-certify-result/index',
       ],
     },
   ],
