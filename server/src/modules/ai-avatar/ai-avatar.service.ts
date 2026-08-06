@@ -305,6 +305,282 @@ export class AiAvatarService {
   }
 
   /**
+   * 查询分身下的完整模版列表（含统计摘要，支持按状态筛选）
+   * @param avatarId 分身ID
+   * @param userId   用户ID
+   * @param filter   筛选条件: all / pending / enabled
+   */
+  async getAvatarTemplateList(avatarId: number, userId: string, filter: string = 'all') {
+    const pool = getPool()
+
+    const [countRows] = await pool.query<any[]>(
+      `SELECT
+         COUNT(*) AS total,
+         SUM(CASE WHEN status = '待测试' THEN 1 ELSE 0 END) AS pending_count,
+         SUM(CASE WHEN status = '已启用' THEN 1 ELSE 0 END) AS enabled_count
+       FROM ai_avatar_template
+       WHERE avatar_id = ? AND user_id = ? AND deleted_at IS NULL`,
+      [avatarId, userId]
+    )
+    const summary = {
+      total: Number(countRows?.[0]?.total) || 0,
+      pendingCount: Number(countRows?.[0]?.pending_count) || 0,
+      enabledCount: Number(countRows?.[0]?.enabled_count) || 0,
+    }
+
+    let filterCondition = ''
+    if (filter === 'pending') filterCondition = " AND status = '待测试'"
+    else if (filter === 'enabled') filterCondition = " AND status = '已启用'"
+
+    const [rows] = await pool.query<any[]>(
+      `SELECT id, avatar_id, template_name, template_description, cover_url,
+              skill_type, tags_json, status, display_status, use_count,
+              favorite_count, creator_income_points, version_no, tested_at,
+              template_source
+       FROM ai_avatar_template
+       WHERE avatar_id = ? AND user_id = ? AND deleted_at IS NULL${filterCondition}
+       ORDER BY status ASC, id DESC`,
+      [avatarId, userId]
+    )
+
+    const list = (rows || []).map((row: any) => ({
+      id: row.id,
+      avatarId: row.avatar_id,
+      templateName: row.template_name,
+      templateDescription: row.template_description,
+      coverUrl: row.cover_url,
+      skillType: row.skill_type,
+      tags: this.parseJsonSafe(row.tags_json, []),
+      status: row.status,
+      displayStatus: row.display_status,
+      useCount: row.use_count || 0,
+      favoriteCount: row.favorite_count || 0,
+      creatorIncomePoints: row.creator_income_points || 0,
+      versionNo: row.version_no || 1,
+      testedAt: row.tested_at ? this.formatDateStr(row.tested_at) : null,
+      templateSource: row.template_source,
+    }))
+
+    return { summary, list }
+  }
+
+  /**
+   * 查询模版详情页所需的完整数据（模版 + 分身 + 模型 + 历史作品）
+   * @param templateId 模版ID
+   * @param userId     用户ID
+   */
+  async getTemplatePageDetail(templateId: number, userId: string) {
+    const pool = getPool()
+
+    const [tplRows] = await pool.query<any[]>(
+      `SELECT t.*, m.model_name, m.provider_name, m.description AS model_description,
+              m.icon_url AS model_icon_url, m.skill_type AS model_skill_type,
+              m.model_cost_points,
+              a.avatar_name, a.avatar_url, a.description AS avatar_description,
+              a.skill_type AS avatar_skill_type, a.status AS avatar_status
+       FROM ai_avatar_template t
+       LEFT JOIN ai_model_api m ON t.model_api_id = m.id AND m.deleted_at IS NULL
+       LEFT JOIN ai_avatar a ON t.avatar_id = a.id AND a.deleted_at IS NULL
+       WHERE t.id = ? AND t.deleted_at IS NULL`,
+      [templateId]
+    )
+
+    if (!tplRows?.length) return null
+    const tpl = tplRows[0]
+
+    const templateOwnerId = tpl.user_id
+    const [workRows] = await pool.query<any[]>(
+      `SELECT id, work_title, work_description, skill_type, cover_url,
+              content_json, generated_pay_points, view_count, favorite_count,
+              success_item_count, created_at
+       FROM ai_generated_work
+       WHERE template_id = ? AND user_id = ? AND status = '正常' AND deleted_at IS NULL
+       ORDER BY created_at DESC
+       LIMIT 10`,
+      [templateId, templateOwnerId]
+    )
+
+    const works = (workRows || []).map((w: any) => {
+      const content = this.parseJsonSafe(w.content_json, {})
+      const images = content.images || []
+      const videoUrl = content.video_url || ''
+      return {
+        id: w.id,
+        title: w.work_title || '',
+        description: w.work_description || '',
+        skillType: w.skill_type || '',
+        coverUrl: w.cover_url || images[0] || '',
+        images,
+        videoUrl,
+        contentText: content.text || content.title || '',
+        payPoints: w.generated_pay_points || 0,
+        viewCount: w.view_count || 0,
+        favoriteCount: w.favorite_count || 0,
+        successCount: w.success_item_count || 1,
+        createdAt: this.formatDateTimeStr(w.created_at),
+      }
+    })
+
+    const [statsRows] = await pool.query<any[]>(
+      `SELECT COUNT(*) AS total_works,
+              COALESCE(SUM(view_count), 0) AS total_views,
+              COALESCE(SUM(favorite_count), 0) AS total_favorites
+       FROM ai_generated_work
+       WHERE template_id = ? AND user_id = ? AND status = '正常' AND deleted_at IS NULL`,
+      [templateId, templateOwnerId]
+    )
+    const stats = statsRows?.[0] || {}
+
+    const totalCost = (Number(tpl.model_cost_points) || 0) + (Number(tpl.creator_income_points) || 0)
+    const outputType = this.inferOutputType(tpl.skill_type)
+
+    return {
+      template: {
+        id: tpl.id,
+        templateName: tpl.template_name,
+        templateDescription: tpl.template_description,
+        coverUrl: tpl.cover_url,
+        skillType: tpl.skill_type,
+        tags: this.parseJsonSafe(tpl.tags_json, []),
+        status: tpl.status,
+        displayStatus: tpl.display_status,
+        useCount: tpl.use_count || 0,
+        favoriteCount: tpl.favorite_count || 0,
+        creatorIncomePoints: tpl.creator_income_points || 0,
+        versionNo: tpl.version_no || 1,
+        promptText: tpl.prompt_text || '',
+        promptVariables: this.parseJsonSafe(tpl.prompt_variables_json, []),
+        materialConfig: this.parseJsonSafe(tpl.material_config_json, null),
+        outputConfig: this.parseJsonSafe(tpl.output_config_json, null),
+        outputType,
+        totalCost,
+        testedAt: tpl.tested_at ? this.formatDateTimeStr(tpl.tested_at) : null,
+        templateSource: tpl.template_source,
+      },
+      avatar: tpl.avatar_name ? {
+        id: tpl.avatar_id,
+        avatarName: tpl.avatar_name,
+        avatarUrl: tpl.avatar_url,
+        description: tpl.avatar_description,
+        skillType: tpl.avatar_skill_type,
+        status: tpl.avatar_status,
+      } : null,
+      modelApi: tpl.model_name ? {
+        id: tpl.model_api_id,
+        modelName: tpl.model_name,
+        providerName: tpl.provider_name,
+        description: tpl.model_description,
+        iconUrl: tpl.model_icon_url,
+        skillType: tpl.model_skill_type,
+        modelCostPoints: Number(tpl.model_cost_points) || 0,
+      } : null,
+      works,
+      workStats: {
+        totalWorks: Number(stats.total_works) || 0,
+        totalViews: Number(stats.total_views) || 0,
+        totalFavorites: Number(stats.total_favorites) || 0,
+      },
+      isOwner: String(tpl.user_id) === String(userId),
+    }
+  }
+
+  /**
+   * 更新模版基本信息（仅允许模版所有者编辑）
+   * @param templateId 模版ID
+   * @param userId     用户ID
+   * @param updates    更新字段
+   */
+  async updateTemplate(
+    templateId: number,
+    userId: string,
+    updates: {
+      template_name?: string
+      template_description?: string
+      tags_json?: string[]
+      creator_income_points?: number
+      cover_url?: string | null
+    },
+  ) {
+    const pool = getPool()
+
+    const [existing] = await pool.query<any[]>(
+      'SELECT id, user_id FROM ai_avatar_template WHERE id = ? AND deleted_at IS NULL',
+      [templateId],
+    )
+    if (!existing?.length) throw new Error('模版不存在')
+    if (String(existing[0].user_id) !== String(userId)) throw new Error('无权编辑此模版')
+
+    const setClauses: string[] = []
+    const params: any[] = []
+
+    if (updates.template_name !== undefined) {
+      setClauses.push('template_name = ?')
+      params.push(updates.template_name)
+    }
+    if (updates.template_description !== undefined) {
+      setClauses.push('template_description = ?')
+      params.push(updates.template_description)
+    }
+    if (updates.tags_json !== undefined) {
+      setClauses.push('tags_json = ?')
+      params.push(JSON.stringify(updates.tags_json))
+    }
+    if (updates.creator_income_points !== undefined) {
+      setClauses.push('creator_income_points = ?')
+      params.push(updates.creator_income_points)
+    }
+    if (updates.cover_url !== undefined) {
+      setClauses.push('cover_url = ?')
+      params.push(updates.cover_url)
+    }
+
+    if (setClauses.length === 0) throw new Error('无更新内容')
+
+    setClauses.push('updated_at = NOW()')
+    params.push(templateId, userId)
+
+    await pool.execute(
+      `UPDATE ai_avatar_template SET ${setClauses.join(', ')} WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
+      params,
+    )
+
+    return { success: true }
+  }
+
+  /** 根据技能类型推断输出格式 */
+  private inferOutputType(skillType: string): string {
+    switch (skillType) {
+      case '图片生成': return '图片'
+      case '视频生成': return '视频'
+      case '图文生成': return '图文 / 文案'
+      case '文字生成': return '文字 / 文案'
+      default: return '文字'
+    }
+  }
+
+  /** 格式化日期为 YYYY/MM/DD */
+  private formatDateStr(dateValue: any): string {
+    const date = new Date(dateValue)
+    if (isNaN(date.getTime())) return ''
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}/${month}/${day}`
+  }
+
+  /** 格式化日期为 YYYY-MM-DD HH:mm */
+  private formatDateTimeStr(dateValue: any): string {
+    const date = new Date(dateValue)
+    if (isNaN(date.getTime())) return ''
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    return `${year}-${month}-${day} ${hours}:${minutes}`
+  }
+
+  /**
    * 查询官方模板列表（按技能类型筛选）
    * template_source='官方模板' AND status='已启用' AND display_status='对外展示' AND deleted_at IS NULL
    */

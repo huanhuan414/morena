@@ -637,6 +637,7 @@ export class AvatarSquareService {
       SELECT
         work.id,
         work.avatar_id,
+        work.template_id,
         work.work_title,
         work.work_description,
         work.skill_type,
@@ -668,6 +669,7 @@ export class AvatarSquareService {
     const list = rows.slice(0, pageSize).map((row: Record<string, unknown>) => ({
       ...this.mapWorkPreview(row),
       avatarId: Number(row.avatarId),
+      templateId: Number(row.templateId || 0),
       avatarName: String(row.avatarName || ''),
       avatarUrl: String(row.avatarUrl || ''),
       generatedPayPoints: Number(row.generatedPayPoints || 0),

@@ -364,6 +364,94 @@ export class AiAvatarController {
   }
 
   /**
+   * GET /api/ai-avatar/templates/:templateId/page-detail - 查询模版详情页所需完整数据
+   * 返回模版信息 + 分身信息 + 模型信息 + 历史生成作品
+   */
+  @Get('templates/:templateId/page-detail')
+  async getTemplatePageDetail(
+    @Param('templateId') templateId: string,
+    @Req() req: any,
+  ) {
+    try {
+      const userId = this.getUserId(req)
+      if (!userId) return { code: 401, msg: '请先登录', data: null }
+
+      const id = Number(templateId)
+      if (!Number.isInteger(id) || id <= 0) {
+        return { code: 400, msg: '模板ID无效', data: null }
+      }
+
+      const result = await this.aiAvatarService.getTemplatePageDetail(id, userId)
+      if (!result) return { code: 404, msg: '模板不存在', data: null }
+      return { code: 200, msg: 'success', data: result }
+    } catch (error) {
+      console.error('查询模版详情页失败:', error)
+      return { code: 500, msg: error instanceof Error ? error.message : '服务器错误', data: null }
+    }
+  }
+
+  /**
+   * PUT /api/ai-avatar/templates/:templateId/update - 编辑模版基本信息
+   * body: { template_name, template_description, tags_json, creator_income_points, cover_url }
+   */
+  @Put('templates/:templateId/update')
+  @HttpCode(200)
+  async updateTemplate(
+    @Param('templateId') templateId: string,
+    @Req() req: any,
+    @Body() body: {
+      template_name?: string
+      template_description?: string
+      tags_json?: string[]
+      creator_income_points?: number
+      cover_url?: string | null
+    },
+  ) {
+    try {
+      const userId = this.getUserId(req)
+      if (!userId) return { code: 401, msg: '请先登录', data: null }
+
+      const id = Number(templateId)
+      if (!Number.isInteger(id) || id <= 0) {
+        return { code: 400, msg: '模板ID无效', data: null }
+      }
+
+      const result = await this.aiAvatarService.updateTemplate(id, userId, body)
+      return { code: 200, msg: 'success', data: result }
+    } catch (error) {
+      console.error('更新模版失败:', error)
+      return { code: 500, msg: error instanceof Error ? error.message : '服务器错误', data: null }
+    }
+  }
+
+  /**
+   * GET /api/ai-avatar/:id/template-list - 查询分身下完整模版列表（含统计摘要）
+   * 可选 ?filter=all|pending|enabled 按状态筛选
+   */
+  @Get(':id/template-list')
+  async getTemplateList(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Query('filter') filter?: string,
+  ) {
+    try {
+      const userId = this.getUserId(req)
+      if (!userId) return { code: 401, msg: '请先登录', data: null }
+
+      const avatarId = Number(id)
+      if (!Number.isInteger(avatarId) || avatarId <= 0) {
+        return { code: 400, msg: '分身ID无效', data: null }
+      }
+
+      const result = await this.aiAvatarService.getAvatarTemplateList(avatarId, userId, filter || 'all')
+      return { code: 200, msg: 'success', data: result }
+    } catch (error) {
+      console.error('查询模版列表失败:', error)
+      return { code: 500, msg: error instanceof Error ? error.message : '服务器错误', data: null }
+    }
+  }
+
+  /**
    * GET /api/ai-avatar/:id/pending-templates - 查询分身下待测试模版数量
    */
   @Get(':id/pending-templates')

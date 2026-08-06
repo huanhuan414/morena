@@ -21,6 +21,7 @@ type SortValue = 'recommend' | 'income' | 'views' | 'favorites'
 type WorkItem = {
   id: number
   avatarId: number
+  templateId: number
   avatarName: string
   avatarUrl: string
   category: string
@@ -424,7 +425,20 @@ export default function WorkSquarePage() {
                       </View>
                     </View>
                     <View className="ws-actions">
-                      <Button variant="outline" size="sm" className="ws-action-btn">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="ws-action-btn"
+                        onClick={() => {
+                          if (work.templateId > 0) {
+                            void Taro.navigateTo({
+                              url: `/package-my-avatar/pages/template-use/index?templateId=${work.templateId}&avatarId=${work.avatarId}`,
+                            })
+                          } else {
+                            void Taro.showToast({ title: '该作品暂无关联模板', icon: 'none' })
+                          }
+                        }}
+                      >
                         <Text>使用模板</Text>
                       </Button>
                       <Button

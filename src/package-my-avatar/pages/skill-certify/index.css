@@ -341,6 +341,16 @@
   align-items: flex-start;
 }
 
+/* 上传区域 */
+.sc-form-item-upload {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.sc-form-label-group {
+  margin-bottom: 16rpx;
+}
+
 .sc-multi-options {
   display: flex;
   flex-direction: row;

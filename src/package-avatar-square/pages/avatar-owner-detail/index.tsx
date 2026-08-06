@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Network } from '@/network'
@@ -44,6 +45,15 @@ type AvatarPreview = {
   viewCount: number
   favoriteCount: number
   incomePointsTotal: number
+}
+
+type EnabledTemplate = {
+  id: number
+  templateName: string
+  templateDescription: string
+  coverUrl: string
+  skillType: string
+  status: string
 }
 
 type WorkCategory = '全部' | '图片' | '图文' | '文字' | '视频'
@@ -125,6 +135,8 @@ export default function AvatarOwnerDetailPage() {
   const [savingName, setSavingName] = useState(false)
   const [loadFailed, setLoadFailed] = useState(!detailId)
   const [headHeight, setHeadHeight] = useState(0)
+  const [templateSheetOpen, setTemplateSheetOpen] = useState(false)
+  const [enabledTemplates, setEnabledTemplates] = useState<EnabledTemplate[]>([])
   const statusBarHeight = Taro.getWindowInfo().statusBarHeight || 20
 
   useDidShow(() => {
@@ -279,6 +291,49 @@ export default function AvatarOwnerDetailPage() {
         </Text>
       </View>
     )
+  }
+
+  const handlePublishWork = async () => {
+    if (!detailId) return
+    void Taro.showLoading({ title: '加载中...', mask: true })
+    try {
+      const res = await Network.request({
+        url: `/api/ai-avatar/${encodeURIComponent(detailId)}/template-list`,
+        data: { filter: 'enabled' },
+      })
+      const responseBody = res.data as { code?: number; msg?: string; data?: { list?: EnabledTemplate[] } }
+      if (responseBody?.code !== 200 || !responseBody.data) {
+        throw new Error(responseBody?.msg || '获取模版列表失败')
+      }
+      const list = responseBody.data.list || []
+      if (list.length === 0) {
+        void Taro.showToast({ title: '暂无已启用的模版，请先前往模板管理启用', icon: 'none' })
+        return
+      }
+      if (list.length === 1) {
+        void Taro.navigateTo({
+          url: `/package-my-avatar/pages/template-use/index?templateId=${encodeURIComponent(String(list[0].id))}&avatarId=${encodeURIComponent(detailId)}`,
+        })
+        return
+      }
+      setEnabledTemplates(list)
+      setTemplateSheetOpen(true)
+    } catch (error) {
+      console.error('[AvatarOwnerDetailPage] load enabled templates failed:', error)
+      void Taro.showToast({
+        title: error instanceof Error ? error.message : '获取模版失败',
+        icon: 'none',
+      })
+    } finally {
+      void Taro.hideLoading()
+    }
+  }
+
+  const handleSelectTemplate = (template: EnabledTemplate) => {
+    setTemplateSheetOpen(false)
+    void Taro.navigateTo({
+      url: `/package-my-avatar/pages/template-use/index?templateId=${encodeURIComponent(String(template.id))}&avatarId=${encodeURIComponent(detailId)}`,
+    })
   }
 
   const handlePreviewPublicPage = () => {
@@ -438,7 +493,17 @@ export default function AvatarOwnerDetailPage() {
                     <Text className="pd-title">{avatar.skillType}</Text>
                     <Text className="pd-desc">{avatar.description}</Text>
                   </View>
-                  <Button variant="outline" size="sm" className="pd-manage">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="pd-manage"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      void Taro.navigateTo({
+                        url: `/package-my-avatar/pages/template-list/index?avatarId=${encodeURIComponent(detailId)}&avatarName=${encodeURIComponent(avatar.avatarName || '')}`,
+                      })
+                    }}
+                  >
                     <Text>模板管理</Text>
                   </Button>
                 </View>
@@ -641,7 +706,7 @@ export default function AvatarOwnerDetailPage() {
             <Text className="pd-muted">查看用户外显展示效果</Text>
           </View>
         </Button>
-        <Button className="pd-publish">
+        <Button className="pd-publish" onClick={() => void handlePublishWork()}>
           <Plus size={20} color="#FFFFFF" />
           <View className="pd-left">
             <Text className="pd-bar-title">发布新作品</Text>
@@ -649,6 +714,42 @@ export default function AvatarOwnerDetailPage() {
           </View>
         </Button>
       </View>
+
+      <Drawer open={templateSheetOpen} onOpenChange={setTemplateSheetOpen}>
+        <DrawerContent className="pd-tpl-drawer">
+          <DrawerHeader>
+            <DrawerTitle>
+              <Text className="block text-center text-base font-semibold text-slate-800">选择模版</Text>
+            </DrawerTitle>
+          </DrawerHeader>
+          <ScrollView scrollY className="pd-tpl-list">
+            <View className="pd-tpl-items">
+              {enabledTemplates.map(template => (
+                <View
+                  key={template.id}
+                  className="pd-tpl-item"
+                  onClick={() => handleSelectTemplate(template)}
+                >
+                  <View className="pd-tpl-cover">
+                    {template.coverUrl ? (
+                      <Image src={template.coverUrl} mode="aspectFill" className="pd-tpl-cover-img" />
+                    ) : (
+                      <View className="pd-tpl-cover-fallback">
+                        <Sparkles size={20} color="#8B5CF6" />
+                      </View>
+                    )}
+                  </View>
+                  <View className="pd-tpl-info">
+                    <Text className="pd-tpl-name">{template.templateName}</Text>
+                    <Text className="pd-tpl-desc">{template.templateDescription || template.skillType}</Text>
+                  </View>
+                  <ChevronRight size={16} color="#94A3B8" />
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        </DrawerContent>
+      </Drawer>
     </View>
   )
 }

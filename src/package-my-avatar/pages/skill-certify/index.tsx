@@ -372,7 +372,6 @@ export default function SkillCertifyPage() {
             </View>
             <View className="sc-template-footer">
               <Text className="sc-template-usage">{formatUseCount(detail.useCount)} 人使用</Text>
-              <Text className="sc-template-detail-btn">查看详情</Text>
             </View>
           </View>
 
@@ -428,8 +427,11 @@ export default function SkillCertifyPage() {
 
             {/* 上传附件区域（根据 materialConfig.enabled 动态显示） */}
             {detail.materialConfig?.enabled && (
-              <View className="sc-form-item">
-                <Text className="sc-form-label">上传图片(可选)</Text>
+              <View className="sc-form-item sc-form-item-upload">
+                <View className="sc-form-label-group">
+                  <Text className="sc-form-label">上传图片</Text>
+                  <Text className="sc-form-label-optional">（可选）</Text>
+                </View>
                 {uploadedImageUrl ? (
                   <View className="sc-upload-preview">
                     <Image className="sc-upload-thumb" src={uploadedImageUrl} mode="widthFix" />
