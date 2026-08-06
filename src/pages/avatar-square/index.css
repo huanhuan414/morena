@@ -230,15 +230,25 @@
 .as-sort-scroll {
   width: 100%;
   margin-bottom: 24rpx;
+  white-space: nowrap;
+  overflow-x: scroll;
+  -webkit-overflow-scrolling: touch;
 }
 
 .as-filter-row,
 .as-sort-row {
-  display: flex;
+  display: inline-flex;
   flex-direction: row;
   align-items: center;
   width: max-content;
-  padding-bottom: 8rpx;
+  box-sizing: border-box;
+  padding: 0 8rpx 8rpx 0;
+}
+
+.as-scroll-spacer {
+  display: inline-block;
+  width: 60rpx;
+  flex-shrink: 0;
 }
 
 .as-filter-btn,
@@ -259,6 +269,8 @@
 }
 
 .as-filter-btn {
+  height: 56rpx;
+  padding: 0 24rpx;
   color: #475569;
 }
 
@@ -271,7 +283,9 @@
 .as-filter-label,
 .as-sort-label {
   font-size: 24rpx;
-  line-height: 1;
+  line-height: 1.4;
+  white-space: nowrap;
+  display: inline-block;
 }
 
 .as-filter-expand {

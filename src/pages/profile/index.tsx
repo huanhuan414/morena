@@ -50,6 +50,7 @@ interface UserSubscription {
 // 菜单项配置（定义基础菜单）
 const menuItems = [
   { title: '我的分身', icon: Bot, desc: '管理我的 AI 分身', type: 'primary', path: '/package-my-avatar/pages/my-avatar/index', requireLogin: true, key: 'my_avatar' },
+  { title: '我的作品', icon: FileText, desc: '管理我的 AI 作品', type: 'primary', path: '/package-avatar-square/pages/avatar-work-manage/index?source=profileWorks', requireLogin: true, key: 'my_works' },
   { title: '订阅中心', icon: Crown, desc: '升级解锁更多功能', type: 'primary', path: '/package-avatar/pages/subscription/index', requireLogin: true, key: 'subscription_center' },
   { title: '积分中心', icon: Coins, desc: '充值和交易记录', type: 'warning', path: '/package-coin/pages/index/index', requireLogin: true, key: 'coin_center' },
   { title: '收益中心', icon: Wallet, desc: '查看收益和提现', type: 'warning', path: '/package-profile/pages/earning-center/index', requireLogin: true, key: 'earning_center' },
@@ -387,10 +388,10 @@ export default function ProfilePage() {
         )}
 
         {/* 版本信息 */}
-        <View className="version-section">
+        {/* <View className="version-section">
           <Text className="version-text">莫瑞娜 v1.0.0</Text>
           <Text className="version-copyright">AI原生人机共生协同平台</Text>
-        </View>
+        </View> */}
 
         <View className="bottom-placeholder" />
       </ScrollView>

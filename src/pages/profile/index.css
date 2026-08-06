@@ -6,10 +6,12 @@
 
 /* 页面容器 */
 .profile-page {
-  min-height: 100vh;
+  height: 100vh;
   background: var(--bg-page);
   position: relative;
-  padding-bottom: calc(var(--tabbar-height) + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* ========================================
@@ -124,6 +126,7 @@
   box-shadow: var(--shadow-lg);
   position: relative;
   z-index: 20;
+  flex-shrink: 0;
 }
 
 .card-top-row {
@@ -450,12 +453,12 @@ button.contact-menu-item::after {
    辅助样式
    ======================================== */
 .bottom-placeholder {
-  height: 40rpx;
+  height: calc(var(--tabbar-height) + env(safe-area-inset-bottom));
 }
 
 .menu-scroll {
   flex: 1;
-  height: calc(100vh - 400rpx);
+  overflow: hidden;
 }
 
 .profile-support-agent-icon {

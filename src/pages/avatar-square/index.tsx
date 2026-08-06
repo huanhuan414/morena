@@ -81,6 +81,7 @@ export default function AvatarSquarePage() {
   const requestIdRef = useRef(0)
   const skipInitialFilterEffectRef = useRef(true)
   const favoritePendingIdsRef = useRef(new Set<number>())
+  const viewPendingIdsRef = useRef(new Set<number>())
 
   const loadAvatars = useCallback(async (targetPage: number, replace: boolean) => {
     if (!replace && loadingRef.current) return
@@ -153,6 +154,31 @@ export default function AvatarSquarePage() {
     if (loadingRef.current || !hasMore) return
     void loadAvatars(page + 1, false)
   }, [hasMore, loadAvatars, page])
+  const recordAvatarView = useCallback(async (avatarId: number) => {
+    if (viewPendingIdsRef.current.has(avatarId)) return
+    viewPendingIdsRef.current.add(avatarId)
+
+    try {
+      const res = await Network.request({
+        url: `/api/avatar-square/${avatarId}/view`,
+        method: 'POST',
+      })
+      const responseBody = res.data as {
+        data?: { viewCount?: number } | null
+      }
+      const viewCount = responseBody?.data?.viewCount
+      if (typeof viewCount === 'number') {
+        setAvatars(current => current.map(item => item.id === avatarId
+          ? { ...item, viewCount }
+          : item))
+      }
+    } catch (error) {
+      console.error('[AvatarSquarePage] record avatar view failed:', error)
+    } finally {
+      viewPendingIdsRef.current.delete(avatarId)
+    }
+  }, [])
+
   const handleViewAvatar = useCallback((avatar: AvatarItem) => {
     const isOwner = Boolean(
       currentUserId
@@ -163,9 +189,11 @@ export default function AvatarSquarePage() {
     const url = isOwner
       ? `/package-avatar-square/pages/avatar-owner-detail/index?preview=${preview}`
       : `/package-avatar-square/pages/avatar-public-detail/index?id=${avatar.id}`
-
     void Taro.navigateTo({ url })
-  }, [currentUserId])
+    if (!isOwner) {
+      void recordAvatarView(avatar.id)
+    }
+  }, [currentUserId, recordAvatarView])
   const handleToggleFavorite = useCallback(async (avatar: AvatarItem) => {
     if (!currentUserId) {
       void Taro.showToast({ title: '请先登录', icon: 'none' })
@@ -178,10 +206,10 @@ export default function AvatarSquarePage() {
     favoritePendingIdsRef.current.add(avatar.id)
     setAvatars(current => current.map(item => item.id === avatar.id
       ? {
-          ...item,
-          isFavorited: nextIsFavorited,
-          favoriteCount: Math.max(0, item.favoriteCount + (nextIsFavorited ? 1 : -1)),
-        }
+        ...item,
+        isFavorited: nextIsFavorited,
+        favoriteCount: Math.max(0, item.favoriteCount + (nextIsFavorited ? 1 : -1)),
+      }
       : item))
 
     try {
@@ -201,18 +229,18 @@ export default function AvatarSquarePage() {
 
       setAvatars(current => current.map(item => item.id === avatar.id
         ? {
-            ...item,
-            isFavorited: responseBody.data!.isFavorited,
-            favoriteCount: responseBody.data!.favoriteCount,
-          }
+          ...item,
+          isFavorited: responseBody.data!.isFavorited,
+          favoriteCount: responseBody.data!.favoriteCount,
+        }
         : item))
     } catch (error) {
       setAvatars(current => current.map(item => item.id === avatar.id
         ? {
-            ...item,
-            isFavorited: avatar.isFavorited,
-            favoriteCount: previousFavoriteCount,
-          }
+          ...item,
+          isFavorited: avatar.isFavorited,
+          favoriteCount: previousFavoriteCount,
+        }
         : item))
       void Taro.showToast({
         title: error instanceof Error ? error.message : '收藏操作失败',
@@ -283,6 +311,7 @@ export default function AvatarSquarePage() {
               >
                 <ChevronDown size={16} color="#64748B" />
               </Button>
+              <View className="as-scroll-spacer" />
             </View>
           </ScrollView>
 

@@ -65,6 +65,13 @@ type WorkRow = {
   videoCoverUrl: string
 }
 
+type WorkStats = {
+  callCount: number
+  workCount: number
+  favoriteCount: number
+  viewCount: number
+}
+
 const WORK_CATEGORIES: WorkCategory[] = ['全部', '图片', '图文', '文字', '视频']
 
 const QUICK_ACTIONS = [
@@ -104,6 +111,12 @@ export default function AvatarOwnerDetailPage() {
   const detailId = router.params.id || String(preview?.id || '')
   const [avatar, setAvatar] = useState<AvatarPreview | null>(preview)
   const [workRows, setWorkRows] = useState<WorkRow[]>([])
+  const [workStats, setWorkStats] = useState<WorkStats>({
+    callCount: 0,
+    workCount: 0,
+    favoriteCount: 0,
+    viewCount: 0,
+  })
   const [selectedWorkCategory, setSelectedWorkCategory] = useState<WorkCategory>('全部')
   const [previewWork, setPreviewWork] = useState<WorkRow | null>(null)
   const [workPreviewOpen, setWorkPreviewOpen] = useState(false)
@@ -137,7 +150,23 @@ export default function AvatarOwnerDetailPage() {
       }
     }
 
+    const loadWorkStats = async () => {
+      try {
+        const res = await Network.request({
+          url: `/api/avatar-square/${encodeURIComponent(detailId)}/work-stats`,
+        })
+        // console.log('[AvatarOwnerDetailPage] work stats response:', res.data)
+        const responseBody = res.data as { data?: WorkStats | null }
+        if (responseBody?.data) {
+          setWorkStats(responseBody.data)
+        }
+      } catch (error) {
+        console.error('[AvatarOwnerDetailPage] load work stats failed:', error)
+      }
+    }
+
     void loadDetail()
+    void loadWorkStats()
   })
 
   useEffect(() => {
@@ -377,13 +406,20 @@ export default function AvatarOwnerDetailPage() {
                 <View className="pd-grid4">
                   {[
                     { label: '累计调用', value: formatCount(avatar.useCount) },
-                    { label: '累计收益', value: formatCount(avatar.incomePointsTotal) },
+                    { label: '累计收益', value: formatCount(avatar.incomePointsTotal), unit: '积分' },
                     { label: '收藏量', value: formatCount(avatar.viewCount) },
                     { label: '浏览量', value: formatCount(avatar.favoriteCount) },
                   ].map(item => (
                     <View key={item.label} className="pd-stat">
                       <Text className="pd-stat-label">{item.label}</Text>
-                      <Text className="pd-stat-value">{item.value}</Text>
+                      {item.unit ? (
+                        <View className="pd-amount">
+                          <Text className="pd-stat-value">{item.value}</Text>
+                          <Text className="pd-unit">{item.unit}</Text>
+                        </View>
+                      ) : (
+                        <Text className="pd-stat-value">{item.value}</Text>
+                      )}
                       {/* <Text className="pd-stat-up">{item.sub}</Text> */}
                     </View>
                   ))}
@@ -412,18 +448,18 @@ export default function AvatarOwnerDetailPage() {
             <Card className="pd-card">
               <CardContent className="pd-pad">
                 <View className="pd-sec-head">
-                  <Text className="pd-title">数据概览（近 7 天）</Text>
-                  <View className="pd-online">
+                  <Text className="pd-title">数据概览</Text>
+                  {/* <View className="pd-online">
                     <Text className="pd-muted">查看更多</Text>
                     <ChevronRight size={13} color="#94A3B8" />
-                  </View>
+                  </View> */}
                 </View>
                 <View className="pd-grid4">
                   {[
-                    { label: '调用次数', value: formatCount(avatar.viewCount) },
-                    { label: '作品数量', value: '12.6w' },
-                    { label: '收藏量', value: formatCount(avatar.incomePointsTotal) },
-                    { label: '浏览量', value: formatCount(avatar.favoriteCount) },
+                    { label: '调用次数', value: formatCount(workStats.callCount) },
+                    { label: '作品数量', value: formatCount(workStats.workCount) },
+                    { label: '收藏量', value: formatCount(workStats.favoriteCount) },
+                    { label: '浏览量', value: formatCount(workStats.viewCount) },
                   ].map(item => (
                     <View key={item.label} className="pd-stat alt">
                       <Text className="pd-stat-label">{item.label}</Text>
@@ -444,7 +480,7 @@ export default function AvatarOwnerDetailPage() {
                     <Button variant="outline" size="sm" className="pd-sm-btn"><Text>最新发布</Text></Button>
                   </View> */}
                 </View>
-                <View className="pd-cats">
+                {/* <View className="pd-cats">
                   {WORK_CATEGORIES.map(category => (
                     <Button
                       key={category}
@@ -456,7 +492,7 @@ export default function AvatarOwnerDetailPage() {
                       <Text>{category}</Text>
                     </Button>
                   ))}
-                </View>
+                </View> */}
                 <Table className="pd-table">
                   <TableHeader className="pd-table-section">
                     <TableRow className="pd-table-head">
@@ -515,7 +551,7 @@ export default function AvatarOwnerDetailPage() {
               </CardContent>
             </Card>
 
-            <Card className="pd-card">
+            {/* <Card className="pd-card">
               <CardContent className="pd-pad">
                 <Text className="pd-title">快捷功能</Text>
                 <View className="pd-quick">
@@ -532,7 +568,7 @@ export default function AvatarOwnerDetailPage() {
                   })}
                 </View>
               </CardContent>
-            </Card>
+            </Card> */}
           </View>
         </View>
       </ScrollView>

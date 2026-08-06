@@ -56,7 +56,7 @@ page {
 .wm-scroll {
   box-sizing: border-box;
   height: 100vh;
-  padding-top: calc(var(--wm-status-top,env(safe-area-inset-top)) + 280rpx);
+  padding-top: calc(var(--wm-status-top,env(safe-area-inset-top)) + var(--wm-toolbar-space, 470rpx));
 }
 
 .wm-main {
@@ -147,12 +147,19 @@ page {
 }
 
 .wm-list-card {
+  overflow: visible;
   margin-top: 0;
   border-radius: 30rpx;
 }
 
 .wm-list-body {
-  padding: 0 18rpx 24rpx;
+  overflow: visible;
+  padding: 25rpx 18rpx 24rpx;
+}
+
+.wm-sticky-tools {
+  padding: 20rpx 24rpx 16rpx;
+  background: linear-gradient(180deg, #f8f6ff 0%, #fff 100%);
 }
 
 .wm-tabs {
@@ -211,6 +218,67 @@ page {
 .wm-cat.is-on {
   color: #fff;
   background: linear-gradient(135deg, #8b5cf6, #6d4cd8);
+}
+
+.wm-filter-scroll {
+  width: 100%;
+  margin-top: 8rpx;
+  white-space: nowrap;
+}
+
+.wm-filter-list {
+  display: inline-flex;
+  gap: 10rpx;
+  padding: 2rpx 0 8rpx;
+}
+
+.wm-filter-select {
+  display: inline-flex;
+  height: 46rpx;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+  padding: 0 16rpx;
+  border: 1rpx solid transparent;
+  border-radius: 9999rpx;
+  color: #756985;
+  background: #f6f3fb;
+  font-size: 23rpx;
+  white-space: nowrap;
+}
+
+.wm-filter-select.is-on {
+  color: #6d4cd8;
+  border-color: #d8b4fe;
+  background: #f3e8ff;
+}
+
+.wm-filter-arrow {
+  color: currentColor;
+  font-size: 16rpx;
+  line-height: 1;
+}
+
+.wm-filter-menu {
+  min-width: 176rpx;
+  padding: 8rpx;
+  border-radius: 18rpx;
+  background: #fff;
+  box-shadow: 0 12rpx 34rpx rgb(109 76 216 / 18%);
+}
+
+.wm-filter-option {
+  min-height: 48rpx;
+  padding: 0 16rpx;
+  border-radius: 14rpx;
+  color: #756985;
+  font-size: 21rpx;
+}
+
+.wm-filter-option.is-on {
+  color: #6d4cd8;
+  background: #f3e8ff;
+  font-weight: 700;
 }
 
 .wm-sort-row {
@@ -366,6 +434,21 @@ page {
   white-space: nowrap;
 }
 
+.wm-category-pill {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  justify-content: center;
+  margin-top: 12rpx;
+  padding: 4rpx 14rpx;
+  border-radius: 9999rpx;
+  background: #f3efff;
+  color: #7c3aed;
+  font-size: 20rpx;
+  font-weight: 600;
+  line-height: 28rpx;
+}
+
 .wm-stats {
   display: flex;
   flex-wrap: wrap;
@@ -466,8 +549,7 @@ page {
   background: rgb(25 19 38 / 58%);
 }
 
-.wm-text-dialog,
-.wm-delete-dialog {
+.wm-text-dialog {
   width: 650rpx;
   max-width: 650rpx;
   border-color: #eee7fa;
@@ -475,8 +557,8 @@ page {
   background: #fff;
 }
 
-.wm-dialog-title,
-.wm-delete-title {
+.wm-dialog-title {
+  display: block;
   overflow: hidden;
   color: #2f2542;
   font-size: 28rpx;
@@ -498,32 +580,6 @@ page {
   white-space: pre-wrap;
 }
 
-.wm-delete-desc {
-  margin-top: 12rpx;
-  color: #7d7388;
-  font-size: 23rpx;
-  line-height: 36rpx;
-}
-
-.wm-delete-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16rpx;
-  margin-top: 22rpx;
-}
-
-.wm-cancel,
-.wm-confirm {
-  height: 66rpx;
-  margin: 0;
-  border-radius: 34rpx;
-  font-size: 24rpx;
-}
-
-.wm-confirm {
-  color: #fff;
-  background: #e85d75;
-}
 .wm-publish-bar {
   position: fixed;
   right: 0;

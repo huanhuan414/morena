@@ -200,7 +200,17 @@
 }
 
 .od-desc-dialog {
+  z-index: 110;
   max-height: 75vh;
+  border: 1rpx solid rgb(255 255 255 / 78%);
+  border-radius: 28rpx;
+  background: #fff;
+  box-shadow: 0 28rpx 70rpx rgb(32 18 78 / 24%);
+}
+
+.od-desc-overlay.od-desc-overlay {
+  z-index: 100;
+  background: rgb(15 12 32 / 48%);
 }
 
 .od-dialog-title {
@@ -462,19 +472,20 @@
 
 .od-work-actions {
   grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 10rpx;
   margin-top: 16rpx;
 }
 
 .od-work-btn {
   width: auto;
-  height: 48rpx;
-  padding: 0 16rpx;
-  color: #6d4cd8;
-  border: 0;
-  border-radius: 8rpx;
-  background: #f5f3ff;
+  height: 52rpx;
+  padding: 0 18rpx;
+  color: #7c3aed;
+  border-color: #c4b5fd;
+  border-radius: 14rpx;
+  background: #fff;
   box-shadow: none;
-  font-size: 24rpx;
+  font-size: 21rpx;
 }
 
 .od-work-btn:first-child {
@@ -485,6 +496,15 @@
   justify-self: end;
 }
 
+.od-work-btn.is-favorite {
+  gap: 6rpx;
+  color: #ef4444;
+  border-color: #fecaca;
+}
+
+.od-work-btn.is-favorite.is-active {
+  background: #fef2f2;
+}
 .od-work-dialog {
   max-height: 82vh;
 }

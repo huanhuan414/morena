@@ -303,6 +303,25 @@
   font-weight: 700;
 }
 
+.pd-amount {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  margin-top: 8rpx;
+}
+
+.pd-amount .pd-stat-value {
+  margin-top: 0;
+}
+
+.pd-unit {
+  margin-left: 4rpx;
+  color: #94a3b8;
+  font-size: 18rpx;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 .pd-stat-up,
 .pd-up {
   margin-top: 8rpx;
@@ -381,7 +400,7 @@
 }
 
 .pd-table {
-  width: 1180rpx;
+  width: 1040rpx;
   max-width: none;
   margin-top: 24rpx;
   overflow: hidden;
@@ -399,7 +418,7 @@
 
 .pd-table-head,
 .pd-table-row {
-  grid-template-columns: 280rpx 120rpx 160rpx 120rpx 120rpx 240rpx 100rpx;
+  grid-template-columns: 280rpx 120rpx 160rpx 120rpx 120rpx 240rpx;
   padding: 16rpx;
   text-align: center;
 }

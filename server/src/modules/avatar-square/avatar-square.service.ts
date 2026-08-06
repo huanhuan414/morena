@@ -19,9 +19,15 @@ type WorkSquareQuery = {
 
 type FavoriteTargetType = '分身' | '作品'
 
+type ManagedWorkStatusField = 'publicStatus' | 'avatarAcceptStatus' | 'avatarAuthStatus'
+
 type ManagedWorksQuery = {
   avatarId?: number
   display?: string
+  filters?: string[]
+  publicStatus?: string
+  profileDisplay?: string
+  squareDisplay?: string
   category?: string
   sort?: string
   page: number
@@ -85,6 +91,7 @@ const PUBLIC_WORK_VIEW_CONDITIONS: Record<WorkViewSource, readonly string[]> = {
 export class AvatarSquareService {
   private readonly logger = new Logger(AvatarSquareService.name)
   private readonly workViewDedupTtlMs = 30 * 60 * 1000
+  private readonly avatarViewDedupTtlMs = 30 * 60 * 1000
 
   constructor(private readonly redisService: RedisService) {}
   private safeParseJson<T>(value: unknown, fallback: T): T {
@@ -135,6 +142,8 @@ export class AvatarSquareService {
       title: String(row.workTitle || ''),
       description: String(row.workDescription || ''),
       price: `${row.generatedPayPoints ?? 0}积分`,
+      favoriteCount: Number(row.favoriteCount || 0),
+      isFavorited: Boolean(row.isFavorited),
       images: workCategory === '图片' || workCategory === '图文' ? images : [],
       contentTitle: workCategory === '图文' ? String(contentJson.title || '') : '',
       contentText: workCategory === '文字' || workCategory === '图文'
@@ -255,6 +264,85 @@ export class AvatarSquareService {
     }
   }
 
+  async recordPublicAvatarView(
+    avatarId: number,
+    viewerUserId: string | undefined,
+    viewerKey: string,
+  ) {
+    const db = getMySQLClient()
+    const whereConditions = [
+      'id = ?',
+      "status = '已上线'",
+      "public_status = '公开'",
+      "audit_status = '审核通过'",
+      'deleted_at IS NULL',
+    ]
+    const whereSql = whereConditions.join('\n        AND ')
+    const params = [avatarId]
+
+    const rows = await db.query(`
+      SELECT id, user_id, view_count
+      FROM ai_avatar
+      WHERE ${whereSql}
+      LIMIT 1
+    `, params)
+    const avatar = rows[0] as Record<string, unknown> | undefined
+    if (!avatar) return null
+
+    const currentViewCount = Number(avatar.viewCount || 0)
+    if (viewerUserId && String(avatar.userId || '') === viewerUserId) {
+      return { counted: false, viewCount: currentViewCount }
+    }
+
+    const dedupKey = `avatar:view:${avatarId}:${viewerKey}`
+    let reserved = false
+    try {
+      reserved = await this.redisService.setNX(
+        dedupKey,
+        'avatar_square',
+        this.avatarViewDedupTtlMs,
+      )
+    } catch (error) {
+      this.logger.warn(`分身浏览去重失败，跳过统计: avatarId=${avatarId}, error=${error instanceof Error ? error.message : error}`)
+      return { counted: false, viewCount: currentViewCount }
+    }
+
+    if (!reserved) {
+      return { counted: false, viewCount: currentViewCount }
+    }
+
+    try {
+      const result = await db.query(`
+        UPDATE ai_avatar
+        SET view_count = COALESCE(view_count, 0) + 1
+        WHERE ${whereSql}
+      `, params)
+      const counted = Number((result as any)?.affectedRows || 0) > 0
+      if (!counted) {
+        await this.redisService.del(dedupKey)
+        return null
+      }
+
+      const countRows = await db.query(`
+        SELECT view_count
+        FROM ai_avatar
+        WHERE id = ?
+        LIMIT 1
+      `, [avatarId])
+      const updatedAvatar = countRows[0] as Record<string, unknown> | undefined
+      return {
+        counted: true,
+        viewCount: Number(updatedAvatar?.viewCount ?? currentViewCount + 1),
+      }
+    } catch (error) {
+      try {
+        await this.redisService.del(dedupKey)
+      } catch (redisError) {
+        this.logger.warn(`回滚分身浏览去重Key失败: avatarId=${avatarId}, error=${redisError instanceof Error ? redisError.message : redisError}`)
+      }
+      throw error
+    }
+  }
   async getManagedWorks(userId: string, options: ManagedWorksQuery) {
     const db = getMySQLClient()
     const page = Math.max(1, Number(options.page) || 1)
@@ -283,13 +371,46 @@ export class AvatarSquareService {
       }
       whereClauses.push('avatar_id = ?')
       params.push(options.avatarId)
+    } else {
+      const userRows = await db.query(`
+        SELECT id, avatar, nickname, bio
+        FROM users
+        WHERE id = ?
+        LIMIT 1
+      `, [userId])
+      const userRow = userRows[0] as Record<string, unknown> | undefined
+      avatar = {
+        id: 0,
+        avatarUrl: String(userRow?.avatar || ''),
+        avatarName: String(userRow?.nickname || ''),
+        description: String(userRow?.bio || `ID:${String(userId).slice(-8)}`),
+      }
     }
 
-    if (options.display === 'shown') {
-      whereClauses.push("public_status = '公开'", "audit_status = '审核通过'")
-    } else if (options.display === 'hidden') {
-      whereClauses.push("public_status = '私有'", "COALESCE(audit_status, '') <> '审核通过'")
+    const filters = options.filters || []
+    if (options.publicStatus) {
+      whereClauses.push('public_status = ?')
+      params.push(options.publicStatus)
+    } else {
+      if (filters.includes('public')) {
+        whereClauses.push("public_status = '公开'")
+      }
+      if (filters.includes('private')) {
+        whereClauses.push("public_status = '私有'")
+      }
     }
+    if (options.profileDisplay === 'shown') {
+      whereClauses.push("avatar_accept_status = '接受展示'")
+    } else if (options.profileDisplay === 'hidden') {
+      whereClauses.push("COALESCE(avatar_accept_status, '') <> '接受展示'")
+    } 
+
+    if (options.squareDisplay === 'shown') {
+      whereClauses.push("avatar_auth_status = '展示'")
+    } else if (options.squareDisplay === 'hidden') {
+      whereClauses.push("COALESCE(avatar_auth_status, '') <> '展示'")
+    } 
+    
     if (options.category) {
       whereClauses.push('skill_type = ?')
       params.push(options.category)
@@ -323,6 +444,82 @@ export class AvatarSquareService {
     }))
 
     return { avatar, list, page, pageSize, hasMore }
+  }
+
+  async updateManagedWorkStatus(
+    workId: number,
+    userId: string,
+    field: ManagedWorkStatusField,
+    value: string,
+  ) {
+    const configs: Record<ManagedWorkStatusField, { column: string; values: string[] }> = {
+      publicStatus: { column: 'public_status', values: ['公开', '私有'] },
+      avatarAcceptStatus: { column: 'avatar_accept_status', values: ['接受展示', '拒绝展示'] },
+      avatarAuthStatus: { column: 'avatar_auth_status', values: ['展示', '禁止展示'] },
+    }
+    const config = configs[field]
+    if (!config || !config.values.includes(value)) {
+      return { state: 'invalid' as const, data: null }
+    }
+
+    const db = getMySQLClient()
+    if (field === 'avatarAcceptStatus' && value === '接受展示') {
+      const currentRows = await db.query(`
+        SELECT avatar_id AS avatarId
+        FROM ai_generated_work
+        WHERE id = ?
+          AND user_id = ?
+          AND deleted_at IS NULL
+        LIMIT 1
+      `, [workId, userId])
+      const current = currentRows[0] as Record<string, unknown> | undefined
+      if (!current) return { state: 'not_found' as const, data: null }
+
+      const countRows = await db.query(`
+        SELECT COUNT(*) AS total
+        FROM ai_generated_work
+        WHERE avatar_id = ?
+          AND user_id = ?
+          AND id <> ?
+          AND avatar_accept_status = '接受展示'
+          AND deleted_at IS NULL
+      `, [current.avatarId, userId, workId])
+      const total = Number((countRows[0] as Record<string, unknown> | undefined)?.total || 0)
+      if (total >= 4) {
+        return { state: 'profile_limit' as const, data: null }
+      }
+    }
+
+    const result = await db.query(`
+      UPDATE ai_generated_work
+      SET ${config.column} = ?, updated_at = NOW()
+      WHERE id = ?
+        AND user_id = ?
+        AND deleted_at IS NULL
+    `, [value, workId, userId])
+
+    if (Number((result as any)?.affectedRows || 0) === 0) {
+      return { state: 'not_found' as const, data: null }
+    }
+
+    const rows = await db.query(`
+      SELECT public_status AS publicStatus, avatar_accept_status AS avatarAcceptStatus, avatar_auth_status AS avatarAuthStatus
+      FROM ai_generated_work
+      WHERE id = ?
+        AND user_id = ?
+        AND deleted_at IS NULL
+      LIMIT 1
+    `, [workId, userId])
+    const row = rows[0] as Record<string, unknown> | undefined
+    return {
+      state: 'updated' as const,
+      data: {
+        id: workId,
+        publicStatus: String(row?.publicStatus || ''),
+        avatarAcceptStatus: String(row?.avatarAcceptStatus || ''),
+        avatarAuthStatus: String(row?.avatarAuthStatus || ''),
+      },
+    }
   }
 
   async deleteManagedWork(workId: number, userId: string) {
@@ -419,6 +616,73 @@ export class AvatarSquareService {
     return { list, page, pageSize, hasMore }
   }
 
+  async getPublicWorkSquareDetail(workId: number, userId?: string) {
+    const db = getMySQLClient()
+    const rows = await db.query(`
+      SELECT
+        work.id,
+        work.avatar_id,
+        work.work_title,
+        work.work_description,
+        work.skill_type,
+        work.generated_pay_points,
+        work.published_at,
+        work.view_count,
+        work.favorite_count,
+        work.success_item_count,
+        work.content_json,
+        avatar.avatar_name,
+        avatar.avatar_url,
+        avatar.skill_type AS avatar_skill_type,
+        avatar.favorite_count AS avatar_favorite_count,
+        ${userId ? `
+          EXISTS (
+            SELECT 1
+            FROM ai_user_favorite favorite
+            WHERE favorite.user_id = ?
+              AND favorite.target_type = '作品'
+              AND favorite.target_id = work.id
+          )
+        ` : 'FALSE'} AS is_favorited,
+        ${userId ? `
+          EXISTS (
+            SELECT 1
+            FROM ai_user_favorite favorite
+            WHERE favorite.user_id = ?
+              AND favorite.target_type = '分身'
+              AND favorite.target_id = avatar.id
+          )
+        ` : 'FALSE'} AS is_avatar_favorited
+      FROM ai_generated_work work
+      INNER JOIN ai_avatar avatar ON avatar.id = work.avatar_id
+      WHERE work.id = ?
+        AND work.status = '正常'
+        AND work.public_status = '公开'
+        AND work.audit_status = '审核通过'
+        AND work.avatar_auth_status = '展示'
+        AND work.deleted_at IS NULL
+        AND avatar.deleted_at IS NULL
+      LIMIT 1
+    `, [...(userId ? [userId, userId] : []), workId])
+    const row = rows[0] as Record<string, unknown> | undefined
+    if (!row) return null
+
+    return {
+      ...this.mapWorkPreview(row),
+      avatarId: Number(row.avatarId || 0),
+      avatarName: String(row.avatarName || ''),
+      avatarUrl: String(row.avatarUrl || ''),
+      avatarSkillType: String(row.avatarSkillType || ''),
+      avatarFavoriteCount: Number(row.avatarFavoriteCount || 0),
+      isAvatarFavorited: Boolean(row.isAvatarFavorited),
+      generatedPayPoints: Number(row.generatedPayPoints || 0),
+      publishedAt: row.publishedAt || null,
+      viewCount: Number(row.viewCount || 0),
+      favoriteCount: Number(row.favoriteCount || 0),
+      successItemCount: Number(row.successItemCount || 0),
+      isFavorited: Boolean(row.isFavorited),
+    }
+  }
   /**
    * 获取公开分身广场列表
    * @param options 查询参数
@@ -748,10 +1012,14 @@ export class AvatarSquareService {
    * @param avatarId 分身ID
    * @param category 作品分类
    */
-  async getPublicAvatarWorks(avatarId: number, category?: string) {
+  async getPublicAvatarWorks(avatarId: number, category?: string, userId?: string) {
     const db = getMySQLClient()
     const categoryWhere = category ? 'AND skill_type = ?' : ''
-    const params = category ? [avatarId, category] : [avatarId]
+    const params = [
+      ...(userId ? [userId] : []),
+      avatarId,
+      ...(category ? [category] : []),
+    ]
     const rows = await db.query(`
       SELECT
         id,
@@ -759,7 +1027,17 @@ export class AvatarSquareService {
         work_title,
         work_description,
         generated_pay_points,
-        content_json
+        favorite_count,
+        content_json,
+        ${userId ? `
+          EXISTS (
+            SELECT 1
+            FROM ai_user_favorite favorite
+            WHERE favorite.user_id = ?
+              AND favorite.target_type = '作品'
+              AND favorite.target_id = ai_generated_work.id
+          )
+        ` : 'FALSE'} AS is_favorited
       FROM ai_generated_work
       WHERE avatar_id = ?
         AND status = '正常'
@@ -820,6 +1098,31 @@ export class AvatarSquareService {
     return rows[0] ? this.mapWorkPreview(rows[0]) : null
   }
 
+  /**
+   * 获取分身作品汇总数据
+   * @param avatarId 分身ID
+   */
+  async getAvatarWorkStats(avatarId: number) {
+    const db = getMySQLClient()
+    const rows = await db.query(`
+      SELECT
+        COALESCE(SUM(success_item_count), 0) AS call_count,
+        COUNT(*) AS work_count,
+        COALESCE(SUM(favorite_count), 0) AS favorite_count,
+        COALESCE(SUM(view_count), 0) AS view_count
+      FROM ai_generated_work
+      WHERE avatar_id = ?
+        AND deleted_at IS NULL
+    `, [avatarId])
+    const row = rows[0] as Record<string, unknown> | undefined
+
+    return {
+      callCount: Number(row?.callCount || 0),
+      workCount: Number(row?.workCount || 0),
+      favoriteCount: Number(row?.favoriteCount || 0),
+      viewCount: Number(row?.viewCount || 0),
+    }
+  }
   /**
    * 获取自身分身广场作品
    * @param avatarId 分身ID

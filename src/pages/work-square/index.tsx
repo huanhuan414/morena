@@ -205,6 +205,12 @@ export default function WorkSquarePage() {
     void recordWorkView(work.id)
   }
 
+  const openWorkDetail = (workId: number) => {
+    void Taro.navigateTo({
+      url: `/package-avatar-square/pages/work-square-detail/index?id=${workId}`,
+    })
+  }
+
   const toggleFavorite = async (work: WorkItem) => {
     if (!currentUserId) {
       void Taro.showToast({ title: '请先登录', icon: 'none' })
@@ -398,7 +404,7 @@ export default function WorkSquarePage() {
                           )}
                         </View>
 
-                        <View className="ws-work-info">
+                        <View className="ws-work-info" onClick={() => openWorkDetail(work.id)}>
                           <Text className="ws-work-title">{work.title || '无标题作品'}</Text>
                           <Text className="ws-work-description">{work.description || work.contentText || '暂无作品描述'}</Text>
                           <Text className="ws-points">{work.generatedPayPoints} 积分</Text>

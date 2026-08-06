@@ -1,9 +1,10 @@
 import { Image, ScrollView, Text, View } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import {
   ArrowLeft,
+  Heart,
   Image as ImageIcon,
   Play,
   Share2,
@@ -16,6 +17,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Network } from '@/network'
+import { useUserStore } from '@/stores/user'
 
 import './index.css'
 
@@ -46,6 +48,8 @@ type WorkPreview = {
   contentText: string
   videoUrl: string
   videoCoverUrl: string
+  favoriteCount: number
+  isFavorited: boolean
 }
 
 const WORK_CATEGORIES: WorkCategory[] = ['全部', '图片', '图文', '文字', '视频']
@@ -82,6 +86,7 @@ const formatCount = (value: number) => {
 
 export default function AvatarPublicDetailPage() {
   const router = useRouter()
+  const currentUserId = useUserStore(state => state.userInfo?.id)
   const preview = parsePreview(router.params.preview)
   const detailId = router.params.id || String(preview?.id || '')
   const [avatar, setAvatar] = useState<AvatarPreview | null>(preview)
@@ -93,6 +98,7 @@ export default function AvatarPublicDetailPage() {
   const [worksLoading, setWorksLoading] = useState(Boolean(detailId))
   const [previewWork, setPreviewWork] = useState<WorkPreview | null>(null)
   const [workPreviewOpen, setWorkPreviewOpen] = useState(false)
+  const favoritePendingIdsRef = useRef(new Set<number>())
   const statusBarHeight = Taro.getSystemInfoSync().statusBarHeight || 20
 
   useEffect(() => {
@@ -234,6 +240,54 @@ export default function AvatarPublicDetailPage() {
     setWorkPreviewOpen(true)
   }
 
+  const toggleFavoriteWork = async (work: WorkPreview) => {
+    if (!currentUserId) {
+      void Taro.showToast({ title: '请先登录', icon: 'none' })
+      return
+    }
+    if (favoritePendingIdsRef.current.has(work.id)) return
+
+    const nextIsFavorited = !work.isFavorited
+    favoritePendingIdsRef.current.add(work.id)
+    setWorks(current => current.map(item => item.id === work.id
+      ? {
+        ...item,
+        isFavorited: nextIsFavorited,
+        favoriteCount: Math.max(0, item.favoriteCount + (nextIsFavorited ? 1 : -1)),
+      }
+      : item))
+
+    try {
+      const res = await Network.request({
+        url: `/api/avatar-square/${work.id}/favorite`,
+        method: nextIsFavorited ? 'POST' : 'DELETE',
+        data: { targetType: '作品' },
+      })
+      const responseBody = res.data as {
+        code?: number
+        msg?: string
+        data?: { isFavorited: boolean; favoriteCount: number } | null
+      }
+      if (responseBody?.code !== 200 || !responseBody.data) {
+        throw new Error(responseBody?.msg || '收藏操作失败')
+      }
+      setWorks(current => current.map(item => item.id === work.id
+        ? {
+          ...item,
+          isFavorited: responseBody.data!.isFavorited,
+          favoriteCount: responseBody.data!.favoriteCount,
+        }
+        : item))
+    } catch (error) {
+      setWorks(current => current.map(item => item.id === work.id ? work : item))
+      void Taro.showToast({
+        title: error instanceof Error ? error.message : '收藏操作失败',
+        icon: 'none',
+      })
+    } finally {
+      favoritePendingIdsRef.current.delete(work.id)
+    }
+  }
   const copyPreviewWorkContent = async () => {
     const title = previewWork?.contentTitle || previewWork?.title || ''
     const content = previewWork?.contentText || ''
@@ -370,7 +424,7 @@ export default function AvatarPublicDetailPage() {
             <Card className="od-card">
               <CardContent className="od-pad">
                 <Text className="od-heading">精选作品 / 模板</Text>
-                <ScrollView scrollX showScrollbar={false} className="od-cat-scroll">
+                {/* <ScrollView scrollX showScrollbar={false} className="od-cat-scroll">
                   <View className="od-cat-row">
                     {WORK_CATEGORIES.map(category => (
                       <Button
@@ -384,7 +438,7 @@ export default function AvatarPublicDetailPage() {
                       </Button>
                     ))}
                   </View>
-                </ScrollView>
+                </ScrollView> */}
 
                 <View className="od-grid">
                   {worksLoading ? (
@@ -430,12 +484,20 @@ export default function AvatarPublicDetailPage() {
                             <Text className="od-work-desc">{work.description}</Text>
                             <Text className="od-price">{work.price}</Text>
                             <View className="od-work-actions">
-                              <Button variant="ghost" size="sm" className="od-work-btn">
-                                <Text>收藏</Text>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className={`od-work-btn is-favorite${work.isFavorited ? ' is-active' : ''}`}
+                                onClick={() => void toggleFavoriteWork(work)}
+                              >
+                                <Heart size={13} color="#EF4444" filled={work.isFavorited} />
+                                <Text>{work.isFavorited ? '已收藏' : '收藏'}</Text>
                               </Button>
-                              <Button variant="ghost" size="sm" className="od-work-btn">
+
+                              <Button variant="outline" size="sm" className="od-work-btn">
                                 <Text>使用模板</Text>
                               </Button>
+
                             </View>
                           </View>
                         </CardContent>
@@ -451,7 +513,7 @@ export default function AvatarPublicDetailPage() {
         </View>
       </ScrollView>
       <Dialog open={descriptionOpen} onOpenChange={setDescriptionOpen}>
-        <DialogContent className="od-desc-dialog">
+        <DialogContent className="od-desc-dialog" overlayClassName="od-desc-overlay">
           <DialogHeader>
             <DialogTitle className="od-dialog-title">
               <Text>分身描述</Text>

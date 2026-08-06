@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query, Req } from '@nestjs/common'
+import { createHash } from 'node:crypto'
 import { AvatarSquareService } from './avatar-square.service'
 
 @Controller('avatar-square')
@@ -10,6 +11,10 @@ export class AvatarSquareController {
     @Req() req: any,
     @Query('avatarId') avatarId?: string,
     @Query('display') display?: string,
+    @Query('filters') filters?: string,
+    @Query('publicStatus') publicStatus?: string,
+    @Query('profileDisplay') profileDisplay?: string,
+    @Query('squareDisplay') squareDisplay?: string,
     @Query('category') category?: string,
     @Query('sort') sort?: string,
     @Query('page') page: string = '1',
@@ -28,6 +33,25 @@ export class AvatarSquareController {
       if (display && !['shown', 'hidden'].includes(display)) {
         return { code: 400, msg: '展示状态无效', data: null }
       }
+      const normalizedFilters = filters
+        ? filters.split(',').map(item => item.trim()).filter(Boolean)
+        : []
+      const allowedFilters = ['public', 'private', 'profile', 'square']
+      if (normalizedFilters.some(item => !allowedFilters.includes(item))) {
+        return { code: 400, msg: '筛选条件无效', data: null }
+      }
+      if (normalizedFilters.includes('public') && normalizedFilters.includes('private')) {
+        return { code: 400, msg: '公开和私有不能同时筛选', data: null }
+      }
+      if (publicStatus && !['公开', '私有'].includes(publicStatus)) {
+        return { code: 400, msg: '公开状态无效', data: null }
+      }
+      if (profileDisplay && !['shown', 'hidden'].includes(profileDisplay)) {
+        return { code: 400, msg: '个人主页筛选无效', data: null }
+      }
+      if (squareDisplay && !['shown', 'hidden'].includes(squareDisplay)) {
+        return { code: 400, msg: '动态广场筛选无效', data: null }
+      }
       const categories = ['图片', '图文', '文字', '视频']
       if (category && !categories.includes(category)) {
         return { code: 400, msg: '作品分类无效', data: null }
@@ -36,6 +60,10 @@ export class AvatarSquareController {
       const result = await this.avatarSquareService.getManagedWorks(userId, {
         avatarId: normalizedAvatarId,
         display,
+        filters: normalizedFilters,
+        publicStatus,
+        profileDisplay,
+        squareDisplay,
         category,
         sort,
         page: Math.max(1, parseInt(page) || 1),
@@ -44,6 +72,43 @@ export class AvatarSquareController {
       return { code: 200, msg: 'success', data: result }
     } catch (error) {
       console.error('获取作品管理列表失败:', error)
+      return { code: 500, msg: error instanceof Error ? error.message : '服务器错误', data: null }
+    }
+  }
+
+  @Put('manage/works/:workId/status')
+  async updateManagedWorkStatus(
+    @Param('workId') workId: string,
+    @Body('field') field: string,
+    @Body('value') value: string,
+    @Req() req: any,
+  ) {
+    try {
+      const id = Number(workId)
+      if (!Number.isInteger(id) || id <= 0) {
+        return { code: 400, msg: '作品ID无效', data: null }
+      }
+      const rawUserId = req.headers['x-user-id']
+      const userId = Array.isArray(rawUserId) ? rawUserId[0] : rawUserId
+      if (!userId) return { code: 401, msg: '请先登录', data: null }
+
+      const allowedFields = ['publicStatus', 'avatarAcceptStatus', 'avatarAuthStatus']
+      if (!allowedFields.includes(field)) {
+        return { code: 400, msg: '更新字段无效', data: null }
+      }
+
+      const result = await this.avatarSquareService.updateManagedWorkStatus(
+        id,
+        String(userId),
+        field as 'publicStatus' | 'avatarAcceptStatus' | 'avatarAuthStatus',
+        value,
+      )
+      if (result.state === 'invalid') return { code: 400, msg: '状态值无效', data: null }
+      if (result.state === 'profile_limit') return { code: 400, msg: '每个分身个人主页最多展示4个作品', data: null }
+      if (result.state === 'not_found') return { code: 404, msg: '作品不存在或无权修改', data: null }
+      return { code: 200, msg: '更新成功', data: result.data }
+    } catch (error) {
+      console.error('更新作品展示状态失败:', error)
       return { code: 500, msg: error instanceof Error ? error.message : '服务器错误', data: null }
     }
   }
@@ -139,6 +204,36 @@ export class AvatarSquareController {
     }
   }
 
+  @Get('work-square/:workId')
+  async getPublicWorkSquareDetail(
+    @Param('workId') workId: string,
+    @Req() req: any,
+  ) {
+    try {
+      const id = Number(workId)
+      if (!Number.isInteger(id) || id <= 0) {
+        return { code: 400, msg: '作品ID无效', data: null }
+      }
+
+      const rawUserId = req.headers['x-user-id']
+      const userId = Array.isArray(rawUserId) ? rawUserId[0] : rawUserId
+      const result = await this.avatarSquareService.getPublicWorkSquareDetail(
+        id,
+        userId ? String(userId) : undefined,
+      )
+      if (!result) {
+        return { code: 404, msg: '作品不存在或暂不可见', data: null }
+      }
+      return { code: 200, msg: 'success', data: result }
+    } catch (error) {
+      console.error('获取作品广场详情失败:', error)
+      return {
+        code: 500,
+        msg: error instanceof Error ? error.message : '服务器错误',
+        data: null,
+      }
+    }
+  }
   @Post(':id/favorite')
   @HttpCode(200)
   async favoriteTarget(
@@ -208,6 +303,7 @@ export class AvatarSquareController {
   async getPublicAvatarWorks(
     @Param('id') id: string,
     @Query('category') category?: string,
+    @Req() req?: any,
   ) {
     try {
       const avatarId = Number(id)
@@ -220,7 +316,13 @@ export class AvatarSquareController {
         return { code: 400, msg: '作品分类无效', data: [] }
       }
 
-      const result = await this.avatarSquareService.getPublicAvatarWorks(avatarId, category)
+      const rawUserId = req?.headers?.['x-user-id']
+      const userId = Array.isArray(rawUserId) ? rawUserId[0] : rawUserId
+      const result = await this.avatarSquareService.getPublicAvatarWorks(
+        avatarId,
+        category,
+        userId ? String(userId) : undefined,
+      )
       return { code: 200, msg: 'success', data: result }
     } catch (error) {
       console.error('获取分身公开作品失败:', error)
@@ -232,6 +334,25 @@ export class AvatarSquareController {
     }
   }
 
+  @Get(':id/work-stats')
+  async getAvatarWorkStats(@Param('id') id: string) {
+    try {
+      const avatarId = Number(id)
+      if (!Number.isInteger(avatarId) || avatarId <= 0) {
+        return { code: 400, msg: '分身ID无效', data: null }
+      }
+
+      const result = await this.avatarSquareService.getAvatarWorkStats(avatarId)
+      return { code: 200, msg: 'success', data: result }
+    } catch (error) {
+      console.error('获取分身作品统计失败:', error)
+      return {
+        code: 500,
+        msg: error instanceof Error ? error.message : '服务器错误',
+        data: null,
+      }
+    }
+  }
   @Get(':id/owner-works')
   async getOwnerAvatarWorks(
     @Param('id') id: string,
@@ -409,6 +530,44 @@ export class AvatarSquareController {
     }
   }
 
+  @Post(':id/view')
+  @HttpCode(200)
+  async recordPublicAvatarView(
+    @Param('id') id: string,
+    @Req() req: any,
+  ) {
+    try {
+      const avatarId = Number(id)
+      if (!Number.isInteger(avatarId) || avatarId <= 0) {
+        return { code: 400, msg: '分身ID无效', data: null }
+      }
+
+      const rawUserId = req.user?.id || req.headers['x-user-id']
+      const userId = Array.isArray(rawUserId) ? rawUserId[0] : rawUserId
+      const visitorHash = createHash('sha256')
+        .update(`${req.ip || req.socket?.remoteAddress || ''}|${req.headers['user-agent'] || ''}`)
+        .digest('hex')
+      const viewerKey = userId ? `user:${userId}` : `anonymous:${visitorHash}`
+
+      const result = await this.avatarSquareService.recordPublicAvatarView(
+        avatarId,
+        userId ? String(userId) : undefined,
+        viewerKey,
+      )
+      if (!result) {
+        return { code: 404, msg: '分身不存在或暂不可见', data: null }
+      }
+
+      return { code: 200, msg: 'success', data: result }
+    } catch (error) {
+      console.error('记录分身浏览失败:', error)
+      return {
+        code: 500,
+        msg: error instanceof Error ? error.message : '服务器错误',
+        data: null,
+      }
+    }
+  }
   @Get(':id')
   async getPublicAvatarSquareDetail(@Param('id') id: string) {
     try {

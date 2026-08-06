@@ -136,6 +136,7 @@ export default defineAppConfig({
         'pages/avatar-settings/index',
         'pages/avatar-work-manage/index',
         'pages/avatar-work-detail/index',
+        'pages/work-square-detail/index',
       ],
     },
     {
