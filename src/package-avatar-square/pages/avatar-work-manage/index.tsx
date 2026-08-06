@@ -11,7 +11,6 @@ import {
   Heart,
   Image as ImageIcon,
   Play,
-  Plus,
   Trash2,
   WandSparkles,
 } from 'lucide-react-taro'
@@ -270,10 +269,9 @@ export default function AvatarWorkManagePage() {
       void Taro.showToast({ title: '该作品暂无可用模板', icon: 'none' })
       return
     }
-    void Taro.showToast({ title: '模板生成功能待接入', icon: 'none' })
-  }
-  const handlePublishWork = () => {
-    void Taro.showToast({ title: '发布功能待接入', icon: 'none' })
+    void Taro.navigateTo({
+      url: `/package-my-avatar/pages/template-use/index?templateId=${work.templateId}&avatarId=${work.avatarId}`,
+    })
   }
 
   const renderCover = (work: ManagedWork) => {
@@ -519,15 +517,6 @@ export default function AvatarWorkManagePage() {
         </View>
       </ScrollView>
 
-      <View className="wm-publish-bar">
-        <Button className="wm-publish" onClick={handlePublishWork}>
-          <View className="wm-publish-icon"><Plus size={24} color="#6D4CD8" /></View>
-          <View className="wm-publish-copy">
-            <Text className="wm-publish-title">发布新作品</Text>
-            <Text className="wm-publish-sub">分享你的创意，让更多人看见</Text>
-          </View>
-        </Button>
-      </View>
       <Dialog open={Boolean(textWork)} onOpenChange={open => { if (!open) setTextWork(null) }}>
         <DialogContent className="wm-text-dialog" overlayClassName="wm-overlay">
           <DialogHeader>
