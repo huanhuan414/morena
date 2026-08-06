@@ -36,6 +36,7 @@ type MyAvatarItem = {
   tags: string[]
   description: string
   status: string
+  publicStatus: string
   viewCount: number
   favoriteCount: number
   incomePointsTotal: number
@@ -445,7 +446,12 @@ export default function MyAvatarPage() {
                             </Badge>
                             <ChevronRight size={16} color="#9B8BC5" />
                           </View>
-                          <Text className="mya-skill-type">{avatar.skillType || '待添加技能'}</Text>
+                          <View className="mya-skill-row">
+                            <Badge className={`mya-public-status${avatar.publicStatus === '公开' ? ' is-public' : avatar.publicStatus === '私有' ? ' is-private' : ''}`}>
+                              <Text>{avatar.publicStatus}</Text>
+                            </Badge>
+                            <Text className="mya-skill-type">{avatar.skillType}</Text>
+                          </View>
                           {Array.isArray(avatar.tags) && avatar.tags.length > 0 && (
                             <View className="mya-tags">
                               {avatar.tags.map(tag => (

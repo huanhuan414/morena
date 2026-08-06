@@ -24,6 +24,7 @@ type ManagedWorkStatusField = 'publicStatus' | 'avatarAcceptStatus' | 'avatarAut
 
 type ManagedWorksQuery = {
   avatarId?: number
+  filterAvatarId?: number
   display?: string
   filters?: string[]
   publicStatus?: string
@@ -389,6 +390,17 @@ export class AvatarSquareService {
     const offset = (page - 1) * pageSize
     const whereClauses = ["status = '正常'", 'user_id = ?', 'deleted_at IS NULL']
     const params: unknown[] = [userId]
+    const avatarOptionRows = await db.query(`
+      SELECT id, avatar_name
+      FROM ai_avatar
+      WHERE user_id = ?
+        AND deleted_at IS NULL
+      ORDER BY updated_at DESC, id DESC
+    `, [userId])
+    const avatarOptions = avatarOptionRows.map((row: Record<string, unknown>) => ({
+      id: Number(row.id),
+      avatarName: String(row.avatarName || ''),
+    }))
 
     let avatar = null
     if (options.avatarId) {
@@ -424,6 +436,10 @@ export class AvatarSquareService {
         avatarName: String(userRow?.nickname || ''),
         description: String(userRow?.bio || `ID:${String(userId).slice(-8)}`),
       }
+      if (options.filterAvatarId) {
+        whereClauses.push('avatar_id = ?')
+        params.push(options.filterAvatarId)
+      }
     }
 
     const filters = options.filters || []
@@ -442,16 +458,16 @@ export class AvatarSquareService {
       whereClauses.push("avatar_accept_status = '接受展示'")
     } else if (options.profileDisplay === 'hidden') {
       whereClauses.push("COALESCE(avatar_accept_status, '') <> '接受展示'")
-    } 
+    }
 
     if (options.squareDisplay === 'shown') {
       whereClauses.push("avatar_auth_status = '展示'")
     } else if (options.squareDisplay === 'hidden') {
       whereClauses.push("COALESCE(avatar_auth_status, '') <> '展示'")
-    } 
-    
+    }
+
     if (options.category) {
-      whereClauses.push('skill_type = ?')
+      whereClauses.push("REPLACE(skill_type, '生成', '') = ?")
       params.push(options.category)
     }
 
@@ -482,7 +498,7 @@ export class AvatarSquareService {
       avatarAcceptStatus: String(row.avatarAcceptStatus || ''),
     }))
 
-    return { avatar, list, page, pageSize, hasMore }
+    return { avatar, avatarOptions, list, page, pageSize, hasMore }
   }
 
   async updateManagedWorkStatus(
@@ -507,15 +523,32 @@ export class AvatarSquareService {
 
     if (needsAudit || (field === 'avatarAcceptStatus' && value === '接受展示')) {
       const currentRows = await db.query(`
-        SELECT id, avatar_id AS avatarId, work_title AS workTitle, work_description AS workDescription, skill_type AS skillType, content_json AS contentJson
-        FROM ai_generated_work
-        WHERE id = ?
-          AND user_id = ?
-          AND deleted_at IS NULL
+        SELECT
+          work.id,
+          work.avatar_id AS avatarId,
+          work.work_title AS workTitle,
+          work.work_description AS workDescription,
+          work.skill_type AS skillType,
+          work.content_json AS contentJson,
+          avatar.status AS avatarStatus,
+          avatar.public_status AS avatarPublicStatus,
+          avatar.audit_status AS avatarAuditStatus
+        FROM ai_generated_work work
+        INNER JOIN ai_avatar avatar ON work.avatar_id = avatar.id
+        WHERE work.id = ?
+          AND work.user_id = ?
+          AND work.deleted_at IS NULL
+          AND avatar.deleted_at IS NULL
         LIMIT 1
       `, [workId, userId])
       current = currentRows[0] as Record<string, unknown> | undefined
       if (!current) return { state: 'not_found' as const, data: null }
+      const avatarCanShow = current.avatarStatus === '已上线'
+        && current.avatarPublicStatus === '公开'
+        && current.avatarAuditStatus === '审核通过'
+      if (needsAudit && !avatarCanShow) {
+        return { state: 'avatar_unavailable' as const, data: null }
+      }
     }
 
     if (field === 'avatarAcceptStatus' && value === '接受展示') {
@@ -550,11 +583,12 @@ export class AvatarSquareService {
       }
     }
 
-    const auditSql = needsAudit ? (field === 'avatarAuthStatus' 
-      ? ", audit_status = '审核通过', published_at = NOW()" 
-      : ", audit_status = '审核通过'") 
-      : ", audit_status = '待审核'";
-    
+    const auditSql = needsAudit
+      ? (field === 'avatarAuthStatus'
+        ? ", audit_status = '审核通过', published_at = NOW()"
+        : ", audit_status = '审核通过'")
+      : ", audit_status = '待审核'"
+
     const result = await db.query(`
       UPDATE ai_generated_work
       SET ${config.column} = ?${auditSql}, updated_at = NOW()

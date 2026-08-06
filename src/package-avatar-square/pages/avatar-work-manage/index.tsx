@@ -41,6 +41,11 @@ type SortDirection = 'asc' | 'desc'
 type SortItem = { field: SortField; direction: SortDirection }
 type WorkStatusField = 'publicStatus' | 'avatarAcceptStatus' | 'avatarAuthStatus'
 
+type AvatarOption = {
+  id: number
+  avatarName: string
+}
+
 type AvatarSummary = {
   id: number
   avatarName: string
@@ -72,6 +77,7 @@ type ManagedWork = {
 
 type ManagedWorksData = {
   avatar: AvatarSummary | null
+  avatarOptions?: AvatarOption[]
   list: ManagedWork[]
   page: number
   pageSize: number
@@ -104,6 +110,8 @@ export default function AvatarWorkManagePage() {
   const avatarId = router.params.avatarId || ''
   const isProfileWorks = router.params.source === 'profileWorks'
   const [avatar, setAvatar] = useState<AvatarSummary | null>(null)
+  const [avatarOptions, setAvatarOptions] = useState<AvatarOption[]>([])
+  const [avatarFilterId, setAvatarFilterId] = useState('all')
   const [publicStatusFilter, setPublicStatusFilter] = useState<PublicStatusFilter>('all')
   const [profileDisplayFilter, setProfileDisplayFilter] = useState<DisplayFilter>('all')
   const [squareDisplayFilter, setSquareDisplayFilter] = useState<DisplayFilter>('all')
@@ -127,6 +135,7 @@ export default function AvatarWorkManagePage() {
         sort: sorts.map(item => `${item.field}:${item.direction}`).join(','),
       }
       if (avatarId) data.avatarId = avatarId
+      if (isProfileWorks && avatarFilterId !== 'all') data.filterAvatarId = avatarFilterId
       if (publicStatusFilter !== 'all') data.publicStatus = publicStatusFilter
       if (profileDisplayFilter !== 'all') data.profileDisplay = profileDisplayFilter
       if (squareDisplayFilter !== 'all') data.squareDisplay = squareDisplayFilter
@@ -142,6 +151,7 @@ export default function AvatarWorkManagePage() {
       }
 
       setAvatar(body.data.avatar)
+      setAvatarOptions(body.data.avatarOptions || [])
       setWorks(current => append ? [...current, ...body.data!.list] : body.data!.list)
       setPage(body.data.page)
       setHasMore(body.data.hasMore)
@@ -152,7 +162,7 @@ export default function AvatarWorkManagePage() {
     } finally {
       setLoading(false)
     }
-  }, [avatarId, category, isProfileWorks, profileDisplayFilter, publicStatusFilter, sorts, squareDisplayFilter])
+  }, [avatarFilterId, avatarId, category, isProfileWorks, profileDisplayFilter, publicStatusFilter, sorts, squareDisplayFilter])
 
   useEffect(() => {
     void fetchWorks(1, false)
@@ -342,21 +352,46 @@ export default function AvatarWorkManagePage() {
         )}
         <View className="wm-sticky-tools">
           {isProfileWorks && (
-            <ScrollView scrollX showScrollbar={false} className="wm-cat-scroll">
-              <View className="wm-cats">
-                {WORK_CATEGORIES.map(item => (
-                  <Button
-                    key={item}
-                    size="sm"
-                    variant={category === item ? 'default' : 'secondary'}
-                    className={`wm-cat${category === item ? ' is-on' : ''}`}
-                    onClick={() => setCategory(item)}
+            <View className="wm-cat-filter-row">
+              <ScrollView scrollX showScrollbar={false} className="wm-cat-scroll">
+                <View className="wm-cats">
+                  {WORK_CATEGORIES.map(item => (
+                    <Button
+                      key={item}
+                      size="sm"
+                      variant={category === item ? 'default' : 'secondary'}
+                      className={`wm-cat${category === item ? ' is-on' : ''}`}
+                      onClick={() => setCategory(item)}
+                    >
+                      <Text>{item}</Text>
+                    </Button>
+                  ))}
+                </View>
+              </ScrollView>
+              <DropdownMenu>
+                <DropdownMenuTrigger className={`wm-filter-select wm-avatar-filter${avatarFilterId !== 'all' ? ' is-on' : ''}`}>
+                  <Text className="wm-avatar-filter-text">{avatarFilterId === 'all' ? '全部分身' : avatarOptions.find(item => String(item.id) === avatarFilterId)?.avatarName || '全部分身'}</Text>
+                  <Text className="wm-filter-arrow">▼</Text>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="wm-filter-menu" align="end" sideOffset={6}>
+                  <DropdownMenuItem
+                    className={`wm-filter-option${avatarFilterId === 'all' ? ' is-on' : ''}`}
+                    onClick={() => setAvatarFilterId('all')}
                   >
-                    <Text>{item}</Text>
-                  </Button>
-                ))}
-              </View>
-            </ScrollView>
+                    <Text>全部分身</Text>
+                  </DropdownMenuItem>
+                  {avatarOptions.map(item => (
+                    <DropdownMenuItem
+                      key={item.id}
+                      className={`wm-filter-option${avatarFilterId === String(item.id) ? ' is-on' : ''}`}
+                      onClick={() => setAvatarFilterId(String(item.id))}
+                    >
+                      <Text>{item.avatarName || '分身' + item.id}</Text>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </View>
           )}
 
           <ScrollView scrollX showScrollbar={false} className="wm-filter-scroll">

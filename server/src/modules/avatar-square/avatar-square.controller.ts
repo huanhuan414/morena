@@ -10,6 +10,7 @@ export class AvatarSquareController {
   async getManagedWorks(
     @Req() req: any,
     @Query('avatarId') avatarId?: string,
+    @Query('filterAvatarId') filterAvatarId?: string,
     @Query('display') display?: string,
     @Query('filters') filters?: string,
     @Query('publicStatus') publicStatus?: string,
@@ -26,9 +27,14 @@ export class AvatarSquareController {
       if (!userId) return { code: 401, msg: '请先登录', data: null }
 
       const normalizedAvatarId = avatarId ? Number(avatarId) : undefined
+      const normalizedFilterAvatarId = filterAvatarId ? Number(filterAvatarId) : undefined
       if (normalizedAvatarId !== undefined
         && (!Number.isInteger(normalizedAvatarId) || normalizedAvatarId <= 0)) {
         return { code: 400, msg: '分身ID无效', data: null }
+      }
+      if (normalizedFilterAvatarId !== undefined
+        && (!Number.isInteger(normalizedFilterAvatarId) || normalizedFilterAvatarId <= 0)) {
+        return { code: 400, msg: '筛选分身ID无效', data: null }
       }
       if (display && !['shown', 'hidden'].includes(display)) {
         return { code: 400, msg: '展示状态无效', data: null }
@@ -59,6 +65,7 @@ export class AvatarSquareController {
 
       const result = await this.avatarSquareService.getManagedWorks(userId, {
         avatarId: normalizedAvatarId,
+        filterAvatarId: normalizedFilterAvatarId,
         display,
         filters: normalizedFilters,
         publicStatus,
@@ -105,6 +112,7 @@ export class AvatarSquareController {
       )
       if (result.state === 'invalid') return { code: 400, msg: '状态值无效', data: null }
       if (result.state === 'profile_limit') return { code: 400, msg: '每个分身个人主页最多展示4个作品', data: null }
+      if (result.state === 'avatar_unavailable') return { code: 400, msg: '分身需公开，作品才可公开展示', data: null }
       if (result.state === 'audit_rejected') return { code: 400, msg: '内容审核未通过', data: null }
       if (result.state === 'not_found') return { code: 404, msg: '作品不存在或无权修改', data: null }
       return { code: 200, msg: '更新成功', data: result.data }

@@ -387,12 +387,47 @@
   border-radius: 50%;
   background: #fff7f7;
 }
+.mya-skill-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8rpx;
+  margin-top: 10rpx;
+}
+
+.mya-public-status {
+  flex-shrink: 0;
+  padding: 6rpx 14rpx;
+  color: #475569;
+  border: 1rpx solid #cbd5e1;
+  background: #f1f5f9;
+  font-size: 18rpx;
+  font-weight: 700;
+}
+
+.mya-public-status.is-public {
+  color: #6d28d9;
+  border-color: #c4b5fd;
+  background: #ede9fe;
+}
+
+.mya-public-status.is-private {
+  color: #9a3412;
+  border-color: #fdba74;
+  background: #ffedd5;
+}
+
 .mya-skill-type {
   display: block;
-  margin-top: 10rpx;
-  color: #7c3aed;
-  font-size: 21rpx;
+  min-width: 0;
+  overflow: hidden;
+  flex: 1;
+  color: #5b21b6;
+  font-size: 23rpx;
   font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-left: 10rpx;
 }
 
 .mya-tags {

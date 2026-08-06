@@ -193,6 +193,33 @@ page {
   content: '';
 }
 
+
+.wm-cat-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 18rpx;
+}
+
+.wm-cat-filter-row .wm-cat-scroll {
+  min-width: 0;
+  flex: 1;
+  margin-top: 0;
+}
+
+.wm-avatar-filter {
+  max-width: 180rpx;
+  flex-shrink: 0;
+}
+
+.wm-avatar-filter-text {
+  display: block;
+  max-width: 128rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .wm-cat-scroll {
   width: 100%;
   margin-top: 18rpx;
