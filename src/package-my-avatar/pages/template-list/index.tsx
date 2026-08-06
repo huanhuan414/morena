@@ -8,6 +8,7 @@ import {
   Heart,
   Layers,
   Play,
+  Plus,
   Sparkles,
 } from 'lucide-react-taro'
 
@@ -15,6 +16,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Network } from '@/network'
 
@@ -144,6 +146,56 @@ export default function TemplateListPage() {
     })
   }
 
+  const goToAddTemplate = () => {
+    void Taro.navigateTo({
+      url: `/package-my-avatar/pages/avatar-create-step2/index?avatarId=${encodeURIComponent(avatarId)}&avatarName=${encodeURIComponent(avatarName)}&directToTemplates=1`,
+    })
+  }
+
+  /** 切换模版对外展示状态 */
+  const toggleDisplayStatus = async (template: TemplateItem) => {
+    const isCurrentlyPublic = template.displayStatus === '对外展示'
+    const newPublic = !isCurrentlyPublic
+
+    setPageData(prev => ({
+      ...prev,
+      list: prev.list.map(t =>
+        t.id === template.id
+          ? { ...t, displayStatus: newPublic ? '对外展示' : '仅自己可见' }
+          : t
+      ),
+    }))
+
+    try {
+      const res = await Network.request({
+        url: `/api/ai-avatar/templates/${encodeURIComponent(String(template.id))}/display-status`,
+        method: 'PUT',
+        data: { display_public: newPublic },
+      })
+      const responseBody = res.data as ApiResponse<any>
+      if (responseBody?.code !== 200) {
+        throw new Error(responseBody?.msg || '操作失败')
+      }
+      void Taro.showToast({
+        title: newPublic ? '已对外展示' : '已设为仅自己可见',
+        icon: 'none',
+      })
+    } catch (error) {
+      setPageData(prev => ({
+        ...prev,
+        list: prev.list.map(t =>
+          t.id === template.id
+            ? { ...t, displayStatus: isCurrentlyPublic ? '对外展示' : '仅自己可见' }
+            : t
+        ),
+      }))
+      void Taro.showToast({
+        title: error instanceof Error ? error.message : '操作失败',
+        icon: 'none',
+      })
+    }
+  }
+
   const { summary } = pageData
   const filterCounts: Record<TemplateFilter, number> = {
     all: summary.total,
@@ -217,66 +269,81 @@ export default function TemplateListPage() {
                   onClick={() => goToDetail(template)}
                 >
                   <CardContent className="tpl-card-content">
-                    <View className="tpl-card-main">
+                    {/* 顶部：封面 + 基本信息 */}
+                    <View className="tpl-card-top">
                       <View className="tpl-cover-wrap">
                         {template.coverUrl ? (
                           <Image src={template.coverUrl} mode="aspectFill" className="tpl-cover-image" />
                         ) : (
                           <View className="tpl-cover-fallback">
                             {template.skillType === '视频生成' ? (
-                              <Play size={28} color="#8B5CF6" />
+                              <Play size={24} color="#8B5CF6" />
                             ) : (
-                              <Sparkles size={28} color="#8B5CF6" />
+                              <Sparkles size={24} color="#8B5CF6" />
                             )}
                           </View>
                         )}
-                        <View className="tpl-skill-badge">
-                          <Text>{template.skillType}</Text>
-                        </View>
                       </View>
 
                       <View className="tpl-info">
                         <View className="tpl-name-row">
                           <Text className="tpl-name">{template.templateName || '未命名模版'}</Text>
-                          <Badge className={`tpl-status${template.status === '已启用' ? ' is-enabled' : ''}`}>
-                            <Text>{template.status}</Text>
-                          </Badge>
                         </View>
-
                         <Text className="tpl-desc">
                           {template.templateDescription || '暂无描述'}
                         </Text>
-
-                        <View className="tpl-meta">
-                          <View className="tpl-meta-item">
-                            <Eye size={13} color="#94A3B8" />
-                            <Text>{formatCount(template.useCount)}</Text>
-                          </View>
-                          <View className="tpl-meta-item">
-                            <Heart size={13} color="#EF4444" />
-                            <Text>{formatCount(template.favoriteCount)}</Text>
-                          </View>
-                          <Text className="tpl-income">
-                            收益 {formatCount(template.creatorIncomePoints)} 积分
-                          </Text>
-                        </View>
                       </View>
                     </View>
 
-                    <View className="tpl-card-footer">
-                      <Badge className={`tpl-display-tag${template.displayStatus === '对外展示' ? ' is-public' : ''}`}>
-                        <Text>{template.displayStatus}</Text>
+                    {/* 中间：标签行 */}
+                    <View className="tpl-tags-row">
+                      <Badge className={`tpl-status-badge${template.status === '已启用' ? ' is-enabled' : ''}`}>
+                        <Text>{template.status}</Text>
                       </Badge>
-                      <Badge className="tpl-version-tag">
+                      <Badge className="tpl-skill-badge">
+                        <Text>{template.skillType}</Text>
+                      </Badge>
+                      <Badge className="tpl-version-badge">
                         <Text>v{template.versionNo}</Text>
                       </Badge>
                       {template.testedAt && (
                         <Text className="tpl-tested-at">
-                          认证于 {template.testedAt}
+                          {template.testedAt}
                         </Text>
                       )}
                     </View>
 
+                    {/* 底部：数据 + 展示开关 */}
+                    <View className="tpl-card-bottom">
+                      <View className="tpl-metrics">
+                        <View className="tpl-metric-item">
+                          <Eye size={13} color="#94A3B8" />
+                          <Text>{formatCount(template.useCount)}</Text>
+                        </View>
+                        <View className="tpl-metric-item">
+                          <Heart size={13} color="#EF4444" />
+                          <Text>{formatCount(template.favoriteCount)}</Text>
+                        </View>
+                        <Text className="tpl-income">
+                          {formatCount(template.creatorIncomePoints)} 积分
+                        </Text>
+                      </View>
+
+                      <View
+                        className="tpl-display-switch"
+                        onClick={(e) => { e.stopPropagation() }}
+                      >
+                        <Text className="tpl-switch-label">
+                          {template.displayStatus === '对外展示' ? '公开' : '私密'}
+                        </Text>
+                        <Switch
+                          checked={template.displayStatus === '对外展示'}
+                          onCheckedChange={() => void toggleDisplayStatus(template)}
+                        />
+                      </View>
+                    </View>
+
+                    {/* 待测试：认证按钮 */}
                     {template.status === '待测试' && (
                       <Button
                         className="tpl-certify-btn"
@@ -296,6 +363,14 @@ export default function TemplateListPage() {
           )}
         </View>
       </ScrollView>
+
+      {/* 底部固定：添加模版按钮 */}
+      <View className="tpl-bottom-bar">
+        <Button className="tpl-add-btn" onClick={goToAddTemplate}>
+          <Plus size={18} color="#FFFFFF" />
+          <Text>添加模版</Text>
+        </Button>
+      </View>
     </View>
   )
 }

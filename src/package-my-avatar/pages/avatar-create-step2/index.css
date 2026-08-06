@@ -318,6 +318,21 @@
   font-weight: 500;
 }
 
+.acs2-tpl-item-btn.bound {
+  border-color: #e5e7eb;
+  background: #f9fafb;
+}
+
+.acs2-tpl-item-btn-text-bound {
+  font-size: 22rpx;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.acs2-tpl-item.bound {
+  opacity: 0.7;
+}
+
 /* 创建自定义模板入口 */
 .acs2-custom-entry {
   display: flex;

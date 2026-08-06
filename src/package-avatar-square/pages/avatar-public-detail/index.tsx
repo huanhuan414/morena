@@ -5,7 +5,6 @@ import type { CSSProperties } from 'react'
 import {
   ArrowLeft,
   Heart,
-  Image as ImageIcon,
   Play,
   Share2,
   Sparkles,
@@ -50,6 +49,7 @@ type WorkPreview = {
   videoCoverUrl: string
   favoriteCount: number
   isFavorited: boolean
+  templateId: number
 }
 
 const WORK_CATEGORIES: WorkCategory[] = ['全部', '图片', '图文', '文字', '视频']
@@ -347,7 +347,10 @@ export default function AvatarPublicDetailPage() {
               <Image src={avatar.avatarUrl} mode="aspectFill" className="od-fill" />
             ) : (
               <View className="od-fallback">
-                <ImageIcon size={40} color="#9B7AE8" />
+                <Text className="od-fallback-initial">
+                  {avatar.avatarName.charAt(0).toUpperCase()}
+                </Text>
+                <Sparkles className="od-fallback-icon" size={20} color="rgba(155,122,232,0.5)" />
               </View>
             )}
           </View>
@@ -423,7 +426,7 @@ export default function AvatarPublicDetailPage() {
           <View className="od-work-wrap">
             <Card className="od-card">
               <CardContent className="od-pad">
-                <Text className="od-heading">精选作品 / 模板</Text>
+                <Text className="od-heading">精品模版文案</Text>
                 {/* <ScrollView scrollX showScrollbar={false} className="od-cat-scroll">
                   <View className="od-cat-row">
                     {WORK_CATEGORIES.map(category => (
@@ -494,8 +497,21 @@ export default function AvatarPublicDetailPage() {
                                 <Text>{work.isFavorited ? '已收藏' : '收藏'}</Text>
                               </Button>
 
-                              <Button variant="outline" size="sm" className="od-work-btn">
-                                <Text>使用模板</Text>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="od-work-btn"
+                                onClick={() => {
+                                  if (!work.templateId) {
+                                    void Taro.showToast({ title: '该作品暂无关联模版', icon: 'none' })
+                                    return
+                                  }
+                                  void Taro.navigateTo({
+                                    url: `/package-my-avatar/pages/template-use/index?templateId=${encodeURIComponent(String(work.templateId))}&avatarId=${encodeURIComponent(detailId)}`,
+                                  })
+                                }}
+                              >
+                                <Text>使用模版</Text>
                               </Button>
 
                             </View>

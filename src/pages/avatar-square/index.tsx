@@ -342,12 +342,21 @@ export default function AvatarSquarePage() {
         <View className="as-list-content">
           <View className="as-card-stack">
             {avatars.map((avatar, index) => (
-              <Card key={avatar.id} className="as-card">
+              <Card key={avatar.id} className="as-card" onClick={() => handleViewAvatar(avatar)}>
                 <CardContent className="as-card-content">
                   <View className={`as-avatar ${avatarThemeClassNames[(index % 5) + 1]}`}>
                     <View className="as-avatar-glow is-bottom" />
                     <View className="as-avatar-glow is-top" />
-                    <Image src={avatar.avatarUrl} mode="aspectFill" className="as-avatar-image" />
+                    {avatar.avatarUrl ? (
+                      <Image src={avatar.avatarUrl} mode="aspectFill" className="as-avatar-image" />
+                    ) : (
+                      <View className="as-avatar-placeholder">
+                        <Text className="as-avatar-initial">
+                          {avatar.avatarName.charAt(0).toUpperCase()}
+                        </Text>
+                        <Sparkles className="as-avatar-placeholder-icon" size={14} color="rgba(255,255,255,0.7)" />
+                      </View>
+                    )}
                     <View className={`as-rank ${rankModifierClassNames[index + 1] || 'is-default'}`}>
                       {index === 0
                         ? <Crown size={14} color="#FFFFFF" />
@@ -359,7 +368,6 @@ export default function AvatarSquarePage() {
                     <View className="as-card-header">
                       <View className="as-card-identity">
                         <Text className="as-card-name">{avatar.avatarName}</Text>
-                        {/* <BadgeCheck className="as-card-verified" size={15} color="#7C3AED" /> */}
                       </View>
                       <Text className="as-card-price">{avatar.incomePointsTotal} 积分</Text>
                     </View>
@@ -373,8 +381,6 @@ export default function AvatarSquarePage() {
 
                     <Text className="as-card-profile">{avatar.tags.join(' · ')}</Text>
 
-
-
                     <Text className="as-card-description">{avatar.description}</Text>
 
                     <View className="as-card-footer">
@@ -387,7 +393,7 @@ export default function AvatarSquarePage() {
                           variant="ghost"
                           size="sm"
                           className="as-card-metric as-favorite-btn"
-                          onClick={() => void handleToggleFavorite(avatar)}
+                          onClick={(e) => { e.stopPropagation(); void handleToggleFavorite(avatar) }}
                         >
                           <Heart
                             size={14}
@@ -399,14 +405,7 @@ export default function AvatarSquarePage() {
                           </Text>
                         </Button>
                       </View>
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="as-view-btn"
-                        onClick={() => handleViewAvatar(avatar)}
-                      >
-                        <Text className="as-view-text">查看</Text>
-                      </Button>
+                      <Text className="as-view-text">查看</Text>
                     </View>
                   </View>
                 </CardContent>

@@ -1116,6 +1116,7 @@ export class AvatarSquareService {
     const rows = await db.query(`
       SELECT
         id,
+        template_id,
         skill_type,
         work_title,
         work_description,
@@ -1143,7 +1144,10 @@ export class AvatarSquareService {
       ORDER BY id DESC
     `, params)
 
-    return rows.map((row: Record<string, unknown>) => this.mapWorkPreview(row))
+    return rows.map((row: Record<string, unknown>) => ({
+      ...this.mapWorkPreview(row),
+      templateId: Number(row.templateId || 0),
+    }))
   }
 
   /** 获取对外作品详情 */

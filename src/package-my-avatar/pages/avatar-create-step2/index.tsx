@@ -40,32 +40,7 @@ export default function AvatarCreateStep2Page() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const isEditMode = avatarId > 0
-
-  /** 编辑模式初始化：从已绑定模板接口获取 sourceIds 和 skillType */
-  const loadEditData = useCallback(async (id: number) => {
-    try {
-      const res = await Network.request({ url: `/api/ai-avatar/${id}/templates` })
-      const resData = (res.data as any)?.data
-      const ids = resData?.sourceTemplateIds
-      if (Array.isArray(ids) && ids.length > 0) {
-        boundSourceIdsRef.current = ids
-      }
-      const skill = resData?.skillType
-      if (skill) {
-        setSelectedSkill(skill)
-      }
-    } catch {
-      console.error('[step2] 加载编辑数据失败')
-    }
-  }, [])
-
-  useLoad((options) => {
-    const id = Number(options?.avatarId || 0)
-    if (id > 0) {
-      setAvatarId(id)
-      void loadEditData(id)
-    }
-  })
+  const [fromTemplateList, setFromTemplateList] = useState(false)
 
   /** 加载模板列表，编辑模式下自动勾选已绑定模板 */
   const loadTemplates = useCallback(async (skillType: string, preselectedIds?: number[]) => {
@@ -91,6 +66,38 @@ export default function AvatarCreateStep2Page() {
       setLoadingTemplates(false)
     }
   }, [])
+
+  /** 编辑模式初始化：从已绑定模板接口获取 sourceIds 和 skillType */
+  const loadEditData = useCallback(async (id: number, directToTemplates: boolean) => {
+    try {
+      const res = await Network.request({ url: `/api/ai-avatar/${id}/templates` })
+      const resData = (res.data as any)?.data
+      const ids = resData?.sourceTemplateIds
+      if (Array.isArray(ids) && ids.length > 0) {
+        boundSourceIdsRef.current = ids
+      }
+      const skill = resData?.skillType
+      if (skill) {
+        setSelectedSkill(skill)
+        if (directToTemplates) {
+          setPageView('template_list')
+          void loadTemplates(skill, ids)
+        }
+      }
+    } catch {
+      console.error('[step2] 加载编辑数据失败')
+    }
+  }, [loadTemplates])
+
+  useLoad((options) => {
+    const id = Number(options?.avatarId || 0)
+    const direct = options?.directToTemplates === '1'
+    if (direct) setFromTemplateList(true)
+    if (id > 0) {
+      setAvatarId(id)
+      void loadEditData(id, direct)
+    }
+  })
 
   /** 选择技能类型 */
   const handleSelectSkill = (skillKey: string) => {
@@ -121,8 +128,9 @@ export default function AvatarCreateStep2Page() {
     }
   }
 
-  /** 切换模板选中状态 */
+  /** 切换模板选中状态（已绑定的模版不允许取消） */
   const toggleTemplate = (id: number) => {
+    if (boundSourceIdsRef.current.includes(id)) return
     setSelectedTemplateIds(prev =>
       prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
     )
@@ -189,8 +197,8 @@ export default function AvatarCreateStep2Page() {
     }
   }
 
-  /** 确认添加/同步模板到分身 */
-  const handleConfirmAdd = async () => {
+  /** 确认添加模板到分身（已绑定模版不可取消，仅新增） */
+  const handleConfirmAdd = () => {
     if (selectedTemplateIds.length === 0) {
       Taro.showToast({ title: '请至少选择一个模板', icon: 'none' })
       return
@@ -200,28 +208,18 @@ export default function AvatarCreateStep2Page() {
       return
     }
 
-    const currentBound = boundSourceIdsRef.current
-    if (isEditMode && currentBound.length > 0) {
-      const toRemove = currentBound.filter(id => !selectedTemplateIds.includes(id))
-      if (toRemove.length > 0) {
-        const modalRes = await Taro.showModal({
-          title: '确认修改模版',
-          content: `有 ${toRemove.length} 个未选中的模版将被删除，确定继续吗？`,
-          confirmText: '确定',
-          cancelText: '取消',
-        })
-        if (!modalRes.confirm) return
-      }
-    }
-
     void doSaveTemplates()
   }
 
-  /** 返回处理：从step2返回step1时携带avatarId保持编辑模式 */
+  /** 返回处理：从模版管理进入时直接返回上一页，否则回到技能选择 */
   const handleBack = () => {
     if (pageView === 'template_list') {
-      setPageView('skill_select')
-      setSelectedTemplateIds([])
+      if (fromTemplateList) {
+        Taro.navigateBack()
+      } else {
+        setPageView('skill_select')
+        setSelectedTemplateIds([])
+      }
     } else {
       if (avatarId > 0) {
         Taro.redirectTo({
@@ -322,11 +320,12 @@ export default function AvatarCreateStep2Page() {
         ) : (
           <View className="acs2-tpl-list">
             {templates.map(tpl => {
+              const isBound = boundSourceIdsRef.current.includes(tpl.id)
               const isSelected = selectedTemplateIds.includes(tpl.id)
               return (
                 <View
                   key={tpl.id}
-                  className={`acs2-tpl-item ${isSelected ? 'selected' : ''}`}
+                  className={`acs2-tpl-item ${isSelected ? 'selected' : ''}${isBound ? ' bound' : ''}`}
                   onClick={() => toggleTemplate(tpl.id)}
                 >
                   {/* 封面图 */}
@@ -359,8 +358,13 @@ export default function AvatarCreateStep2Page() {
                       {formatPrice(tpl.creatorIncomePoints)}
                     </Text>
                     {/* 添加按钮 */}
-                    <View className={`acs2-tpl-item-btn ${isSelected ? 'added' : ''}`}>
-                      {isSelected ? (
+                    <View className={`acs2-tpl-item-btn ${isBound ? 'bound' : isSelected ? 'added' : ''}`}>
+                      {isBound ? (
+                        <>
+                          <Text className="acs2-tpl-item-btn-text-bound">已绑定</Text>
+                          <Check size={14} color="#9ca3af" />
+                        </>
+                      ) : isSelected ? (
                         <>
                           <Text className="acs2-tpl-item-btn-text-added">已添加</Text>
                           <Check size={14} color="#7c3aed" />

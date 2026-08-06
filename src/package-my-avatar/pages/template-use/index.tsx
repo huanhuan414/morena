@@ -89,31 +89,25 @@ export default function TemplateUsePage() {
     ]
     return (
       <View className="tu-step-bar">
-        <View className="tu-step-bar-back" onClick={() => {
-          if (currentStep === 2) setCurrentStep(1)
-          else Taro.navigateBack()
-        }}>
-          <ArrowLeft size={18} color="#6b21a8" />
-        </View>
-        <View className="tu-step-bar-items">
-          {steps.map((s, idx) => (
-            <View key={s.num} className="tu-step-bar-item-wrap">
-              <View className={`tu-step-bar-item ${s.num === currentStep ? 'active' : ''} ${s.num < currentStep ? 'completed' : ''}`}>
-                <View className={`tu-step-bar-num ${s.num === currentStep ? 'active' : ''} ${s.num < currentStep ? 'completed' : ''}`}>
-                  {s.num < currentStep ? (
-                    <CircleCheck size={16} color="#ffffff" />
-                  ) : (
-                    <Text className="tu-step-bar-num-text">{s.num}</Text>
-                  )}
-                </View>
-                <Text className={`tu-step-bar-label ${s.num === currentStep ? 'active' : ''} ${s.num < currentStep ? 'completed' : ''}`}>
-                  {s.label}
-                </Text>
+        {steps.map((s, idx) => (
+          <View key={s.num} className="tu-step-bar-item-wrap">
+            <View className="tu-step-bar-item">
+              <View className={`tu-step-bar-num ${s.num === currentStep ? 'active' : ''} ${s.num < currentStep ? 'completed' : ''}`}>
+                {s.num < currentStep ? (
+                  <CircleCheck size={14} color="#ffffff" />
+                ) : (
+                  <Text className="tu-step-bar-num-text">{s.num}</Text>
+                )}
               </View>
-              {idx < steps.length - 1 && <View className="tu-step-bar-connector" />}
+              <Text className={`tu-step-bar-label ${s.num === currentStep ? 'active' : ''} ${s.num < currentStep ? 'completed' : ''}`}>
+                {s.label}
+              </Text>
             </View>
-          ))}
-        </View>
+            {idx < steps.length - 1 && (
+              <View className={`tu-step-bar-connector ${s.num < currentStep ? 'completed' : ''}`} />
+            )}
+          </View>
+        ))}
       </View>
     )
   }
@@ -384,8 +378,19 @@ export default function TemplateUsePage() {
 
   return (
     <View className="tu-page">
+      {/* 顶部导航栏 */}
+      <View className="tu-header" style={{ paddingTop: `${statusBarHeight + 10}px` }}>
+        <View className="tu-header-back" onClick={() => {
+          if (currentStep === 2) setCurrentStep(1)
+          else Taro.navigateBack()
+        }}>
+          <ArrowLeft size={18} color="#4C3B78" />
+        </View>
+        <Text className="tu-header-title">模版使用</Text>
+      </View>
+
       {/* 步骤条 */}
-      <View style={{ paddingTop: `${statusBarHeight}px` }}>
+      <View className="tu-step-bar-wrap">
         {renderStepBar()}
       </View>
 

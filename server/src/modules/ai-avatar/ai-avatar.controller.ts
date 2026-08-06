@@ -425,6 +425,34 @@ export class AiAvatarController {
   }
 
   /**
+   * PUT /api/ai-avatar/templates/:templateId/display-status - 切换模版对外展示状态
+   * body: { display_public: boolean }
+   */
+  @Put('templates/:templateId/display-status')
+  @HttpCode(200)
+  async toggleDisplayStatus(
+    @Param('templateId') templateId: string,
+    @Req() req: any,
+    @Body() body: { display_public: boolean },
+  ) {
+    try {
+      const userId = this.getUserId(req)
+      if (!userId) return { code: 401, msg: '请先登录', data: null }
+
+      const id = Number(templateId)
+      if (!Number.isInteger(id) || id <= 0) {
+        return { code: 400, msg: '模板ID无效', data: null }
+      }
+
+      const result = await this.aiAvatarService.toggleTemplateDisplayStatus(id, userId, !!body.display_public)
+      return { code: 200, msg: 'success', data: result }
+    } catch (error) {
+      console.error('切换展示状态失败:', error)
+      return { code: 500, msg: error instanceof Error ? error.message : '服务器错误', data: null }
+    }
+  }
+
+  /**
    * GET /api/ai-avatar/:id/template-list - 查询分身下完整模版列表（含统计摘要）
    * 可选 ?filter=all|pending|enabled 按状态筛选
    */

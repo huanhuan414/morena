@@ -224,19 +224,21 @@ export class AiAvatarService {
       }
     }
 
-    await pool.query(
-      `UPDATE ai_avatar SET status = '待测试' WHERE id = ? AND user_id = ?`,
-      [avatarId, userId]
-    )
-
     const [pendingRows] = await pool.query<any[]>(
       `SELECT id FROM ai_avatar_template
-       WHERE avatar_id = ? AND user_id = ? AND template_source = '官方复制'
-         AND status = '待测试' AND deleted_at IS NULL
+       WHERE avatar_id = ? AND user_id = ?
+         AND status IN ('草稿', '待测试') AND deleted_at IS NULL
        ORDER BY id ASC`,
       [avatarId, userId]
     )
     const pendingTemplates = (pendingRows || []).map((r: any) => Number(r.id))
+
+    if (pendingTemplates.length > 0) {
+      await pool.query(
+        `UPDATE ai_avatar SET status = '待测试' WHERE id = ? AND user_id = ?`,
+        [avatarId, userId]
+      )
+    }
 
     const kept = selectedSourceIds.filter(id => existingSourceIds.includes(id))
     return {
@@ -545,6 +547,31 @@ export class AiAvatarService {
     )
 
     return { success: true }
+  }
+
+  /**
+   * 切换模版对外展示状态
+   * @param templateId 模版ID
+   * @param userId     用户ID
+   * @param displayPublic true=对外展示, false=仅自己可见
+   */
+  async toggleTemplateDisplayStatus(templateId: number, userId: string, displayPublic: boolean) {
+    const pool = getPool()
+
+    const [existing] = await pool.query<any[]>(
+      'SELECT id, user_id, status FROM ai_avatar_template WHERE id = ? AND deleted_at IS NULL',
+      [templateId],
+    )
+    if (!existing?.length) throw new Error('模版不存在')
+    if (String(existing[0].user_id) !== String(userId)) throw new Error('无权操作此模版')
+
+    const newStatus = displayPublic ? '对外展示' : '仅自己可见'
+    await pool.execute(
+      'UPDATE ai_avatar_template SET display_status = ?, updated_at = NOW() WHERE id = ? AND user_id = ? AND deleted_at IS NULL',
+      [newStatus, templateId, userId],
+    )
+
+    return { success: true, displayStatus: newStatus }
   }
 
   /** 根据技能类型推断输出格式 */

@@ -335,6 +335,11 @@
   border: 0;
   background: #ffffff;
   box-shadow: 0 4rpx 16rpx rgba(15, 23, 42, 0.06);
+  transition: background-color 0.15s ease;
+}
+
+.as-card:active {
+  background: #f8f7ff;
 }
 
 .as-card-content {
@@ -407,13 +412,31 @@
   height: 112rpx;
 }
 
-.as-avatar-text {
+.as-avatar-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.as-avatar-initial {
   position: relative;
+  z-index: 1;
   display: block;
-  font-size: 72rpx;
+  color: #fff;
+  font-size: 64rpx;
   font-weight: 700;
   line-height: 1;
-  opacity: 0.8;
+  text-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.15);
+}
+
+.as-avatar-placeholder-icon {
+  position: absolute;
+  right: 16rpx;
+  bottom: 16rpx;
+  z-index: 1;
+  opacity: 0.6;
 }
 
 .as-rank {
@@ -591,17 +614,10 @@
   background: transparent;
 }
 
-.as-view-btn {
-  height: auto;
-  padding: 0;
-  color: #7c3aed;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
-
 .as-view-text {
   display: block;
+  color: #7c3aed;
   font-size: 24rpx;
+  font-weight: 500;
   line-height: 1.4;
 }

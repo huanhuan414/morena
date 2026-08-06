@@ -1217,3 +1217,38 @@ create(@Body() body: unknown) {
 **修改文件**：
 - `server/src/modules/ai-avatar/ai-avatar.module.ts`（导入 UploadModule）
 - `server/src/modules/ai-avatar/ai-avatar.service.ts`（注入 UploadService、新增 `convertBase64ToUrls` 方法、在 `executeGenerationTask` 和 `retrySaveWork` 中调用）
+
+### 2026-08-06 模版列表页优化：添加模版按钮、展示开关、卡片重设计
+
+**会话目的**：优化模版管理页面的功能和交互体验
+
+**完成的主要任务**：
+1. 底部添加固定"添加模版"按钮，点击跳转到"编辑模版（3/3）"页面
+2. 每个模版卡片增加对外展示 Switch 开关（默认关闭=仅自己可见），切换时更新数据库 `display_status` 字段，采用乐观更新策略
+3. 重新设计模版卡片布局：三段式结构（封面+信息 → 标签行 → 数据+开关），更紧凑的 120rpx 封面、独立标签行展示状态/技能/版本、底部行左侧数据指标右侧展示开关
+4. 后端新增 `PUT /api/ai-avatar/templates/:templateId/display-status` 接口
+
+**修改文件**：
+- `src/package-my-avatar/pages/template-list/index.tsx`（前端列表页重构：添加 Switch 组件、添加模版按钮、toggleDisplayStatus 乐观更新逻辑）
+- `src/package-my-avatar/pages/template-list/index.css`（样式重写：新卡片三段式布局、底部固定按钮栏、展示开关样式）
+- `server/src/modules/ai-avatar/ai-avatar.controller.ts`（新增 toggleDisplayStatus 路由）
+- `server/src/modules/ai-avatar/ai-avatar.service.ts`（新增 toggleTemplateDisplayStatus 方法）
+
+### 2026-08-06 分身广场列表页整行可点击 + 详情页模版使用跳转
+
+**会话目的**：优化分身广场列表页交互（整行可点击进入详情）和详情页功能（默认图、标题修改、模版使用跳转）
+
+**完成的主要任务**：
+1. **分身广场列表页整行可点击**：将 `onClick` 事件从"查看"按钮提升到整个 Card 组件，收藏按钮通过 `stopPropagation` 阻止冒泡，"查看"按钮简化为纯文本提示
+2. **列表页无图片默认展示**：无 `avatarUrl` 时显示渐变背景 + 分身名称首字母大写 + Sparkles 图标装饰
+3. **详情页无图片默认展示**：头部分身头像无图片时显示大号首字母 + 紫色渐变背景 + Sparkles 装饰图标
+4. **详情页标题修改**："精选作品 / 模板" → "精品模版文案"
+5. **详情页"使用模版"按钮跳转**：点击后跳转到 `/package-my-avatar/pages/template-use/index`，携带 `templateId` 和 `avatarId` 参数；无关联模版时 Toast 提示
+6. **后端返回 templateId**：`getPublicAvatarWorks` SQL 查询新增 `template_id` 字段，前端 `WorkPreview` 类型同步添加
+
+**修改文件**：
+- `src/pages/avatar-square/index.tsx`（Card 整行点击、收藏按钮 stopPropagation、无图片默认展示）
+- `src/pages/avatar-square/index.css`（默认头像样式、卡片 active 反馈、查看文本样式）
+- `src/package-avatar-square/pages/avatar-public-detail/index.tsx`（WorkPreview 加 templateId、标题修改、使用模版跳转、头像默认展示）
+- `src/package-avatar-square/pages/avatar-public-detail/index.css`（默认头像首字母样式）
+- `server/src/modules/avatar-square/avatar-square.service.ts`（SQL 新增 template_id、返回值加 templateId）

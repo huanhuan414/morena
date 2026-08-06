@@ -51,7 +51,7 @@
 }
 
 .tpl-content {
-  padding: 24rpx 22rpx calc(env(safe-area-inset-bottom) + 48rpx);
+  padding: 24rpx 22rpx calc(env(safe-area-inset-bottom) + 140rpx);
 }
 
 /* ── 统计卡片 ── */
@@ -149,34 +149,36 @@
 .tpl-card-skeleton {
   width: 100%;
   height: 260rpx;
-  border-radius: 28rpx;
+  border-radius: 24rpx;
 }
 
 .tpl-card {
   overflow: hidden;
   border: 1rpx solid #eee9fb;
-  border-radius: 28rpx;
+  border-radius: 24rpx;
   background: #fff;
-  box-shadow: 0 10rpx 28rpx rgb(72 49 122 / 8%);
+  box-shadow: 0 6rpx 20rpx rgb(72 49 122 / 6%);
 }
 
 .tpl-card-content {
-  padding: 22rpx;
+  padding: 20rpx;
 }
 
-.tpl-card-main {
+/* ── 卡片顶部：封面 + 信息 ── */
+
+.tpl-card-top {
   display: flex;
-  align-items: stretch;
-  gap: 20rpx;
+  align-items: flex-start;
+  gap: 18rpx;
 }
 
 .tpl-cover-wrap {
   position: relative;
-  width: 160rpx;
-  height: 160rpx;
+  width: 120rpx;
+  height: 120rpx;
   flex-shrink: 0;
   overflow: hidden;
-  border-radius: 24rpx;
+  border-radius: 20rpx;
   background: #f1edff;
 }
 
@@ -191,21 +193,7 @@
   height: 100%;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(145deg, #f5f3ff, #e9d5ff);
-}
-
-.tpl-skill-badge {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4rpx 0;
-  color: #fff;
-  background: rgb(76 59 120 / 72%);
-  font-size: 17rpx;
+  background: linear-gradient(145deg, #f5f3ff, #ede5ff);
 }
 
 .tpl-info {
@@ -226,106 +214,129 @@
   overflow: hidden;
   flex: 1;
   font-size: 28rpx;
-  font-weight: 750;
+  font-weight: 700;
+  line-height: 40rpx;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.tpl-status {
-  flex-shrink: 0;
-  padding: 5rpx 10rpx;
-  color: #8b5cf6;
-  border: 0;
-  background: #f3efff;
-  font-size: 17rpx;
-}
-
-.tpl-status.is-enabled {
-  color: #16a34a;
-  background: #ecfdf3;
-}
-
 .tpl-desc {
   display: -webkit-box;
-  margin-top: 10rpx;
+  margin-top: 8rpx;
   overflow: hidden;
-  color: #776e8c;
-  font-size: 20rpx;
-  line-height: 30rpx;
+  color: #8b819f;
+  font-size: 22rpx;
+  line-height: 32rpx;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
 
-.tpl-meta {
+/* ── 标签行 ── */
+
+.tpl-tags-row {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 14rpx;
-  margin-top: 12rpx;
-}
-
-.tpl-meta-item {
-  display: flex;
-  align-items: center;
-  gap: 5rpx;
-  color: #8b819f;
-  font-size: 19rpx;
-}
-
-.tpl-income {
-  display: block;
-  margin-left: auto;
-  color: #f59e0b;
-  font-size: 18rpx;
-  font-weight: 600;
-}
-
-/* ── 底部操作区 ── */
-
-.tpl-card-footer {
-  display: flex;
-  align-items: center;
-  gap: 14rpx;
+  gap: 10rpx;
   margin-top: 16rpx;
   padding-top: 14rpx;
-  border-top: 1rpx solid #f0edf8;
+  border-top: 1rpx solid #f3f0fa;
 }
 
-.tpl-display-tag {
+.tpl-status-badge {
   flex-shrink: 0;
-  padding: 5rpx 10rpx;
+  padding: 4rpx 14rpx;
+  color: #8b5cf6;
+  border: 0;
+  background: #f3efff;
+  font-size: 20rpx;
+  border-radius: 8rpx;
+}
+
+.tpl-status-badge.is-enabled {
+  color: #16a34a;
+  background: #ecfdf3;
+}
+
+.tpl-skill-badge {
+  flex-shrink: 0;
+  padding: 4rpx 14rpx;
+  color: #6366f1;
+  border: 0;
+  background: #eef2ff;
+  font-size: 20rpx;
+  border-radius: 8rpx;
+}
+
+.tpl-version-badge {
+  flex-shrink: 0;
+  padding: 4rpx 14rpx;
   color: #695c91;
   border: 0;
   background: #f7f4ff;
-  font-size: 17rpx;
-}
-
-.tpl-display-tag.is-public {
-  color: #0ea5e9;
-  background: #f0f9ff;
-}
-
-.tpl-version-tag {
-  flex-shrink: 0;
-  padding: 5rpx 10rpx;
-  color: #695c91;
-  border: 0;
-  background: #f7f4ff;
-  font-size: 17rpx;
+  font-size: 20rpx;
+  border-radius: 8rpx;
 }
 
 .tpl-tested-at {
   display: block;
   margin-left: auto;
   color: #a59bc2;
-  font-size: 17rpx;
+  font-size: 20rpx;
 }
+
+/* ── 底部：数据 + 开关 ── */
+
+.tpl-card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14rpx;
+  padding-top: 14rpx;
+  border-top: 1rpx solid #f3f0fa;
+}
+
+.tpl-metrics {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.tpl-metric-item {
+  display: flex;
+  align-items: center;
+  gap: 5rpx;
+  color: #8b819f;
+  font-size: 22rpx;
+}
+
+.tpl-income {
+  display: block;
+  color: #f59e0b;
+  font-size: 22rpx;
+  font-weight: 600;
+}
+
+.tpl-display-switch {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  flex-shrink: 0;
+}
+
+.tpl-switch-label {
+  display: block;
+  color: #8d83a8;
+  font-size: 22rpx;
+}
+
+/* ── 认证按钮 ── */
 
 .tpl-certify-btn {
   width: 100%;
   height: 62rpx;
   gap: 8rpx;
-  margin-top: 12rpx;
+  margin-top: 14rpx;
   color: #fff;
   border: 0;
   border-radius: 16rpx;
@@ -334,11 +345,42 @@
   font-size: 22rpx;
 }
 
+/* ── 底部固定添加按钮 ── */
+
+.tpl-bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: rgb(246 244 255 / 92%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1rpx solid rgb(238 233 251 / 80%);
+}
+
+.tpl-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 88rpx;
+  gap: 10rpx;
+  color: #fff;
+  border: 0;
+  border-radius: 48rpx;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  box-shadow: 0 10rpx 28rpx rgb(109 40 217 / 28%);
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
 /* ── 空状态 ── */
 
 .tpl-empty-card {
   border: 1rpx solid #eee9fb;
-  border-radius: 28rpx;
+  border-radius: 24rpx;
   background: #fff;
 }
 
