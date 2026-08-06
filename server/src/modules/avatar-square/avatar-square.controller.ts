@@ -105,6 +105,7 @@ export class AvatarSquareController {
       )
       if (result.state === 'invalid') return { code: 400, msg: '状态值无效', data: null }
       if (result.state === 'profile_limit') return { code: 400, msg: '每个分身个人主页最多展示4个作品', data: null }
+      if (result.state === 'audit_rejected') return { code: 400, msg: '内容审核未通过', data: null }
       if (result.state === 'not_found') return { code: 404, msg: '作品不存在或无权修改', data: null }
       return { code: 200, msg: '更新成功', data: result.data }
     } catch (error) {
@@ -522,6 +523,9 @@ export class AvatarSquareController {
       }
       if (result.state === 'status_locked') {
         return { code: 409, msg: '已封禁分身不能修改上线状态', data: result.data }
+      }
+      if (result.state === 'audit_rejected') {
+        return { code: 400, msg: '内容审核未通过，暂不能公开', data: result.data }
       }
       return { code: 200, msg: '保存成功', data: result.data }
     } catch (error) {

@@ -438,3 +438,31 @@
   background: linear-gradient(135deg, #7c3aed, #6d4cd8);
   box-shadow: 0 8rpx 20rpx rgb(109 76 216 / 22%);
 }
+.avs-delete-card {
+  margin-bottom: calc(env(safe-area-inset-bottom) + 28rpx);
+}
+
+.avs-delete-row {
+  display: flex;
+  min-height: 116rpx;
+  align-items: center;
+  gap: 18rpx;
+  padding: 20rpx 24rpx;
+}
+
+.avs-row-icon.is-danger {
+  color: #ef4444;
+  background: #fff1f2;
+}
+
+.avs-delete-button {
+  min-width: 150rpx;
+  height: 60rpx;
+  flex-shrink: 0;
+  padding: 0 22rpx;
+  border-color: #fecaca;
+  border-radius: 14rpx;
+  color: #ef4444;
+  background: #fff7f7;
+  font-size: 23rpx;
+}

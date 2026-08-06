@@ -49,6 +49,7 @@ import { CoinModule } from './modules/coin/coin.module';
 import { WithdrawModule } from './modules/withdraw/withdraw.module';
 import { MenuFeatureModule } from './modules/menu-feature/menu-feature.module';
 import { AiAvatarModule } from './modules/ai-avatar/ai-avatar.module';
+import { ContentAuditModule } from './modules/content-audit/content-audit.module';
 
 @Module({
   imports: [
@@ -99,6 +100,7 @@ import { AiAvatarModule } from './modules/ai-avatar/ai-avatar.module';
     WithdrawModule,
     MenuFeatureModule,
     AiAvatarModule,
+    ContentAuditModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { getMySQLClient, getPool } from '../../storage/database/mysql-client'
 import { RedisService } from '../redis/redis.service'
+import { ContentAuditItem, ContentAuditService } from '../content-audit/content-audit.service'
 
 type AvatarSquareQuery = {
   page: number
@@ -38,6 +39,7 @@ type AvatarSettingsUpdate = {
   avatarUrl?: string
   description?: string
   publicStatus?: '公开' | '私有'
+  auditStatus?: '审核通过' | '审核拒绝' | '待审核'
   status?: '已上线' | '已下线'
 }
 
@@ -93,7 +95,10 @@ export class AvatarSquareService {
   private readonly workViewDedupTtlMs = 30 * 60 * 1000
   private readonly avatarViewDedupTtlMs = 30 * 60 * 1000
 
-  constructor(private readonly redisService: RedisService) {}
+  constructor(
+    private readonly redisService: RedisService,
+    private readonly contentAuditService: ContentAuditService,
+  ) {}
   private safeParseJson<T>(value: unknown, fallback: T): T {
     if (value === null || value === undefined) return fallback
     if (typeof value === 'object') return value as T
@@ -116,6 +121,7 @@ export class AvatarSquareService {
       description: String(row.description || ''),
       tags: [tagsJson.gender, tagsJson.age, tagsJson.location, tagsJson.occupation].filter(Boolean),
       publicStatus: String(row.publicStatus || '私有'),
+      auditStatus: String(row.auditStatus || ''),
       status: String(row.status || '已下线'),
       skillType: String(row.skillType || ''),
       updatedAt: row.updatedAt || '',
@@ -127,6 +133,39 @@ export class AvatarSquareService {
     }
   }
 
+  private compactAuditItems(items: Array<ContentAuditItem | null | undefined>) {
+    return items.filter((item): item is ContentAuditItem => Boolean(item?.content?.trim()))
+  }
+
+  private buildAvatarAuditItems(input: { avatarUrl?: string; avatarName?: string; description?: string }) {
+    return this.compactAuditItems([
+      input.avatarName ? { type: 'text', content: input.avatarName } : null,
+      input.description ? { type: 'text', content: input.description } : null,
+      input.avatarUrl ? { type: 'image', content: input.avatarUrl } : null,
+    ])
+  }
+
+  private buildWorkAuditItems(work: Record<string, unknown>) {
+    const contentJson = this.safeParseJson<Record<string, unknown>>(work.contentJson, {})
+    const rawImages = Array.isArray(contentJson.images)
+      ? contentJson.images
+      : this.safeParseJson<unknown[]>(contentJson.images, [])
+    const imageItems = rawImages
+      .filter(item => typeof item === 'string' && item.trim())
+      .map(item => ({ type: 'image' as const, content: String(item) }))
+    const videoUrl = String(contentJson.video_url || contentJson.videoUrl || '')
+    const coverUrl = String(contentJson.cover_url || contentJson.coverUrl || '')
+
+    return this.compactAuditItems([
+      work.workTitle ? { type: 'text', content: String(work.workTitle) } : null,
+      work.workDescription ? { type: 'text', content: String(work.workDescription) } : null,
+      contentJson.title ? { type: 'text', content: String(contentJson.title) } : null,
+      contentJson.text ? { type: 'text', content: String(contentJson.text) } : null,
+      ...imageItems,
+      coverUrl ? { type: 'image', content: coverUrl } : null,
+      videoUrl ? { type: 'video', content: videoUrl } : null,
+    ])
+  }
   private mapWorkPreview(row: Record<string, unknown>) {
     const contentJson = this.safeParseJson<Record<string, unknown>>(row.contentJson, {})
     const rawImages = Array.isArray(contentJson.images)
@@ -452,10 +491,10 @@ export class AvatarSquareService {
     field: ManagedWorkStatusField,
     value: string,
   ) {
-    const configs: Record<ManagedWorkStatusField, { column: string; values: string[] }> = {
-      publicStatus: { column: 'public_status', values: ['公开', '私有'] },
-      avatarAcceptStatus: { column: 'avatar_accept_status', values: ['接受展示', '拒绝展示'] },
-      avatarAuthStatus: { column: 'avatar_auth_status', values: ['展示', '禁止展示'] },
+    const configs: Record<ManagedWorkStatusField, { column: string; values: string[]; auditValue: string }> = {
+      publicStatus: { column: 'public_status', values: ['公开', '私有'], auditValue: '公开' },
+      avatarAcceptStatus: { column: 'avatar_accept_status', values: ['接受展示', '拒绝展示'], auditValue: '接受展示' },
+      avatarAuthStatus: { column: 'avatar_auth_status', values: ['展示', '禁止展示'], auditValue: '展示' },
     }
     const config = configs[field]
     if (!config || !config.values.includes(value)) {
@@ -463,18 +502,23 @@ export class AvatarSquareService {
     }
 
     const db = getMySQLClient()
-    if (field === 'avatarAcceptStatus' && value === '接受展示') {
+    const needsAudit = value === config.auditValue
+    let current: Record<string, unknown> | undefined
+
+    if (needsAudit || (field === 'avatarAcceptStatus' && value === '接受展示')) {
       const currentRows = await db.query(`
-        SELECT avatar_id AS avatarId
+        SELECT id, avatar_id AS avatarId, work_title AS workTitle, work_description AS workDescription, skill_type AS skillType, content_json AS contentJson
         FROM ai_generated_work
         WHERE id = ?
           AND user_id = ?
           AND deleted_at IS NULL
         LIMIT 1
       `, [workId, userId])
-      const current = currentRows[0] as Record<string, unknown> | undefined
+      current = currentRows[0] as Record<string, unknown> | undefined
       if (!current) return { state: 'not_found' as const, data: null }
+    }
 
+    if (field === 'avatarAcceptStatus' && value === '接受展示') {
       const countRows = await db.query(`
         SELECT COUNT(*) AS total
         FROM ai_generated_work
@@ -483,16 +527,37 @@ export class AvatarSquareService {
           AND id <> ?
           AND avatar_accept_status = '接受展示'
           AND deleted_at IS NULL
-      `, [current.avatarId, userId, workId])
+      `, [current?.avatarId, userId, workId])
       const total = Number((countRows[0] as Record<string, unknown> | undefined)?.total || 0)
       if (total >= 4) {
         return { state: 'profile_limit' as const, data: null }
       }
     }
 
+    if (needsAudit) {
+      const audit = await this.contentAuditService.reviewPorn({
+        items: this.buildWorkAuditItems(current || {}),
+      })
+      if (!audit.passed) {
+        await db.query(`
+          UPDATE ai_generated_work
+          SET audit_status = '审核拒绝', updated_at = NOW()
+          WHERE id = ?
+            AND user_id = ?
+            AND deleted_at IS NULL
+        `, [workId, userId])
+        return { state: 'audit_rejected' as const, data: null }
+      }
+    }
+
+    const auditSql = needsAudit ? (field === 'avatarAuthStatus' 
+      ? ", audit_status = '审核通过', published_at = NOW()" 
+      : ", audit_status = '审核通过'") 
+      : ", audit_status = '待审核'";
+    
     const result = await db.query(`
       UPDATE ai_generated_work
-      SET ${config.column} = ?, updated_at = NOW()
+      SET ${config.column} = ?${auditSql}, updated_at = NOW()
       WHERE id = ?
         AND user_id = ?
         AND deleted_at IS NULL
@@ -521,7 +586,6 @@ export class AvatarSquareService {
       },
     }
   }
-
   async deleteManagedWork(workId: number, userId: string) {
     const db = getMySQLClient()
     const result = await db.query(`
@@ -883,6 +947,7 @@ export class AvatarSquareService {
         description,
         tags_json,
         public_status,
+        audit_status,
         status,
         skill_type,
         updated_at,
@@ -915,6 +980,31 @@ export class AvatarSquareService {
       return { state: 'status_locked' as const, data: current }
     }
 
+    if (updates.publicStatus === '公开') {
+      const audit = await this.contentAuditService.reviewPorn({
+        items: this.buildAvatarAuditItems({
+          avatarUrl: updates.avatarUrl || current.avatarUrl,
+          avatarName: updates.avatarName || current.avatarName,
+          description: updates.description ?? current.description,
+        }),
+      })
+      if (!audit.passed) {
+        await getMySQLClient().query(`
+          UPDATE ai_avatar
+          SET audit_status = '审核拒绝', updated_at = NOW()
+          WHERE id = ?
+            AND user_id = ?
+            AND deleted_at IS NULL
+        `, [avatarId, userId])
+        const rejected = await this.getOwnedAvatarSettings(avatarId, userId)
+        return { state: 'audit_rejected' as const, data: rejected }
+      }
+      updates.auditStatus = '审核通过'
+    }
+    if (updates.publicStatus === '私有') {
+      updates.auditStatus = '待审核'
+    }
+
     const columns: string[] = []
     const values: unknown[] = []
     const updateFields: Array<[keyof AvatarSettingsUpdate, string]> = [
@@ -922,6 +1012,7 @@ export class AvatarSquareService {
       ['avatarUrl', 'avatar_url'],
       ['description', 'description'],
       ['publicStatus', 'public_status'],
+      ['auditStatus', 'audit_status'],
       ['status', 'status'],
     ]
     updateFields.forEach(([key, column]) => {

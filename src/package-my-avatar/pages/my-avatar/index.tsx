@@ -15,16 +15,6 @@ import {
   Trash2,
 } from 'lucide-react-taro'
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -131,15 +121,8 @@ export default function MyAvatarPage() {
   const [pageData, setPageData] = useState<MyAvatarData>(EMPTY_DATA)
   const [selectedFilter, setSelectedFilter] = useState<AvatarFilter>('all')
   const [loading, setLoading] = useState(true)
-  const [deleteTarget, setDeleteTarget] = useState<MyAvatarItem | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [previewWork, setPreviewWork] = useState<MyAvatarWork | null>(null)
-  const [pendingTestInfo, setPendingTestInfo] = useState<{
-    avatarId: number
-    avatarName: string
-    count: number
-    firstTemplateId: number
-  } | null>(null)
   const loadRequestIdRef = useRef(0)
 
   const loadPage = useCallback(async (filter: AvatarFilter) => {
@@ -150,7 +133,7 @@ export default function MyAvatarPage() {
         url: '/api/my-avatars',
         data: { filter },
       })
-      console.log('[MyAvatarPage] avatars response:', res.data)
+      // console.log('[MyAvatarPage] avatars response:', res.data)
       const responseBody = res.data as ApiResponse<MyAvatarData>
       if (responseBody?.code !== 200 || !responseBody.data) {
         throw new Error(responseBody?.msg || '获取我的分身失败')
@@ -217,12 +200,17 @@ export default function MyAvatarPage() {
     }
   }
 
-  const enterSkill = (avatarId: number) => {
-    void Taro.navigateTo({
-      url: `/package-skill/pages/skills-square/index?avatarId=${encodeURIComponent(String(avatarId))}`,
-    })
+  const getAvatarStatusText = (status: string) => {
+    if (status === '已上线' || status === '已下线' || status === '已封禁') return status
+    return '已下线'
   }
 
+  const getAvatarStatusClass = (status: string) => {
+    const normalizedStatus = getAvatarStatusText(status)
+    if (normalizedStatus === '已上线') return ' is-online'
+    if (normalizedStatus === '已封禁') return ' is-banned'
+    return ' is-offline'
+  }
   const openAvatar = async (avatar: MyAvatarItem) => {
     if (avatar.status === '待测试') {
       try {
@@ -234,12 +222,21 @@ export default function MyAvatarPage() {
         const responseBody = res.data as ApiResponse<{ count: number; firstTemplateId: number }>
         const pending = responseBody?.data
         if (pending && pending.count > 0) {
-          setPendingTestInfo({
-            avatarId: avatar.id,
-            avatarName: avatar.avatarName || '该分身',
-            count: pending.count,
-            firstTemplateId: pending.firstTemplateId,
+          const confirmRes = await Taro.showModal({
+            title: '待测试提醒',
+            content: `${avatar.avatarName || '该分身'}有${pending.count}个模版等待测试，是否进入测试？`,
+            confirmText: '是',
+            cancelText: '否',
           })
+          if (confirmRes.confirm) {
+            void Taro.navigateTo({
+              url: `/package-my-avatar/pages/skill-certify/index?templateId=${encodeURIComponent(String(pending.firstTemplateId))}&avatarId=${encodeURIComponent(String(avatar.id))}`,
+            })
+          } else {
+            void Taro.navigateTo({
+              url: `/package-my-avatar/pages/avatar-create-step1/index?avatarId=${encodeURIComponent(String(avatar.id))}`,
+            })
+          }
           return
         }
       } catch {
@@ -302,19 +299,27 @@ export default function MyAvatarPage() {
     await Taro.setClipboardData({ data: fullContent })
   }
 
-  const confirmDelete = async () => {
-    if (!deleteTarget || deleting) return
+  const confirmDelete = async (avatar: MyAvatarItem) => {
+    if (deleting) return
+    const modal = await Taro.showModal({
+      title: '确认删除',
+      content: `删除后无法恢复，确定要删除“${avatar.avatarName || '该分身'}”吗？`,
+      confirmText: '确定',
+      cancelText: '取消',
+      confirmColor: '#EF4444',
+    })
+    if (!modal.confirm) return
+
     setDeleting(true)
     try {
       const res = await Network.request({
-        url: `/api/my-avatars/${encodeURIComponent(String(deleteTarget.id))}`,
+        url: `/api/my-avatars/${encodeURIComponent(String(avatar.id))}`,
         method: 'DELETE',
       })
       const responseBody = res.data as ApiResponse<{ id: number }>
       if (responseBody?.code !== 200) {
         throw new Error(responseBody?.msg || '删除失败')
       }
-      setDeleteTarget(null)
       void Taro.showToast({ title: '删除成功', icon: 'success' })
       await loadPage(selectedFilter)
     } catch (error) {
@@ -326,11 +331,10 @@ export default function MyAvatarPage() {
       setDeleting(false)
     }
   }
-
   return (
     <View className="mya-page" style={pageStyle}>
       <View className="mya-header">
-        <Button variant="ghost" size="icon" className="mya-back" onClick={() => Taro.navigateBack()}>
+        <Button variant="ghost" size="icon" className="mya-back" onClick={() => Taro.switchTab({ url: '/pages/profile/index' })}>
           <ArrowLeft size={19} color="#4C3B78" />
         </Button>
         <Text className="mya-header-title">我的分身</Text>
@@ -430,7 +434,7 @@ export default function MyAvatarPage() {
                         <View className="mya-avatar-info">
                           <View className="mya-avatar-name-row">
                             <Text className="mya-avatar-name">{avatar.avatarName || '未命名分身'}</Text>
-                            <Badge className={`mya-status${avatar.status === '已上线' ? ' is-online' : ''}`}>
+                            <Badge className={`mya-status${['已上线', '已下线', '已封禁'].includes(avatar.status) ? ' is-online' : ''}`}>
                               <Text>{avatar.status || '待完善'}</Text>
                             </Badge>
                             <ChevronRight size={16} color="#9B8BC5" />
@@ -448,14 +452,26 @@ export default function MyAvatarPage() {
                             <View className="mya-metric"><Eye size={13} color="#94A3B8" /><Text>{formatCount(avatar.viewCount)}</Text></View>
                             <View className="mya-metric"><Heart size={13} color="#EF4444" /><Text>{formatCount(avatar.favoriteCount)}</Text></View>
                             <Text className="mya-income">累计 {formatPoints(avatar.incomePointsTotal)} 积分</Text>
+                            {!['已上线', '已下线', '已封禁'].includes(avatar.status) && (<Button
+                              v-if={!['已上线', '已下线', '已封禁'].includes(avatar.status)}
+                              variant="ghost"
+                              size="icon"
+                              className="mya-card-delete"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                void confirmDelete(avatar)
+                              }}
+                            >
+                              <Trash2 size={13} color="#EF4444" />
+                            </Button>)}
                           </View>
                         </View>
                       </View>
 
-                      <View className="mya-work-row">
+                      {works.length > 0 && (<View className="mya-work-row">
                         <ScrollView scrollX className="mya-work-scroll" showScrollbar={false}>
                           <View className="mya-work-track">
-                            {works.length > 0 ? works.map(work => (
+                            {works.map(work => (
                               <Button
                                 key={work.id}
                                 variant="ghost"
@@ -477,36 +493,11 @@ export default function MyAvatarPage() {
                                   <View className="mya-play"><Play size={14} color="#FFFFFF" /></View>
                                 )}
                               </Button>
-                            )) : (
-                              <View className="mya-no-work"><Text>暂无作品</Text></View>
-                            )}
+                            ))}
                           </View>
                         </ScrollView>
-                        <View className="mya-actions">
-                          <Button
-                            className="mya-skill-button"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              enterSkill(avatar.id)
-                            }}
-                          >
-                            <Sparkles size={14} color="#FFFFFF" />
-
-                            <Text>进入技能</Text>
-                          </Button>
-                          <Button
-                            variant="outline"
-                            className="mya-delete-button"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              setDeleteTarget(avatar)
-                            }}
-                          >
-                            <Trash2 size={14} color="#EF4444" />
-                            <Text>删除</Text>
-                          </Button>
-                        </View>
                       </View>
+                      )}
                     </CardContent>
                   </Card>
                 )
@@ -516,68 +507,7 @@ export default function MyAvatarPage() {
         </View>
       </ScrollView>
 
-      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={open => { if (!open && !deleting) setDeleteTarget(null) }}>
-        <AlertDialogContent className="mya-delete-dialog">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="mya-delete-title"><Text>删除分身</Text></AlertDialogTitle>
-            <AlertDialogDescription className="mya-delete-description">
-              <Text>确认删除“{deleteTarget?.avatarName || '该分身'}”吗？删除后将无法在页面中恢复。</Text>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="mya-delete-footer">
-            <AlertDialogCancel className="mya-dialog-cancel"><Text>取消</Text></AlertDialogCancel>
-            <AlertDialogAction className="mya-dialog-confirm" onClick={() => void confirmDelete()}>
-              <Text>{deleting ? '删除中...' : '确认删除'}</Text>
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
-      <AlertDialog
-        open={Boolean(pendingTestInfo)}
-        onOpenChange={open => { if (!open) setPendingTestInfo(null) }}
-      >
-        <AlertDialogContent className="mya-delete-dialog">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="mya-delete-title"><Text>待测试提醒</Text></AlertDialogTitle>
-            <AlertDialogDescription className="mya-delete-description">
-              <Text>
-                "{pendingTestInfo?.avatarName}"有{pendingTestInfo?.count}个模版等待测试，是否进入测试？
-              </Text>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="mya-delete-footer">
-            <AlertDialogCancel
-              className="mya-dialog-cancel"
-              onClick={() => {
-                const info = pendingTestInfo
-                setPendingTestInfo(null)
-                if (info) {
-                  void Taro.navigateTo({
-                    url: `/package-my-avatar/pages/avatar-create-step1/index?avatarId=${encodeURIComponent(String(info.avatarId))}`,
-                  })
-                }
-              }}
-            >
-              <Text>否</Text>
-            </AlertDialogCancel>
-            <AlertDialogAction
-              className="mya-dialog-confirm"
-              onClick={() => {
-                const info = pendingTestInfo
-                setPendingTestInfo(null)
-                if (info) {
-                  void Taro.navigateTo({
-                    url: `/package-my-avatar/pages/skill-certify/index?templateId=${encodeURIComponent(String(info.firstTemplateId))}&avatarId=${encodeURIComponent(String(info.avatarId))}`,
-                  })
-                }
-              }}
-            >
-              <Text>是</Text>
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <Dialog open={Boolean(previewWork)} onOpenChange={open => { if (!open) setPreviewWork(null) }}>
         <DialogContent className="mya-text-dialog" overlayClassName="mya-dialog-overlay">
@@ -596,3 +526,4 @@ export default function MyAvatarPage() {
     </View>
   )
 }
+

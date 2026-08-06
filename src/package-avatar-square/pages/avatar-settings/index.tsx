@@ -14,6 +14,7 @@ import {
   Power,
   RefreshCw,
   Sparkles,
+  Trash2,
   Type,
 } from 'lucide-react-taro'
 
@@ -55,6 +56,7 @@ export default function AvatarSettingsPage() {
   const [avatar, setAvatar] = useState<AvatarSettingsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [editingField, setEditingField] = useState<EditingField>('name')
   const [editorOpen, setEditorOpen] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
@@ -202,6 +204,42 @@ export default function AvatarSettingsPage() {
   const toggleOnlineStatus = async (checked: boolean) => {
     await saveUpdates({ status: checked ? '已上线' : '已下线' }, checked ? '分身已上线' : '分身已下线')
   }
+  const deleteAvatar = async () => {
+    if (!avatar || deleting) return
+    const modal = await Taro.showModal({
+      title: '确认删除',
+      content: `删除后无法恢复，确定要删除“${avatar.avatarName || '该分身'}”吗？`,
+      confirmText: '确定',
+      cancelText: '取消',
+      confirmColor: '#EF4444',
+    })
+    if (!modal.confirm) return
+
+    setDeleting(true)
+    try {
+      const res = await Network.request({
+        url: `/api/my-avatars/${encodeURIComponent(String(avatar.id))}`,
+        method: 'DELETE',
+      })
+      const responseBody = res.data as ApiResponse<{ id: number }>
+      if (responseBody?.code !== 200) {
+        throw new Error(responseBody?.msg || '删除失败')
+      }
+      void Taro.showToast({ title: '删除成功', icon: 'success' })
+      setTimeout(() => {
+        void Taro.redirectTo({
+          url: '/package-my-avatar/pages/my-avatar/index',
+        })
+      }, 500)
+    } catch (error) {
+      void Taro.showToast({
+        title: error instanceof Error ? error.message : '删除失败',
+        icon: 'none',
+      })
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   const statusLocked = avatar?.status === '已封禁'
 
@@ -345,6 +383,21 @@ export default function AvatarSettingsPage() {
                       disabled={saving || statusLocked}
                       onCheckedChange={checked => void toggleOnlineStatus(checked)}
                     />
+                  </View>
+                </CardContent>
+              </Card>
+
+              <Card className="avs-card avs-delete-card">
+                <CardContent className="avs-card-content">
+                  <View className="avs-delete-row">
+                    <View className="avs-row-icon is-danger"><Trash2 size={18} color="#EF4444" /></View>
+                    <View className="avs-row-copy">
+                      <Text className="avs-row-title">删除分身</Text>
+                      <Text className="avs-row-subtitle">删除后将无法恢复，请谨慎操作</Text>
+                    </View>
+                    <Button variant="outline" className="avs-delete-button" disabled={saving || deleting} onClick={() => void deleteAvatar()}>
+                      <Text>{deleting ? '删除中...' : '删除分身'}</Text>
+                    </Button>
                   </View>
                 </CardContent>
               </Card>
