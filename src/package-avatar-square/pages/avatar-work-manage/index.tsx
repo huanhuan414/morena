@@ -170,7 +170,7 @@ export default function AvatarWorkManagePage() {
     })
   }
 
-  const openPreview = (work: ManagedWork) => {
+  const openPreview1 = (work: ManagedWork) => {
     if (work.category === '图片') {
       if (work.images.length > 0) {
         void Taro.previewImage({ current: work.images[0], urls: work.images })
@@ -192,6 +192,12 @@ export default function AvatarWorkManagePage() {
       return
     }
     setTextWork(work)
+  }
+
+  const openPreview = (work: ManagedWork) => {
+    void Taro.navigateTo({
+      url: `/package-avatar-square/pages/work-square-detail/index?id=${work.id}`,
+    })
   }
 
   const confirmDeleteWork = async (work: ManagedWork) => {
@@ -448,70 +454,70 @@ export default function AvatarWorkManagePage() {
         <View className="wm-main">
           <Card className="wm-list-card">
             <CardContent className="wm-list-body">
-            {/* <Text className="wm-note">每个作品可独立设置展示到个人主页和分身动态广场</Text> */}
+              {/* <Text className="wm-note">每个作品可独立设置展示到个人主页和分身动态广场</Text> */}
 
-            <View className="wm-list">
-              {works.map(work => {
-                return (
-                  <Card key={work.id} className="wm-work-card">
-                    <CardContent className="wm-work-body">
-                      <View className="wm-work-top">
-                        <View className={`wm-cover${work.category === '文字' ? ' is-text' : ''}`} onClick={() => openPreview(work)}>
-                          {renderCover(work)}
-                          <Badge className="wm-type"><Text>{work.category}</Text></Badge>
+              <View className="wm-list">
+                {works.map(work => {
+                  return (
+                    <Card key={work.id} className="wm-work-card">
+                      <CardContent className="wm-work-body">
+                        <View className="wm-work-top">
+                          <View className={`wm-cover${work.category === '文字' ? ' is-text' : ''}`} onClick={() => openPreview(work)}>
+                            {renderCover(work)}
+                            <Badge className="wm-type"><Text>{work.category}</Text></Badge>
+                          </View>
+
+                          <View className="wm-work-info" onClick={() => openPreview(work)}>
+                            <Text className="wm-work-title">{work.title || `作品 ${work.id}`}</Text>
+                            <Text className="wm-category-pill">{work.category}</Text>
+                            <View className="wm-stats">
+                              <View className="wm-stat"><Eye size={13} color="#94A3B8" /><Text>{formatCount(work.viewCount)}</Text></View>
+                              <View className="wm-stat"><Heart size={13} color="#94A3B8" /><Text>{formatCount(work.favoriteCount)}</Text></View>
+                              <View className="wm-stat"><Coins size={13} color="#94A3B8" /><Text>{work.generatedPayPoints}积分</Text></View>
+                            </View>
+                            {/* <Text className="wm-date">发布时间：{work.publishedAt ? formatDate(work.publishedAt) : '未发布'}</Text> */}
+                          </View>
+
+                          <View className="wm-statuses">
+                            <View className="wm-status-line">
+                              <Text>{work.publicStatus || '私有'}</Text>
+                              <Switch className="wm-switch" checked={work.publicStatus === '公开'} disabled={statusUpdatingKey === `${work.id}:publicStatus`} onCheckedChange={checked => void updateWorkStatus(work, 'publicStatus', checked)} />
+                            </View>
+                            <View className="wm-status-line">
+                              <Text>个人主页</Text>
+                              <Switch className="wm-switch" checked={work.avatarAcceptStatus === '接受展示'} disabled={statusUpdatingKey === `${work.id}:avatarAcceptStatus`} onCheckedChange={checked => void updateWorkStatus(work, 'avatarAcceptStatus', checked)} />
+                            </View>
+                            <View className="wm-status-line">
+                              <Text>动态广场</Text>
+                              <Switch className="wm-switch" checked={work.avatarAuthStatus === '展示'} disabled={statusUpdatingKey === `${work.id}:avatarAuthStatus`} onCheckedChange={checked => void updateWorkStatus(work, 'avatarAuthStatus', checked)} />
+                            </View>
+                          </View>
                         </View>
 
-                        <View className="wm-work-info">
-                          <Text className="wm-work-title">{work.title || `作品 ${work.id}`}</Text>
-                          <Text className="wm-category-pill">{work.category}</Text>
-                          <View className="wm-stats">
-                            <View className="wm-stat"><Eye size={13} color="#94A3B8" /><Text>{formatCount(work.viewCount)}</Text></View>
-                            <View className="wm-stat"><Heart size={13} color="#94A3B8" /><Text>{formatCount(work.favoriteCount)}</Text></View>
-                            <View className="wm-stat"><Coins size={13} color="#94A3B8" /><Text>{work.generatedPayPoints}积分</Text></View>
-                          </View>
-                          {/* <Text className="wm-date">发布时间：{work.publishedAt ? formatDate(work.publishedAt) : '未发布'}</Text> */}
+                        <View className="wm-actions">
+                          <Button variant="ghost" size="sm" className="wm-delete" onClick={() => void confirmDeleteWork(work)}>
+                            <Trash2 size={14} color="#E85D75" />
+                            <Text>删除作品</Text>
+                          </Button>
+                          <Button variant="secondary" size="sm" className="wm-use" onClick={() => handleUseTemplate(work)}>
+                            <WandSparkles size={14} color="#6D4CD8" />
+                            <Text>使用模板</Text>
+                          </Button>
                         </View>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
 
-                        <View className="wm-statuses">
-                          <View className="wm-status-line">
-                            <Text>{work.publicStatus || '私有'}</Text>
-                            <Switch className="wm-switch" checked={work.publicStatus === '公开'} disabled={statusUpdatingKey === `${work.id}:publicStatus`} onCheckedChange={checked => void updateWorkStatus(work, 'publicStatus', checked)} />
-                          </View>
-                          <View className="wm-status-line">
-                            <Text>个人主页</Text>
-                            <Switch className="wm-switch" checked={work.avatarAcceptStatus === '接受展示'} disabled={statusUpdatingKey === `${work.id}:avatarAcceptStatus`} onCheckedChange={checked => void updateWorkStatus(work, 'avatarAcceptStatus', checked)} />
-                          </View>
-                          <View className="wm-status-line">
-                            <Text>动态广场</Text>
-                            <Switch className="wm-switch" checked={work.avatarAuthStatus === '展示'} disabled={statusUpdatingKey === `${work.id}:avatarAuthStatus`} onCheckedChange={checked => void updateWorkStatus(work, 'avatarAuthStatus', checked)} />
-                          </View>
-                        </View>
-                      </View>
-
-                      <View className="wm-actions">
-                        <Button variant="ghost" size="sm" className="wm-delete" onClick={() => void confirmDeleteWork(work)}>
-                          <Trash2 size={14} color="#E85D75" />
-                          <Text>删除作品</Text>
-                        </Button>
-                        <Button variant="secondary" size="sm" className="wm-use" onClick={() => handleUseTemplate(work)}>
-                          <WandSparkles size={14} color="#6D4CD8" />
-                          <Text>使用模板</Text>
-                        </Button>
-                      </View>
-                    </CardContent>
-                  </Card>
-                )
-              })}
-
-              {loading && works.length === 0 && [0, 1, 2].map(item => (
-                <Skeleton key={item} className="wm-skeleton" />
-              ))}
-              {!loading && works.length === 0 && (
-                <Text className="wm-empty">{loadFailed ? '作品加载失败，请稍后重试' : '暂无符合条件的作品'}</Text>
-              )}
-              {loading && works.length > 0 && <Text className="wm-more">正在加载更多...</Text>}
-              {!hasMore && works.length > 0 && <Text className="wm-more">已经到底了</Text>}
-            </View>
+                {loading && works.length === 0 && [0, 1, 2].map(item => (
+                  <Skeleton key={item} className="wm-skeleton" />
+                ))}
+                {!loading && works.length === 0 && (
+                  <Text className="wm-empty">{loadFailed ? '作品加载失败，请稍后重试' : '暂无符合条件的作品'}</Text>
+                )}
+                {loading && works.length > 0 && <Text className="wm-more">正在加载更多...</Text>}
+                {!hasMore && works.length > 0 && <Text className="wm-more">已经到底了</Text>}
+              </View>
             </CardContent>
           </Card>
         </View>

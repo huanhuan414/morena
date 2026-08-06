@@ -207,7 +207,7 @@ export default function AvatarPublicDetailPage() {
     })
   }
 
-  const openWorkPreview = (work: WorkPreview) => {
+  const openWorkPreview1 = (work: WorkPreview) => {
     if (work.category === '图片') {
       previewImages(work)
       return
@@ -238,6 +238,12 @@ export default function AvatarPublicDetailPage() {
     recordWorkView(work.id)
     setPreviewWork(work)
     setWorkPreviewOpen(true)
+  }
+
+  const openWorkPreview = (work: WorkPreview) => {
+    void Taro.navigateTo({
+      url: `/package-avatar-square/pages/work-square-detail/index?id=${work.id}`,
+    })
   }
 
   const toggleFavoriteWork = async (work: WorkPreview) => {

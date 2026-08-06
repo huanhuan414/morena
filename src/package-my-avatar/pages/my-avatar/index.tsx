@@ -259,7 +259,7 @@ export default function MyAvatarPage() {
     }
   }
 
-  const openWork = (work: MyAvatarWork) => {
+  const openWork1 = (work: MyAvatarWork) => {
     if (work.category === '图片') {
       if (work.images.length === 0) {
         void Taro.showToast({ title: '暂无图片内容', icon: 'none' })
@@ -286,6 +286,12 @@ export default function MyAvatarPage() {
       return
     }
     setPreviewWork(work)
+  }
+
+  const openWork = (work: MyAvatarWork) => {
+    void Taro.navigateTo({
+      url: `/package-avatar-square/pages/work-square-detail/index?id=${work.id}`,
+    })
   }
 
   const copyWorkContent = async () => {

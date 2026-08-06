@@ -357,7 +357,7 @@ export default function AvatarOwnerDetailPage() {
     })
   }
 
-  const openWorkPreview = (work: WorkRow) => {
+  const openWorkPreview1 = (work: WorkRow) => {
     if (work.category === '图片') {
       previewImages(work)
       return
@@ -383,6 +383,11 @@ export default function AvatarOwnerDetailPage() {
     setWorkPreviewOpen(true)
   }
 
+  const openWorkPreview = (work: WorkRow) => {
+    void Taro.navigateTo({
+      url: `/package-avatar-square/pages/work-square-detail/index?id=${work.id}`,
+    })
+  }
   const copyPreviewWorkContent = async () => {
     const title = previewWork?.contentTitle || previewWork?.title || ''
     const content = previewWork?.contentText || ''
