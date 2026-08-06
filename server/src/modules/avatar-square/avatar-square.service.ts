@@ -609,6 +609,9 @@ export class AvatarSquareService {
       "work.audit_status = '审核通过'",
       "work.avatar_auth_status = '展示'",
       'work.deleted_at IS NULL',
+      "avatar.status = '已上线'",
+      "avatar.public_status = '公开'",
+      "avatar.audit_status = '审核通过'",
       'avatar.deleted_at IS NULL',
     ]
     const params: unknown[] = []
