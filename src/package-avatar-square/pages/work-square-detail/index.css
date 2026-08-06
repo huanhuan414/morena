@@ -377,6 +377,23 @@
   background: linear-gradient(135deg,#312e81,#7c3aed,#c084fc);
 }
 
+.wsd-preview.is-grid {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  grid-auto-rows: 1fr;
+  align-items: stretch;
+  justify-content: stretch;
+  gap: 10rpx;
+  box-sizing: border-box;
+  padding: 10rpx;
+}
+
+.wsd-preview-grid-image {
+  width: 100%;
+  height: 100%;
+  border-radius: 12rpx;
+}
+
 .wsd-preview-image,
 .wsd-preview-empty {
   width: 100%;
@@ -588,4 +605,8 @@
   color: #94a3b8;
   font-size: 22rpx;
   line-height: 1.6;
+}
+
+.wsd-content-preview {
+  margin-top: 18rpx;
 }

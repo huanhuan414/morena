@@ -7,10 +7,10 @@ import { ArrowLeft, Eye, Heart, Play, Sparkles, WandSparkles } from 'lucide-reac
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
+import { WorkContentView } from '../../components/work-content-view'
 
 import './index.css'
 
@@ -61,7 +61,6 @@ export default function WorkSquareDetailPage() {
   const [work, setWork] = useState<WorkDetail | null>(null)
   const [loading, setLoading] = useState(Boolean(workId))
   const [loadFailed, setLoadFailed] = useState(!workId)
-  const [textPreviewOpen, setTextPreviewOpen] = useState(false)
   const avatarFavoritePendingRef = useRef(false)
   const workFavoritePendingRef = useRef(false)
   const statusBarHeight = Taro.getWindowInfo().statusBarHeight || 20
@@ -234,6 +233,14 @@ export default function WorkSquareDetailPage() {
   const renderMedia = () => {
     if (!work) return null
 
+    // if (work.category === '文字' || work.category === '图文') {
+    //   return (
+    //     <View className="wsd-content-preview">
+    //       <WorkContentView work={work} mode="preview" onClick={openContentDetail} />
+    //     </View>
+    //   )
+    // }
+
     if (work.category === '文字') {
       return (
         <View className="wsd-media is-text">
@@ -246,7 +253,7 @@ export default function WorkSquareDetailPage() {
 
     if (work.category === '视频') {
       return (
-        <View className="wsd-media is-video" onClick={previewVideo}>
+        <View className="wsd-media is-video">
           {work.videoCoverUrl ? (
             <Image src={work.videoCoverUrl} mode="aspectFill" className="wsd-media-image" />
           ) : (
@@ -259,7 +266,7 @@ export default function WorkSquareDetailPage() {
     }
 
     return (
-      <View className="wsd-media" onClick={() => previewImages()}>
+      <View className="wsd-media">
         {work.images[0] ? (
           <Image src={work.images[0]} mode="aspectFill" className="wsd-media-image" />
         ) : (
@@ -273,22 +280,20 @@ export default function WorkSquareDetailPage() {
     )
   }
 
-  const openGraphicDetail = () => {
+  const openContentDetail = () => {
     if (!work) return
     void Taro.navigateTo({
-      url: `/package-avatar-square/pages/avatar-work-detail/index?id=${work.id}&scope=public`,
+      url: `/package-avatar-square/pages/work-content-detail/index?id=${work.id}`,
     })
   }
 
   const renderContentPreview = () => {
     if (!work) return null
 
-    if (work.category === '文字') {
+    if (work.category === '文字' || work.category === '图文') {
       return (
-        <View className="wsd-preview is-text" onClick={() => setTextPreviewOpen(true)}>
-          <Badge variant="secondary" className="wsd-preview-type"><Text>文字</Text></Badge>
-          <Text className="wsd-preview-text">{work.contentText || '暂无文字内容'}</Text>
-          <Text className="wsd-preview-hint">点击查看全文</Text>
+        <View className="wsd-content-preview">
+          <WorkContentView work={work} mode="preview" onClick={openContentDetail} />
         </View>
       )
     }
@@ -301,33 +306,42 @@ export default function WorkSquareDetailPage() {
           ) : (
             <View className="wsd-preview-empty"><Sparkles size={32} color="#FFFFFF" /></View>
           )}
-          <Badge variant="secondary" className="wsd-preview-type"><Text>视频</Text></Badge>
+          {/* <Badge variant="secondary" className="wsd-preview-type"><Text>视频</Text></Badge> */}
           <View className="wsd-preview-play"><Play size={24} color="#FFFFFF" filled /></View>
         </View>
       )
     }
 
-    const isGraphic = work.category === '图文'
+    if (work.images.length > 1) {
+      return (
+        <View className="wsd-preview is-grid">
+          {work.images.map((imageUrl, index) => (
+            <Image
+              key={`${imageUrl}-${index}`}
+              src={imageUrl}
+              mode="aspectFill"
+              className="wsd-preview-grid-image"
+              onClick={() => previewImages(imageUrl)}
+            />
+          ))}
+        </View>
+      )
+    }
+
     return (
-      <View
-        className="wsd-preview"
-        onClick={isGraphic ? openGraphicDetail : () => previewImages()}
-      >
+      <View className="wsd-preview" onClick={() => previewImages()}>
         {work.images[0] ? (
           <Image src={work.images[0]} mode="aspectFill" className="wsd-preview-image" />
         ) : (
           <View className="wsd-preview-empty"><Sparkles size={32} color="#8B5CF6" /></View>
         )}
-        <Badge variant="secondary" className="wsd-preview-type">
+        {/* <Badge variant="secondary" className="wsd-preview-type">
           <Text>{work.category || '作品'}</Text>
-        </Badge>
-        <Text className="wsd-preview-hint">
-          {isGraphic ? '点击查看图文详情' : '点击预览全部图片'}
-        </Text>
+        </Badge> */}
+        {/* <Text className="wsd-preview-hint">点击预览全部图片</Text> */}
       </View>
     )
   }
-
   const renderDetail = () => {
     if (!work) return null
     const highlight = work.description.trim()
@@ -444,18 +458,6 @@ export default function WorkSquareDetailPage() {
         </Button>
       </View>
       <ScrollView scrollY className="wsd-scroll">{body}</ScrollView>
-      <Dialog open={textPreviewOpen} onOpenChange={setTextPreviewOpen}>
-        <DialogContent className="wsd-dialog" overlayClassName="wsd-dialog-overlay">
-          <DialogHeader>
-            <DialogTitle className="wsd-dialog-title">
-              <Text>{work?.contentTitle || work?.title || '文字详情'}</Text>
-            </DialogTitle>
-          </DialogHeader>
-          <ScrollView scrollY className="wsd-dialog-scroll">
-            <Text className="wsd-dialog-text">{work?.contentText || '暂无文字内容'}</Text>
-          </ScrollView>
-        </DialogContent>
-      </Dialog>
       {work && !loading && (
         <View className="wsd-bottom">
           <View className="wsd-bottom-price">

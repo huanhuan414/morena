@@ -372,7 +372,7 @@ export default function WorkSquarePage() {
                       </View>
                     </Button>
 
-                    <View className="ws-card-body">
+                    <View className="ws-card-body" onClick={() => openWorkDetail(work.id)}>
                       <View className="ws-author-row">
                         <Button
                           variant="ghost"
@@ -390,7 +390,7 @@ export default function WorkSquarePage() {
                       </View>
 
                       <View className="ws-work-row">
-                        <View className={`ws-media${work.category === '文字' ? ' is-text' : ''}`} onClick={() => openWork(work)}>
+                        <View className={`ws-media${work.category === '文字' ? ' is-text' : ''}`} >
                           {(work.category === '图片' || work.category === '图文') && work.images[0] ? (
                             <Image src={work.images[0]} mode="aspectFill" className="ws-media-image" />
                           ) : work.category === '视频' && work.videoCoverUrl ? (
@@ -405,7 +405,7 @@ export default function WorkSquarePage() {
                           )}
                         </View>
 
-                        <View className="ws-work-info" onClick={() => openWorkDetail(work.id)}>
+                        <View className="ws-work-info">
                           <Text className="ws-work-title">{work.title || '无标题作品'}</Text>
                           <Text className="ws-work-description">{work.description || work.contentText || '暂无作品描述'}</Text>
                           <Text className="ws-points">{work.generatedPayPoints} 积分</Text>

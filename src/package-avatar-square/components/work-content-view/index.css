@@ -1,0 +1,80 @@
+.wcv-card {
+  position: relative;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 26rpx;
+  border: 1rpx solid #f3e8ff;
+  border-radius: 24rpx;
+  background: #fff;
+}
+
+.wcv-card.is-preview {
+  height: 420rpx;
+}
+
+.wcv-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 12rpx;
+}
+
+.wcv-title {
+  display: block;
+  min-width: 0;
+  flex: 1;
+  color: #32256f;
+  font-size: 32rpx;
+  font-weight: 750;
+  line-height: 44rpx;
+}
+
+.wcv-type {
+  flex-shrink: 0;
+  padding: 6rpx 16rpx;
+  color: #7c3aed;
+  border-radius: 9999rpx;
+  background: #f5f3ff;
+  font-size: 20rpx;
+}
+
+.wcv-desc {
+  display: block;
+  margin-bottom: 18rpx;
+  color: #64748b;
+  font-size: 23rpx;
+  line-height: 38rpx;
+}
+
+.wcv-body {
+  overflow: hidden;
+}
+
+.wcv-text {
+  display: block;
+  margin-bottom: 20rpx;
+  color: #334155;
+  font-size: 26rpx;
+  line-height: 46rpx;
+  white-space: pre-wrap;
+}
+
+.wcv-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 20rpx 0;
+  border-radius: 20rpx;
+}
+
+.wcv-more {
+  position: absolute;
+  right: 26rpx;
+  bottom: 12rpx;
+  display: block;
+  color: #7c3aed;
+  font-size: 34rpx;
+  font-weight: 700;
+  line-height: 34rpx;
+}
