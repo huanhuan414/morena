@@ -36,6 +36,7 @@ export default function AvatarCreateStep2Page() {
   const [templates, setTemplates] = useState<TemplateItem[]>([])
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<number[]>([])
   const boundSourceIdsRef = useRef<number[]>([])
+  const boundStatusMapRef = useRef<Record<number, string>>({})
   const [loadingTemplates, setLoadingTemplates] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -75,6 +76,14 @@ export default function AvatarCreateStep2Page() {
       const ids = resData?.sourceTemplateIds
       if (Array.isArray(ids) && ids.length > 0) {
         boundSourceIdsRef.current = ids
+      }
+      const sMap = resData?.statusMap
+      if (sMap && typeof sMap === 'object') {
+        const parsed: Record<number, string> = {}
+        for (const [k, v] of Object.entries(sMap)) {
+          parsed[Number(k)] = String(v)
+        }
+        boundStatusMapRef.current = parsed
       }
       const skill = resData?.skillType
       if (skill) {
@@ -128,9 +137,9 @@ export default function AvatarCreateStep2Page() {
     }
   }
 
-  /** 切换模板选中状态（已绑定的模版不允许取消） */
+  /** 切换模板选中状态（从模版管理进入时已启用的已绑定模版不允许取消，其他可自由操作） */
   const toggleTemplate = (id: number) => {
-    if (boundSourceIdsRef.current.includes(id)) return
+    if (fromTemplateList && boundStatusMapRef.current[id] === '已启用') return
     setSelectedTemplateIds(prev =>
       prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
     )
@@ -148,7 +157,7 @@ export default function AvatarCreateStep2Page() {
         ? await Network.request({
             url: `/api/ai-avatar/${avatarId}/templates`,
             method: 'PUT',
-            data: { templateIds: selectedTemplateIds },
+            data: { templateIds: selectedTemplateIds, skillType: selectedSkill },
           })
         : await Network.request({
             url: `/api/ai-avatar/${avatarId}/templates`,
@@ -320,12 +329,12 @@ export default function AvatarCreateStep2Page() {
         ) : (
           <View className="acs2-tpl-list">
             {templates.map(tpl => {
-              const isBound = boundSourceIdsRef.current.includes(tpl.id)
+              const isCertified = fromTemplateList && boundStatusMapRef.current[tpl.id] === '已启用'
               const isSelected = selectedTemplateIds.includes(tpl.id)
               return (
                 <View
                   key={tpl.id}
-                  className={`acs2-tpl-item ${isSelected ? 'selected' : ''}${isBound ? ' bound' : ''}`}
+                  className={`acs2-tpl-item ${isSelected ? 'selected' : ''}${isCertified ? ' bound' : ''}`}
                   onClick={() => toggleTemplate(tpl.id)}
                 >
                   {/* 封面图 */}
@@ -358,10 +367,10 @@ export default function AvatarCreateStep2Page() {
                       {formatPrice(tpl.creatorIncomePoints)}
                     </Text>
                     {/* 添加按钮 */}
-                    <View className={`acs2-tpl-item-btn ${isBound ? 'bound' : isSelected ? 'added' : ''}`}>
-                      {isBound ? (
+                    <View className={`acs2-tpl-item-btn ${isCertified ? 'bound' : isSelected ? 'added' : ''}`}>
+                      {isCertified ? (
                         <>
-                          <Text className="acs2-tpl-item-btn-text-bound">已绑定</Text>
+                          <Text className="acs2-tpl-item-btn-text-bound">已认证</Text>
                           <Check size={14} color="#9ca3af" />
                         </>
                       ) : isSelected ? (

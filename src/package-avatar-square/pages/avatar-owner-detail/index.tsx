@@ -703,6 +703,7 @@ export default function AvatarOwnerDetailPage() {
 
       <View
         className="pd-bar"
+        style={templateSheetOpen ? { display: 'none' } : undefined}
       >
         <Button variant="outline" className="pd-bar-btn" onClick={handlePreviewPublicPage}>
           <Eye size={18} color="#6D4CD8" />

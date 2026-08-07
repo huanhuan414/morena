@@ -48,36 +48,39 @@ export default function TemplateUseResultPage() {
     ]
     return (
       <View className="tur-step-bar">
-        <View className="tur-step-bar-back" onClick={goBack}>
-          <ArrowLeft size={18} color="#6b21a8" />
-        </View>
-        <View className="tur-step-bar-items">
-          {steps.map((s, idx) => (
-            <View key={s.num} className="tur-step-bar-item-wrap">
-              <View className="tur-step-bar-item">
-                <View className={`tur-step-bar-num ${s.num === 3 ? 'active' : 'completed'}`}>
-                  {s.num < 3 ? (
-                    <CircleCheck size={16} color="#ffffff" />
-                  ) : (
-                    <Text className="tur-step-bar-num-text">{s.num}</Text>
-                  )}
-                </View>
-                <Text className={`tur-step-bar-label ${s.num === 3 ? 'active' : 'completed'}`}>
-                  {s.label}
-                </Text>
+        {steps.map((s, idx) => (
+          <View key={s.num} className="tur-step-bar-item-wrap">
+            <View className="tur-step-bar-item">
+              <View className={`tur-step-bar-num ${s.num === 3 ? 'active' : 'completed'}`}>
+                {s.num < 3 ? (
+                  <CircleCheck size={14} color="#ffffff" />
+                ) : (
+                  <Text className="tur-step-bar-num-text">{s.num}</Text>
+                )}
               </View>
-              {idx < steps.length - 1 && <View className="tur-step-bar-connector completed" />}
+              <Text className={`tur-step-bar-label ${s.num === 3 ? 'active' : 'completed'}`}>
+                {s.label}
+              </Text>
             </View>
-          ))}
-        </View>
+            {idx < steps.length - 1 && <View className="tur-step-bar-connector completed" />}
+          </View>
+        ))}
       </View>
     )
   }
 
   return (
     <View className="tur-page">
+      {/* 顶部导航栏 */}
+      <View className="tur-header" style={{ paddingTop: `${statusBarHeight + 10}px` }}>
+        <View className="tur-header-back" onClick={goBack}>
+          <ArrowLeft size={18} color="#4C3B78" />
+        </View>
+        <Text className="tur-header-title">生成结果</Text>
+      </View>
+
       {/* 步骤条 */}
-      <View style={{ paddingTop: `${statusBarHeight}px` }}>
+      <View className="tur-step-bar-wrap">
         {renderStepBar()}
       </View>
 

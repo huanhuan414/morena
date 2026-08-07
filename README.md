@@ -1252,3 +1252,16 @@ create(@Body() body: unknown) {
 - `src/package-avatar-square/pages/avatar-public-detail/index.tsx`（WorkPreview 加 templateId、标题修改、使用模版跳转、头像默认展示）
 - `src/package-avatar-square/pages/avatar-public-detail/index.css`（默认头像首字母样式）
 - `server/src/modules/avatar-square/avatar-square.service.ts`（SQL 新增 template_id、返回值加 templateId）
+
+### 2026-08-07 图文生成作品落库解析 article JSON
+
+**会话目的**：`skill_type=图文生成` 时，正确解析模型返回的 article.generation JSON，回填作品表字段并规范 `content_json`。
+
+**完成的主要任务**：
+1. 新增 `parseArticleGeneration`：从 `result.text` 解析完整 article 对象（支持可选 markdown 代码块）
+2. `content_json` 存完整解析后的 article 对象（含 `data`/`usage`）；解析失败回退旧结构
+3. `work_title` ← `data.title`，`work_description` ← `data.summary`，`cover_url` ← `blocks` 中第一个带 `url` 的项
+4. INSERT `ai_generated_work` 补齐 `work_description` 字段
+
+**修改文件**：
+- `server/src/modules/ai-avatar/ai-avatar.service.ts`

@@ -130,10 +130,10 @@ export class AiAvatarService {
   /**
    * 查询分身已绑定的模板列表（返回 source_template_id + 首条 skill_type）
    */
-  async getAvatarBoundTemplates(avatarId: number, userId: string): Promise<{ sourceIds: number[]; skillType: string }> {
+  async getAvatarBoundTemplates(avatarId: number, userId: string): Promise<{ sourceIds: number[]; skillType: string; statusMap: Record<number, string> }> {
     const pool = getPool()
     const [rows] = await pool.query<any[]>(
-      `SELECT source_template_id, skill_type FROM ai_avatar_template
+      `SELECT source_template_id, skill_type, status FROM ai_avatar_template
        WHERE avatar_id = ? AND user_id = ? AND template_source = '官方复制'
          AND deleted_at IS NULL
        ORDER BY id ASC`,
@@ -144,7 +144,12 @@ export class AiAvatarService {
       .map((r: any) => Number(r.source_template_id))
       .filter((id: number) => id > 0)
     const skillType = String(list[0]?.skill_type || '')
-    return { sourceIds, skillType }
+    const statusMap: Record<number, string> = {}
+    for (const r of list) {
+      const sid = Number(r.source_template_id)
+      if (sid > 0) statusMap[sid] = String(r.status || '')
+    }
+    return { sourceIds, skillType, statusMap }
   }
 
   /**
@@ -155,7 +160,7 @@ export class AiAvatarService {
    * - 本次选中但不存在 → 新复制
    * - 原来存在但本次未选中 → 软删除
    */
-  async syncTemplatesToAvatar(avatarId: number, userId: string, selectedSourceIds: number[]) {
+  async syncTemplatesToAvatar(avatarId: number, userId: string, selectedSourceIds: number[], skillType?: string) {
     const pool = getPool()
 
     const [avatarRows] = await pool.query<any[]>(
@@ -233,10 +238,39 @@ export class AiAvatarService {
     )
     const pendingTemplates = (pendingRows || []).map((r: any) => Number(r.id))
 
-    if (pendingTemplates.length > 0) {
+    const [enabledRows] = await pool.query<any[]>(
+      `SELECT COUNT(*) AS cnt FROM ai_avatar_template
+       WHERE avatar_id = ? AND user_id = ? AND status = '已启用' AND deleted_at IS NULL`,
+      [avatarId, userId]
+    )
+    const hasEnabledTemplate = (enabledRows?.[0]?.cnt || 0) > 0
+
+    const validSkillTypes = ['文字生成', '图片生成', '视频生成', '图文生成']
+    const shouldUpdateSkill = skillType && validSkillTypes.includes(skillType)
+
+    if (pendingTemplates.length > 0 && !hasEnabledTemplate) {
+      if (shouldUpdateSkill) {
+        await pool.query(
+          `UPDATE ai_avatar SET status = '待测试', skill_type = ? WHERE id = ? AND user_id = ?`,
+          [skillType, avatarId, userId]
+        )
+      } else {
+        await pool.query(
+          `UPDATE ai_avatar SET status = '待测试' WHERE id = ? AND user_id = ?`,
+          [avatarId, userId]
+        )
+      }
+    } else if (pendingTemplates.length > 0 && hasEnabledTemplate) {
+      if (shouldUpdateSkill) {
+        await pool.query(
+          `UPDATE ai_avatar SET skill_type = ? WHERE id = ? AND user_id = ?`,
+          [skillType, avatarId, userId]
+        )
+      }
+    } else if (shouldUpdateSkill) {
       await pool.query(
-        `UPDATE ai_avatar SET status = '待测试' WHERE id = ? AND user_id = ?`,
-        [avatarId, userId]
+        `UPDATE ai_avatar SET skill_type = ? WHERE id = ? AND user_id = ?`,
+        [skillType, avatarId, userId]
       )
     }
 
@@ -1500,6 +1534,7 @@ export class AiAvatarService {
 
       const contentJson = this.buildContentJson(skillType, modelResult)
       const workTitle = this.extractWorkTitle(skillType, modelResult)
+      const workDescription = this.extractWorkDescription(skillType, modelResult)
       const coverUrl = this.extractCoverUrl(skillType, modelResult)
 
       const [avatarInfoRows] = await connection.query<any[]>(
@@ -1519,12 +1554,12 @@ export class AiAvatarService {
       await connection.query(
         `INSERT INTO ai_generated_work
          (task_id, user_id, avatar_user_id, avatar_id, template_id,
-          work_title, cover_url, skill_type, content_json, tags_json, source_snapshot_json,
+          work_title, work_description, cover_url, skill_type, content_json, tags_json, source_snapshot_json,
           generated_pay_points, success_item_count, status, public_status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '正常', '私有')`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '正常', '私有')`,
         [
           taskId, userId, avatarUserId, dto.avatarId, dto.templateId,
-          workTitle, coverUrl, skillType, JSON.stringify(contentJson),
+          workTitle, workDescription, coverUrl, skillType, JSON.stringify(contentJson),
           tpl.tags_json ? (typeof tpl.tags_json === 'string' ? tpl.tags_json : JSON.stringify(tpl.tags_json)) : null,
           JSON.stringify(sourceSnapshot), paidPoints, successCount,
         ]
@@ -1686,12 +1721,45 @@ export class AiAvatarService {
   }
 
   /**
+   * 解析图文生成模型返回的 article.generation JSON。
+   * `result.text` 可能是 JSON 字符串（含可选 ```json 代码块），也可能已是对象。
+   * 解析成功且含 `data` 时返回完整 article 对象；失败返回 null。
+   */
+  private parseArticleGeneration(result: any): Record<string, any> | null {
+    const raw = result?.result?.text
+    if (raw == null) return null
+
+    if (typeof raw === 'object' && !Array.isArray(raw)) {
+      return raw.data ? raw : null
+    }
+
+    if (typeof raw !== 'string') return null
+    let text = raw.trim()
+    if (!text) return null
+
+    const fenceMatch = text.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/i)
+    if (fenceMatch) {
+      text = fenceMatch[1].trim()
+    }
+
+    try {
+      const parsed = JSON.parse(text)
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.data) {
+        return parsed
+      }
+      return null
+    } catch {
+      return null
+    }
+  }
+
+  /**
    * 构建 content_json（严格按文档 9.3 节最小结构）
    *
    * 文字: { text }
    * 图片: { images: [url, ...] }
    * 视频: { video_url, cover_url }
-   * 图文: { title, text, images: [url, ...] }
+   * 图文: 完整 article.generation 对象（含 data/usage）；解析失败回退 { title, text, images }
    */
   private buildContentJson(skillType: string, result: any): any {
     const r = result.result || {}
@@ -1700,19 +1768,38 @@ export class AiAvatarService {
         return { images: (r.images || []).filter(Boolean) }
       case '视频生成':
         return { video_url: r.video_url || '', cover_url: r.images?.[0] || '' }
-      case '图文生成':
+      case '图文生成': {
+        const article = this.parseArticleGeneration(result)
+        if (article) return article
         return {
           title: this.extractWorkTitle(skillType, result),
           text: r.text || '',
           images: (r.images || []).filter(Boolean),
         }
+      }
       default:
         return { text: r.text || '' }
     }
   }
 
+  /**
+   * 截断字符串到指定长度（用于 work_title 等有长度限制的列）
+   */
+  private truncateText(value: string, maxLen: number): string {
+    if (!value) return value
+    return value.length > maxLen ? value.substring(0, maxLen) : value
+  }
+
   /** 提取作品标题 */
   private extractWorkTitle(skillType: string, result: any): string {
+    if (skillType === '图文生成') {
+      const article = this.parseArticleGeneration(result)
+      if (article) {
+        const title = String(article?.data?.title || '').trim()
+        return title ? this.truncateText(title, 500) : 'AI生成作品'
+      }
+    }
+
     if (result.result?.text) {
       const firstLine = result.result.text.split('\n').find((l: string) => l.trim()) || ''
       return firstLine.length > 200 ? firstLine.substring(0, 200) : firstLine || 'AI生成作品'
@@ -1722,8 +1809,35 @@ export class AiAvatarService {
     return 'AI生成作品'
   }
 
-  /** 提取封面URL（只接受 http/https URL，跳过 base64） */
+  /**
+   * 提取作品描述：图文生成取 data.summary；其它类型暂不填充
+   */
+  private extractWorkDescription(skillType: string, result: any): string | null {
+    if (skillType !== '图文生成') return null
+    const article = this.parseArticleGeneration(result)
+    const summary = String(article?.data?.summary || '').trim()
+    return summary || null
+  }
+
+  /**
+   * 提取封面URL（只接受 http/https URL，跳过 base64）
+   * 图文生成：取 data.blocks 中第一个带 url 的项
+   */
   private extractCoverUrl(skillType: string, result: any): string | null {
+    if (skillType === '图文生成') {
+      const article = this.parseArticleGeneration(result)
+      const blocks = article?.data?.blocks
+      if (Array.isArray(blocks)) {
+        for (const block of blocks) {
+          const url = block?.url
+          if (typeof url === 'string' && url.trim() && !url.startsWith('data:')) {
+            return url.trim()
+          }
+        }
+      }
+      return null
+    }
+
     const first = result.result?.images?.[0]
     if (first && !first.startsWith('data:')) return first
     return null

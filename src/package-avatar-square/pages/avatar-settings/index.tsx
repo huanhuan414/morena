@@ -8,7 +8,6 @@ import {
   ChevronRight,
   FileText,
   Globe,
-  HeartPulse,
   LockKeyhole,
   PenLine,
   Power,
@@ -18,7 +17,6 @@ import {
   Type,
 } from 'lucide-react-taro'
 
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -320,32 +318,6 @@ export default function AvatarSettingsPage() {
                 </CardContent>
               </Card>
 
-              <Card className="avs-card">
-                <CardContent className="avs-card-content avs-skill-content">
-                  <View className="avs-section-heading">
-                    <View className="avs-row-icon"><HeartPulse size={18} color="#7C3AED" /></View>
-                    <View className="avs-row-copy">
-                      <Text className="avs-row-title">技能详情</Text>
-                      <Text className="avs-row-subtitle">每个分身仅可绑定 1 个技能</Text>
-                    </View>
-                  </View>
-                  <View className="avs-skill-box">
-                    <View className="avs-skill-icon"><HeartPulse size={24} color="#22C55E" /></View>
-                    <View className="avs-skill-copy">
-                      <View className="avs-skill-title-row">
-                        <Text className="avs-skill-title">治愈文案创作</Text>
-                        <Badge variant="secondary" className="avs-skill-badge"><Text>插件技能</Text></Badge>
-                      </View>
-                      <Text className="avs-skill-description">擅长情感文案、治愈系文案创作，帮你输出温暖内容。</Text>
-                    </View>
-                    <ChevronRight size={18} color="#C4B5E8" />
-                  </View>
-                  <View className="avs-skill-static">
-                    <RefreshCw size={14} color="#8B5CF6" />
-                    <Text>更换技能（暂未开放）</Text>
-                  </View>
-                </CardContent>
-              </Card>
 
               <Card className="avs-card avs-toggle-card">
                 <CardContent className="avs-card-content">

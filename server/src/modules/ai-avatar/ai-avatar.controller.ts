@@ -301,7 +301,7 @@ export class AiAvatarController {
       }
 
       const bound = await this.aiAvatarService.getAvatarBoundTemplates(avatarId, userId)
-      return { code: 200, msg: 'success', data: { sourceTemplateIds: bound.sourceIds, skillType: bound.skillType } }
+      return { code: 200, msg: 'success', data: { sourceTemplateIds: bound.sourceIds, skillType: bound.skillType, statusMap: bound.statusMap } }
     } catch (error) {
       console.error('查询分身已绑定模板失败:', error)
       return { code: 500, msg: error instanceof Error ? error.message : '服务器错误', data: null }
@@ -317,7 +317,7 @@ export class AiAvatarController {
   async syncTemplates(
     @Param('id') id: string,
     @Req() req: any,
-    @Body() body: { templateIds: number[] },
+    @Body() body: { templateIds: number[]; skillType?: string },
   ) {
     try {
       const userId = this.getUserId(req)
@@ -332,7 +332,7 @@ export class AiAvatarController {
         return { code: 400, msg: '请至少选择一个模板', data: null }
       }
 
-      const result = await this.aiAvatarService.syncTemplatesToAvatar(avatarId, userId, body.templateIds)
+      const result = await this.aiAvatarService.syncTemplatesToAvatar(avatarId, userId, body.templateIds, body.skillType)
       return { code: 200, msg: 'success', data: result }
     } catch (error) {
       console.error('同步分身模板失败:', error)
