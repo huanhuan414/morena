@@ -181,12 +181,12 @@ export default defineAppConfig({
         iconPath: './tabbar-icons/home.png',
         selectedIconPath: './tabbar-icons/home-active.png',
       },
-      {
-        pagePath: 'pages/mind-chat/index',
-        text: '分身',
-        iconPath: './tabbar-icons/message-circle.png',
-        selectedIconPath: './tabbar-icons/message-circle-active.png',
-      },
+      // {
+      //   pagePath: 'pages/mind-chat/index',
+      //   text: '分身',
+      //   iconPath: './tabbar-icons/message-circle.png',
+      //   selectedIconPath: './tabbar-icons/message-circle-active.png',
+      // },
       {
         pagePath: 'pages/avatar-square/index',
         text: '分身广场',
