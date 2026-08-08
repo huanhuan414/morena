@@ -154,6 +154,7 @@ export default defineAppConfig({
         'pages/template-detail/index',
         'pages/template-use/index',
         'pages/template-use-result/index',
+        'pages/custom-template-create/index',
       ],
     },
   ],

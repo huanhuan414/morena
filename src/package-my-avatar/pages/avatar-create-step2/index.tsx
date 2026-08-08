@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import Taro, { useLoad } from '@tarojs/taro'
-import { ArrowLeft, Check, ChevronRight, FileText, Palette, Film, LayoutDashboard, Plus, Sparkles, CirclePlus } from 'lucide-react-taro'
+import { ArrowLeft, Check, ChevronRight, FileText, Palette, Film, LayoutDashboard, Plus, Sparkles, CirclePlus, Pencil } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import './index.css'
@@ -24,6 +24,7 @@ type TemplateItem = {
   creatorIncomePoints: number
   useCount: number
   favoriteCount: number
+  templateSource: string
 }
 
 type PageView = 'skill_select' | 'template_list'
@@ -43,13 +44,15 @@ export default function AvatarCreateStep2Page() {
   const isEditMode = avatarId > 0
   const [fromTemplateList, setFromTemplateList] = useState(false)
 
-  /** 加载模板列表，编辑模式下自动勾选已绑定模板 */
-  const loadTemplates = useCallback(async (skillType: string, preselectedIds?: number[]) => {
+  /** 加载模板列表（官方 + 分身自定义），编辑模式下自动勾选已绑定模板 */
+  const loadTemplates = useCallback(async (skillType: string, preselectedIds?: number[], forAvatarId?: number) => {
     setLoadingTemplates(true)
     try {
+      const reqData: Record<string, any> = { skill_type: skillType }
+      if (forAvatarId) reqData.avatar_id = forAvatarId
       const res = await Network.request({
         url: '/api/ai-avatar/templates',
-        data: { skill_type: skillType },
+        data: reqData,
       })
       const data = (res.data as any)?.data
       if (Array.isArray(data)) {
@@ -90,7 +93,7 @@ export default function AvatarCreateStep2Page() {
         setSelectedSkill(skill)
         if (directToTemplates) {
           setPageView('template_list')
-          void loadTemplates(skill, ids)
+          void loadTemplates(skill, ids, id)
         }
       }
     } catch {
@@ -124,7 +127,7 @@ export default function AvatarCreateStep2Page() {
     if (!preselect || preselect.length === 0) {
       setSelectedTemplateIds([])
     }
-    void loadTemplates(selectedSkill, preselect)
+    void loadTemplates(selectedSkill, preselect, avatarId)
   }
 
   /** 跳过 */
@@ -254,7 +257,24 @@ export default function AvatarCreateStep2Page() {
 
   /** 跳转创建自定义模板页面 */
   const handleCreateCustomTemplate = () => {
-    Taro.showToast({ title: '自定义模板功能开发中', icon: 'none' })
+    if (!avatarId) {
+      Taro.showToast({ title: '分身信息异常', icon: 'none' })
+      return
+    }
+    void Taro.navigateTo({
+      url: `/package-my-avatar/pages/custom-template-create/index?avatarId=${avatarId}&skillType=${encodeURIComponent(selectedSkill)}`,
+    })
+  }
+
+  /** 跳转编辑自定义模板页面 */
+  const handleEditCustomTemplate = (templateId: number) => {
+    if (!avatarId) {
+      Taro.showToast({ title: '分身信息异常', icon: 'none' })
+      return
+    }
+    void Taro.navigateTo({
+      url: `/package-my-avatar/pages/custom-template-create/index?avatarId=${avatarId}&skillType=${encodeURIComponent(selectedSkill)}&templateId=${templateId}`,
+    })
   }
 
   // ===== 渲染：技能类型选择 =====
@@ -331,6 +351,7 @@ export default function AvatarCreateStep2Page() {
             {templates.map(tpl => {
               const isCertified = fromTemplateList && boundStatusMapRef.current[tpl.id] === '已启用'
               const isSelected = selectedTemplateIds.includes(tpl.id)
+              const isCustom = tpl.templateSource === '自定义模板'
               return (
                 <View
                   key={tpl.id}
@@ -344,6 +365,14 @@ export default function AvatarCreateStep2Page() {
                     ) : (
                       <View className="acs2-tpl-item-placeholder">
                         <FileText size={20} color="#a78bfa" />
+                      </View>
+                    )}
+                    {isCustom && (
+                      <View
+                        className="acs2-tpl-edit-btn"
+                        onClick={(e) => { e.stopPropagation(); handleEditCustomTemplate(tpl.id) }}
+                      >
+                        <Pencil size={12} color="#ffffff" />
                       </View>
                     )}
                   </View>
@@ -392,17 +421,19 @@ export default function AvatarCreateStep2Page() {
           </View>
         )}
 
-        {/* 创建自定义模板入口 */}
-        <View className="acs2-custom-entry" onClick={handleCreateCustomTemplate}>
-          <View className="acs2-custom-left">
-            <Plus size={18} color="#7c3aed" />
-            <View>
-              <Text className="acs2-custom-text">创建自定义模板</Text>
-              <Text className="acs2-custom-desc">在{skillInfo?.name || selectedSkill}类下，创建你自己的专属模板</Text>
+        {/* 创建自定义模板入口（图文生成类型不支持自定义模版） */}
+        {selectedSkill !== '图文生成' && (
+          <View className="acs2-custom-entry" onClick={handleCreateCustomTemplate}>
+            <View className="acs2-custom-left">
+              <Plus size={18} color="#7c3aed" />
+              <View>
+                <Text className="acs2-custom-text">创建自定义模板</Text>
+                <Text className="acs2-custom-desc">在{skillInfo?.name || selectedSkill}类下，创建你自己的专属模板</Text>
+              </View>
             </View>
+            <ChevronRight size={16} color="#9ca3af" />
           </View>
-          <ChevronRight size={16} color="#9ca3af" />
-        </View>
+        )}
       </View>
     )
   }
@@ -425,11 +456,14 @@ export default function AvatarCreateStep2Page() {
       {/* 进度条 */}
       <View className="acs2-progress">
         <View className="acs2-progress-bar">
-          <View className="acs2-progress-fill" style={{
-            width: isEditMode
-              ? (pageView === 'template_list' ? '100%' : '66.6%')
-              : '66.6%',
-          }} />
+          <View
+            className="acs2-progress-fill"
+            style={{
+              width: isEditMode
+                ? (pageView === 'template_list' ? '100%' : '66.6%')
+                : '66.6%',
+            }}
+          />
         </View>
       </View>
 

@@ -1265,3 +1265,48 @@ create(@Body() body: unknown) {
 
 **修改文件**：
 - `server/src/modules/ai-avatar/ai-avatar.service.ts`
+
+### 2026-08-08 自定义模版创建功能（全栈）
+
+**会话目的**：在编辑模版（3/3）页面增加创建自定义模版入口，并实现完整的自定义模版创建页面和后端API，参考 Web 后台官方模版新增逻辑设计。
+
+**完成的主要任务**：
+1. **编辑模版（3/3）页面条件显示**：当技能类型不是「图文生成」时显示「创建自定义模板」按钮，图文生成类型隐藏
+2. **后端新增 GET /api/ai-avatar/model-apis**：按技能类型查询启用中的模型API列表，供自定义模版绑定模型使用
+3. **后端新增 POST /api/ai-avatar/custom-templates**：创建自定义模版接口，template_source='自定义模板'，绑定 avatar_id 和 user_id，包含完整校验（分身归属、模型API有效性等）
+4. **前端新建自定义模版创建页面**（5大模块）：
+   - 基础信息：模版名称、模版介绍、模版标签（气泡UI）、绑定模型API（底部弹窗选择）、创作者收益积分
+   - 提示词参数配置：动态添加参数（显示名称/变量key/类型/必填/可选值），支持删除，变量key自动生成
+   - AI 提示词：快捷插入变量标签栏 + 多行文本编辑区
+   - 素材上传配置：开关控制、最大数量/大小、文件类型多选
+   - 模型调用参数：根据技能类型动态显示（文字/图文显示max_tokens+temperature，图片/图文显示result_count+size，视频显示duration+ratio）
+5. **路由注册**：将新页面添加到 app.config.ts 的 package-my-avatar 子包
+6. **页面跳转**：创建成功后自动跳转到技能认证页面（skill-certify）
+
+**修改文件**：
+- `src/package-my-avatar/pages/avatar-create-step2/index.tsx`（条件显示自定义模版按钮、跳转逻辑、进度条JSX格式修复）
+- `src/package-my-avatar/pages/custom-template-create/index.tsx`（新建：自定义模版创建页面完整实现）
+- `src/package-my-avatar/pages/custom-template-create/index.css`（新建：页面样式）
+- `src/package-my-avatar/pages/custom-template-create/index.config.ts`（新建：页面配置）
+- `src/app.config.ts`（注册新页面路由）
+- `server/src/modules/ai-avatar/ai-avatar.controller.ts`（新增 model-apis 和 custom-templates 两个接口路由）
+- `server/src/modules/ai-avatar/ai-avatar.service.ts`（新增 getModelApisBySkillType 和 createCustomTemplate 方法）
+
+### 2026-08-08 自定义模版四版面重构
+
+**会话目的**：将自定义模版创建页面从单一长页面重构为四步向导流程（同一组件内 step 状态切换），参考三张 UI 设计稿实现。
+
+**完成的主要任务**：
+1. **Step 1 基础信息**：模版封面上传（Taro.chooseImage + TOS）、模版名称、模版介绍、模版标签（气泡UI），去掉原绑定模型API和创作收益积分模块
+2. **Step 2 模型选择**：卡片式模型列表（显示图标、名称、描述、标签、积分/次），单选 radio 交互；创作者收益积分输入；价格合计卡片（模型成本 + 创作收益 = 用户单次消耗）
+3. **Step 3 参数设置**：参数列表（带图标/类型/必填标签）、点击展开编辑面板（参数名/变量标识/输入类型/必填/占位文案/帮助说明/可选项）、底部实时「用户填写预览」区
+4. **Step 4 提示词模版**：提示词编辑器（2000字限制 + 字数统计）、变量列表芯片（点击插入/已使用✓标识）、素材上传配置（条件显示）、模型调用参数（条件显示）
+5. **步骤指示器**：顶部圆点+连接线，当前步高亮紫色，已完成步显示✓
+6. **底部导航**：上一步/下一步按钮，步骤间校验（名称必填、模型必选），第四步为「完成模版创建」
+7. **后端扩展**：model-apis 接口增加 `description`、`iconUrl`、`modelCostPoints`、`providerName`、`modelName`、`hasModelParams` 字段；createCustomTemplate 支持 `coverUrl` 字段入库
+
+**修改文件**：
+- `src/package-my-avatar/pages/custom-template-create/index.tsx`（全面重写：四步向导流程）
+- `src/package-my-avatar/pages/custom-template-create/index.css`（全面重写：四版面样式）
+- `server/src/modules/ai-avatar/ai-avatar.service.ts`（扩展 getModelApisBySkillType 返回字段、createCustomTemplate 支持 coverUrl）
+- `server/src/modules/ai-avatar/ai-avatar.controller.ts`（createCustomTemplate body 增加 coverUrl 字段）

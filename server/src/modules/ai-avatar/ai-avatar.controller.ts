@@ -7,13 +7,144 @@ export class AiAvatarController {
   constructor(private readonly aiAvatarService: AiAvatarService) {}
 
   /**
-   * GET /api/ai-avatar/templates - 查询官方模板列表
+   * GET /api/ai-avatar/model-apis - 按技能类型查询启用中的模型API列表
    * 可选 ?skill_type=文字生成 按技能类型筛选
    */
-  @Get('templates')
-  async getTemplates(@Query('skill_type') skillType?: string) {
+  @Get('model-apis')
+  async getModelApis(@Query('skill_type') skillType?: string) {
     try {
-      const list = await this.aiAvatarService.getOfficialTemplates(skillType || undefined)
+      const list = await this.aiAvatarService.getModelApisBySkillType(skillType || undefined)
+      return { code: 200, msg: 'success', data: list }
+    } catch (error) {
+      console.error('查询模型API列表失败:', error)
+      return { code: 500, msg: error instanceof Error ? error.message : '服务器错误', data: null }
+    }
+  }
+
+  /**
+   * POST /api/ai-avatar/custom-templates - 创建自定义模版
+   */
+  @Post('custom-templates')
+  @HttpCode(200)
+  async createCustomTemplate(
+    @Req() req: any,
+    @Body() body: {
+      avatarId: number
+      templateName: string
+      templateDescription?: string
+      coverUrl?: string
+      skillType: string
+      tagsJson?: string[]
+      modelApiId: number
+      promptText?: string
+      promptVariablesJson?: any[]
+      materialConfigJson?: Record<string, any> | null
+      modelParamsJson?: Record<string, any> | null
+      creatorIncomePoints?: number
+    },
+  ) {
+    try {
+      const userId = this.getUserId(req)
+      if (!userId) return { code: 401, msg: '请先登录', data: null }
+
+      if (!body.avatarId) {
+        return { code: 400, msg: '分身ID不能为空', data: null }
+      }
+      if (!body.templateName?.trim()) {
+        return { code: 400, msg: '模版名称不能为空', data: null }
+      }
+
+      const result = await this.aiAvatarService.createCustomTemplate(userId, body.avatarId, {
+        templateName: body.templateName,
+        templateDescription: body.templateDescription,
+        coverUrl: body.coverUrl,
+        skillType: body.skillType,
+        tagsJson: body.tagsJson,
+        modelApiId: body.modelApiId,
+        promptText: body.promptText,
+        promptVariablesJson: body.promptVariablesJson,
+        materialConfigJson: body.materialConfigJson,
+        modelParamsJson: body.modelParamsJson,
+        creatorIncomePoints: body.creatorIncomePoints,
+      })
+
+      return { code: 200, msg: 'success', data: result }
+    } catch (error) {
+      console.error('创建自定义模版失败:', error)
+      return { code: 500, msg: error instanceof Error ? error.message : '服务器错误', data: null }
+    }
+  }
+
+  /**
+   * PUT /api/ai-avatar/custom-templates/:id - 更新自定义模版
+   */
+  @Put('custom-templates/:id')
+  @HttpCode(200)
+  async updateCustomTemplate(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Body() body: {
+      templateName: string
+      templateDescription?: string
+      coverUrl?: string
+      skillType: string
+      tagsJson?: string[]
+      modelApiId: number
+      promptText?: string
+      promptVariablesJson?: any[]
+      materialConfigJson?: Record<string, any> | null
+      modelParamsJson?: Record<string, any> | null
+      creatorIncomePoints?: number
+    },
+  ) {
+    try {
+      const userId = this.getUserId(req)
+      if (!userId) return { code: 401, msg: '请先登录', data: null }
+
+      const templateId = Number(id)
+      if (!Number.isInteger(templateId) || templateId <= 0) {
+        return { code: 400, msg: '模版ID无效', data: null }
+      }
+      if (!body.templateName?.trim()) {
+        return { code: 400, msg: '模版名称不能为空', data: null }
+      }
+
+      const result = await this.aiAvatarService.updateCustomTemplate(userId, templateId, {
+        templateName: body.templateName,
+        templateDescription: body.templateDescription,
+        coverUrl: body.coverUrl,
+        skillType: body.skillType,
+        tagsJson: body.tagsJson,
+        modelApiId: body.modelApiId,
+        promptText: body.promptText,
+        promptVariablesJson: body.promptVariablesJson,
+        materialConfigJson: body.materialConfigJson,
+        modelParamsJson: body.modelParamsJson,
+        creatorIncomePoints: body.creatorIncomePoints,
+      })
+
+      return { code: 200, msg: 'success', data: result }
+    } catch (error) {
+      console.error('更新自定义模版失败:', error)
+      return { code: 500, msg: error instanceof Error ? error.message : '服务器错误', data: null }
+    }
+  }
+
+  /**
+   * GET /api/ai-avatar/templates - 查询可选模板列表
+   * ?skill_type=文字生成 按技能类型筛选
+   * ?avatar_id=123 同时返回该分身下的自定义模板
+   */
+  @Get('templates')
+  async getTemplates(
+    @Query('skill_type') skillType?: string,
+    @Query('avatar_id') avatarIdStr?: string,
+    @Req() req?: any,
+  ) {
+    try {
+      const avatarId = Number(avatarIdStr) || undefined
+      const userId = avatarId ? this.getUserId(req) : undefined
+      const list = await this.aiAvatarService.getOfficialTemplates(skillType || undefined, avatarId, userId || undefined)
       return { code: 200, msg: 'success', data: list }
     } catch (error) {
       console.error('查询模板列表失败:', error)

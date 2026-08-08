@@ -642,15 +642,29 @@ export class AiAvatarService {
   }
 
   /**
-   * 查询官方模板列表（按技能类型筛选）
-   * template_source='官方模板' AND status='已启用' AND display_status='对外展示' AND deleted_at IS NULL
+   * 查询可选模板列表（官方模板 + 指定分身下的自定义模板）
+   * 官方模板：template_source='官方模板' AND status='已启用' AND display_status='对外展示'
+   * 自定义模板：template_source='自定义模板' AND avatar_id=? AND user_id=?
    */
-  async getOfficialTemplates(skillType?: string) {
+  async getOfficialTemplates(skillType?: string, avatarId?: number, userId?: string) {
     const pool = getPool()
+
+    const mapRow = (row: any) => ({
+      id: row.id,
+      templateName: row.template_name,
+      templateDescription: row.template_description,
+      coverUrl: row.cover_url,
+      skillType: row.skill_type,
+      tags: this.parseJsonSafe(row.tags_json, []),
+      creatorIncomePoints: row.creator_income_points || 0,
+      useCount: row.use_count || 0,
+      favoriteCount: row.favorite_count || 0,
+      templateSource: row.template_source as string,
+    })
 
     let sql = `
       SELECT id, template_name, template_description, cover_url, skill_type,
-             tags_json, creator_income_points, use_count, favorite_count
+             tags_json, creator_income_points, use_count, favorite_count, template_source
       FROM ai_avatar_template
       WHERE template_source = '官方模板'
         AND status = '已启用'
@@ -667,17 +681,23 @@ export class AiAvatarService {
     sql += ' ORDER BY use_count DESC, id ASC'
 
     const [rows] = await pool.query<any[]>(sql, params)
-    return (rows || []).map((row: any) => ({
-      id: row.id,
-      templateName: row.template_name,
-      templateDescription: row.template_description,
-      coverUrl: row.cover_url,
-      skillType: row.skill_type,
-      tags: this.parseJsonSafe(row.tags_json, []),
-      creatorIncomePoints: row.creator_income_points || 0,
-      useCount: row.use_count || 0,
-      favoriteCount: row.favorite_count || 0,
-    }))
+    const result = (rows || []).map(mapRow)
+
+    if (avatarId && userId && skillType) {
+      const [customRows] = await pool.query<any[]>(
+        `SELECT id, template_name, template_description, cover_url, skill_type,
+                tags_json, creator_income_points, use_count, favorite_count, template_source
+         FROM ai_avatar_template
+         WHERE template_source = '自定义模板'
+           AND avatar_id = ? AND user_id = ? AND skill_type = ?
+           AND deleted_at IS NULL
+         ORDER BY id DESC`,
+        [avatarId, userId, skillType]
+      )
+      result.push(...(customRows || []).map(mapRow))
+    }
+
+    return result
   }
 
   /**
@@ -710,11 +730,14 @@ export class AiAvatarService {
       promptText: tpl.prompt_text || '',
       promptVariables: this.parseJsonSafe(tpl.prompt_variables_json, []),
       materialConfig: this.parseJsonSafe(tpl.material_config_json, null),
+      modelParams: this.parseJsonSafe(tpl.model_params_json, null),
       outputConfig: this.parseJsonSafe(tpl.output_config_json, null),
+      modelApiId: tpl.model_api_id || 0,
       creatorIncomePoints: tpl.creator_income_points || 0,
       useCount: tpl.use_count || 0,
       favoriteCount: tpl.favorite_count || 0,
       status: tpl.status,
+      templateSource: tpl.template_source || '',
       modelApi: tpl.model_name ? {
         id: tpl.model_api_id,
         modelName: tpl.model_name,
@@ -1945,6 +1968,190 @@ export class AiAvatarService {
 
     // 兜底：原样返回 JSON
     return { success: true, output_type: 'text', result: { text: JSON.stringify(data, null, 2) }, task_id: null, error: null }
+  }
+
+  /**
+   * 按技能类型查询启用中的模型API列表（供自定义模版绑定模型使用）
+   */
+  async getModelApisBySkillType(skillType?: string) {
+    const pool = getPool()
+
+    let sql = `
+      SELECT id, provider_name, model_name, skill_type,
+             description, icon_url, model_cost_points,
+             image_sizes_json, attachment_config_json, fixed_params_json
+      FROM ai_model_api
+      WHERE status = '启用' AND deleted_at IS NULL
+    `
+    const params: any[] = []
+
+    if (skillType) {
+      sql += ' AND skill_type = ?'
+      params.push(skillType)
+    }
+
+    sql += ' ORDER BY sort_order ASC, provider_name ASC'
+
+    const [rows] = await pool.query<any[]>(sql, params)
+    return (rows || []).map((row: any) => ({
+      id: row.id,
+      providerName: row.provider_name,
+      modelName: row.model_name,
+      label: `${row.provider_name} - ${row.model_name}`,
+      skillType: row.skill_type,
+      description: row.description || '',
+      iconUrl: row.icon_url || '',
+      modelCostPoints: row.model_cost_points || 0,
+      imageSizes: this.parseJsonSafe(row.image_sizes_json, null),
+      attachmentConfig: this.parseJsonSafe(row.attachment_config_json, null),
+      hasModelParams: !!this.parseJsonSafe(row.fixed_params_json, null),
+    }))
+  }
+
+  /**
+   * 创建自定义模版（用户端）
+   * template_source='自定义模板'，绑定 avatar_id 和 user_id
+   */
+  async createCustomTemplate(userId: string, avatarId: number, data: {
+    templateName: string
+    templateDescription?: string
+    coverUrl?: string
+    skillType: string
+    tagsJson?: string[]
+    modelApiId: number
+    promptText?: string
+    promptVariablesJson?: any[]
+    materialConfigJson?: Record<string, any> | null
+    modelParamsJson?: Record<string, any> | null
+    creatorIncomePoints?: number
+  }) {
+    const pool = getPool()
+
+    const [avatarRows] = await pool.query<any[]>(
+      'SELECT id FROM ai_avatar WHERE id = ? AND user_id = ? AND deleted_at IS NULL',
+      [avatarId, userId]
+    )
+    if (!avatarRows?.length) {
+      throw new Error('分身不存在或无权操作')
+    }
+
+    if (!data.templateName?.trim()) {
+      throw new Error('模版名称不能为空')
+    }
+
+    const validSkillTypes = ['文字生成', '图片生成', '视频生成', '图文生成']
+    if (!validSkillTypes.includes(data.skillType)) {
+      throw new Error('技能类型无效')
+    }
+
+    if (data.modelApiId) {
+      const [apiRows] = await pool.query<any[]>(
+        'SELECT id FROM ai_model_api WHERE id = ? AND status = ? AND deleted_at IS NULL',
+        [data.modelApiId, '启用']
+      )
+      if (!apiRows?.length) {
+        throw new Error('所选模型API不存在或未启用')
+      }
+    }
+
+    const tagsJson = this.toJsonString(data.tagsJson || null)
+    const promptVarsJson = this.toJsonString(data.promptVariablesJson || null)
+    const materialConfigJson = this.toJsonString(data.materialConfigJson || null)
+    const modelParamsJson = this.toJsonString(data.modelParamsJson || null)
+
+    const [insertResult] = await pool.query<any>(
+      `INSERT INTO ai_avatar_template
+       (avatar_id, user_id, template_source,
+        template_name, template_description, cover_url, skill_type, tags_json,
+        model_api_id, prompt_text, prompt_variables_json, material_config_json,
+        model_params_json, creator_income_points, version_no, status, display_status)
+       VALUES (?, ?, '自定义模板', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, '待测试', '仅自己可见')`,
+      [
+        avatarId, userId,
+        data.templateName.trim(),
+        (data.templateDescription || '').trim() || null,
+        (data.coverUrl || '').trim() || null,
+        data.skillType,
+        tagsJson,
+        data.modelApiId || 0,
+        (data.promptText || '').trim() || null,
+        promptVarsJson,
+        materialConfigJson,
+        modelParamsJson,
+        data.creatorIncomePoints || 0,
+      ]
+    )
+
+    const templateId = insertResult?.insertId
+    return {
+      templateId,
+      avatarId,
+      status: '待测试',
+    }
+  }
+
+  /**
+   * 更新自定义模版
+   * 只允许更新 template_source='自定义模板' 且属于当前用户的模版
+   */
+  async updateCustomTemplate(userId: string, templateId: number, data: {
+    templateName: string
+    templateDescription?: string
+    coverUrl?: string
+    skillType: string
+    tagsJson?: string[]
+    modelApiId: number
+    promptText?: string
+    promptVariablesJson?: any[]
+    materialConfigJson?: Record<string, any> | null
+    modelParamsJson?: Record<string, any> | null
+    creatorIncomePoints?: number
+  }) {
+    const pool = getPool()
+
+    const [tplRows] = await pool.query<any[]>(
+      `SELECT id, avatar_id FROM ai_avatar_template
+       WHERE id = ? AND user_id = ? AND template_source = '自定义模板' AND deleted_at IS NULL`,
+      [templateId, userId]
+    )
+    if (!tplRows?.length) {
+      throw new Error('模版不存在或无权操作')
+    }
+
+    if (!data.templateName?.trim()) {
+      throw new Error('模版名称不能为空')
+    }
+
+    const tagsJson = this.toJsonString(data.tagsJson || null)
+    const promptVarsJson = this.toJsonString(data.promptVariablesJson || null)
+    const materialConfigJson = this.toJsonString(data.materialConfigJson || null)
+    const modelParamsJson = this.toJsonString(data.modelParamsJson || null)
+
+    await pool.query(
+      `UPDATE ai_avatar_template SET
+        template_name = ?, template_description = ?, cover_url = ?,
+        skill_type = ?, tags_json = ?, model_api_id = ?,
+        prompt_text = ?, prompt_variables_json = ?, material_config_json = ?,
+        model_params_json = ?, creator_income_points = ?,
+        status = '待测试'
+       WHERE id = ? AND user_id = ?`,
+      [
+        data.templateName.trim(),
+        (data.templateDescription || '').trim() || null,
+        (data.coverUrl || '').trim() || null,
+        data.skillType,
+        tagsJson,
+        data.modelApiId || 0,
+        (data.promptText || '').trim() || null,
+        promptVarsJson,
+        materialConfigJson,
+        modelParamsJson,
+        data.creatorIncomePoints || 0,
+        templateId, userId,
+      ]
+    )
+
+    return { templateId, avatarId: tplRows[0].avatar_id, status: '待测试' }
   }
 
   private parseJsonSafe(jsonStr: any, defaultValue: any) {

@@ -1,0 +1,712 @@
+.ctc-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #f8f9fa;
+}
+
+/* ===== 顶部导航 ===== */
+.ctc-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18rpx 32rpx;
+  background: #ffffff;
+  flex-shrink: 0;
+}
+
+.ctc-back {
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ctc-header-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.ctc-header-right {
+  width: 60rpx;
+}
+
+/* ===== 步骤指示器 ===== */
+.ctc-steps {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 32rpx 24rpx;
+  background: #ffffff;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+.ctc-step-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.ctc-step-dot {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  background: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ctc-step-dot.active {
+  background: #7c3aed;
+}
+
+.ctc-step-dot.done {
+  background: #7c3aed;
+}
+
+.ctc-step-dot-text {
+  font-size: 22rpx;
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+.ctc-step-dot.active .ctc-step-dot-text,
+.ctc-step-dot.done .ctc-step-dot-text {
+  color: #ffffff;
+}
+
+.ctc-step-label {
+  font-size: 22rpx;
+  color: #9ca3af;
+}
+
+.ctc-step-label.active {
+  color: #7c3aed;
+  font-weight: 600;
+}
+
+.ctc-step-line {
+  flex: 1;
+  height: 4rpx;
+  background: #e5e7eb;
+  margin: 0 8rpx;
+}
+
+.ctc-step-line.done {
+  background: #7c3aed;
+}
+
+/* ===== 滚动内容区 ===== */
+.ctc-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.ctc-content-inner {
+  padding: 24rpx 32rpx 240rpx;
+}
+
+/* ===== 通用卡片 ===== */
+.ctc-card {
+  background: #ffffff;
+  border-radius: 20rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+.ctc-card-title {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 24rpx;
+}
+
+.ctc-card-title-text {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.ctc-card-title-badge {
+  font-size: 20rpx;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+}
+
+/* ===== 表单通用 ===== */
+.ctc-field {
+  margin-bottom: 28rpx;
+}
+
+.ctc-label {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 12rpx;
+}
+
+.ctc-label-required {
+  color: #ef4444;
+  margin-left: 4rpx;
+}
+
+.ctc-label-hint {
+  font-size: 22rpx;
+  color: #9ca3af;
+  font-weight: 400;
+  margin-left: 8rpx;
+}
+
+.ctc-input-wrap {
+  background: #f9fafb;
+  border-radius: 12rpx;
+  padding: 20rpx 24rpx;
+  border: 2rpx solid #e5e7eb;
+}
+
+/* ===== 封面上传 ===== */
+.ctc-cover-area {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+
+.ctc-cover-box {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 16rpx;
+  background: #f3f4f6;
+  border: 2rpx dashed #d1d5db;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.ctc-cover-img {
+  width: 160rpx;
+  height: 160rpx;
+}
+
+.ctc-cover-placeholder-text {
+  font-size: 20rpx;
+  color: #9ca3af;
+  margin-top: 8rpx;
+}
+
+/* ===== 标签气泡 ===== */
+.ctc-tags-area {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.ctc-tag-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 8rpx 20rpx;
+  background: #ede9fe;
+  border-radius: 20rpx;
+}
+
+.ctc-tag-text {
+  font-size: 24rpx;
+  color: #6d28d9;
+}
+
+.ctc-tag-remove {
+  width: 28rpx;
+  height: 28rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ===== Step2 模型选择 ===== */
+.ctc-model-card {
+  display: flex;
+  align-items: center;
+  padding: 24rpx;
+  background: #ffffff;
+  border-radius: 16rpx;
+  border: 2rpx solid #e5e7eb;
+  margin-bottom: 16rpx;
+  gap: 20rpx;
+}
+
+.ctc-model-card.selected {
+  border-color: #7c3aed;
+  background: #faf5ff;
+}
+
+.ctc-model-icon {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 16rpx;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.ctc-model-icon-img {
+  width: 80rpx;
+  height: 80rpx;
+}
+
+.ctc-model-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ctc-model-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1a1a2e;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ctc-model-desc {
+  font-size: 22rpx;
+  color: #6b7280;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 4rpx;
+}
+
+.ctc-model-tags {
+  display: flex;
+  gap: 8rpx;
+  margin-top: 8rpx;
+  flex-wrap: wrap;
+}
+
+.ctc-model-tag {
+  font-size: 20rpx;
+  color: #7c3aed;
+  background: #ede9fe;
+  padding: 2rpx 12rpx;
+  border-radius: 8rpx;
+}
+
+.ctc-model-cost {
+  font-size: 22rpx;
+  color: #6b7280;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.ctc-model-cost-value {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #7c3aed;
+  display: block;
+}
+
+.ctc-model-radio {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  border: 3rpx solid #d1d5db;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ctc-model-radio.selected {
+  border-color: #7c3aed;
+  background: #7c3aed;
+}
+
+/* 价格合计卡片 */
+.ctc-price-summary {
+  background: #faf5ff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-top: 24rpx;
+  border: 2rpx solid #ede9fe;
+}
+
+.ctc-price-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+}
+
+.ctc-price-label {
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+.ctc-price-value {
+  font-size: 24rpx;
+  color: #374151;
+}
+
+.ctc-price-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 16rpx;
+  border-top: 2rpx solid #ede9fe;
+}
+
+.ctc-price-total-label {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.ctc-price-total-value {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #7c3aed;
+}
+
+/* ===== Step3 参数设置 ===== */
+.ctc-param-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-radius: 16rpx;
+  overflow: hidden;
+  margin-bottom: 24rpx;
+  border: 2rpx solid #f3f4f6;
+}
+
+.ctc-param-item {
+  display: flex;
+  align-items: center;
+  padding: 24rpx;
+  background: #ffffff;
+  border-bottom: 2rpx solid #f3f4f6;
+}
+
+.ctc-param-item:last-child {
+  border-bottom: none;
+}
+
+.ctc-param-item.active {
+  background: #faf5ff;
+}
+
+/* 参数编辑面板 */
+.ctc-param-edit {
+  background: #ffffff;
+  border-radius: 16rpx;
+  border: 2rpx solid #ede9fe;
+  padding: 28rpx;
+  margin-bottom: 24rpx;
+}
+
+/* 用户填写预览区 */
+.ctc-preview-section {
+  background: #ffffff;
+  border-radius: 16rpx;
+  border: 2rpx solid #ede9fe;
+  padding: 24rpx;
+}
+
+.ctc-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+}
+
+.ctc-preview-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.ctc-preview-field {
+  margin-bottom: 20rpx;
+}
+
+.ctc-preview-label {
+  display: block;
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 8rpx;
+}
+
+.ctc-preview-input {
+  background: #f9fafb;
+  border: 2rpx solid #e5e7eb;
+  border-radius: 10rpx;
+  padding: 16rpx 20rpx;
+}
+
+.ctc-preview-placeholder {
+  font-size: 24rpx;
+  color: #9ca3af;
+}
+
+.ctc-preview-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ===== Step4 提示词模版 ===== */
+.ctc-prompt-editor {
+  background: #f9fafb;
+  border: 2rpx solid #e5e7eb;
+  border-radius: 12rpx;
+  padding: 24rpx;
+  min-height: 400rpx;
+}
+
+.ctc-prompt-counter {
+  text-align: right;
+  font-size: 22rpx;
+  color: #9ca3af;
+  margin-top: 8rpx;
+}
+
+.ctc-var-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+
+.ctc-var-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+  padding: 12rpx 20rpx;
+  background: #ede9fe;
+  border-radius: 12rpx;
+}
+
+.ctc-var-chip-key {
+  font-size: 22rpx;
+  color: #7c3aed;
+  font-weight: 600;
+}
+
+.ctc-var-chip-name {
+  font-size: 20rpx;
+  color: #6b7280;
+}
+
+.ctc-var-chip-check {
+  color: #22c55e;
+  font-size: 18rpx;
+}
+
+/* 素材配置 */
+.ctc-mc-row {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+
+.ctc-mc-half {
+  flex: 1;
+}
+
+.ctc-mc-types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.ctc-mc-type-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 10rpx 20rpx;
+  border: 2rpx solid #e5e7eb;
+  border-radius: 12rpx;
+  background: #ffffff;
+}
+
+.ctc-mc-type-item.active {
+  border-color: #7c3aed;
+  background: #faf5ff;
+}
+
+.ctc-mc-type-text {
+  font-size: 24rpx;
+  color: #374151;
+}
+
+.ctc-mc-count-options {
+  display: flex;
+  gap: 12rpx;
+}
+
+.ctc-mc-count-btn {
+  padding: 10rpx 24rpx;
+  border: 2rpx solid #e5e7eb;
+  border-radius: 10rpx;
+  font-size: 24rpx;
+  color: #374151;
+  background: #ffffff;
+}
+
+.ctc-mc-count-btn.active {
+  border-color: #7c3aed;
+  background: #7c3aed;
+  color: #ffffff;
+}
+
+/* Switch 行 */
+.ctc-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 0;
+}
+
+.ctc-switch-label {
+  font-size: 26rpx;
+  color: #374151;
+}
+
+/* ===== 底部操作区 ===== */
+.ctc-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20rpx 32rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  background: #ffffff;
+  border-top: 1rpx solid #f3f4f6;
+  z-index: 100;
+}
+
+.ctc-footer-btns {
+  display: flex;
+  gap: 20rpx;
+}
+
+.ctc-footer-btn-prev {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22rpx;
+  background: #f3f4f6;
+  border-radius: 40rpx;
+  border: none;
+}
+
+.ctc-footer-btn-prev-text {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #374151;
+}
+
+.ctc-footer-btn-next {
+  flex: 1.5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22rpx;
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  border-radius: 40rpx;
+  border: none;
+}
+
+.ctc-footer-btn-next.disabled {
+  opacity: 0.5;
+}
+
+.ctc-footer-btn-next-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+/* 弹层通用 */
+.ctc-picker-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+}
+
+.ctc-picker-content {
+  width: 100%;
+  background: #ffffff;
+  border-radius: 24rpx 24rpx 0 0;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.ctc-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 32rpx;
+  border-bottom: 1rpx solid #f3f4f6;
+}
+
+.ctc-picker-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.ctc-picker-close {
+  font-size: 28rpx;
+  color: #6b7280;
+  padding: 8rpx 16rpx;
+}
+
+.ctc-picker-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16rpx 0;
+}
+
+.ctc-picker-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 32rpx;
+}
+
+.ctc-picker-item.active {
+  background: #faf5ff;
+}
+
+.ctc-picker-item-text {
+  font-size: 28rpx;
+  color: #1a1a2e;
+}
