@@ -10,6 +10,7 @@
 
 .wcv-card.is-preview {
   height: 420rpx;
+  padding-bottom: 74rpx;
 }
 
 .wcv-head {
@@ -68,13 +69,135 @@
   border-radius: 20rpx;
 }
 
-.wcv-more {
+.wcv-more-row {
   position: absolute;
-  right: 26rpx;
-  bottom: 12rpx;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  height: 64rpx;
+  align-items: center;
+  justify-content: flex-end;
+  border-top: 1rpx solid #f3e8ff;
+  background: #fff;
+}
+
+.wcv-more {
   display: block;
   color: #7c3aed;
   font-size: 34rpx;
   font-weight: 700;
   line-height: 34rpx;
+}
+.wcv-md-h1 {
+  display: block;
+  margin: 0 0 14rpx;
+  color: #32256f;
+  font-size: 32rpx;
+  font-weight: 700;
+  line-height: 48rpx;
+}
+
+.wcv-md-h2 {
+  display: block;
+  margin: 22rpx 0 12rpx;
+  color: #32256f;
+  font-size: 30rpx;
+  font-weight: 700;
+  line-height: 46rpx;
+}
+
+.wcv-md-h3 {
+  display: block;
+  margin: 20rpx 0 10rpx;
+  color: #334155;
+  font-size: 28rpx;
+  font-weight: 600;
+  line-height: 52rpx;
+}
+
+.wcv-md-paragraph {
+  display: block;
+  margin-bottom: 20rpx;
+  color: #334155;
+  font-size: 28rpx;
+  line-height: 52rpx;
+  white-space: pre-wrap;
+}
+
+.wcv-md-strong {
+  font-weight: 700;
+}
+
+.wcv-md-em {
+  font-style: italic;
+}
+
+.wcv-md-del {
+  text-decoration: line-through;
+}
+
+.wcv-md-link {
+  color: #7c3aed;
+  text-decoration: underline;
+}
+
+.wcv-md-code-inline {
+  padding: 2rpx 8rpx;
+  border-radius: 8rpx;
+  background: #f5f3ff;
+  font-size: 25rpx;
+}
+
+.wcv-md-code {
+  overflow-x: auto;
+  margin: 20rpx 0;
+  padding: 20rpx;
+  color: #475569;
+  border-radius: 16rpx;
+  background: #f8fafc;
+  font-size: 24rpx;
+  line-height: 40rpx;
+  white-space: pre-wrap;
+}
+
+.wcv-md-quote {
+  margin: 20rpx 0;
+  padding: 12rpx 20rpx;
+  color: #64748b;
+  border-left: 6rpx solid #c4b5fd;
+  background: #faf7ff;
+}
+
+.wcv-md-list {
+  margin-bottom: 20rpx;
+}
+
+.wcv-md-list-item {
+  display: flex;
+  align-items: flex-start;
+  color: #334155;
+  font-size: 28rpx;
+  line-height: 52rpx;
+}
+
+.wcv-md-list-mark {
+  width: 40rpx;
+  flex-shrink: 0;
+  color: #7c3aed;
+}
+
+.wcv-md-list-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.wcv-md-list-content .wcv-md-paragraph {
+  margin-bottom: 8rpx;
+}
+
+.wcv-md-divider {
+  height: 1rpx;
+  margin: 28rpx 0;
+  background: #ede9fe;
 }

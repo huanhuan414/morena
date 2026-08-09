@@ -140,6 +140,26 @@
   order: 2;
 }
 
+.pd-meta .pd-public {
+  order: 2;
+}
+
+.pd-public {
+  padding: 6rpx 14rpx;
+  border-radius: 9999rpx;
+  font-size: 22rpx;
+}
+
+.pd-public.is-public {
+  color: #6d4cd8;
+  background: #f3efff;
+}
+
+.pd-public.is-private {
+  color: #d97706;
+  background: #fff7ed;
+}
+
 .pd-tag,
 .pd-cat {
   border-radius: 9999rpx;

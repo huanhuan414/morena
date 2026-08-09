@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { ArrowLeft, Eye, Heart, Play, Sparkles, WandSparkles } from 'lucide-react-taro'
 
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -17,6 +16,7 @@ import './index.css'
 type WorkDetail = {
   id: number
   avatarId: number
+  templateId: number
   avatarName: string
   avatarUrl: string
   avatarSkillType: string
@@ -135,6 +135,16 @@ export default function WorkSquareDetailPage() {
     void Taro.previewMedia({
       current: 0,
       sources: [{ url: work.videoUrl, type: 'video' }],
+    })
+  }
+
+  const handleUseTemplate = (selectedWork: WorkDetail) => {
+    if (!selectedWork.templateId) {
+      void Taro.showToast({ title: '该作品暂无可用模板', icon: 'none' })
+      return
+    }
+    void Taro.navigateTo({
+      url: `/package-my-avatar/pages/template-use/index?templateId=${selectedWork.templateId}&avatarId=${selectedWork.avatarId}`,
     })
   }
 
@@ -383,7 +393,7 @@ export default function WorkSquareDetailPage() {
             <View className="wsd-summary">
               <View className="wsd-title-row">
                 <Text className="wsd-work-title">{work.title || '无标题作品'}</Text>
-                <Badge variant="secondary" className="wsd-category"><Text>{work.category || '作品'}</Text></Badge>
+                {/* <Badge variant="secondary" className="wsd-category"><Text>{work.category || '作品'}</Text></Badge> */}
               </View>
               <Text className="wsd-description">{work.description || '暂无作品介绍'}</Text>
               <Text className="wsd-published">发布于 {formatPublishedAt(work.publishedAt)}</Text>
@@ -467,7 +477,7 @@ export default function WorkSquareDetailPage() {
             </View>
             <Text className="wsd-price-label">付费后可使用该模板</Text>
           </View>
-          <Button className="wsd-use"><Text>使用模板</Text></Button>
+          <Button className="wsd-use" onClick={() => handleUseTemplate(work)}><Text>付费使用模板</Text></Button>
           <Button variant="ghost" className="wsd-bottom-favorite" onClick={() => void toggleWorkFavorite()}>
             <Heart
               size={22}

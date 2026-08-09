@@ -325,7 +325,7 @@
 .ws-media {
   position: relative;
   display: flex;
-  width: 270rpx;
+  width: 200rpx;
   height: 180rpx;
   flex-shrink: 0;
   align-items: center;

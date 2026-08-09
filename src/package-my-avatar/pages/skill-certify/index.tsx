@@ -4,16 +4,6 @@ import Taro, { useLoad } from '@tarojs/taro'
 import { ArrowLeft, ChevronDown, FileText, ShieldCheck, Sparkles, Info } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogFooter,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogAction,
-  AlertDialogCancel,
-} from '@/components/ui/alert-dialog'
 import './index.css'
 
 /**
@@ -64,9 +54,6 @@ export default function SkillCertifyPage() {
   const [formValues, setFormValues] = useState<Record<string, string>>({})
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string>('')
   const [uploading, setUploading] = useState(false)
-  const [confirmOpen, setConfirmOpen] = useState(false)
-  const [userBalance, setUserBalance] = useState<number | null>(null)
-  const [balanceLoading, setBalanceLoading] = useState(false)
 
   /** 加载模板详情 */
   const loadDetail = useCallback(async (tplId: number) => {
@@ -136,12 +123,24 @@ export default function SkillCertifyPage() {
 
     const totalCost = (detail.modelApi?.modelCostPoints || 0) + (detail.creatorIncomePoints || 0)
     if (totalCost > 0) {
-      setBalanceLoading(true)
-      setUserBalance(null)
-      setConfirmOpen(true)
       const balance = await fetchBalance()
-      setUserBalance(balance)
-      setBalanceLoading(false)
+      if (balance < totalCost) {
+        await Taro.showModal({
+          title: '积分不足',
+          content: `当前余额 ${balance} 积分，本次使用需要 ${totalCost} 积分`,
+          showCancel: false,
+          confirmText: '知道了',
+        })
+        return
+      }
+
+      const result = await Taro.showModal({
+        title: '积分确认',
+        content: `本次使用将消耗 ${totalCost} 积分（模型成本 ${detail.modelApi?.modelCostPoints || 0} + 创作者收益 ${detail.creatorIncomePoints || 0}），确认继续？`,
+        confirmText: '确认使用',
+        cancelText: '取消',
+      })
+      if (result.confirm) navigateToResult()
       return
     }
 
@@ -169,14 +168,6 @@ export default function SkillCertifyPage() {
     })
   }
 
-  /** 弹框确认使用 */
-  const handleConfirmUse = () => {
-    setConfirmOpen(false)
-    navigateToResult()
-  }
-
-  const totalCost = (detail?.modelApi?.modelCostPoints || 0) + (detail?.creatorIncomePoints || 0)
-  const insufficientBalance = userBalance !== null && userBalance < totalCost
 
   /** 选择并上传图片 */
   const handleChooseImage = async () => {
@@ -512,44 +503,6 @@ export default function SkillCertifyPage() {
         </View>
       )}
 
-      {/* 积分确认弹框 */}
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              <Text className="block text-lg font-semibold text-center">积分确认</Text>
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              <Text className="block text-sm text-muted-foreground text-center leading-relaxed">
-                本次使用将消耗 {totalCost} 积分（模型成本 {detail?.modelApi?.modelCostPoints || 0} + 创作者收益 {detail?.creatorIncomePoints || 0}），确认继续？
-              </Text>
-              {!balanceLoading && insufficientBalance && (
-                <Text className="block text-xs text-destructive text-center mt-2">
-                  当前余额 {userBalance} 积分，不足以支付本次消费
-                </Text>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex flex-row gap-3 mt-2">
-            <AlertDialogCancel className="flex-1">
-              <Text className="block text-center text-sm">取消</Text>
-            </AlertDialogCancel>
-            {balanceLoading ? (
-              <View className="flex-1 flex items-center justify-center rounded-md bg-muted py-2">
-                <Text className="block text-center text-sm text-muted-foreground">查询中...</Text>
-              </View>
-            ) : insufficientBalance ? (
-              <View className="flex-1 flex items-center justify-center rounded-md bg-muted py-2 opacity-50">
-                <Text className="block text-center text-sm text-muted-foreground">积分不足</Text>
-              </View>
-            ) : (
-              <AlertDialogAction className="flex-1" onClick={handleConfirmUse}>
-                <Text className="block text-center text-sm text-primary-foreground">确认使用</Text>
-              </AlertDialogAction>
-            )}
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </View>
   )
 }

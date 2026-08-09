@@ -41,6 +41,7 @@ type AvatarPreview = {
   skillType: string
   useCount: number
   status: string
+  publicStatus?: string
   updatedAt: string
   viewCount: number
   favoriteCount: number
@@ -439,6 +440,14 @@ export default function AvatarOwnerDetailPage() {
                 <CircleCheck size={12} color="#22C55E" />
                 <Text className="pd-sub">{avatar.status}</Text>
               </View>
+              {avatar.publicStatus && (
+                <Badge
+                  variant="secondary"
+                  className={`pd-public${avatar.publicStatus === '公开' ? ' is-public' : ' is-private'}`}
+                >
+                  <Text>{avatar.publicStatus}</Text>
+                </Badge>
+              )}
             </View>
             <View className="pd-actions pd-hero-actions">
               <Button variant="outline" size="sm" className="pd-act">
@@ -467,8 +476,8 @@ export default function AvatarOwnerDetailPage() {
                   {[
                     { label: '累计调用', value: formatCount(avatar.useCount) },
                     { label: '累计收益', value: formatCount(avatar.incomePointsTotal), unit: '积分' },
-                    { label: '收藏量', value: formatCount(avatar.viewCount) },
-                    { label: '浏览量', value: formatCount(avatar.favoriteCount) },
+                    { label: '收藏量', value: formatCount(avatar.favoriteCount) },
+                    { label: '浏览量', value: formatCount(avatar.viewCount) },
                   ].map(item => (
                     <View key={item.label} className="pd-stat">
                       <Text className="pd-stat-label">{item.label}</Text>
@@ -518,7 +527,7 @@ export default function AvatarOwnerDetailPage() {
             <Card className="pd-card">
               <CardContent className="pd-pad">
                 <View className="pd-sec-head">
-                  <Text className="pd-title">数据概览</Text>
+                  <Text className="pd-title">作品数据概览</Text>
                   {/* <View className="pd-online">
                     <Text className="pd-muted">查看更多</Text>
                     <ChevronRight size={13} color="#94A3B8" />

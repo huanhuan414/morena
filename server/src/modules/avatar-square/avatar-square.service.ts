@@ -55,41 +55,7 @@ export const WORK_VIEW_SOURCES = [
 
 export type WorkViewSource = typeof WORK_VIEW_SOURCES[number]
 
-const PUBLIC_WORK_VIEW_CONDITIONS: Record<WorkViewSource, readonly string[]> = {
-  avatar_public_detail: [
-    "public_status = '公开'",
-    "audit_status = '审核通过'",
-    "avatar_auth_status = '展示'",
-    "avatar_accept_status = '接受展示'",
-  ],
-  work_detail: [
-    "public_status = '公开'",
-    "audit_status = '审核通过'",
-    "avatar_auth_status = '展示'",
-    "avatar_accept_status = '接受展示'",
-  ],
-  avatar_square: [
-    "public_status = '公开'",
-    "audit_status = '审核通过'",
-    "avatar_auth_status = '展示'",
-  ],
-  search: [
-    "public_status = '公开'",
-    "audit_status = '审核通过'",
-    "avatar_auth_status = '展示'",
-    "avatar_accept_status = '接受展示'",
-  ],
-  share: [
-    "public_status = '公开'",
-    "audit_status = '审核通过'",
-    "avatar_auth_status = '展示'",
-    "avatar_accept_status = '接受展示'",
-  ],
-  other: [
-    "public_status = '公开'",
-    "audit_status = '审核通过'"
-  ],
-}
+
 @Injectable()
 export class AvatarSquareService {
   private readonly logger = new Logger(AvatarSquareService.name)
@@ -169,6 +135,7 @@ export class AvatarSquareService {
   }
   private mapWorkPreview(row: Record<string, unknown>) {
     const contentJson = this.safeParseJson<Record<string, unknown>>(row.contentJson, {})
+    const contentData = this.safeParseJson<Record<string, unknown>>(contentJson.data, {})
     const rawImages = Array.isArray(contentJson.images)
       ? contentJson.images
       : this.safeParseJson<unknown[]>(contentJson.images, [])
@@ -186,8 +153,14 @@ export class AvatarSquareService {
       isFavorited: Boolean(row.isFavorited),
       images: workCategory === '图片' || workCategory === '图文' ? images : [],
       contentTitle: workCategory === '图文' ? String(contentJson.title || '') : '',
-      contentText: workCategory === '文字' || workCategory === '图文'
+      contentText: workCategory === '文字'
         ? String(contentJson.text || '')
+        : '',
+      contentMarkdown: workCategory === '图文'
+        ? String(contentData.content_markdown || contentData.contentMarkdown || '')
+        : '',
+      contentHtml: workCategory === '图文'
+        ? String(contentData.content_html || contentData.contentHtml || '')
         : '',
       videoUrl: workCategory === '视频'
         ? String(contentJson.video_url || contentJson.videoUrl || '')
@@ -226,11 +199,7 @@ export class AvatarSquareService {
     source: WorkViewSource,
   ) {
     const db = getMySQLClient()
-    const sourceConditions = PUBLIC_WORK_VIEW_CONDITIONS[source]
-    if (!sourceConditions) {
-      throw new Error('不支持的浏览来源')
-    }
-
+    const sourceConditions =  ["public_status = '公开'",]
     const whereConditions = [
       'id = ?',
       "status = '正常'",
@@ -640,7 +609,7 @@ export class AvatarSquareService {
     const whereClauses = [
       "work.status = '正常'",
       "work.public_status = '公开'",
-      "work.audit_status = '审核通过'",
+      // "work.audit_status = '审核通过'",
       "work.avatar_auth_status = '展示'",
       'work.deleted_at IS NULL',
       "avatar.status = '已上线'",
@@ -725,6 +694,7 @@ export class AvatarSquareService {
       SELECT
         work.id,
         work.avatar_id,
+        work.template_id,
         work.work_title,
         work.work_description,
         work.skill_type,
@@ -732,7 +702,7 @@ export class AvatarSquareService {
         work.published_at,
         work.view_count,
         work.favorite_count,
-        work.success_item_count,
+        COALESCE(tpl.use_count, 0) AS success_item_count,
         work.content_json,
         avatar.avatar_name,
         avatar.avatar_url,
@@ -758,15 +728,18 @@ export class AvatarSquareService {
         ` : 'FALSE'} AS is_avatar_favorited
       FROM ai_generated_work work
       INNER JOIN ai_avatar avatar ON avatar.id = work.avatar_id
+      LEFT JOIN ai_avatar_template tpl
+        ON tpl.id = work.template_id
+        AND tpl.deleted_at IS NULL
       WHERE work.id = ?
         AND work.status = '正常'
-        AND work.public_status = '公开'
-        AND work.audit_status = '审核通过'
-        AND work.avatar_auth_status = '展示'
+        ${userId
+          ? "AND (work.user_id = ? OR work.public_status = '公开')"
+          : "AND work.public_status = '公开'"}
         AND work.deleted_at IS NULL
         AND avatar.deleted_at IS NULL
       LIMIT 1
-    `, [...(userId ? [userId, userId] : []), workId])
+    `, [...(userId ? [userId, userId] : []), workId, ...(userId ? [userId] : [])])
     const row = rows[0] as Record<string, unknown> | undefined
     if (!row) return null
 
@@ -784,6 +757,7 @@ export class AvatarSquareService {
       favoriteCount: Number(row.favoriteCount || 0),
       successItemCount: Number(row.successItemCount || 0),
       isFavorited: Boolean(row.isFavorited),
+      templateId: Number(row.templateId || 0),
     }
   }
   /**
@@ -892,7 +866,6 @@ export class AvatarSquareService {
           visibilityWhere: `
             status = '正常'
             AND public_status = '公开'
-            AND audit_status = '审核通过'
             AND avatar_auth_status = '展示'
             AND deleted_at IS NULL
           `,
@@ -1173,7 +1146,6 @@ export class AvatarSquareService {
       WHERE avatar_id = ?
         AND status = '正常'
         AND public_status = '公开'
-        AND audit_status = '审核通过'
         AND avatar_auth_status = '展示'
         AND avatar_accept_status = '接受展示'
         AND deleted_at IS NULL
@@ -1202,7 +1174,6 @@ export class AvatarSquareService {
       WHERE id = ?
         AND status = '正常'
         AND public_status = '公开'
-        AND audit_status = '审核通过'
         AND deleted_at IS NULL
       LIMIT 1
     `, [workId])
@@ -1240,14 +1211,25 @@ export class AvatarSquareService {
     const db = getMySQLClient()
     const rows = await db.query(`
       SELECT
-        COALESCE(SUM(success_item_count), 0) AS call_count,
+        (
+          SELECT COALESCE(SUM(tpl.use_count), 0)
+          FROM ai_avatar_template tpl
+          INNER JOIN (
+            SELECT DISTINCT template_id
+            FROM ai_generated_work
+            WHERE avatar_id = ?
+              AND template_id IS NOT NULL
+              AND deleted_at IS NULL
+          ) linked_work ON linked_work.template_id = tpl.id
+          WHERE tpl.deleted_at IS NULL
+        ) AS call_count,
         COUNT(*) AS work_count,
         COALESCE(SUM(favorite_count), 0) AS favorite_count,
         COALESCE(SUM(view_count), 0) AS view_count
       FROM ai_generated_work
       WHERE avatar_id = ?
         AND deleted_at IS NULL
-    `, [avatarId])
+    `, [avatarId, avatarId])
     const row = rows[0] as Record<string, unknown> | undefined
 
     return {

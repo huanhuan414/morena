@@ -2,7 +2,7 @@ import { ScrollView, Text, View } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { ArrowLeft, Sparkles } from 'lucide-react-taro'
+import { ArrowLeft, Copy, Sparkles } from 'lucide-react-taro'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -56,6 +56,18 @@ export default function WorkContentDetailPage() {
 
   const title = work?.category === '文字' ? '文字详情' : '图文详情'
 
+  const copyContent = (content: string, label: string) => {
+    if (!content) {
+      void Taro.showToast({ title: `暂无${label}内容`, icon: 'none' })
+      return
+    }
+
+    void Taro.setClipboardData({
+      data: content,
+      success: () => Taro.showToast({ title: `${label}已复制`, icon: 'success' }),
+    })
+  }
+
   let body
   if (loading) {
     body = (
@@ -74,9 +86,37 @@ export default function WorkContentDetailPage() {
       </View>
     )
   } else {
+    const isGraphic = work.category === '图文'
+    const textTitle = work.contentTitle || work.title || '无标题作品'
+    const textBody = work.contentText || work.description || '暂无内容'
+    const textCopyContent = `${textTitle}\n\n${textBody}`
+
     body = (
       <View className="wcd-content">
         <WorkContentView work={work} mode="full" />
+        {isGraphic ? (
+          <View className="wcd-copy-actions">
+            <Button variant="outline" className="wcd-copy-btn" onClick={() => copyContent(work.contentMarkdown || '', 'Markdown')}>
+              <Copy size={15} color="#7C3AED" />
+              <Text>Markdown复制</Text>
+            </Button>
+            <Button variant="outline" className="wcd-copy-btn" onClick={() => copyContent(work.contentHtml || '', 'HTML')}>
+              <Copy size={15} color="#7C3AED" />
+              <Text>HTML复制</Text>
+            </Button>
+          </View>
+        ) : (
+          <View className="wcd-text-copy-actions">
+            <Button
+              variant="outline"
+              className="wcd-copy-btn wcd-text-copy-btn"
+              onClick={() => copyContent(textCopyContent, '内容')}
+            >
+              <Copy size={15} color="#7C3AED" />
+              <Text>内容复制</Text>
+            </Button>
+          </View>
+        )}
       </View>
     )
   }
