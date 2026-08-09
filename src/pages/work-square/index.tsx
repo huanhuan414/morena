@@ -390,16 +390,18 @@ export default function WorkSquarePage() {
                       </View>
 
                       <View className="ws-work-row">
-                        <View className={`ws-media${work.category === '文字' ? ' is-text' : ''}`} >
-                          {(work.category === '图片' || work.category === '图文') && work.images[0] ? (
+                        <View className={`ws-media${work.category === '文字' ? ' is-text' : work.category === '图文' ? ' is-rich-text' : ''}`} >
+                          {work.category === '图片' && work.images[0] ? (
                             <Image src={work.images[0]} mode="aspectFill" className="ws-media-image" />
+                          ) : work.category === '图文' ? (
+                            <Text className="ws-text-preview">{work.title}</Text>
                           ) : work.category === '视频' && work.videoCoverUrl ? (
                             <>
                               <Image src={work.videoCoverUrl} mode="aspectFill" className="ws-media-image" />
                               <View className="ws-play"><Play size={22} color="#FFFFFF" filled /></View>
                             </>
                           ) : work.category === '文字' ? (
-                            <Text className="ws-text-preview">{work.contentText || work.description || '暂无文字内容'}</Text>
+                            <Text className="ws-text-preview">{work.contentText || work.description}</Text>
                           ) : (
                             <View className="ws-media-empty"><Sparkles size={24} color="#FFFFFF" /></View>
                           )}

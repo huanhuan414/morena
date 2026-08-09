@@ -325,7 +325,7 @@
 .ws-media {
   position: relative;
   display: flex;
-  width: 200rpx;
+  width: 270rpx;
   height: 180rpx;
   flex-shrink: 0;
   align-items: center;
@@ -338,6 +338,11 @@
 .ws-media.is-text {
   padding: 20rpx;
   background: linear-gradient(135deg,#fffaf3,#fff3f5,#f8efff);
+}
+
+.ws-media.is-rich-text {
+  padding: 20rpx;
+  background: linear-gradient(135deg,#eff6ff,#ecfeff,#eef2ff);
 }
 
 .ws-media-image,

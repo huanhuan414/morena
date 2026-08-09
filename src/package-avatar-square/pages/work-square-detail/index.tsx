@@ -7,6 +7,7 @@ import { ArrowLeft, Eye, Heart, Play, Sparkles, WandSparkles } from 'lucide-reac
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { PROJECT_DOMAIN_ADMIN } from '@/constants/app'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
 import { WorkContentView } from '../../components/work-content-view'
@@ -39,6 +40,8 @@ type WorkDetail = {
 }
 
 const SCENES = ['短视频创作', '品牌宣传', '生活记录', '文案营销']
+const TEXT_POSTER_URL = `${PROJECT_DOMAIN_ADMIN}/static/image/text.png`
+const GRAPHIC_POSTER_URL = `${PROJECT_DOMAIN_ADMIN}/static/image/image2text.png`
 
 const formatCount = (value: number) => {
   const count = Number(value || 0)
@@ -251,16 +254,25 @@ export default function WorkSquareDetailPage() {
     //   )
     // }
 
-    if (work.category === '文字') {
+    if (work.category === '文字' || work.category === '图文') {
+      const isGraphic = work.category === '图文'
       return (
-        <View className="wsd-media is-text">
-          {/* <Badge variant="secondary" className="wsd-media-type"><Text>文字</Text></Badge> */}
-          <Text className="wsd-text-content">{work.contentText || work.description || '暂无文字内容'}</Text>
-          {/* <Sparkles className="wsd-text-spark" size={26} color="#C084FC" /> */}
+        <View className={`wsd-media is-poster${isGraphic ? ' is-graphic' : ' is-text'}`}>
+          <Image
+            src={isGraphic ? GRAPHIC_POSTER_URL : TEXT_POSTER_URL}
+            mode="aspectFill"
+            className="wsd-poster-bg"
+          />
+          <View className="wsd-poster-glow" />
+          <View className="wsd-poster-copy">
+            <Text className="wsd-poster-title">
+              {(work.contentTitle || work.title).slice(0, 8)}{(work.contentTitle || work.title).length > 8 ? '…' : ''}
+            </Text>
+            <View className="wsd-poster-line" />
+          </View>
         </View>
       )
     }
-
     if (work.category === '视频') {
       return (
         <View className="wsd-media is-video">
@@ -358,8 +370,9 @@ export default function WorkSquareDetailPage() {
 
     return (
       <View className="wsd-detail">
-        <View className="wsd-hero">{renderMedia()}</View>
-        <Card className="wsd-sheet">
+        <View className="wsd-fixed-head">
+          <View className="wsd-hero">{renderMedia()}</View>
+          <Card className="wsd-sheet wsd-avatar-card">
           <CardContent className="wsd-sheet-body">
             <View className="wsd-avatar-row">
               <View className="wsd-author">
@@ -390,6 +403,11 @@ export default function WorkSquareDetailPage() {
               </Button>
             </View>
 
+            </CardContent>
+          </Card>
+        </View>
+        <Card className="wsd-sheet wsd-content-sheet">
+          <CardContent className="wsd-sheet-body">
             <View className="wsd-summary">
               <View className="wsd-title-row">
                 <Text className="wsd-work-title">{work.title || '无标题作品'}</Text>
