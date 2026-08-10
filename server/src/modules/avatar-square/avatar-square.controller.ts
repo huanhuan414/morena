@@ -1,10 +1,29 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query, Req } from '@nestjs/common'
 import { createHash } from 'node:crypto'
+import { AuthService } from '../auth/auth.service'
 import { AvatarSquareService } from './avatar-square.service'
 
 @Controller('avatar-square')
 export class AvatarSquareController {
-  constructor(private readonly avatarSquareService: AvatarSquareService) {}
+  constructor(
+    private readonly avatarSquareService: AvatarSquareService,
+    private readonly authService: AuthService,
+  ) {}
+
+  private async getAuthenticatedUserId(req: any) {
+    const rawAuthorization = req?.headers?.authorization
+    const authorization = Array.isArray(rawAuthorization)
+      ? rawAuthorization[0]
+      : rawAuthorization
+    if (!authorization) return ''
+
+    try {
+      const result = await this.authService.getCurrentUser(String(authorization))
+      return String(result.user?.id || '')
+    } catch {
+      return ''
+    }
+  }
 
   @Get('manage/works')
   async getManagedWorks(
@@ -243,6 +262,78 @@ export class AvatarSquareController {
       }
     }
   }
+  @Get('favorites/avatars')
+  async getFavoriteAvatars(
+    @Req() req: any,
+    @Query('page') page: string = '1',
+    @Query('pageSize') pageSize: string = '20',
+    @Query('category') category?: string,
+  ) {
+    try {
+      const userId = await this.getAuthenticatedUserId(req)
+      if (!userId) return { code: 401, msg: '请先登录', data: null }
+
+      const categories = ['图片', '图文', '文字', '视频']
+      const normalizedCategory = category?.trim()
+      const effectiveCategory = normalizedCategory && normalizedCategory !== '全部'
+        ? normalizedCategory
+        : undefined
+      if (effectiveCategory && !categories.includes(effectiveCategory)) {
+        return { code: 400, msg: '分身分类无效', data: null }
+      }
+
+      const result = await this.avatarSquareService.getFavoriteAvatars({
+        page: Math.max(1, parseInt(page) || 1),
+        pageSize: Math.min(20, Math.max(1, parseInt(pageSize) || 20)),
+        category: effectiveCategory,
+      }, userId)
+      return { code: 200, msg: 'success', data: result }
+    } catch (error) {
+      console.error('获取分身收藏失败:', error)
+      return {
+        code: 500,
+        msg: error instanceof Error ? error.message : '服务器错误',
+        data: { list: [], page: 1, pageSize: 20, hasMore: false },
+      }
+    }
+  }
+
+  @Get('favorites/works')
+  async getFavoriteWorks(
+    @Req() req: any,
+    @Query('page') page: string = '1',
+    @Query('pageSize') pageSize: string = '20',
+    @Query('category') category?: string,
+  ) {
+    try {
+      const userId = await this.getAuthenticatedUserId(req)
+      if (!userId) return { code: 401, msg: '请先登录', data: null }
+
+      const categories = ['图片', '图文', '文字', '视频']
+      const normalizedCategory = category?.trim()
+      const effectiveCategory = normalizedCategory && normalizedCategory !== '全部'
+        ? normalizedCategory
+        : undefined
+      if (effectiveCategory && !categories.includes(effectiveCategory)) {
+        return { code: 400, msg: '作品分类无效', data: null }
+      }
+
+      const result = await this.avatarSquareService.getFavoriteWorks({
+        page: Math.max(1, parseInt(page) || 1),
+        pageSize: Math.min(20, Math.max(1, parseInt(pageSize) || 20)),
+        category: effectiveCategory,
+      }, userId)
+      return { code: 200, msg: 'success', data: result }
+    } catch (error) {
+      console.error('获取作品收藏失败:', error)
+      return {
+        code: 500,
+        msg: error instanceof Error ? error.message : '服务器错误',
+        data: { list: [], page: 1, pageSize: 20, hasMore: false },
+      }
+    }
+  }
+
   @Post(':id/favorite')
   @HttpCode(200)
   async favoriteTarget(

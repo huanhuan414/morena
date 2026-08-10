@@ -54,6 +54,7 @@ export default defineAppConfig({
         'pages/referral-center/index',
         'pages/referral-list/index',
         'pages/earnings-wall/index',
+        'pages/my-favorites/index',
       ],
     },
     {

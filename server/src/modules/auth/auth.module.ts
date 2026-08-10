@@ -18,6 +18,7 @@ import { ReferralModule } from '../referral/referral.module';
       provide: 'AUTH_SMS_SERVICE',
       useClass: AuthSmsService
     }
-  ]
+  ],
+  exports: [AuthService],
 })
 export class AuthModule {}

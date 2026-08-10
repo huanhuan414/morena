@@ -18,6 +18,12 @@ type WorkSquareQuery = {
   sort?: string
 }
 
+type FavoriteListQuery = {
+  page: number
+  pageSize: number
+  category?: string
+}
+
 type FavoriteTargetType = '分身' | '作品'
 
 type ManagedWorkStatusField = 'publicStatus' | 'avatarAcceptStatus' | 'avatarAuthStatus'
@@ -688,6 +694,126 @@ export class AvatarSquareService {
     return { list, page, pageSize, hasMore }
   }
 
+  async getFavoriteAvatars(options: FavoriteListQuery, userId: string) {
+    const db = getMySQLClient()
+    const page = Math.max(1, Number(options.page) || 1)
+    const pageSize = Math.min(20, Math.max(1, Number(options.pageSize) || 20))
+    const offset = (page - 1) * pageSize
+    const whereClauses = [
+      'favorite.user_id = ?',
+      "favorite.target_type = '分身'",
+      'avatar.deleted_at IS NULL',
+    ]
+    const params: unknown[] = [userId]
+
+    if (options.category) {
+      whereClauses.push("REPLACE(avatar.skill_type, '生成', '') = ?")
+      params.push(options.category)
+    }
+
+    const rows = await db.query(`
+      SELECT
+        avatar.id,
+        avatar.user_id,
+        avatar.avatar_name,
+        avatar.tags_json,
+        avatar.description,
+        avatar.view_count,
+        avatar.favorite_count,
+        avatar.income_points_total,
+        avatar.avatar_url,
+        avatar.skill_type,
+        REPLACE(avatar.skill_type, '生成', '') AS category,
+        TRUE AS is_favorited
+      FROM ai_user_favorite favorite
+      INNER JOIN ai_avatar avatar
+        ON avatar.id = favorite.target_id
+      WHERE ${whereClauses.join('\n        AND ')}
+      ORDER BY favorite.created_at DESC, favorite.id DESC
+      LIMIT ? OFFSET ?
+    `, [...params, pageSize + 1, offset])
+
+    const hasMore = rows.length > pageSize
+    const list = rows.slice(0, pageSize).map((row: Record<string, unknown>) => {
+      const tagsJson = this.safeParseJson<Record<string, string>>(row.tagsJson, {})
+      return {
+        id: Number(row.id || 0),
+        userId: String(row.userId || ''),
+        occupation: tagsJson.occupation || '',
+        avatarName: String(row.avatarName || ''),
+        tags: [tagsJson.gender, tagsJson.age, tagsJson.location, tagsJson.occupation].filter(Boolean),
+        description: String(row.description || ''),
+        viewCount: Number(row.viewCount || 0),
+        favoriteCount: Number(row.favoriteCount || 0),
+        isFavorited: Boolean(row.isFavorited),
+        incomePointsTotal: Number(row.incomePointsTotal || 0),
+        avatarUrl: String(row.avatarUrl || ''),
+        skillType: String(row.skillType || ''),
+        category: String(row.category || ''),
+      }
+    })
+
+    return { list, page, pageSize, hasMore }
+  }
+
+  async getFavoriteWorks(options: FavoriteListQuery, userId: string) {
+    const db = getMySQLClient()
+    const page = Math.max(1, Number(options.page) || 1)
+    const pageSize = Math.min(20, Math.max(1, Number(options.pageSize) || 20))
+    const offset = (page - 1) * pageSize
+    const whereClauses = [
+      'favorite.user_id = ?',
+      "favorite.target_type = '作品'",
+      'work.deleted_at IS NULL',
+    ]
+    const params: unknown[] = [userId]
+
+    if (options.category) {
+      whereClauses.push("REPLACE(work.skill_type, '生成', '') = ?")
+      params.push(options.category)
+    }
+
+    const rows = await db.query(`
+      SELECT
+        work.id,
+        work.avatar_id,
+        work.template_id,
+        work.work_title,
+        work.work_description,
+        work.skill_type,
+        work.generated_pay_points,
+        work.view_count,
+        work.favorite_count,
+        work.published_at,
+        work.content_json,
+        avatar.avatar_name,
+        avatar.avatar_url,
+        TRUE AS is_favorited
+      FROM ai_user_favorite favorite
+      INNER JOIN ai_generated_work work
+        ON work.id = favorite.target_id
+      LEFT JOIN ai_avatar avatar
+        ON avatar.id = work.avatar_id
+      WHERE ${whereClauses.join('\n        AND ')}
+      ORDER BY favorite.created_at DESC, favorite.id DESC
+      LIMIT ? OFFSET ?
+    `, [...params, pageSize + 1, offset])
+
+    const hasMore = rows.length > pageSize
+    const list = rows.slice(0, pageSize).map((row: Record<string, unknown>) => ({
+      ...this.mapWorkPreview(row),
+      avatarId: Number(row.avatarId || 0),
+      templateId: Number(row.templateId || 0),
+      avatarName: String(row.avatarName || ''),
+      avatarUrl: String(row.avatarUrl || ''),
+      generatedPayPoints: Number(row.generatedPayPoints || 0),
+      viewCount: Number(row.viewCount || 0),
+      favoriteCount: Number(row.favoriteCount || 0),
+      publishedAt: row.publishedAt || null,
+    }))
+
+    return { list, page, pageSize, hasMore }
+  }
   async getPublicWorkSquareDetail(workId: number, userId?: string) {
     const db = getMySQLClient()
     const rows = await db.query(`
